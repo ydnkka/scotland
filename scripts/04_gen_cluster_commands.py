@@ -6,8 +6,8 @@ Pairs each <stem>.csv in tn93_results_dir with its <stem>.ids in group_fasta_dir
 emits one python3 command per group into a command file for parallel_run.sh.
 
 Usage:
-  python3 scripts/05_gen_cluster_commands.py
-  python3 scripts/05_gen_cluster_commands.py --config config.yaml --root /path/to/repo
+  python3 scripts/04_gen_cluster_commands.py
+  python3 scripts/04_gen_cluster_commands.py --config config.yaml --root /path/to/repo
 """
 
 from __future__ import annotations

@@ -19,8 +19,8 @@ Output columns (46 total):
   dz_simd_*_rank (×7), dz_total/positive/negative_tests, dz_total_vaccinated, dz_prop_vaccinated
 
 Usage:
-  python3 scripts/04_consolidate.py
-  python3 scripts/04_consolidate.py --config config.yaml --root /path/to/repo
+  python3 scripts/05_consolidate.py
+  python3 scripts/05_consolidate.py --config config.yaml --root /path/to/repo
 """
 
 from __future__ import annotations
