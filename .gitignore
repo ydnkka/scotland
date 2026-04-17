@@ -1,0 +1,9 @@
+data/raw/
+data/processed/
+__pycache__/
+*.py[cod]
+*.obj
+.DS_Store
+.env
+*.egg-info/
+dist/

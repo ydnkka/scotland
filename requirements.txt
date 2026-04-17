@@ -1,0 +1,9 @@
+epilink>=0.1.5
+pandas>=2.0
+numpy>=1.26
+pyarrow>=14.0
+python-igraph>=0.11
+leidenalg>=0.10
+geopandas>=0.14
+pyyaml>=6.0
+sciris>=3.1      # for loading legacy .obj metadata files
