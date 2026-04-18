@@ -1,0 +1,24 @@
+$ python3 scripts/01_prep_metadata.py
+2026-04-17 14:35:31 [INFO] Testing data: 5467764 rows → data/processed/scotland_testing.parquet
+2026-04-17 14:35:35 [INFO] SIMD data: 6976 datazones → data/processed/scotland_datazone_simd_data.parquet
+2026-04-17 14:35:35 [INFO] Geography: 6976 datazones → data/processed/scotland_geography.parquet
+2026-04-17 14:36:24 [INFO] Vaccination data: 2809720 rows → data/processed/scotland_datazone_vaccinations.parquet
+2026-04-17 14:36:56 [INFO] Sequence metadata: 369026 rows → data/processed/scotland_sequence_metadata.parquet
+
+$ python3 scripts/02_gen_tn93_commands.py
+2026-04-17 14:38:35 [INFO] Generated 134 windows.
+2026-04-17 14:38:36 [INFO] Wrote 7079 group commands to data/processed/group_fastas/tn93_commands.txt
+2026-04-17 14:38:36 [INFO] Example:
+  samtools faidx -o data/processed/group_fastas/W001_B.1.1.369_5.fasta data/raw/cog-uk/cog_all_scotland_aligned.fasta.gz -r data/processed/group_fastas/W001_B.1.1.369_5.ids && tn93 -q -t 0.001 -a skip -o data/processed/group_fastas/tn93_results/W001_B.1.1.369_5.csv data/processed/group_fastas/W001_B.1.1.369_5.fasta
+
+$ ./scripts/parallel_run.sh -c data/processed/group_fastas/tn93_commands.txt -j 18 --progress --retries 2 --resume-failed
+Done. Joblog: data/processed/group_fastas/tn93_commands.joblog.tsv
+
+$ scripts/parallel_run.sh -c data/processed/cluster_commands.txt -j 18 --progress --retries 2 --resume-failedparallel --jobs 18 --joblog data/processed/cluster_commands.joblog.tsv --will-cite --tmpdir data/processed/.parallel-tmp --compress --bar --retries 2 --resume-failed
+Done. Joblog: data/processed/cluster_commands.joblog.tsv
+
+$ python3 scripts/05_consolidate.py
+2026-04-18 08:49:02 [INFO] 134 time windows
+2026-04-18 08:49:02 [INFO] Loading 7069 cluster parquets from data/processed/cluster_assignments_long
+2026-04-18 08:49:13 [INFO] Cluster rows: 7372456 + 22976 singletons = 7395432 total
+2026-04-18 08:49:42 [INFO] Analysis dataset: 7395432 rows × 44 cols → data/processed/scotland_clustering_analysis_dataset.parquet

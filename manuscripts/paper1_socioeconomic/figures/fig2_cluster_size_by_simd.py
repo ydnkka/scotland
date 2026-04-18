@@ -1,0 +1,123 @@
+"""Figure 2 — Cluster size distribution by SIMD quintile, faceted by VOC epoch.
+
+Cluster-level dataset: one row per `(window_id, cluster_id)`. Cluster SIMD
+quintile is defined as the modal quintile among its members
+(`simd_quintile_mode`). Cluster size is plotted on a log1p axis because the
+distribution is heavy-tailed (modal size = 1; maxima reach thousands).
+
+Each panel shows the five SIMD quintiles side-by-side; a notched box plot is
+overlaid on a violin to convey both the density and the median/IQR. A
+Kruskal-Wallis p-value annotates each panel.
+"""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+from manuscripts.common import data, style
+
+
+def _panel_data(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    df["epoch"] = data.assign_epoch(df["wn_mid_date"])
+    df = df.dropna(subset=["simd_quintile_mode", "epoch"])
+    df["simd_quintile_mode"] = df["simd_quintile_mode"].astype(int)
+    return df
+
+
+def _kw_pvalue(group_values: list[np.ndarray]) -> float:
+    from scipy.stats import kruskal
+
+    try:
+        return float(kruskal(*group_values).pvalue)
+    except ValueError:
+        return float("nan")
+
+
+def _violin_box(ax, values_by_q: dict[int, np.ndarray]) -> None:
+    positions = list(range(1, 6))
+    data_list = [np.log1p(values_by_q.get(q, np.array([], dtype=float))) for q in positions]
+    if all(len(d) == 0 for d in data_list):
+        ax.set_axis_off()
+        return
+
+    parts = ax.violinplot(
+        data_list, positions=positions, widths=0.8, showextrema=False, showmedians=False,
+    )
+    for body, q in zip(parts["bodies"], positions):
+        body.set_facecolor(style.SIMD_QUINTILE_PALETTE[q])
+        body.set_edgecolor("none")
+        body.set_alpha(0.55)
+
+    ax.boxplot(
+        data_list, positions=positions, widths=0.18, notch=True, showcaps=False,
+        patch_artist=True, medianprops=dict(color="black", lw=0.9),
+        boxprops=dict(facecolor="white", edgecolor="black", lw=0.5),
+        whiskerprops=dict(color="black", lw=0.5),
+        flierprops=dict(marker="", linestyle=""),
+    )
+    ax.set_xticks(positions)
+    ax.set_xticklabels([f"Q{q}" for q in positions])
+
+
+def make_figure(cluster_simd: pd.DataFrame) -> plt.Figure:
+    df = _panel_data(cluster_simd)
+    epochs = [lbl for lbl, *_ in data.VOC_EPOCHS]
+
+    fig, axes = style.new_figure(
+        width="double", height_in=3.6, nrows=1, ncols=len(epochs),
+        sharey=True, gridspec_kw={"wspace": 0.1},
+    )
+    if not isinstance(axes, np.ndarray):
+        axes = np.array([axes])
+
+    for ax, epoch in zip(axes, epochs):
+        sub = df[df["epoch"] == epoch]
+        values_by_q = {
+            q: sub.loc[sub["simd_quintile_mode"] == q, "n_sequences"].to_numpy()
+            for q in range(1, 6)
+        }
+        _violin_box(ax, values_by_q)
+        n = sum(len(v) for v in values_by_q.values())
+        p = _kw_pvalue([v for v in values_by_q.values() if len(v) > 1])
+        ptxt = "p < 0.001" if p < 1e-3 else (f"p = {p:.3f}" if np.isfinite(p) else "p = NA")
+        ax.set_title(f"{epoch}\nn = {n:,}\n{ptxt}", fontsize=8.5)
+        # ax.set_xlabel("SIMD quintile (cluster mode)")
+
+    axes[0].set_ylabel("Cluster size  (log1p scale)")
+    for ax in axes:
+        ax.set_ylim(bottom=0)
+
+    # fig.suptitle(
+    #     "Cluster size distribution across SIMD quintiles, stratified by VOC epoch",
+    #     x=0.02, ha="left", y=1.01, fontsize=9.5, fontweight="bold",
+    # )
+
+    fig.supxlabel("SIMD quintile (cluster mode)")
+    return fig
+
+
+def main(out_dir: Path | None = None) -> Path:
+    style.set_theme()
+    paths = data.Paths.from_config()
+    out_dir = Path(out_dir) if out_dir else paths.root / "manuscripts/paper1_socioeconomic/output"
+
+    cs = data.load_cluster_simd_features()
+    cs = cs[cs["resolution"] == data.PRIMARY_RESOLUTION]
+    fig = make_figure(cs)
+    paths_out = style.save_figure(fig, out_dir / "fig2_cluster_size_by_simd")
+    plt.close(fig)
+    return paths_out[0]
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--output", type=Path, default=None)
+    args = ap.parse_args()
+    p = main(args.output)
+    print(f"Wrote {p}")
