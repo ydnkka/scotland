@@ -5,6 +5,7 @@ pipeline:
   alignment_length: 29903
   leiden_resolutions: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
   seed: 42
+  sparsification: 0.0001
 
 tn93:
   threshold: 0.001
@@ -18,8 +19,8 @@ data:
     nextclade_tsv: data/raw/cog-uk/cog_all_scotland_nextclade.tsv
     testing_csv: data/raw/phs/confidential/PHS_CovidTesting_2023-02-22.csv
     vaccination_csv: data/raw/phs/confidential/PHS_Vaccinations_2023-02-22.csv
-    simd_csv: data/raw/datazone-characteristics/2020v2_simd.csv
-    geography_shp: data/raw/datazone-characteristics/sg_datazone_bdry_2011.shp
+    simd_csv: data/raw/datazone/2020v2_simd.csv
+    geography_shp: data/raw/datazone/sg_datazone_bdry_2011.shp
   processed:
     metadata: data/processed/scotland_sequence_metadata.parquet
     testing: data/processed/scotland_testing.parquet

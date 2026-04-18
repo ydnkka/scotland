@@ -120,10 +120,9 @@ def prep_geography(shp_path: Path, simd: pd.DataFrame, out_path: Path) -> gpd.Ge
     gdf["dz_ycoord"] = gdf["dz_centroid"].y
 
     simd_idx = simd.set_index("datazone")
-    gdf = gdf[["Name", "geometry", "dz_centroid", "dz_xcoord", "dz_ycoord"]].merge(
+    gdf = gdf[["dz_xcoord", "dz_ycoord"]].merge(
         simd_idx, how="left", left_index=True, right_index=True
     )
-    gdf["dz_geometry"] = gdf["geometry"]
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     gdf.to_parquet(out_path, index=True, compression="zstd")
@@ -194,7 +193,7 @@ def prep_sequence_metadata(
     meta.sort_values("collection_date", inplace=True)
     meta.drop_duplicates("specimen_id", keep="first", inplace=True)
 
-    geo_cols = geography.reset_index()[["datazone", "dz_geometry", "dz_centroid", "dz_xcoord", "dz_ycoord"]]
+    geo_cols = geography.reset_index()[["datazone", "dz_xcoord", "dz_ycoord"]]
     meta = meta.merge(geo_cols, on="datazone", how="left")
 
     # Attach latest vaccination before collection date
@@ -220,7 +219,7 @@ def prep_sequence_metadata(
     assert meta[required].notna().all().all()
 
     meta = meta[[
-        "datazone", "dz_geometry", "dz_centroid", "dz_xcoord", "dz_ycoord",
+        "datazone", "dz_xcoord", "dz_ycoord",
         "collection_date", "patient_id", "sex", "is_female",
         "age_band", "age_midpoint", "sequence_id",
         "clade", "who_voc", "pango_lineage", "nextclade_qc",

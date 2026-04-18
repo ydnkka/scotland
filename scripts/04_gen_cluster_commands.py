@@ -72,6 +72,7 @@ def main() -> int:
             f" --alignment-length {pipe['alignment_length']}"
             f" --resolutions {shlex.quote(resolutions)}"
             f" --seed {pipe['seed']}"
+            f" --sparsification {pipe['sparsification']}"
         )
         lines.append(cmd)
         n += 1

@@ -19,7 +19,6 @@ import argparse
 import sys
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import yaml
 
@@ -41,7 +40,7 @@ def compute_cluster_demographics(ds: pd.DataFrame) -> pd.DataFrame:
             mean_vacc_dose=("vacc_dose_number", "mean"),
             wn_mid_date=("wn_mid_date", "first"),
             window_idx=("window_idx", "first"),
-            pango_lineage=("pango_lineage", lambda x: x.mode().iloc[0] if len(x) > 0 else None),
+            pango_lineage=("pango_lineage", "first"),
         )
         .reset_index()
         .assign(is_singleton=lambda df: (df["n_sequences"] == 1).astype(int))

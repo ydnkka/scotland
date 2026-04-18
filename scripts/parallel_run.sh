@@ -16,6 +16,8 @@ TIMEOUT=""
 PROGRESS=false
 DRY_RUN=false
 RESUME_FAILED=false
+TMPDIR_ARG=""
+NO_COMPRESS=false
 
 cpu_count() {
   command -v nproc >/dev/null 2>&1 && nproc && return
@@ -37,6 +39,9 @@ Options:
       --timeout SECS     Per-job timeout in seconds
       --progress         Show live progress bar
       --resume-failed    Re-run only previously failed jobs from joblog
+      --tmpdir DIR       Parallel per-job buffer dir (default: next to joblog,
+                         or \$TMPDIR if set). Avoids filling /tmp.
+      --no-compress      Disable parallel --compress (on by default)
       --dry-run          Print first 5 commands and exit
   -h, --help             Show this message
 EOF
@@ -51,6 +56,8 @@ while [[ $# -gt 0 ]]; do
     --timeout)     TIMEOUT="${2:-}"; shift 2 ;;
     --progress)    PROGRESS=true; shift ;;
     --resume-failed) RESUME_FAILED=true; shift ;;
+    --tmpdir)      TMPDIR_ARG="${2:-}"; shift 2 ;;
+    --no-compress) NO_COMPRESS=true; shift ;;
     --dry-run)     DRY_RUN=true; shift ;;
     -h|--help)     print_usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; print_usage; exit 2 ;;
@@ -64,9 +71,22 @@ command -v parallel >/dev/null 2>&1 || { echo "Error: GNU parallel not on PATH."
 [[ -n "$JOBS" ]]   || JOBS="$(cpu_count)"
 [[ -n "$JOBLOG" ]] || JOBLOG="${COMMANDS_FILE%.*}.joblog.tsv"
 
+# Resolve tmpdir: explicit flag > $TMPDIR > a scratch dir next to the joblog.
+# This keeps parallel's per-job stdout/stderr buffers off /tmp, which routinely
+# fills up on long batches (e.g. samtools faidx over thousands of groups).
+if [[ -z "$TMPDIR_ARG" ]]; then
+  if [[ -n "${TMPDIR:-}" ]]; then
+    TMPDIR_ARG="$TMPDIR"
+  else
+    TMPDIR_ARG="$(dirname "$JOBLOG")/.parallel-tmp"
+  fi
+fi
+mkdir -p "$TMPDIR_ARG"
+
 grep -q '[^[:space:]]' "$COMMANDS_FILE" || { echo "Commands file is empty."; exit 0; }
 
-PAR_OPTS=(--jobs "$JOBS" --joblog "$JOBLOG" --will-cite)
+PAR_OPTS=(--jobs "$JOBS" --joblog "$JOBLOG" --will-cite --tmpdir "$TMPDIR_ARG")
+[[ "$NO_COMPRESS"   != true ]]   && PAR_OPTS+=(--compress)
 [[ "$PROGRESS"      == true ]]   && PAR_OPTS+=(--bar)
 [[ "$RETRIES"       -gt 0 ]]     && PAR_OPTS+=(--retries "$RETRIES")
 [[ -n "$TIMEOUT" ]]              && PAR_OPTS+=(--timeout "$TIMEOUT")
@@ -74,6 +94,7 @@ PAR_OPTS=(--jobs "$JOBS" --joblog "$JOBLOG" --will-cite)
 
 echo "parallel ${PAR_OPTS[*]}"
 echo "Commands: $COMMANDS_FILE  |  Jobs: $JOBS  |  Joblog: $JOBLOG"
+echo "Tmpdir:   $TMPDIR_ARG  |  Compress: $([[ "$NO_COMPRESS" == true ]] && echo off || echo on)"
 
 if $DRY_RUN; then
   echo "--- dry run: first 5 commands ---"

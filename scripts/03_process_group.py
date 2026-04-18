@@ -73,8 +73,8 @@ def read_seq_ids(path: Path) -> list[str]:
 def fallback_isolates(seq_ids: list[str], resolutions: list[float], window_id: str, lineage: str) -> pd.DataFrame:
     rows = [
         {"sequence_id": sid, "window_id": window_id, "resolution": res,
-         "cluster_id": f"{window_id}|{lineage}|R{res}|C0"}
-        for sid in sorted(seq_ids)
+         "cluster_id": f"{window_id}|{lineage}|R{res}|S{i}"}
+        for i, sid in enumerate(sorted(seq_ids), start=1)
         for res in resolutions
     ]
     return pd.DataFrame(rows)
@@ -98,6 +98,7 @@ def process_group(
     alignment_length: int,
     resolutions: list[float],
     seed: int = 42,
+    sparsification: float = 1e-4,
 ) -> Path:
     out_long_dir.mkdir(parents=True, exist_ok=True)
     stem = tn93_csv.stem
@@ -155,9 +156,9 @@ def process_group(
         result.to_parquet(out_path, index=False, compression="zstd")
         return out_path
 
-    df = df[df["weight"] > 1e-4]
+    df = df[df["weight"] > sparsification]
     if df.empty:
-        logging.warning("%s: all weights < 1e-4 → fallback isolates", stem)
+        logging.warning("%s: all weights < %d → fallback isolates", stem, sparsification)
         result = fallback_isolates(group_ids, resolutions, window_id, lineage)
         result.to_parquet(out_path, index=False, compression="zstd")
         return out_path
@@ -177,13 +178,14 @@ def process_group(
     rows = []
     for res in resolutions:
         comms = g.community_leiden(weights="weight", resolution=res, n_iterations=10)
-        for cid, community in enumerate(comms):
+        for i, community in enumerate(comms, start=1):
+            cid = f"C{i}" if len(community) > 1 else f"S{i}"
             for v_idx in community:
                 rows.append({
                     "sequence_id": g.vs[v_idx]["name"],
                     "window_id": window_id,
                     "resolution": res,
-                    "cluster_id": f"{window_id}|{lineage}|R{res}|C{cid}",
+                    "cluster_id": f"{window_id}|{lineage}|R{res}|{cid}",
                 })
 
     result = pd.DataFrame(rows).sort_values(
@@ -206,6 +208,7 @@ def main() -> int:
     ap.add_argument("--alignment-length", type=int, default=ALIGNMENT_LENGTH_DEFAULT)
     ap.add_argument("--resolutions", type=str, default="0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8")
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--sparsification", type=float, default=1e-4)
     ap.add_argument("--log-level", default="INFO")
     args = ap.parse_args()
 
@@ -220,6 +223,7 @@ def main() -> int:
         alignment_length=args.alignment_length,
         resolutions=resolutions,
         seed=args.seed,
+        sparsification=args.sparsification,
     )
     return 0
 

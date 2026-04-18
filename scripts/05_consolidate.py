@@ -13,7 +13,7 @@ Steps:
 Output columns (46 total):
   window_idx, window_id, wn_start/mid/end_date, wn_no_sequences, wn_positive_tests,
   wn_prop_sequenced, sequence_id, patient_id, resolution, cluster_id,
-  collection_date, datazone, dz_x, dz_y, sex, is_female, age_band, age_midpoint,
+  collection_date, datazone, dz_xcoord, dz_ycoord, sex, is_female, age_band, age_midpoint,
   is_vaccinated, vacc_dose_number, pango_lineage, clade, who_voc, nextclade_qc,
   dz_population, dz_working_age_population, dz_simd_rank/quintile/decile/vigintile,
   dz_simd_*_rank (×7), dz_total/positive/negative_tests, dz_total_vaccinated, dz_prop_vaccinated
@@ -26,7 +26,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import glob
 import logging
 import sys
 from datetime import timedelta
@@ -186,7 +185,7 @@ def main() -> int:
         "window_idx", "window_id", "wn_start_date", "wn_mid_date", "wn_end_date",
         "wn_no_sequences", "wn_positive_tests", "wn_prop_sequenced",
         "sequence_id", "patient_id", "resolution", "cluster_id",
-        "collection_date", "datazone", "dz_x", "dz_y",
+        "collection_date", "datazone", "dz_xcoord", "dz_ycoord",
         "sex", "is_female", "age_band", "age_midpoint",
         "is_vaccinated", "vacc_dose_number",
         "pango_lineage", "clade", "who_voc", "nextclade_qc",
