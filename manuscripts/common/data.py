@@ -70,7 +70,7 @@ class Paths:
     cluster_simd_features: Path
 
     @classmethod
-    def from_config(cls, root: Path | None = None) -> "Paths":
+    def from_config(cls, root: Path = None) -> "Paths":
         root = root or repo_root()
         with open(root / "config.yaml") as f:
             cfg = yaml.safe_load(f)
@@ -107,8 +107,10 @@ def load_analysis_columns(
         If provided, rows are restricted to that Leiden resolution.
     qc : iterable of str or None
         If provided, rows are restricted to these Nextclade QC statuses.
+    paths : Paths or None
+        If provided, use these paths instead of resolving from config.
     """
-    paths = paths or Paths.from_config()
+    paths: Paths = paths or Paths.from_config()
     need = set(columns)
     if resolution is not None:
         need.add("resolution")
@@ -123,12 +125,12 @@ def load_analysis_columns(
 
 
 def load_cluster_summary(paths: Paths | None = None) -> pd.DataFrame:
-    paths = paths or Paths.from_config()
+    paths: Paths = paths or Paths.from_config()
     return pd.read_parquet(paths.cluster_summary)
 
 
 def load_cluster_demographic_features(paths: Paths | None = None) -> pd.DataFrame:
-    paths = paths or Paths.from_config()
+    paths: Paths = paths or Paths.from_config()
     return pd.read_parquet(paths.cluster_demographic_features)
 
 
@@ -136,42 +138,8 @@ def load_cluster_simd_features(paths: Paths | None = None) -> pd.DataFrame:
     """Return SIMD cluster features. Falls back to on-the-fly derivation
     if the parquet has not been generated yet (useful on low-memory hosts).
     """
-    paths = paths or Paths.from_config()
-    if paths.cluster_simd_features.exists():
-        return pd.read_parquet(paths.cluster_simd_features)
-    return _derive_cluster_simd_features(paths)
-
-
-def _derive_cluster_simd_features(paths: Paths) -> pd.DataFrame:
-    """Re-implement `analysis/socioeconomic.py` with a low-memory column slice.
-
-    Only runs if the pre-computed parquet is missing.
-    """
-    cols = [
-        "window_id", "resolution", "cluster_id", "sequence_id", "datazone",
-        "dz_simd_rank", "dz_simd_quintile", "dz_simd_decile",
-        "wn_mid_date", "window_idx", "pango_lineage",
-    ]
-    ds = pd.read_parquet(paths.analysis_dataset, columns=cols)
-
-    def _mode(s: pd.Series):
-        m = s.mode()
-        return m.iloc[0] if len(m) > 0 else np.nan
-
-    grp = ds.groupby(["window_id", "resolution", "cluster_id"])
-    out = grp.agg(
-        n_sequences=("sequence_id", "nunique"),
-        n_datazones=("datazone", "nunique"),
-        simd_rank_mean=("dz_simd_rank", "mean"),
-        simd_rank_median=("dz_simd_rank", "median"),
-        simd_quintile_mode=("dz_simd_quintile", _mode),
-        simd_decile_mode=("dz_simd_decile", _mode),
-        frac_deprived_q1=("dz_simd_quintile", lambda x: (x == 1).mean()),
-        wn_mid_date=("wn_mid_date", "first"),
-        window_idx=("window_idx", "first"),
-        pango_lineage=("pango_lineage", _mode),
-    ).reset_index().assign(is_singleton=lambda df: (df["n_sequences"] == 1).astype(int))
-    return out
+    paths: Paths = paths or Paths.from_config()
+    return pd.read_parquet(paths.cluster_simd_features)
 
 
 # ---------------------------------------------------------------------------
@@ -212,7 +180,7 @@ def _weekly_dominant_voc(
 
 
 def _contiguous_runs(
-    weekly: pd.DataFrame, *, min_weeks: int
+    weekly: pd.DataFrame, min_weeks: int
 ) -> list[tuple[str, pd.Timestamp, pd.Timestamp]]:
     """Group consecutive weeks with the same dominant label.
 
@@ -222,7 +190,7 @@ def _contiguous_runs(
     """
     if weekly.empty:
         return []
-    runs: list[list] = []  # [label, start, end]
+    runs: list[list] = []  # (label, start, end)
     cur_label = weekly["dominant"].iloc[0]
     cur_start = weekly["week"].iloc[0]
     cur_end = cur_start
@@ -241,22 +209,22 @@ def _contiguous_runs(
 
     # Absorb short runs into their longer neighbour.
     cleaned: list[list] = []
-    for run in runs:
-        if _weeks(run) < min_weeks and cleaned:
-            cleaned[-1][2] = run[2]
+    for rn in runs:
+        if _weeks(rn) < min_weeks and cleaned:
+            cleaned[-1][2] = rn[2]
         else:
-            cleaned.append(run)
+            cleaned.append(rn)
     # A short leading run now has no predecessor; fold it forward instead.
     if len(cleaned) >= 2 and _weeks(cleaned[0]) < min_weeks:
         cleaned[1][1] = cleaned[0][1]
         cleaned = cleaned[1:]
     # Collapse any adjacent runs that now share a label post-merge.
     collapsed: list[list] = []
-    for run in cleaned:
-        if collapsed and collapsed[-1][0] == run[0]:
-            collapsed[-1][2] = run[2]
+    for rn in cleaned:
+        if collapsed and collapsed[-1][0] == rn[0]:
+            collapsed[-1][2] = rn[2]
         else:
-            collapsed.append(run)
+            collapsed.append(rn)
     return [(lbl, s, e) for lbl, s, e in collapsed]
 
 

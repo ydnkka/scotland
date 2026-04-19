@@ -41,29 +41,41 @@ def make_figure(tab: pd.DataFrame) -> plt.Figure:
     ax.set_yticks(y)
     ax.set_yticklabels([d.capitalize() for d in tab.index])
     ax.set_xlabel("IRR for a 1-SD *increase* in deprivation  (95% CI)")
-    ax.set_title("Cluster-size effect of SIMD domain, adjusted for VOC and surveillance")
+    # ax.set_title("Cluster-size effect of SIMD domain, adjusted for VOC and surveillance")
     # Annotate n and p on the right margin.
     for yi, (name, row) in zip(y, tab.iterrows()):
         ax.text(
             ax.get_xlim()[1], yi,
-            f"  n={row['n']:,}   p={row['p_value']:.2g}",
+            f"p={row['p_value']:.2g}",
             va="center", fontsize=6.8, color="#555555",
         )
     return fig
 
 
-def main(out_dir: Path | None = None) -> Path:
+def main(out_dir: Path | None = None) -> dict[str, Path]:
     style.set_theme()
     paths = data.Paths.from_config()
     out_dir = Path(out_dir) if out_dir else paths.root / "manuscripts/paper1_socioeconomic/output"
+    table = out_dir.parent / "tables" / "fig3_domain_irrs.csv"
 
-    cluster_df = simd_models.build_cluster_regression_frame()
-    tab = simd_models.build_domain_forest_table(cluster_df)
-    tab.to_csv(out_dir.parent / "tables" / "fig3_domain_irrs.csv")
-    fig = make_figure(tab)
-    paths_out = style.save_figure(fig, out_dir / "fig3_simd_domain_forest")
+    if table.exists():
+        tab = pd.read_csv(table, index_col=0)
+        fig = make_figure(tab)
+        paths_out = style.save_figure(
+            fig, out_dir / "fig3_simd_domain_forest",
+            width="onehalf", save_png=True, save_pdf=True,
+        )
+    else:
+        cluster_df = simd_models.build_cluster_regression_frame()
+        tab = simd_models.build_domain_forest_table(cluster_df)
+        tab.to_csv(out_dir.parent / "tables" / "fig3_domain_irrs.csv")
+        fig = make_figure(tab)
+        paths_out = style.save_figure(
+            fig, out_dir / "fig3_simd_domain_forest",
+            width="onehalf", save_png=True, save_pdf=True,
+        )
     plt.close(fig)
-    return paths_out[0]
+    return paths_out
 
 
 if __name__ == "__main__":
@@ -71,4 +83,4 @@ if __name__ == "__main__":
     ap.add_argument("--output", type=Path, default=None)
     args = ap.parse_args()
     p = main(args.output)
-    print(f"Wrote {p}")
+    print(f"Wrote:\n   " + "\n   ".join(f"{k}: {v}" for k, v in p.items()))

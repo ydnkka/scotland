@@ -15,10 +15,12 @@ Usage
 from __future__ import annotations
 
 from typing import Literal, Sequence
+from pathlib import Path
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap, to_rgb
+import seaborn as sns
 
 # ---------------------------------------------------------------------------
 # Figure size presets (inches). Aligned with common journal guidance.
@@ -40,11 +42,11 @@ DEFAULT_HEIGHT_IN = 2.6
 # SIMD quintile: 1 = most deprived (deep red) -> 5 = least (desaturated blue).
 # Hand-picked from ColorBrewer RdBu to remain legible in greyscale.
 SIMD_QUINTILE_PALETTE: dict[int, str] = {
-    1: "#b2182b",
-    2: "#ef8a62",
-    3: "#cccccc",
-    4: "#67a9cf",
-    5: "#2166ac",
+    1: "#d7191c",
+    2: "#fdae61",
+    3: "#ffffbf",
+    4: "#abdda4",
+    5: "#2b83ba",
 }
 
 # WHO variants of concern. Order follows emergence in Scotland.
@@ -84,40 +86,134 @@ SIMD_DOMAIN_PALETTE: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 
-def set_theme() -> None:
-    """Apply the paper-wide matplotlib rcParams."""
-    mpl.rcParams.update(
-        {
-            "figure.dpi": 150,
-            "savefig.dpi": 400,
-            "savefig.bbox": "tight",
-            "savefig.pad_inches": 0.02,
-            "pdf.fonttype": 42,           # embed TrueType — editable in Illustrator
-            "ps.fonttype": 42,
+def set_theme(
+    context: Literal["paper", "talk", "poster"] = "paper",
+    font: str = "Arial",
+    font_scale: float = 1.0,
+) -> None:
+    sns.set_theme(
+        style="white",
+        context=context,
+        font_scale=font_scale,
+        rc={
             "font.family": "sans-serif",
-            "font.sans-serif": ["Helvetica", "Arial", "DejaVu Sans"],
-            "font.size": 8.5,
-            "axes.titlesize": 9.0,
-            "axes.titleweight": "bold",
-            "axes.labelsize": 8.5,
-            "axes.labelweight": "regular",
-            "axes.linewidth": 0.6,
-            "axes.edgecolor": "#333333",
+            "font.sans-serif": [font, "Arial", "Liberation Sans", "DejaVu Sans"],
+            "mathtext.fontset": "dejavusans",
+            "figure.facecolor": "white",
+            "axes.facecolor": "white",
+            "savefig.facecolor": "white",
+            "savefig.bbox": "tight",
+            "savefig.pad_inches": 0.03,
+            "font.size": 9,
+            "axes.titlesize": 10,
+            "axes.labelsize": 9,
+            "xtick.labelsize": 8,
+            "ytick.labelsize": 8,
             "axes.spines.top": False,
             "axes.spines.right": False,
-            "xtick.labelsize": 8.0,
-            "ytick.labelsize": 8.0,
-            "xtick.major.size": 2.5,
-            "ytick.major.size": 2.5,
-            "xtick.major.width": 0.6,
-            "ytick.major.width": 0.6,
-            "legend.fontsize": 7.5,
+            "legend.fontsize": 8,
+            "legend.title_fontsize": 8,
+            "axes.linewidth": 0.8,
+            "lines.linewidth": 1.5,
+            "lines.markersize": 5,
+            "patch.linewidth": 0.8,
+            "xtick.major.width": 0.8,
+            "ytick.major.width": 0.8,
+            "xtick.major.size": 3.5,
+            "ytick.major.size": 3.5,
+            "xtick.direction": "out",
+            "ytick.direction": "out",
+            "axes.grid": False,
             "legend.frameon": False,
-            "lines.linewidth": 1.1,
-            "lines.markersize": 3.0,
+            "pdf.fonttype": 42,
+            "ps.fonttype": 42,
+            "svg.fonttype": "none",
             "image.cmap": "viridis",
-        }
+        },
     )
+
+
+def save_figure(
+    fig: plt.Figure,
+    out_path: Path,
+    *,
+    width: Literal["single", "onehalf", "double", "slide"] = "single",
+    height_in: float | None = None,
+    dpi: int = 600,
+    save_pdf: bool = True,
+    save_png: bool = False,
+    save_tiff: bool = False,
+    save_eps: bool = False,
+) -> dict[str, Path]:
+    if not (300 <= dpi <= 600):
+        raise ValueError("dpi should usually be between 300 and 600 for PLOS figures.")
+    if height_in is not None and height_in <= 0:
+        raise ValueError("height_in must be positive when provided.")
+
+    current_w, current_h = fig.get_size_inches()
+    w = FIG_WIDTHS_IN[width]
+    if height_in is None:
+        aspect = current_h / current_w
+        h = w * aspect
+    else:
+        h = height_in
+
+    fig.set_size_inches(w, h, forward=True)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    saved_paths: dict[str, Path] = {}
+
+    if save_pdf:
+        pdf_path = out_path.with_suffix(".pdf")
+        fig.savefig(pdf_path, dpi=dpi, transparent=False)
+        saved_paths["pdf"] = pdf_path
+
+    if save_png:
+        png_path =out_path.with_suffix(".png")
+        fig.savefig(png_path, dpi=dpi, transparent=False)
+        saved_paths["png"] = png_path
+
+    if save_eps:
+        eps_path = out_path.with_suffix(".eps")
+        fig.savefig(eps_path, format="eps", dpi=dpi, transparent=False)
+        saved_paths["eps"] = eps_path
+
+    if save_tiff:
+        tif_path = out_path.with_suffix(".tif")
+        fig.savefig(
+            tif_path,
+            format="tiff",
+            dpi=dpi,
+            transparent=False,
+            pil_kwargs={"compression": "tiff_lzw"},
+        )
+        saved_paths["tiff"] = tif_path
+
+    plt.close(fig)
+
+    return saved_paths
+
+
+def add_panel_labels(
+    axes: Sequence[plt.Axes],
+    *,
+    x: float = 0,
+    y: float = 1.1,
+    size: float | str = "medium",
+) -> None:
+    import string
+    labels = list(string.ascii_uppercase)
+    for ax, label in zip(axes, labels):
+        ax.text(
+            x,
+            y,
+            label,
+            transform=ax.transAxes,
+            fontsize=size,
+            fontweight="bold",
+            va="top",
+        )
+
 
 
 def new_figure(
@@ -135,21 +231,7 @@ def new_figure(
     return fig, ax
 
 
-def save_figure(fig: plt.Figure, out_path, *, formats: Sequence[str] = ("pdf", "png")) -> list:
-    """Save a figure in every requested format. Returns list of paths written."""
-    from pathlib import Path
-
-    out_path = Path(out_path)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    written = []
-    for fmt in formats:
-        p = out_path.with_suffix(f".{fmt}")
-        fig.savefig(p, format=fmt)
-        written.append(p)
-    return written
-
-
 def lighten(color: str, amount: float = 0.4) -> tuple[float, float, float]:
     """Blend `color` toward white by `amount` in [0, 1]."""
     r, g, b = to_rgb(color)
-    return (r + (1 - r) * amount, g + (1 - g) * amount, b + (1 - b) * amount)
+    return r + (1 - r) * amount, g + (1 - g) * amount, b + (1 - b) * amount

@@ -60,26 +60,34 @@ def make_figure(tab: pd.DataFrame) -> plt.Figure:
         ax.axvline(1.0, color="#bbbbbb", lw=0.7, ls="--", zorder=0)
         ax.set_yticks(quintiles_plotted)
         ax.set_yticklabels([f"Q{q}" for q in quintiles_plotted])
-        ax.set_title(epoch, fontsize=8.8)
+        ax.set_title(epoch)
 
     axes[0].set_ylabel("SIMD quintile")
-    fig.supxlabel("OR vs. Q5 (least deprived)")
+    fig.supxlabel("OR vs. Q5 (least deprived)", y=-0.03)
     return fig
 
 
-def main(out_dir: Path | None = None) -> Path:
+def main(out_dir: Path | None = None) -> dict[str, Path]:
     style.set_theme()
     paths = data.Paths.from_config()
     out_dir = Path(out_dir) if out_dir else paths.root / "manuscripts/paper1_socioeconomic/output"
-    cluster_df = simd_models.build_cluster_regression_frame()
-    tab = simd_models.build_singleton_epoch_table(cluster_df)
     table_dir = out_dir.parent / "tables"
     table_dir.mkdir(parents=True, exist_ok=True)
-    tab.to_csv(table_dir / "fig4_singleton_ors.csv", index=False)
-    fig = make_figure(tab)
-    paths_out = style.save_figure(fig, out_dir / "fig4_singleton_odds_by_epoch")
+    table = table_dir / "fig4_singleton_ors.csv"
+    if table.exists():
+        tab = pd.read_csv(table)
+        fig = make_figure(tab)
+    else:
+        cluster_df = simd_models.build_cluster_regression_frame()
+        tab = simd_models.build_singleton_epoch_table(cluster_df)
+        tab.to_csv(table, index=False)
+        fig = make_figure(tab)
+    paths_out = style.save_figure(
+        fig, out_dir / "fig4_singleton_odds_by_epoch",
+        width="double", save_png=True, save_pdf=True
+    )
     plt.close(fig)
-    return paths_out[0]
+    return paths_out
 
 
 if __name__ == "__main__":
@@ -87,4 +95,4 @@ if __name__ == "__main__":
     ap.add_argument("--output", type=Path, default=None)
     args = ap.parse_args()
     p = main(args.output)
-    print(f"Wrote {p}")
+    print(f"Wrote:\n   " + "\n   ".join(f"{k}: {v}" for k, v in p.items()))

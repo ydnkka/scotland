@@ -16,9 +16,85 @@ import argparse
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
 from manuscripts.common import data, style
+
+
+def build_panel_a_summary(df_seq: pd.DataFrame) -> pd.DataFrame:
+    """Sequences per (epoch, SIMD quintile) with within-epoch / within-quintile shares.
+
+    Uses the same sequence-level slice that feeds Panel A. Quintiles are labelled
+    1 (most deprived) to 5 (least). Epoch is assigned from ``collection_date``.
+    """
+    df = df_seq.dropna(subset=["dz_simd_quintile"]).copy()
+    df["dz_simd_quintile"] = df["dz_simd_quintile"].astype(int)
+    df["epoch"] = data.assign_epoch(df["collection_date"])
+    df = df.dropna(subset=["epoch"])
+
+    tab = (
+        df.groupby(["epoch", "dz_simd_quintile"], observed=True)
+        .size()
+        .rename("n_sequences")
+        .reset_index()
+        .rename(columns={"dz_simd_quintile": "simd_quintile"})
+    )
+
+    # Fill missing (epoch, quintile) combos with 0 so readers see gaps explicitly.
+    epochs = [lbl for lbl, *_ in data.VOC_EPOCHS]
+    full = pd.MultiIndex.from_product(
+        [epochs, [1, 2, 3, 4, 5]], names=["epoch", "simd_quintile"]
+    )
+    tab = (
+        tab.set_index(["epoch", "simd_quintile"])
+        .reindex(full, fill_value=0)
+        .reset_index()
+    )
+
+    epoch_totals = tab.groupby("epoch")["n_sequences"].transform("sum")
+    quintile_totals = tab.groupby("simd_quintile")["n_sequences"].transform("sum")
+    tab["pct_within_epoch"] = np.where(
+        epoch_totals > 0, 100.0 * tab["n_sequences"] / epoch_totals, np.nan
+    )
+    tab["pct_within_quintile"] = np.where(
+        quintile_totals > 0, 100.0 * tab["n_sequences"] / quintile_totals, np.nan
+    )
+    return tab
+
+
+def build_panel_b_summary(df_prop: pd.DataFrame) -> pd.DataFrame:
+    """Per-epoch summary of surveillance intensity (``wn_prop_sequenced``).
+
+    One row per epoch. ``n_weeks`` is the number of windows contributing to the
+    summary (one value per window).
+    """
+    df = df_prop.dropna(subset=["wn_prop_sequenced"]).copy()
+    df["epoch"] = data.assign_epoch(df["wn_mid_date"])
+    df = df.dropna(subset=["epoch"])
+
+    epochs = [lbl for lbl, *_ in data.VOC_EPOCHS]
+    rows = []
+    for epoch in epochs:
+        v = df.loc[df["epoch"] == epoch, "wn_prop_sequenced"].to_numpy()
+        if v.size == 0:
+            rows.append({
+                "epoch": epoch, "n_weeks": 0,
+                "median": np.nan, "q1": np.nan, "q3": np.nan,
+                "min": np.nan, "max": np.nan, "mean": np.nan,
+            })
+            continue
+        rows.append({
+            "epoch": epoch,
+            "n_weeks": int(v.size),
+            "median": float(np.median(v)),
+            "q1": float(np.quantile(v, 0.25)),
+            "q3": float(np.quantile(v, 0.75)),
+            "min": float(v.min()),
+            "max": float(v.max()),
+            "mean": float(v.mean()),
+        })
+    return pd.DataFrame(rows)
 
 
 def _weekly_counts_by_simd(df: pd.DataFrame) -> pd.DataFrame:
@@ -60,7 +136,8 @@ def _epoch_labels(ax):
 def make_figure(df_seq: pd.DataFrame, df_prop: pd.DataFrame) -> plt.Figure:
     fig, (ax_a, ax_b) = style.new_figure(
         width="double", height_in=4.4, nrows=2, ncols=1, sharex=True,
-        gridspec_kw={"height_ratios": [3, 1], "hspace": 0.08},
+        constrained_layout=True,
+        gridspec_kw={"height_ratios": [3, 1]},
     )
 
     # Panel A: stacked lines per SIMD quintile
@@ -80,6 +157,7 @@ def make_figure(df_seq: pd.DataFrame, df_prop: pd.DataFrame) -> plt.Figure:
             color=style.SIMD_QUINTILE_PALETTE[q],
             lw=1.2, label=f"Q{q}" + (" (most deprived)" if q == 1 else (" (least)" if q == 5 else "")),
         )
+    ax_a.set_ylim(0, max(0.3, df_seq["n"].max() * 1.1))
     ax_a.set_ylabel("Sequenced cases per week")
     ax_a.legend(
         title="SIMD quintile", loc="upper center", ncol=5, columnspacing=0.8,
@@ -104,14 +182,11 @@ def make_figure(df_seq: pd.DataFrame, df_prop: pd.DataFrame) -> plt.Figure:
     for ax in (ax_a, ax_b):
         ax.margins(x=0.005)
 
-    # fig.suptitle(
-    #     "Weekly sequenced cases by SIMD quintile and surveillance intensity",
-    #     x=0.08, ha="left", y=0.995, fontsize=9.5, fontweight="bold",
-    # )
+    style.add_panel_labels([ax_a, ax_b], y=1.15)
     return fig
 
 
-def main(out_dir: Path | None = None) -> Path:
+def main(out_dir: Path = None) -> dict[str, Path]:
     style.set_theme()
     paths = data.Paths.from_config()
     out_dir = Path(out_dir) if out_dir else paths.root / "manuscripts/paper1_socioeconomic/output"
@@ -128,11 +203,23 @@ def main(out_dir: Path | None = None) -> Path:
         resolution=data.PRIMARY_RESOLUTION,
     ).drop_duplicates("window_id").sort_values("wn_mid_date")
 
+    tables_dir = out_dir.parent / "tables"
+    tables_dir.mkdir(parents=True, exist_ok=True)
+    build_panel_a_summary(seq).to_csv(
+        tables_dir / "fig1_sequences_by_simd.csv", index=False
+    )
+    build_panel_b_summary(wn).to_csv(
+        tables_dir / "fig1_prop_sequenced_by_epoch.csv", index=False
+    )
+
     weekly = _weekly_counts_by_simd(seq)
     fig = make_figure(weekly, wn)
-    paths_out = style.save_figure(fig, out_dir / "fig1_sequences_by_simd_over_time")
+    paths_out = style.save_figure(
+        fig, out_dir / "fig1_sequences_by_simd_over_time",
+        width="double", save_png=True, save_pdf=True
+    )
     plt.close(fig)
-    return paths_out[0]
+    return paths_out
 
 
 if __name__ == "__main__":
@@ -140,4 +227,4 @@ if __name__ == "__main__":
     ap.add_argument("--output", type=Path, default=None)
     args = ap.parse_args()
     p = main(args.output)
-    print(f"Wrote {p}")
+    print(f"Wrote:\n   " + "\n   ".join(f"{k}: {v}" for k, v in p.items()))
