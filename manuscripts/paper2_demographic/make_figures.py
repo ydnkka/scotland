@@ -9,18 +9,18 @@ import time
 from pathlib import Path
 
 FIGURES = [
-    "manuscripts.paper2_demographic.figures.fig1_age_over_time_by_epoch",
-    "manuscripts.paper2_demographic.figures.fig2_vaccination_vs_cluster_size",
-    "manuscripts.paper2_demographic.figures.fig3_age_homogeneity",
-    "manuscripts.paper2_demographic.figures.fig4_sex_composition",
-    "manuscripts.paper2_demographic.figures.fig5_demographic_forest",
-    "manuscripts.paper2_demographic.figures.fig6_voc_stratified_shifts",
+    "manuscripts.paper2_demographic.scripts.fig1_age_over_time_by_epoch",
+    "manuscripts.paper2_demographic.scripts.fig2_vaccination_vs_cluster_size",
+    "manuscripts.paper2_demographic.scripts.fig3_age_homogeneity",
+    "manuscripts.paper2_demographic.scripts.fig4_sex_composition",
+    "manuscripts.paper2_demographic.scripts.fig5_demographic_forest",
+    "manuscripts.paper2_demographic.scripts.fig6_voc_stratified_shifts",
 ]
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--output", type=Path, default=None)
+    ap.add_argument("--figures", type=Path, default=None)
     ap.add_argument("--only", type=int, nargs="+", default=None)
     args = ap.parse_args()
     select = set(args.only) if args.only else set(range(1, len(FIGURES) + 1))

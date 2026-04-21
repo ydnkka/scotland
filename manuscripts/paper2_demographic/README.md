@@ -72,7 +72,7 @@ Four side-by-side panels, one per predictor. In each panel, the y-axis lists VOC
 ## Running
 
 ```bash
-python -m manuscripts.paper2_demographic.make_figures --output manuscripts/paper2_demographic/output
+python -m manuscripts.paper2_demographic.make_figures --figures manuscripts/paper2_demographic/figures
 ```
 
 ## Statistical models

@@ -65,7 +65,7 @@ Two panels, same axes — **x = log(1 + cluster size)**, **y = log(1 + mean pair
 ## Running
 
 ```bash
-python -m manuscripts.paper3_spatial.make_figures --output manuscripts/paper3_spatial/output
+python -m manuscripts.paper3_spatial.make_figures --figures manuscripts/paper3_spatial/figures
 ```
 
 ## Statistical models

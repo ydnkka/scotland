@@ -7,7 +7,7 @@ use perceptually uniform ramps where a quantitative variable is mapped.
 
 Usage
 -----
->>> from manuscripts.untils import style
+>>> from analysis.untils import style
 >>> style.set_theme()
 >>> fig, ax = style.new_figure("single")
 """
@@ -17,7 +17,6 @@ from __future__ import annotations
 from typing import Literal, Sequence
 from pathlib import Path
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap, to_rgb
 import seaborn as sns
@@ -39,8 +38,7 @@ DEFAULT_HEIGHT_IN = 2.6
 # Categorical palettes
 # ---------------------------------------------------------------------------
 
-# SIMD quintile: 1 = most deprived (deep red) -> 5 = least (desaturated blue).
-# Hand-picked from ColorBrewer RdBu to remain legible in greyscale.
+# SIMD quintile: 1 = most deprived (red) -> 5 = least (blue).
 SIMD_QUINTILE_PALETTE: dict[int, str] = {
     1: "#d7191c",
     2: "#fdae61",
@@ -51,18 +49,19 @@ SIMD_QUINTILE_PALETTE: dict[int, str] = {
 
 # WHO variants of concern. Order follows emergence in Scotland.
 WHO_VOC_PALETTE: dict[str, str] = {
-    "Alpha":        "#4e79a7",
-    "Beta":         "#f28e2b",
-    "Gamma":        "#e15759",
-    "Delta":        "#59a14f",
-    "Eta":          "#edc948",
-    "Kappa":        "#b07aa1",
-    "Mu":           "#ff9da7",
-    "Theta":        "#9c755f",
-    "Omicron":      "#af2d2d",
-    "recombinant":  "#bab0ac",
-    "None":         "#cccccc",
+    "None":        "#cccccc",
+    "Alpha":       "#4e79a7",
+    "Beta":        "#f28e2b",
+    "Eta":         "#e15759",
+    "Gamma":       "#59a14f",
+    "Omicron":     "#edc948",
+    "Kappa":       "#b07aa1",
+    "Delta":       "#ff9da7",
+    "Theta":       "#9c755f",
+    "Mu":          "#af2d2d",
+    "recombinant": "#bab0ac",
 }
+
 
 # Leiden resolution: monotonic palette from low -> high.
 RESOLUTION_CMAP = LinearSegmentedColormap.from_list(
@@ -136,8 +135,8 @@ def set_theme(
 def save_figure(
     fig: plt.Figure,
     out_path: Path,
-    *,
     width: Literal["single", "onehalf", "double", "slide"] = "single",
+    *,
     height_in: float | None = None,
     dpi: int = 600,
     save_pdf: bool = True,

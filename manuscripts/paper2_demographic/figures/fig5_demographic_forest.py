@@ -69,7 +69,7 @@ def make_figure(tab_size: pd.DataFrame, tab_single: pd.DataFrame) -> plt.Figure:
 def main(out_dir: Path | None = None) -> Path:
     style.set_theme()
     paths = data.Paths.from_config()
-    out_dir = Path(out_dir) if out_dir else paths.root / "manuscripts/paper2_demographic/output"
+    out_dir = Path(out_dir) if out_dir else paths.root / "manuscripts/paper2_demographic/figures"
     frame = cluster_demographics.build_cluster_regression_frame()
     tab_size, tab_single = _prepare_tables(frame)
     tab_size.to_csv(out_dir.parent / "tables" / "fig5_irr_size.csv", index=False)
@@ -82,7 +82,7 @@ def main(out_dir: Path | None = None) -> Path:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--output", type=Path, default=None)
+    ap.add_argument("--figures", type=Path, default=None)
     args = ap.parse_args()
     p = main(args.output)
     print(f"Wrote {p}")

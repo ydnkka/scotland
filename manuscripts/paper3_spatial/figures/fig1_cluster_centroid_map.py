@@ -75,7 +75,7 @@ def make_figure(cluster_spatial: pd.DataFrame, shp_path: Path | None) -> plt.Fig
 def main(out_dir: Path | None = None) -> Path:
     style.set_theme()
     paths = data.Paths.from_config()
-    out_dir = Path(out_dir) if out_dir else paths.root / "manuscripts/paper3_spatial/output"
+    out_dir = Path(out_dir) if out_dir else paths.root / "manuscripts/paper3_spatial/figures"
     shp = paths.root / "data/raw/datazone/sg_datazone_bdry_2011.shp"
     cluster_spatial = build_cluster_spatial_features()
     fig = make_figure(cluster_spatial, shp if shp.exists() else None)
@@ -86,7 +86,7 @@ def main(out_dir: Path | None = None) -> Path:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--output", type=Path, default=None)
+    ap.add_argument("--figures", type=Path, default=None)
     args = ap.parse_args()
     p = main(args.output)
     print(f"Wrote {p}")

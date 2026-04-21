@@ -40,7 +40,7 @@ From the repository root (where `config.yaml` lives):
 # Install deps (only needed once)
 pip install -r requirements.txt statsmodels scipy pyarrow matplotlib
 
-# Build all figures for all three papers
+# Build all scripts for all three papers
 make -C manuscripts all
 
 # Or paper-by-paper
@@ -49,7 +49,7 @@ make -C manuscripts/paper2_demographic figs
 make -C manuscripts/paper3_spatial figs
 
 # Or a single figure
-python -m manuscripts.paper1_socioeconomic.figures.fig3_simd_domain_forest
+python -m manuscripts.paper1_socioeconomic.scripts.fig3_simd_domain_forest
 ```
 
 ## Data contract

@@ -75,7 +75,7 @@ def make_figure(summary: pd.DataFrame) -> plt.Figure:
 def main(out_dir: Path | None = None) -> Path:
     style.set_theme()
     paths = data.Paths.from_config()
-    out_dir = Path(out_dir) if out_dir else paths.root / "manuscripts/paper2_demographic/output"
+    out_dir = Path(out_dir) if out_dir else paths.root / "manuscripts/paper2_demographic/figures"
     df = build_data()
     summary = _binned_summary(df)
     summary.to_csv(out_dir.parent / "tables" / "fig2_vacc_vs_size.csv", index=False)
@@ -87,7 +87,7 @@ def main(out_dir: Path | None = None) -> Path:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--output", type=Path, default=None)
+    ap.add_argument("--figures", type=Path, default=None)
     args = ap.parse_args()
     p = main(args.output)
     print(f"Wrote {p}")

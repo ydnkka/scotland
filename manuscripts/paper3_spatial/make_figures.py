@@ -9,17 +9,17 @@ import time
 from pathlib import Path
 
 FIGURES = [
-    "manuscripts.paper3_spatial.figures.fig1_cluster_centroid_map",
-    "manuscripts.paper3_spatial.figures.fig2_within_cluster_spread",
-    "manuscripts.paper3_spatial.figures.fig3_distance_decay",
-    "manuscripts.paper3_spatial.figures.fig4_urban_rural_footprint",
-    "manuscripts.paper3_spatial.figures.fig5_spread_by_deprivation",
+    "manuscripts.paper3_spatial.scripts.fig1_cluster_centroid_map",
+    "manuscripts.paper3_spatial.scripts.fig2_within_cluster_spread",
+    "manuscripts.paper3_spatial.scripts.fig3_distance_decay",
+    "manuscripts.paper3_spatial.scripts.fig4_urban_rural_footprint",
+    "manuscripts.paper3_spatial.scripts.fig5_spread_by_deprivation",
 ]
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--output", type=Path, default=None)
+    ap.add_argument("--figures", type=Path, default=None)
     ap.add_argument("--only", type=int, nargs="+", default=None)
     args = ap.parse_args()
     select = set(args.only) if args.only else set(range(1, len(FIGURES) + 1))

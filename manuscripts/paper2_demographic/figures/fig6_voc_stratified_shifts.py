@@ -87,7 +87,7 @@ def make_figure(tab: pd.DataFrame) -> plt.Figure:
 def main(out_dir: Path | None = None) -> Path:
     style.set_theme()
     paths = data.Paths.from_config()
-    out_dir = Path(out_dir) if out_dir else paths.root / "manuscripts/paper2_demographic/output"
+    out_dir = Path(out_dir) if out_dir else paths.root / "manuscripts/paper2_demographic/figures"
     tab = build_table()
     tab.to_csv(out_dir.parent / "tables" / "fig6_voc_stratified_irrs.csv", index=False)
     fig = make_figure(tab)
@@ -98,7 +98,7 @@ def main(out_dir: Path | None = None) -> Path:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--output", type=Path, default=None)
+    ap.add_argument("--figures", type=Path, default=None)
     args = ap.parse_args()
     p = main(args.output)
     print(f"Wrote {p}")

@@ -26,6 +26,7 @@ from typing import Callable, Iterable
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
+from scipy.stats import norm
 
 
 @contextlib.contextmanager
@@ -117,7 +118,6 @@ def tidy_glm(fit, *, exponentiate: bool = True, alpha: float = 0.05) -> pd.DataF
     se = fit.bse
     z = params / se
     # Two-sided normal-approx p-value.
-    from scipy.stats import norm
     # p = 2 * (1 - norm.cdf(np.abs(z)))
     p = 2 * norm.sf(np.abs(z))
     q = norm.ppf(1 - alpha / 2)
