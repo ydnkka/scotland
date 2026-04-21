@@ -65,7 +65,6 @@ def build_summary_table(cluster_simd: pd.DataFrame) -> pd.DataFrame:
                     "n_clusters": 0, "n_sequences": 0,
                     "median": np.nan, "q1": np.nan, "q3": np.nan,
                     "mean": np.nan, "min": np.nan, "max": np.nan,
-                    "singleton_frac": np.nan,
                     "kw_pvalue": p, "n_epoch": n_epoch,
                 })
                 continue
@@ -80,7 +79,6 @@ def build_summary_table(cluster_simd: pd.DataFrame) -> pd.DataFrame:
                 "mean": float(v.mean()),
                 "min": int(v.min()),
                 "max": int(v.max()),
-                "singleton_frac": float((v == 1).mean()),
                 "kw_pvalue": p,
                 "n_epoch": n_epoch,
             })
@@ -150,7 +148,6 @@ def main(out_dir: Path | None = None) -> dict[str, Path]:
     out_dir = Path(out_dir) if out_dir else paths.root / "manuscripts/paper1_socioeconomic/output"
 
     cs = data.load_cluster_simd_features()
-    cs = cs[cs["resolution"] == data.PRIMARY_RESOLUTION]
 
     fig = make_figure(cs)
     paths_out = style.save_figure(

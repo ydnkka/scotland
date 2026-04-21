@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+from functools import lru_cache
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -24,7 +25,7 @@ from manuscripts.common import data, style
 
 TOP_K_LINEAGES = 20
 
-
+@lru_cache(maxsize=1)
 def _load_top_lineage_frame() -> tuple[pd.DataFrame, pd.Series, float]:
     """Load the sequence-level slice restricted to the top-K PANGO lineages.
 

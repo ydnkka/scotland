@@ -2,6 +2,8 @@
 """
 Characterise socioeconomic (SIMD) factors associated with clustering.
 
+We only consider good-quality sequences (i.e. those with Nextclade QC = good).
+
 For each (window, resolution), computes per-cluster SIMD summaries then
 aggregates to a cluster-level dataset suitable for regression.
 
@@ -67,6 +69,7 @@ def main() -> int:
     proc = {k: args.root / v for k, v in cfg["data"]["processed"].items()}
 
     ds = pd.read_parquet(proc["analysis_dataset"])
+    ds = ds[ds["nextclade_qc"] == "good"]  # restrict to good-quality sequences for this summary
     features = compute_cluster_simd(ds)
 
     out = args.root / "data/processed/cluster_simd_features.parquet"

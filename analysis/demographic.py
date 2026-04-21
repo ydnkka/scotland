@@ -2,6 +2,8 @@
 """
 Characterise demographic factors (age, sex, vaccination) associated with clustering.
 
+We only consider good-quality sequences (i.e. those with Nextclade QC = good).
+
 For each (window, resolution, cluster_id) computes:
   - n_sequences: cluster size
   - median_age: median age midpoint of members
@@ -57,6 +59,7 @@ def main() -> int:
     proc = {k: args.root / v for k, v in cfg["data"]["processed"].items()}
 
     ds = pd.read_parquet(proc["analysis_dataset"])
+    ds = ds[ds["nextclade_qc"] == "good"]  # restrict to good-quality sequences for this summary
     features = compute_cluster_demographics(ds)
 
     out = args.root / "data/processed/cluster_demographic_features.parquet"

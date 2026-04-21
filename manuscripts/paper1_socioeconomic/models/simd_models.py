@@ -29,6 +29,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from typing import Iterable
+from dataclasses import dataclass, asdict
 
 import numpy as np
 import pandas as pd
@@ -41,20 +42,20 @@ from manuscripts.common import data, stats
 # Column maps
 # ---------------------------------------------------------------------------
 
-DOMAIN_COLUMNS: dict[str, str] = {
-    "overall":    "simd_rank_mean",
-    "income":     "dz_simd_income_rank",
-    "employment": "dz_simd_employment_rank",
-    "education":  "dz_simd_education_rank",
-    "health":     "dz_simd_health_rank",
-    "access":     "dz_simd_access_rank",
-    "crime":      "dz_simd_crime_rank",
-    "housing":    "dz_simd_housing_rank",
-}
+@dataclass(frozen=True)
+class DOMAINS:
+    overall: str = "simd_rank_mean"
+    income: str = "dz_simd_income_rank"
+    employment: str = "dz_simd_employment_rank"
+    education: str = "dz_simd_education_rank"
+    health: str = "dz_simd_health_rank"
+    access: str = "dz_simd_access_rank"
+    crime: str = "dz_simd_crime_rank"
+    housing: str = "dz_simd_housing_rank"
 
-# "Overall" is not a per-domain column and must be excluded from any
-# decomposition that fits all seven domain ranks jointly.
-DOMAIN_ONLY = {k: v for k, v in DOMAIN_COLUMNS.items() if k != "overall"}
+# # "Overall" is not a per-domain column and must be excluded from any
+# # decomposition that fits all seven domain ranks jointly.
+# DOMAIN_ONLY = {k: v for k, v in asdict(DOMAINS()).items() if k != "overall"}
 
 # Spline degrees of freedom. VOC dummies already absorb the coarse wave
 # structure, so the cr() spline only needs to capture within-VOC drift.
@@ -109,8 +110,10 @@ def build_cluster_regression_frame(
         "simd_quintile_mode":  ("dz_simd_quintile", _mode),
         "simd_rank_mean":      ("dz_simd_rank", "mean"),
     }
-    for col in DOMAIN_ONLY.values():
-        agg[col] = (col, "mean")
+    domains = asdict(DOMAINS()).values()
+    for col in domains:
+        if col != "overall":
+            agg[col] = (col, "mean")
 
     out = grp.agg(**agg).reset_index()
     out["is_singleton"] = (out["n_sequences"] == 1).astype(int)
@@ -128,7 +131,7 @@ def _time_spline(
     dates: pd.Series,
     *,
     df: int = TIME_SPLINE_DF,
-    origin: pd.Timestamp | None = None,
+    origin: pd.Timestamp = None,
 ) -> pd.DataFrame:
     """Natural-cubic-spline design matrix on ``dates`` (no intercept column).
 
@@ -183,10 +186,9 @@ def cluster_size_model(
 ):
     """Headline NB fit: cluster size ~ deprivation + VOC + cr(wn_mid_date).
 
-    The spline term matches what the README describes and absorbs
-    residual temporal trend within each VOC epoch (e.g. the long Delta
-    tail in some regions; Alpha's surveillance ramp-up). Returns a
-    statsmodels GLMResults object.
+    The spline absorbs residual temporal trend within each VOC epoch
+     (e.g. the long Delta tail in some regions; Alpha's surveillance ramp-up).
+     Returns a statsmodels GLMResults object.
     """
     required = [deprivation_measure, "n_sequences", "wn_prop_sequenced", "wn_mid_date"]
     df = frame.dropna(subset=required).copy()
@@ -215,7 +217,7 @@ def cluster_size_model(
 
 
 # ---------------------------------------------------------------------------
-# 2. Per-domain forest (Fig. 3)
+# 2. Per-domain forest
 # ---------------------------------------------------------------------------
 
 
@@ -250,32 +252,39 @@ def domain_irr_model(
 
 def build_domain_forest_table(
     frame: pd.DataFrame,
-    domains: dict[str, str] = DOMAIN_COLUMNS,
+    domains: DOMAINS = None,
 ) -> pd.DataFrame:
-    """Tidy table of IRRs for a 1-SD increase in deprivation, one row per domain.
-
-    Index: domain name. Columns: ``estimate``, ``conf_low``, ``conf_high``,
-    ``p_value``, ``n``.
-    """
+    """Tidy table of IRRs for a 1-SD increase in deprivation, one row per domain."""
+    domains: DOMAINS = domains or DOMAINS()
     rows = []
-    for name, col in domains.items():
+    # Use asdict to allow iteration over field names and values
+    for name, col in asdict(domains).items():
         fit, df_model = domain_irr_model(frame, domain_col=col)
+
         if fit is None:
-            rows.append(pd.Series({
+            rows.append({
                 "estimate": np.nan, "conf_low": np.nan, "conf_high": np.nan,
                 "p_value": np.nan, "n": 0, "domain": name,
-            }))
+            })
             continue
+
         tidy = stats.tidy_glm(fit)
-        r = tidy.loc[tidy["term"] == "deprivation_sd"].iloc[0]
-        rows.append(pd.Series({
+
+        # Ensure the term exists before accessing
+        mask = tidy["term"] == "deprivation_sd"
+        if not mask.any():
+            continue
+
+        r = tidy.loc[mask].iloc[0]
+        rows.append({
             "estimate": r["estimate"],
             "conf_low": r["conf_low"],
             "conf_high": r["conf_high"],
             "p_value": r["p_value"],
             "n": int(len(df_model)),
             "domain": name,
-        }))
+        })
+
     return pd.DataFrame(rows).set_index("domain")
 
 
@@ -368,7 +377,7 @@ def build_singleton_epoch_table(
 
 def build_domain_decomposition_table(
     frame: pd.DataFrame,
-    domains: dict[str, str] = DOMAIN_ONLY,
+    domains: DOMAINS = None,
     *,
     include_time_spline: bool = True,
 ) -> pd.DataFrame:
@@ -380,18 +389,22 @@ def build_domain_decomposition_table(
     std_error, conf_low, conf_high, p_value, abs_std_coef, share.
     Shares sum to 1 across rows; rows are sorted ascending on ``share``.
     """
-    required = list(domains.values()) + [
-        "n_sequences", "wn_prop_sequenced", "wn_mid_date", "who_voc"
-    ]
+    domains: DOMAINS = domains or DOMAINS()
+    required = ["n_sequences", "wn_prop_sequenced", "wn_mid_date", "who_voc"]
+    for col in asdict(domains).values():
+        if col != "overall":
+            required.append(col)
+
     df = frame.dropna(subset=required).copy()
     if df.empty:
         raise RuntimeError("No complete cases for joint-domain model.")
 
     dep_cols: list[str] = []
-    for name, col in domains.items():
-        c = f"dep_{name}"
-        df[c] = _standardise(df[col], flip_sign=True)
-        dep_cols.append(c)
+    for name, col in asdict(domains).items():
+        if col != "overall":
+            c = f"dep_{name}"
+            df[c] = _standardise(df[col], flip_sign=True)
+            dep_cols.append(c)
 
     X = df[dep_cols].copy()
     X = pd.concat([X, _voc_dummies(df["who_voc"])], axis=1)

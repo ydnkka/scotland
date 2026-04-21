@@ -2,6 +2,8 @@
 """
 Summarise cluster characteristics per (window, resolution).
 
+We only consider good-quality sequences (i.e. those with Nextclade QC = good).
+
 For each (window_id, resolution) group computes:
   - n_clusters: number of distinct clusters
   - n_sequences: total sequences
@@ -60,6 +62,7 @@ def main() -> int:
     proc = {k: args.root / v for k, v in cfg["data"]["processed"].items()}
 
     ds = pd.read_parquet(proc["analysis_dataset"])
+    ds = ds[ds["nextclade_qc"] == "good"]  # restrict to good-quality sequences for this summary
     summary = summarise_clusters(ds)
 
     out = args.root / "data/processed/cluster_summary.parquet"

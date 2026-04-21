@@ -25,11 +25,7 @@ from typing import Callable, Iterable
 
 import numpy as np
 import pandas as pd
-
-try:
-    import statsmodels.api as sm
-except ImportError:  # pragma: no cover
-    sm = None
+import statsmodels.api as sm
 
 
 @contextlib.contextmanager
@@ -50,14 +46,6 @@ def _suppress_glm_runtime_warnings():
             "ignore", category=RuntimeWarning, message=".*divide by zero encountered in log.*",
         )
         yield
-
-
-def _require_sm() -> None:
-    if sm is None:
-        raise ImportError(
-            "statsmodels is required for regression helpers. "
-            "Install with: pip install statsmodels"
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -90,7 +78,6 @@ def negbin_cluster_size(
     alpha : float
         Negative-binomial dispersion parameter passed to statsmodels.
     """
-    _require_sm()
     X = sm.add_constant(df[list(predictors)].astype(float), has_constant="add")
     y = df[outcome].astype(float)
     kwargs = {}
@@ -108,7 +95,6 @@ def logit_singleton(
     outcome: str = "is_singleton",
 ):
     """Fit a logistic GLM for Pr(singleton)."""
-    _require_sm()
     X = sm.add_constant(df[list(predictors)].astype(float), has_constant="add")
     y = df[outcome].astype(float)
     model = sm.GLM(y, X, family=sm.families.Binomial())
@@ -132,9 +118,11 @@ def tidy_glm(fit, *, exponentiate: bool = True, alpha: float = 0.05) -> pd.DataF
     z = params / se
     # Two-sided normal-approx p-value.
     from scipy.stats import norm
-    p = 2 * (1 - norm.cdf(np.abs(z)))
+    # p = 2 * (1 - norm.cdf(np.abs(z)))
+    p = 2 * norm.sf(np.abs(z))
     q = norm.ppf(1 - alpha / 2)
-    low, high = params - q * se, params + q * se
+    # low, high = params - q * se, params + q * se
+    low, high = norm.interval(1 - alpha, loc=params, scale=se)
     tidy = pd.DataFrame(
         {
             "term": params.index,

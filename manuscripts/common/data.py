@@ -65,10 +65,6 @@ def repo_root(start: Path | None = None) -> Path:
 class Paths:
     root: Path
     analysis_dataset: Path
-    cluster_summary: Path
-    cluster_demographic_features: Path
-    cluster_simd_features: Path
-
     @classmethod
     def from_config(cls, root: Path = None) -> "Paths":
         root = root or repo_root()
@@ -77,10 +73,7 @@ class Paths:
         proc = cfg["data"]["processed"]
         return cls(
             root=root,
-            analysis_dataset=root / proc["analysis_dataset"],
-            cluster_summary=root / "data/processed/cluster_summary.parquet",
-            cluster_demographic_features=root / "data/processed/cluster_demographic_features.parquet",
-            cluster_simd_features=root / "data/processed/cluster_simd_features.parquet",
+            analysis_dataset=root / proc["analysis_dataset"]
         )
 
 
@@ -124,22 +117,70 @@ def load_analysis_columns(
     return df.reset_index(drop=True)
 
 
-def load_cluster_summary(paths: Paths | None = None) -> pd.DataFrame:
-    paths: Paths = paths or Paths.from_config()
-    return pd.read_parquet(paths.cluster_summary)
+@lru_cache(maxsize=4)
+def load_cluster_demographic_features(
+    min_size: int = 1,
+    resolution: float | None = PRIMARY_RESOLUTION,
+    qc: Iterable[str] | None = ("good",)
+) -> pd.DataFrame:
+    cols = [
+        "window_idx", "window_id", "wn_mid_date",
+        "sequence_id", "cluster_id", "pango_lineage",
+        "age_midpoint", "is_female", "is_vaccinated", "vacc_dose_number",
+    ]
+    df = load_analysis_columns(cols, resolution=resolution, qc=qc)
+    grp = df.groupby(["window_id", "cluster_id"], observed=True)
+
+    out = grp.agg(
+        n_sequences=("sequence_id", "nunique"),
+        median_age=("age_midpoint", "median"),
+        age_diversity=("age_midpoint", "std"),
+        frac_female=("is_female", "mean"),
+        frac_vaccinated=("is_vaccinated", "mean"),
+        mean_vacc_dose=("vacc_dose_number", "mean"),
+        wn_mid_date=("wn_mid_date", "first"),
+        window_idx=("window_idx", "first"),
+        pango_lineage=("pango_lineage", "first")
+    ).reset_index()
+    out["is_singleton"] = (out["n_sequences"] == 1).astype(int)
+    out = out[out["n_sequences"] >= min_size]
+    return out
 
 
-def load_cluster_demographic_features(paths: Paths | None = None) -> pd.DataFrame:
-    paths: Paths = paths or Paths.from_config()
-    return pd.read_parquet(paths.cluster_demographic_features)
-
-
-def load_cluster_simd_features(paths: Paths | None = None) -> pd.DataFrame:
-    """Return SIMD cluster features. Falls back to on-the-fly derivation
-    if the parquet has not been generated yet (useful on low-memory hosts).
+@lru_cache(maxsize=4)
+def load_cluster_simd_features(
+    min_size: int = 1,
+    resolution: float | None = PRIMARY_RESOLUTION,
+    qc: Iterable[str] | None = ("good",)
+) -> pd.DataFrame:
+    """Return one row per (window_id, cluster_id) with its size, date, lineage, and SIMD features.
     """
-    paths: Paths = paths or Paths.from_config()
-    return pd.read_parquet(paths.cluster_simd_features)
+    cols = [
+        "window_idx", "window_id", "wn_mid_date",
+        "sequence_id", "cluster_id", "pango_lineage",
+        "datazone", "dz_simd_rank", "dz_simd_quintile", "dz_simd_decile",
+    ]
+    df = load_analysis_columns(cols, resolution=resolution, qc=qc)
+    grp = df.groupby(["window_id", "cluster_id"], observed=True)
+    def _mode(s: pd.Series):
+        m = s.mode()
+        return m.iloc[0] if len(m) > 0 else np.nan
+
+    out = grp.agg(
+        n_sequences=("sequence_id", "nunique"),
+        n_datazones=("datazone", "nunique"),
+        simd_rank_mean=("dz_simd_rank", "mean"),
+        simd_rank_median=("dz_simd_rank", "median"),
+        simd_quintile_mode=("dz_simd_quintile", _mode),
+        simd_decile_mode=("dz_simd_decile", _mode),
+        frac_deprived_q1=("dz_simd_quintile", lambda x: (x == 1).mean()),
+        wn_mid_date=("wn_mid_date", "first"),
+        window_idx=("window_idx", "first"),
+        pango_lineage=("pango_lineage", lambda x: x.mode().iloc[0] if len(x) > 0 else None),
+    ).reset_index()
+    out["is_singleton"] = (out["n_sequences"] == 1).astype(int)
+    out = out[out["n_sequences"] >= min_size]
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -366,6 +407,7 @@ def collapse_voc(voc: pd.Series) -> pd.Categorical:
 
 def canonical_cluster_sequence_counts(
     resolution: float = PRIMARY_RESOLUTION,
+    qc: Iterable[str] | None = ("good",),
     *,
     paths: Paths | None = None,
 ) -> pd.DataFrame:
@@ -377,6 +419,8 @@ def canonical_cluster_sequence_counts(
     cols = ["window_id", "resolution", "cluster_id", "sequence_id",
             "wn_mid_date", "pango_lineage", "who_voc"]
     df = load_analysis_columns(cols, resolution=resolution, paths=paths)
+    if qc is not None:
+        df = df[df["nextclade_qc"].isin(list(qc))]
     grp = df.groupby(["window_id", "cluster_id"], observed=True)
     out = grp.agg(
         n_sequences=("sequence_id", "nunique"),

@@ -112,9 +112,10 @@ def _weekly_counts_by_simd(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _epoch_spans():
-    from manuscripts.common.data import VOC_EPOCHS
-
-    return [(lbl, pd.Timestamp(s), pd.Timestamp(e)) for lbl, s, e in VOC_EPOCHS]
+    return [
+        (lbl, pd.Timestamp(s), pd.Timestamp(e))
+        for lbl, s, e in data.VOC_EPOCHS
+    ]
 
 
 def _shade_epochs(ax):
@@ -194,13 +195,13 @@ def main(out_dir: Path = None) -> dict[str, Path]:
     # Sequence-level slice (deduplicated on sequence_id to avoid window-overlap double count).
     seq = data.load_analysis_columns(
         ["sequence_id", "collection_date", "dz_simd_quintile"],
-        resolution=data.PRIMARY_RESOLUTION,
+        resolution=data.PRIMARY_RESOLUTION, qc=None
     ).drop_duplicates("sequence_id")
 
     # Window-level prop sequenced (one value per window).
     wn = data.load_analysis_columns(
         ["window_id", "wn_mid_date", "wn_prop_sequenced"],
-        resolution=data.PRIMARY_RESOLUTION,
+        resolution=data.PRIMARY_RESOLUTION, qc=None
     ).drop_duplicates("window_id").sort_values("wn_mid_date")
 
     tables_dir = out_dir.parent / "tables"
