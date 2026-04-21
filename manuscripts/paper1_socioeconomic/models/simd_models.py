@@ -184,7 +184,7 @@ def cluster_size_model(
     include_time_spline: bool = True,
     time_spline_df: int = TIME_SPLINE_DF,
 ):
-    """Headline NB fit: cluster size ~ deprivation + VOC + cr(wn_mid_date).
+    """Headline NB fit: cluster size ~ deprivation + VOC + cr(wn_mid_date) (offset=prop_seq).
 
     The spline absorbs residual temporal trend within each VOC epoch
      (e.g. the long Delta tail in some regions; Alpha's surveillance ramp-up).
