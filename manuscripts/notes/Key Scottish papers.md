@@ -3,60 +3,60 @@
 ### 1. Scotland-focused, peer-reviewed papers on genomic transmission, clustering, phylogenetics or phylogeography
 
 1. da Silva Filipe et al. (2021)
-    Genomic epidemiology reveals multiple introductions of SARS-CoV-2 from mainland Europe into Scotland.
+    _Genomic epidemiology reveals multiple introductions of SARS-CoV-2 from mainland Europe into Scotland._
     Journal: Nature Microbiology
     Focus: National-scale introductions into Scotland; phylogenetics; phylogeography; early outbreak reconstruction. 
 2. Li et al. (2021)
-    Genetic epidemiology of SARS-CoV-2 transmission in renal dialysis units – a high risk community-hospital interface.
+    _Genetic epidemiology of SARS-CoV-2 transmission in renal dialysis units – a high risk community-hospital interface._
     Journal: Journal of Infection
     Focus: Transmission clustering in Scottish renal dialysis units; hospital versus community acquisition.
 3. Nickbakhsh et al. (2022)
-    Genomic epidemiology of SARS-CoV-2 in a university outbreak setting and implications for public health planning.
+    _Genomic epidemiology of SARS-CoV-2 in a university outbreak setting and implications for public health planning._
     Journal: Scientific Reports
     Focus: University of Glasgow outbreak; cluster structure; multiple introductions; outbreak reconstruction.
 4. Cotton et al. (2023)
-    Investigation of hospital discharge cases and SARS-CoV-2 introduction into Lothian care homes.
+    _Investigation of hospital discharge cases and SARS-CoV-2 introduction into Lothian care homes._
     Journal: Journal of Hospital Infection
     Focus: Care-home introductions in Lothian; genomic investigation of possible hospital-seeded transmission.
 
 ### 2. Papers with Scottish genomic outbreak data, but not Scotland-only or not mainly national transmission mapping
 
 1. Stirrup et al. (2021)
-    Rapid feedback on hospital onset SARS-CoV-2 infections combining epidemiological and sequencing data.
+    _Rapid feedback on hospital onset SARS-CoV-2 infections combining epidemiological and sequencing data._
     Journal: eLife
     Focus: Hospital-onset infection analysis using sequencing plus epidemiology; includes Glasgow alongside Sheffield.
 2. Stirrup et al. (2022)
-    Effectiveness of rapid SARS-CoV-2 genome sequencing in supporting infection control for hospital-onset COVID-19 infection: multicentre, prospective study.
+    _Effectiveness of rapid SARS-CoV-2 genome sequencing in supporting infection control for hospital-onset COVID-19 infection: multicentre, prospective study._
     Journal: eLife
     Focus: UK multicentre hospital IPC genomics study with Scottish participation; not Scotland-only.
 
 ### 3. Scotland-focused genomic epidemiology papers adjacent to transmission mapping
 
 1. McLachlan et al. (2024)
-    Evaluation of risk-based travel policy for the COVID-19 epidemic in Scotland: a population-based surveillance study.
+    _Evaluation of risk-based travel policy for the COVID-19 epidemic in Scotland: a population-based surveillance study._
     Journal: BMJ Open
     Focus: Importation risk, travel policy, and genomic evidence on variant importation into Scotland; closest to policy-oriented phylogeography.
 2. Pascall et al. (2023)
-    The SARS-CoV-2 Alpha variant was associated with increased clinical severity of COVID-19 in Scotland: a genomics-based retrospective cohort analysis.
+    _The SARS-CoV-2 Alpha variant was associated with increased clinical severity of COVID-19 in Scotland: a genomics-based retrospective cohort analysis._
     Journal: PLOS ONE
     Focus: Scottish lineage-based genomics study; mainly severity rather than transmission clustering, but still uses Scottish genomic data and phylogenetic analysis.
 3. Sheikh et al. (2021)
-    SARS-CoV-2 Delta VOC in Scotland: demographics, risk of hospital admission, and vaccine effectiveness.
+    _SARS-CoV-2 Delta VOC in Scotland: demographics, risk of hospital admission, and vaccine effectiveness._
     Journal: The Lancet
     Focus: Variant epidemiology in Scotland using viral genetic classification; includes demographic and deprivation-related analysis, though not primarily a clustering or phylogenetic paper.
 
 ### 4. Preprints / non-peer-reviewed work highly relevant to Scotland genomic transmission and socioeconomic factors
 
 1. Lycett et al. (2021)
-   Epidemic waves of COVID-19 in Scotland: a genomic perspective on the impact of the introduction and relaxation of lockdown on SARS-CoV-2.
+   _Epidemic waves of COVID-19 in Scotland: a genomic perspective on the impact of the introduction and relaxation of lockdown on SARS-CoV-2._
    Status: Preprint
    Focus: Scotland-wide genomic perspective on epidemic waves and lockdown effects; highly relevant phylodynamic/phylogeographic work.
 2. Gamża et al. (preprint)
-   Spatial analysis of phylogenetic, population and deprivation data from Scottish SARS-CoV-2 outbreak reveals patterns of the community transmission.
+   _Spatial analysis of phylogenetic, population and deprivation data from Scottish SARS-CoV-2 outbreak reveals patterns of the community transmission._
    Status: Preprint / SSRN version
    Focus: Scottish SARS-CoV-2 sequences linked to deprivation and spatial data; directly relevant to socioeconomic patterning of genomic transmission.
 3. Gamża et al. (preprint, later title/version)
-   Infector characteristics exposed by spatial analysis of SARS-CoV-2 sequence and demographic data analysed at fine geographical scales.
+   _Infector characteristics exposed by spatial analysis of SARS-CoV-2 sequence and demographic data analysed at fine geographical scales._
    Status: Preprint / arXiv version
    Focus: Fine-scale spatial, sequence, and demographic analysis in Scotland; likely the later version of the same project.
 

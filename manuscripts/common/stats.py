@@ -123,15 +123,18 @@ def tidy_glm(fit, *, exponentiate: bool = True, alpha: float = 0.05) -> pd.DataF
     q = norm.ppf(1 - alpha / 2)
     # low, high = params - q * se, params + q * se
     low, high = norm.interval(1 - alpha, loc=params, scale=se)
+    # norm.interval may return a numpy ndarray (newer scipy) or a pandas
+    # Series (older scipy) depending on the type of loc/scale.  np.asarray
+    # normalises both cases so the DataFrame constructor is always happy.
     tidy = pd.DataFrame(
         {
             "term": params.index,
-            "estimate": params.values,
-            "std_error": se.values,
-            "conf_low": low.values,
-            "conf_high": high.values,
-            "z": z.values,
-            "p_value": p,
+            "estimate": np.asarray(params),
+            "std_error": np.asarray(se),
+            "conf_low": np.asarray(low),
+            "conf_high": np.asarray(high),
+            "z": np.asarray(z),
+            "p_value": np.asarray(p),
         }
     )
     if exponentiate:
