@@ -2,8 +2,9 @@
 
 Fit a mutually-adjusted negative-binomial GLM that includes *all seven*
 SIMD domain ranks simultaneously plus VOC dummies and a cr() time
-spline on ``wn_mid_date``. Each domain's standardised coefficient is
-plotted as a share of the sum of absolute standardised coefficients.
+spline on ``wn_mid_date``. Each domain's contribution is plotted as its
+Shapley share of the total domain-attributable log-likelihood gain over
+the covariate-only model.
 
 Answers: when every SIMD domain is allowed to compete, which domains
 carry the signal?
@@ -17,8 +18,17 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from manuscripts.common import data, style
-from manuscripts.paper1_socioeconomic.models import simd_models
+from analysis.utils import data, style
+from analysis.ch1_socioeconomic.models import simd_models
+
+
+def _load_cached_table(table: Path) -> pd.DataFrame | None:
+    if not table.exists():
+        return None
+    tab = pd.read_csv(table)
+    if not simd_models.is_current_model_output(tab):
+        return None
+    return tab.drop(columns=["model_version"])
 
 
 def make_figure(tab: pd.DataFrame) -> plt.Figure:
@@ -36,7 +46,7 @@ def make_figure(tab: pd.DataFrame) -> plt.Figure:
             f"{sign}{abs(row['estimate']):.2f}  (p={row['p_value']:.2g})",
             va="center", fontsize=6.8, color="#333333",
         )
-    ax.set_xlabel("Share of total |std. coefficient|  (%)")
+    # ax.set_xlabel("Share of total domain-attributable log-likelihood gain  (%)")
     # ax.set_title(
     #     "SIMD-domain decomposition in a mutually-adjusted model",
     #     fontsize=9.0, fontweight="bold",
@@ -53,19 +63,18 @@ def main(out_dir: Path | None = None) -> dict[str, Path]:
     table_dir = out_dir.parent / "tables"
     table_dir.mkdir(parents=True, exist_ok=True)
     table = table_dir / "fig6_domain_decomposition.csv"
-    if table.exists():
-        tab = pd.read_csv(table)
-        fig = make_figure(tab)
-    else:
+    tab = _load_cached_table(table)
+    if tab is None:
         cluster_df = simd_models.build_cluster_regression_frame()
-        tab = simd_models.build_domain_decomposition_table(cluster_df)
-        tab.to_csv(table, index=False)
-        fig = make_figure(tab)
+        tab = simd_models.build_domain_decomposition_table_cv_shapley(cluster_df)
+        simd_models.tag_model_output(tab).to_csv(table, index=False)
+    fig = make_figure(tab)
     paths_out = style.save_figure(
         fig, out_dir / "fig6_domain_decomposition",
         width="onehalf", save_png=True, save_pdf=True,
     )
     plt.close(fig)
+    paths_out["csv"] = table
     return paths_out
 
 

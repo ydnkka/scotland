@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from analysis.untils import data, style
+from analysis.utils import data, style
 
 
 def build_panel_a_summary(df_seq: pd.DataFrame) -> pd.DataFrame:
@@ -220,6 +220,8 @@ def main(out_dir: Path | str = None) -> dict[str, Path]:
         width="double", save_png=True, save_pdf=True
     )
     plt.close(fig)
+    paths_out["seq_csv"] = tables_dir / "fig1_sequences_by_simd.csv"
+    paths_out["prop_csv"] = tables_dir / "fig1_prop_sequenced_by_epoch.csv"
     return paths_out
 
 

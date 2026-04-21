@@ -1,4 +1,4 @@
-"""Shared utilities for Scotland clustering manuscripts.
+"""Shared utilities for Scotland clustering chapters.
 
 Submodules
 ----------

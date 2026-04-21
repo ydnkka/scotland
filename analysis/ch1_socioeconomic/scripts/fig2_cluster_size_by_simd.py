@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from analysis.untils import data, style
+from analysis.utils import data, style
 
 
 def _panel_data(df: pd.DataFrame) -> pd.DataFrame:
@@ -77,6 +77,8 @@ def build_summary_table(cluster_simd: pd.DataFrame) -> pd.DataFrame:
                 "q1": float(np.quantile(v, 0.25)),
                 "q3": float(np.quantile(v, 0.75)),
                 "mean": float(v.mean()),
+                "variances": float(v.var()),
+                "stddev": float(v.std()),
                 "min": int(v.min()),
                 "max": int(v.max()),
                 "kw_pvalue": p,

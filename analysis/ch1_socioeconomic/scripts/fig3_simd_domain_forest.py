@@ -18,8 +18,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from analysis.untils import data, style
+from analysis.utils import data, style
 from analysis.ch1_socioeconomic.models import simd_models
+
+
+def _load_cached_table(table: Path) -> pd.DataFrame | None:
+    if not table.exists():
+        return None
+    tab = pd.read_csv(table, index_col=0)
+    if not simd_models.is_current_model_output(tab):
+        return None
+    return tab.drop(columns=["model_version"])
 
 
 def make_figure(tab: pd.DataFrame) -> plt.Figure:
@@ -58,23 +67,18 @@ def main(out_dir: Path | str = None) -> dict[str, Path]:
     out_dir: Path = Path(out_dir) if out_dir else paths.root / "analysis/ch1_socioeconomic/figures"
     table = out_dir.parent / "tables" / "fig3_domain_irrs.csv"
 
-    if table.exists():
-        tab = pd.read_csv(table, index_col=0)
-        fig = make_figure(tab)
-        paths_out = style.save_figure(
-            fig, out_dir / "fig3_simd_domain_forest",
-            width="onehalf", save_png=True, save_pdf=True,
-        )
-    else:
+    tab = _load_cached_table(table)
+    if tab is None:
         cluster_df = simd_models.build_cluster_regression_frame()
         tab = simd_models.build_domain_forest_table(cluster_df)
-        tab.to_csv(out_dir.parent / "tables" / "fig3_domain_irrs.csv")
-        fig = make_figure(tab)
-        paths_out = style.save_figure(
-            fig, out_dir / "fig3_simd_domain_forest",
-            width="onehalf", save_png=True, save_pdf=True,
-        )
+        simd_models.tag_model_output(tab).to_csv(table)
+    fig = make_figure(tab)
+    paths_out = style.save_figure(
+        fig, out_dir / "fig3_simd_domain_forest",
+        width="onehalf", save_png=True, save_pdf=True,
+    )
     plt.close(fig)
+    paths_out["csv"] = table
     return paths_out
 
 

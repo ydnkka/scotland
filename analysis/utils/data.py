@@ -373,7 +373,7 @@ def get_voc_epochs(*, from_data: bool = True) -> list[tuple[str, str, str]]:
 def __getattr__(name: str):
     """Lazy module-level attribute so `data.VOC_EPOCHS` uses derived values.
 
-    Existing call sites (``from manuscripts.untils.data import VOC_EPOCHS``
+    Existing call sites (``from manuscripts.utils.data import VOC_EPOCHS``
     and ``data.VOC_EPOCHS``) are resolved through this hook on first access
     and cached thereafter by :func:`derive_voc_epochs_from_data`.
     """

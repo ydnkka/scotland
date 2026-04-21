@@ -7,7 +7,7 @@ use perceptually uniform ramps where a quantitative variable is mapped.
 
 Usage
 -----
->>> from analysis.untils import style
+>>> from analysis.utils import style
 >>> style.set_theme()
 >>> fig, ax = style.new_figure("single")
 """
@@ -22,7 +22,7 @@ from matplotlib.colors import LinearSegmentedColormap, to_rgb
 import seaborn as sns
 
 # ---------------------------------------------------------------------------
-# Figure size presets (inches). Aligned with untils journal guidance.
+# Figure size presets (inches). Aligned with utils journal guidance.
 # ---------------------------------------------------------------------------
 
 FIG_WIDTHS_IN = {

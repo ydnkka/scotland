@@ -18,8 +18,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from analysis.untils import data, style
+from analysis.utils import data, style
 from analysis.ch1_socioeconomic.models import simd_models
+
+
+def _load_cached_table(table: Path) -> pd.DataFrame | None:
+    if not table.exists():
+        return None
+    tab = pd.read_csv(table)
+    if not simd_models.is_current_model_output(tab):
+        return None
+    return tab.drop(columns=["model_version"])
 
 
 def make_figure(tab: pd.DataFrame) -> plt.Figure:
@@ -111,19 +120,18 @@ def main(out_dir: Path | str = None) -> dict[str, Path]:
     table_dir = out_dir.parent / "tables"
     table_dir.mkdir(parents=True, exist_ok=True)
     table = table_dir / "fig4_singleton_ors.csv"
-    if table.exists():
-        tab = pd.read_csv(table)
-        fig = make_figure(tab)
-    else:
+    tab = _load_cached_table(table)
+    if tab is None:
         cluster_df = simd_models.build_cluster_regression_frame()
         tab = simd_models.build_singleton_epoch_table(cluster_df)
-        tab.to_csv(table, index=False)
-        fig = make_figure(tab)
+        simd_models.tag_model_output(tab).to_csv(table, index=False)
+    fig = make_figure(tab)
     paths_out = style.save_figure(
         fig, out_dir / "fig4_singleton_odds_by_epoch",
         width="double", save_png=True, save_pdf=True
     )
     plt.close(fig)
+    paths_out["csv"] = table
     return paths_out
 
 

@@ -21,7 +21,7 @@ import matplotlib.colors as mcolors
 import numpy as np
 import pandas as pd
 
-from manuscripts.common import data, style
+from analysis.utils import data, style
 
 TOP_K_LINEAGES = 20
 
@@ -51,7 +51,7 @@ def build_matrix() -> tuple[pd.DataFrame, pd.Series]:
     df, counts, max_rank = _load_top_lineage_frame()
     piv = df.groupby(["pango_lineage", "month"])["dz_simd_rank"].median().reset_index()
     mat = piv.pivot(index="pango_lineage", columns="month", values="dz_simd_rank")
-    # Re-order by cumulative abundance, most untils on top. NB:
+    # Re-order by cumulative abundance, most utils on top. NB:
     # ``value_counts()`` is already descending; reindexing to ``mat.index``
     # here would silently re-sort it to pandas' default alphabetical order
     # (the bug we had before) — so take ``value_counts()`` directly and
@@ -216,6 +216,7 @@ def main(out_dir: Path | str = None) -> dict[str, Path]:
         width="double", save_png=True, save_pdf=True,
     )
     plt.close(fig)
+    paths_out["csv"] = tables_dir / "fig5_cells_long.csv"
     return paths_out
 
 

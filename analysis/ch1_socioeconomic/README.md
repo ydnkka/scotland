@@ -58,7 +58,7 @@ Rows are the top-20 PANGO lineages by count; columns are monthly bins. Cell colo
 
 ### Fig. 6 — SIMD-domain decomposition in a mutually-adjusted model
 
-A single NB GLM fitted with **all seven SIMD domain ranks simultaneously** plus VOC and offset. We plot each domain's share of `Σ |standardised coefficient|` (as a percent) — i.e. "when every domain is allowed to compete, what fraction of the signal does each carry?". The bar label shows the signed standardised coefficient (not exponentiated — this is on the log-IRR scale) and the p-value. **A large share with a p-value < 0.05 ⇒ that domain is doing independent work**; domains with large shares but non-significant p-values are collinear with another large-share domain. Shares are normalised so the seven bars sum to 100%. Companion table `tables/fig6_domain_decomposition.csv`: `domain`, `estimate` (standardised log-IRR coefficient), `std_error`, `conf_low`/`conf_high` (CI on the log-IRR scale), `p_value`, `abs_std_coef`, `share` (sums to 1).
+A single NB GLM fitted with **all seven SIMD domain ranks simultaneously** plus VOC and offset. We decompose the total domain-related model improvement over the covariate-only model using an **exact Shapley attribution on log-likelihood gain**, then plot each domain's share of that gain (as a percent). This avoids turning unstable conditional coefficients into a fake additive decomposition when the domains are strongly correlated. The bar label still shows the signed standardised coefficient from the full joint model (not exponentiated — this is on the log-IRR scale) and the p-value, so direction and conditional uncertainty remain visible. Shares are normalised so the seven bars sum to 100%. Companion table `tables/fig6_domain_decomposition.csv`: `domain`, `estimate` (standardised log-IRR coefficient), `std_error`, `conf_low`/`conf_high` (CI on the log-IRR scale), `p_value`, `ll_gain`, `share` (sums to 1).
 
 ## Inputs
 
@@ -84,10 +84,10 @@ All regression specifications live in `models/simd_models.py`; every figure that
 
 - **Cluster size (headline)** — `cluster_size_model`. Negative-binomial GLM on `n_sequences` with predictors **SIMD quintile dummies** (Q1–Q4 vs. Q5 reference) *or* a standardised continuous rank when `deprivation_measure != "simd_quintile_mode"`, **VOC dummies** (Omicron reference), and a **natural cubic regression spline** (`patsy.cr`, 5 df) on days-since-study-start built from `wn_mid_date`. Offset is `log(wn_prop_sequenced)` (applied inside `stats.negbin_cluster_size`).
 - **Per-domain forest** — `build_domain_forest_table`. One NB GLM per SIMD domain: `n_sequences ~ deprivation_sd (1-SD standardised, sign-flipped so +1 SD = more deprived) + VOC + cr(wn_mid_date) + offset(log wn_prop_sequenced)`.
-- **Domain decomposition (joint)** — `build_domain_decomposition_table`. A single NB GLM with **all seven** domain ranks as standardised predictors simultaneously, plus VOC and spline. Returns standardised log-IRR coefficients and their share of `Σ|coef|`.
+- **Domain decomposition (joint)** — `build_domain_decomposition_table`. A single NB GLM with **all seven** domain ranks as standardised predictors simultaneously, plus VOC and spline. Returns the joint-model standardised log-IRR coefficients together with each domain's Shapley share of the total domain-attributable log-likelihood gain.
 - **Singleton status** — `build_singleton_epoch_table`. Logistic GLM fit **separately within each VOC epoch** (VOC dummies would collapse) on `is_singleton ~ Q1..Q4 (vs Q5) + log_prop_seq_z + cr(wn_mid_date, df=3)`. The smaller df is because an epoch's temporal span is shorter than the full study window.
 
-All NB / logistic fits are produced by `stats.negbin_cluster_size` and `stats.logit_singleton`, and all tidy tables are produced by `stats.tidy_glm` (Wald 95% CIs, two-sided Z p-values, IRR/OR exponentiation unless explicitly suppressed for the decomposition shares).
+All NB / logistic fits are produced by `stats.negbin_cluster_size` and `stats.logit_singleton`, and all tidy tables are produced by `stats.tidy_glm` (Wald 95% CIs, two-sided Z p-values, IRR/OR exponentiation unless explicitly suppressed for the decomposition coefficients).
 
 ## Target journals
 
