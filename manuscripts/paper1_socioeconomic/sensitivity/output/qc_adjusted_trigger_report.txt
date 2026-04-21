@@ -1,0 +1,25 @@
+========================================================================
+QC-ADJUSTED SINGLETON SENSITIVITY ANALYSIS — TRIGGER REPORT
+========================================================================
+
+Evaluated quintile : Q1 (most deprived) vs Q5 (reference)
+Threshold           : >10% absolute change in OR triggers condition (i)
+Overall verdict     : NOT TRIGGERED
+
+Condition (i)  : |OR_qc_adjusted − OR_primary| / OR_primary × 100 > 10%
+Condition (ii) : gradient reversal (OR crosses 1.0 between models)
+
+Epoch                 OR_primary     OR_qc_adj          Δ%   Cond.(i)  Cond.(ii)   Triggered
+------------------------------------------------------------------------------------------
+Pre-VOC                  0.4697        0.5066         7.9         no         no           —
+Alpha                    0.3715        0.3497         5.9         no         no           —
+Delta                    0.4361        0.4373         0.3         no         no           —
+Omicron BA.1             0.3854        0.3924         1.8         no         no           —
+Omicron BA.2+            0.3758        0.3451         8.2         no         no           —
+------------------------------------------------------------------------------------------
+
+No material shift detected.
+
+Per pre-specification, the QC-adjusted estimates are reported in
+Supplementary Table S1 with the note that no material shift was
+detected. The headline results in Table 2 / Fig 4 remain as primary.
