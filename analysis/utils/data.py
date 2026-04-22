@@ -133,51 +133,7 @@ def load_analysis_columns(
 
 
 @lru_cache(maxsize=4)
-def load_cluster_demographic_features(
-    min_size: int = 1,
-    resolution: float = PRIMARY_RESOLUTION,
-    qc: tuple[str] = ("good",)
-) -> pd.DataFrame:
-    cols = [
-        "window_idx", "window_id", "wn_mid_date", "wn_prop_sequenced", "who_voc",
-        "sequence_id", "cluster_id", "pango_lineage",  "nextclade_qc",
-        "age_midpoint", "is_female", "is_vaccinated", "vacc_dose_number",
-    ]
-    df = load_analysis_columns(cols, resolution=resolution, qc=qc)
-    df["_is_mediocre"] = (df["nextclade_qc"] == "mediocre").astype(float)
-    df["_is_bad"] = (df["nextclade_qc"] == "bad").astype(float)
-
-    grp = df.groupby(["window_id", "cluster_id"], observed=True)
-
-    out = grp.agg(
-        # Cluster features
-        n_sequences=("sequence_id", "nunique"),
-        window_idx=("window_idx", "first"),
-        wn_mid_date=("wn_mid_date", "first"),
-        wn_prop_sequenced=("wn_prop_sequenced", "first"),
-        who_voc=("who_voc", "first"),
-        pango_lineage=("pango_lineage", "first"),
-        qc_frac_mediocre=("_is_mediocre", "mean"),
-        qc_frac_bad=("_is_bad", "mean"),
-
-        # Demographic features
-        median_age=("age_midpoint", "median"),
-        age_diversity=("age_midpoint", "std"),
-        frac_female=("is_female", "mean"),
-        frac_vaccinated=("is_vaccinated", "mean"),
-        mean_vacc_dose=("vacc_dose_number", "mean"),
-    ).reset_index()
-
-    out["is_singleton"] = (out["n_sequences"] == 1).astype(int)
-    out["epoch"] = assign_epoch(out["wn_mid_date"])
-    out = out.dropna(subset=["epoch"]).copy()
-    if min_size > 1:
-        out = out[out["n_sequences"] >= min_size]
-    return out.reset_index(drop=True)
-
-
-@lru_cache(maxsize=4)
-def load_cluster_simd_features(
+def load_cluster_features(
     min_size: int = 1,
     resolution: float = PRIMARY_RESOLUTION,
     qc: tuple[str] = ("good",)
@@ -187,11 +143,11 @@ def load_cluster_simd_features(
 
     cols = [
         "window_id", "window_idx", "cluster_id", "resolution", "sequence_id",
-        "wn_mid_date", "wn_prop_sequenced", "who_voc", "pango_lineage",
+        "wn_mid_date", "wn_prop_sequenced", "who_voc", "pango_lineage",  "nextclade_qc",
         "datazone", "dz_simd_rank", "dz_simd_quintile", "dz_simd_decile",
         "dz_simd_income_rank", "dz_simd_employment_rank", "dz_simd_education_rank",
         "dz_simd_health_rank", "dz_simd_access_rank", "dz_simd_crime_rank",
-        "dz_simd_housing_rank", "nextclade_qc"
+        "dz_simd_housing_rank", "age_midpoint", "is_female", "is_vaccinated", "vacc_dose_number",
     ]
 
 
@@ -221,6 +177,13 @@ def load_cluster_simd_features(
         "simd_quintile_std": ("dz_simd_quintile", "std"),
         "simd_decile_mode": ("dz_simd_decile", _mode),
         "simd_decile_std": ("dz_simd_decile", "std"),
+
+        # Demographic features
+        "median_age": ("age_midpoint", "median"),
+        "age_diversity": ("age_midpoint", "std"),
+        "frac_female":  ("is_female", "mean"),
+        "frac_vaccinated": ("is_vaccinated", "mean"),
+        "mean_vacc_dose": ("vacc_dose_number", "mean"),
     }
     for dom, col in _simd_domain().items():
         agg[f"simd_{dom}_mean"] = (col, "mean")
@@ -229,6 +192,38 @@ def load_cluster_simd_features(
     out["is_singleton"] = (out["n_sequences"] == 1).astype(int)
     out["epoch"] = assign_epoch(out["wn_mid_date"])
     out = out.dropna(subset=["epoch"]).copy()
+
+    # Pandas reports NaN for the sample std of a single observation. For a
+    # singleton cluster there is no within-cluster socioeconomic mixing, so we
+    # treat that quantity as exactly zero rather than dropping the row.
+    singleton_std_missing = out["simd_quintile_std"].isna() & (out["is_singleton"] == 1)
+    out.loc[singleton_std_missing, "simd_quintile_std"] = 0.0
+
+    # Sequencing coverage on the log scale.
+    out["log_seq_prop"] = np.log(out["wn_prop_sequenced"])
+
+    # Ordered categoricals - reference levels chosen explicitly.
+    out["epoch"] = pd.Categorical(
+        out["epoch"],
+        categories=tuple(lb for lb, _, _ in get_voc_epochs()),
+        ordered=True,
+    )
+    out["simd_quintile_mode"] = pd.Categorical(
+        out["simd_quintile_mode"].astype(int),
+        categories=[1, 2, 3, 4, 5],
+        ordered=True,
+    )
+
+    out["simd_decile_mode"] = pd.Categorical(
+        out["simd_decile_mode"].astype(int),
+        categories=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        ordered=True,
+    )
+
+    assert np.isfinite(out["log_seq_prop"]).all(), (
+        "Non-finite offset values - check wn_prop_sequenced > 0"
+    )
+
     if min_size > 1:
         out = out[out["n_sequences"] >= min_size]
     return out.reset_index(drop=True)
