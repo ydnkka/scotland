@@ -16,6 +16,7 @@ from dataclasses import dataclass, asdict
 from functools import lru_cache
 from pathlib import Path
 from typing import Iterable
+import re
 
 import numpy as np
 import pandas as pd
@@ -42,9 +43,6 @@ VOC_EPOCHS_DEFAULT: list[tuple[str, str, str]] = [
     ("Omicron BA.1",   "2021-12-16", "2022-02-28"),
     ("Omicron BA.2+",  "2022-03-01", "2023-02-28"),
 ]
-
-# Canonical WHO VOCs we retain in scripts (others collapsed into 'Other').
-KEPT_VOCS: tuple[str, ...] = ("Alpha", "Delta", "Omicron")
 
 @dataclass(frozen=True)
 class DOMAINS:
@@ -142,12 +140,12 @@ def load_cluster_features(
     """
 
     cols = [
-        "window_id", "window_idx", "cluster_id", "resolution", "sequence_id",
+        "window_id", "window_idx", "cluster_id", "sequence_id",
         "wn_mid_date", "wn_prop_sequenced", "who_voc", "pango_lineage",  "nextclade_qc",
-        "datazone", "dz_simd_rank", "dz_simd_quintile", "dz_simd_decile",
+        "dz_simd_rank", "dz_simd_quintile", "dz_simd_decile",
         "dz_simd_income_rank", "dz_simd_employment_rank", "dz_simd_education_rank",
         "dz_simd_health_rank", "dz_simd_access_rank", "dz_simd_crime_rank",
-        "dz_simd_housing_rank", "age_midpoint", "is_female", "is_vaccinated", "vacc_dose_number",
+        "dz_simd_housing_rank", "age_midpoint", "is_female", "is_vaccinated",
     ]
 
 
@@ -172,18 +170,17 @@ def load_cluster_features(
         "qc_frac_mediocre": ("_is_mediocre", "mean"),
         "qc_frac_bad": ("_is_bad", "mean"),
 
+        # Demographic features
+        "median_age": ("age_midpoint", "median"),
+        "age_diversity": ("age_midpoint", "std"),
+        "frac_female": ("is_female", "mean"),
+        "frac_vaccinated": ("is_vaccinated", "mean"),
+
         # SIMD features
         "simd_quintile_mode": ("dz_simd_quintile", _mode),
         "simd_quintile_std": ("dz_simd_quintile", "std"),
         "simd_decile_mode": ("dz_simd_decile", _mode),
         "simd_decile_std": ("dz_simd_decile", "std"),
-
-        # Demographic features
-        "median_age": ("age_midpoint", "median"),
-        "age_diversity": ("age_midpoint", "std"),
-        "frac_female":  ("is_female", "mean"),
-        "frac_vaccinated": ("is_vaccinated", "mean"),
-        "mean_vacc_dose": ("vacc_dose_number", "mean"),
     }
     for dom, col in _simd_domain().items():
         agg[f"simd_{dom}_mean"] = (col, "mean")
@@ -203,11 +200,6 @@ def load_cluster_features(
     out["log_seq_prop"] = np.log(out["wn_prop_sequenced"])
 
     # Ordered categoricals - reference levels chosen explicitly.
-    out["epoch"] = pd.Categorical(
-        out["epoch"],
-        categories=tuple(lb for lb, _, _ in get_voc_epochs()),
-        ordered=True,
-    )
     out["simd_quintile_mode"] = pd.Categorical(
         out["simd_quintile_mode"].astype(int),
         categories=[1, 2, 3, 4, 5],
@@ -229,6 +221,77 @@ def load_cluster_features(
     return out.reset_index(drop=True)
 
 
+
+@lru_cache(maxsize=4)
+def load_individual_features(
+    qc: tuple[str] = ("good",)
+) -> pd.DataFrame:
+    """Return one row per (window_id, "patient_id", "resolution") with its size, date, lineage, and SIMD features.
+    """
+    pattern = r"C\d+$"
+
+    def _non_singleton(ids):
+        yes = []
+        for i in ids:
+            if re.search(pattern, str(i)):
+                yes.append(1)
+            else:
+                yes.append(0)
+        return np.array(yes)
+
+
+    cols = [
+        "window_id", "window_idx", "cluster_id", "patient_id", "sequence_id", "resolution",
+        "wn_mid_date", "wn_prop_sequenced", "who_voc", "pango_lineage",  "nextclade_qc",
+        "datazone", "dz_simd_rank", "dz_simd_quintile", "dz_simd_decile",
+        "dz_simd_income_rank", "dz_simd_employment_rank", "dz_simd_education_rank",
+        "dz_simd_health_rank", "dz_simd_access_rank", "dz_simd_crime_rank",
+        "dz_simd_housing_rank", "age_band", "is_female", "is_vaccinated",
+    ]
+
+    df = load_analysis_columns(cols, resolution=None, qc=qc)
+
+    grp = df.groupby(["window_id", "patient_id", "resolution"], observed=True)
+
+    agg: dict[str, tuple] = {
+        # Individual features
+        "sequence_id": ("sequence_id", "first"),
+        "window_idx": ("window_idx", "first"),
+        "wn_mid_date": ("wn_mid_date", "first"),
+        "wn_prop_sequenced": ("wn_prop_sequenced", "first"),
+        "who_voc": ("who_voc", "first"),
+        "pango_lineage": ("pango_lineage", "first"),
+        "nextclade_qc": ("nextclade_qc", "first"),
+        "datazone": ("datazone", "first"),
+
+        # fraction of time sequence in the cluster (n>1) across resolutions and windows
+        "non_singleton_cluster_fraction": ("cluster_id", lambda x: _non_singleton(x).mean()),
+        "non_singleton_k": ("cluster_id", lambda x: int( _non_singleton(x).sum())),
+        "non_singleton_n": ("cluster_id", "size"),
+
+        # Demographic features
+        "age_band": ("age_band", "first"),
+        "is_female":  ("is_female", "first"),
+        "is_vaccinated": ("is_vaccinated", "first"),
+
+        # SIMD features
+        "simd_quintile": ("dz_simd_quintile", "first"),
+        "simd_decile": ("dz_simd_decile", "first"),
+    }
+    for dom, col in _simd_domain().items():
+        agg[f"simd_{dom}"] = (col, "first")
+
+    out = grp.agg(**agg).reset_index()
+    out["epoch"] = assign_epoch(out["wn_mid_date"])
+    out = out.dropna(subset=["epoch"]).copy()
+
+    # Sequencing coverage on the log scale.
+    out["log_seq_prop"] = np.log(out["wn_prop_sequenced"])
+
+    assert np.isfinite(out["log_seq_prop"]).all(), (
+        "Non-finite offset values - check wn_prop_sequenced > 0"
+    )
+    return out.reset_index(drop=True)
 # ---------------------------------------------------------------------------
 # VOC epoch derivation from data
 # ---------------------------------------------------------------------------
@@ -415,6 +478,15 @@ def get_voc_epochs(*, from_data: bool = True) -> list[tuple[str, str, str]]:
         return list(VOC_EPOCHS_DEFAULT)
     return list(derive_voc_epochs_from_data())
 
+def assign_epoch(dates: pd.Series) -> pd.Categorical:
+    """Assign each row to a VOC epoch label based on its date."""
+    epochs = get_voc_epochs()
+    labels = pd.Series(np.nan, index=dates.index, dtype=object)
+    for label, s, e in epochs:
+        mask = (dates >= pd.Timestamp(s)) & (dates <= pd.Timestamp(e))
+        labels.loc[mask] = label
+    cats = [lbl for lbl, *_ in epochs]
+    return pd.Categorical(labels, categories=cats, ordered=True)
 
 def __getattr__(name: str):
     """Lazy module-level attribute so `data.VOC_EPOCHS` uses derived values.
@@ -426,26 +498,3 @@ def __getattr__(name: str):
     if name == "VOC_EPOCHS":
         return get_voc_epochs()
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
-# ---------------------------------------------------------------------------
-# Derived fields & helpers
-# ---------------------------------------------------------------------------
-
-
-def assign_epoch(dates: pd.Series) -> pd.Categorical:
-    """Assign each row to a VOC epoch label based on its date."""
-    epochs = get_voc_epochs()
-    labels = pd.Series(np.nan, index=dates.index, dtype=object)
-    for label, s, e in epochs:
-        mask = (dates >= pd.Timestamp(s)) & (dates <= pd.Timestamp(e))
-        labels.loc[mask] = label
-    cats = [lbl for lbl, *_ in epochs]
-    return pd.Categorical(labels, categories=cats, ordered=True)
-
-
-def collapse_voc(voc: pd.Series) -> pd.Categorical:
-    """Collapse rare VOC labels into 'Other' for plotting consistency."""
-    keep = list(KEPT_VOCS)
-    out = voc.where(voc.isin(keep), "Other")
-    return pd.Categorical(out, categories=keep + ["Other"], ordered=True)
