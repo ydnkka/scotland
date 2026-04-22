@@ -12,7 +12,7 @@ hard-coded, so moving the repo does not break the figure scripts.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from functools import lru_cache
 from pathlib import Path
 from typing import Iterable
@@ -45,6 +45,21 @@ VOC_EPOCHS_DEFAULT: list[tuple[str, str, str]] = [
 
 # Canonical WHO VOCs we retain in scripts (others collapsed into 'Other').
 KEPT_VOCS: tuple[str, ...] = ("Alpha", "Delta", "Omicron")
+
+@dataclass(frozen=True)
+class DOMAINS:
+    overall: str = "dz_simd_rank"
+    income: str = "dz_simd_income_rank"
+    employment: str = "dz_simd_employment_rank"
+    education: str = "dz_simd_education_rank"
+    health: str = "dz_simd_health_rank"
+    access: str = "dz_simd_access_rank"
+    crime: str = "dz_simd_crime_rank"
+    housing: str = "dz_simd_housing_rank"
+
+def _simd_domain() -> dict[str, str]:
+    """Return a mapping of SIMD domain names to their corresponding column names in the data."""
+    return { name: col for name, col in asdict(DOMAINS()).items()}
 
 
 # ---------------------------------------------------------------------------
@@ -120,67 +135,103 @@ def load_analysis_columns(
 @lru_cache(maxsize=4)
 def load_cluster_demographic_features(
     min_size: int = 1,
-    resolution: float | None = PRIMARY_RESOLUTION,
-    qc: Iterable[str] | None = ("good",)
+    resolution: float = PRIMARY_RESOLUTION,
+    qc: tuple[str] = ("good",)
 ) -> pd.DataFrame:
     cols = [
-        "window_idx", "window_id", "wn_mid_date",
-        "sequence_id", "cluster_id", "pango_lineage",
+        "window_idx", "window_id", "wn_mid_date", "wn_prop_sequenced", "who_voc",
+        "sequence_id", "cluster_id", "pango_lineage",  "nextclade_qc",
         "age_midpoint", "is_female", "is_vaccinated", "vacc_dose_number",
     ]
     df = load_analysis_columns(cols, resolution=resolution, qc=qc)
+    df["_is_mediocre"] = (df["nextclade_qc"] == "mediocre").astype(float)
+    df["_is_bad"] = (df["nextclade_qc"] == "bad").astype(float)
+
     grp = df.groupby(["window_id", "cluster_id"], observed=True)
 
     out = grp.agg(
+        # Cluster features
         n_sequences=("sequence_id", "nunique"),
+        window_idx=("window_idx", "first"),
+        wn_mid_date=("wn_mid_date", "first"),
+        wn_prop_sequenced=("wn_prop_sequenced", "first"),
+        who_voc=("who_voc", "first"),
+        pango_lineage=("pango_lineage", "first"),
+        qc_frac_mediocre=("_is_mediocre", "mean"),
+        qc_frac_bad=("_is_bad", "mean"),
+
+        # Demographic features
         median_age=("age_midpoint", "median"),
         age_diversity=("age_midpoint", "std"),
         frac_female=("is_female", "mean"),
         frac_vaccinated=("is_vaccinated", "mean"),
         mean_vacc_dose=("vacc_dose_number", "mean"),
-        wn_mid_date=("wn_mid_date", "first"),
-        window_idx=("window_idx", "first"),
-        pango_lineage=("pango_lineage", "first")
     ).reset_index()
+
     out["is_singleton"] = (out["n_sequences"] == 1).astype(int)
-    out = out[out["n_sequences"] >= min_size]
-    return out
+    out["epoch"] = assign_epoch(out["wn_mid_date"])
+    out = out.dropna(subset=["epoch"]).copy()
+    if min_size > 1:
+        out = out[out["n_sequences"] >= min_size]
+    return out.reset_index(drop=True)
 
 
 @lru_cache(maxsize=4)
 def load_cluster_simd_features(
     min_size: int = 1,
-    resolution: float | None = PRIMARY_RESOLUTION,
-    qc: Iterable[str] | None = ("good",)
+    resolution: float = PRIMARY_RESOLUTION,
+    qc: tuple[str] = ("good",)
 ) -> pd.DataFrame:
     """Return one row per (window_id, cluster_id) with its size, date, lineage, and SIMD features.
     """
+
     cols = [
-        "window_idx", "window_id", "wn_mid_date",
-        "sequence_id", "cluster_id", "pango_lineage",
+        "window_id", "window_idx", "cluster_id", "resolution", "sequence_id",
+        "wn_mid_date", "wn_prop_sequenced", "who_voc", "pango_lineage",
         "datazone", "dz_simd_rank", "dz_simd_quintile", "dz_simd_decile",
+        "dz_simd_income_rank", "dz_simd_employment_rank", "dz_simd_education_rank",
+        "dz_simd_health_rank", "dz_simd_access_rank", "dz_simd_crime_rank",
+        "dz_simd_housing_rank", "nextclade_qc"
     ]
+
+
     df = load_analysis_columns(cols, resolution=resolution, qc=qc)
+    df["_is_mediocre"] = (df["nextclade_qc"] == "mediocre").astype(float)
+    df["_is_bad"]      = (df["nextclade_qc"] == "bad").astype(float)
+
     grp = df.groupby(["window_id", "cluster_id"], observed=True)
+
     def _mode(s: pd.Series):
         m = s.mode()
         return m.iloc[0] if len(m) > 0 else np.nan
 
-    out = grp.agg(
-        n_sequences=("sequence_id", "nunique"),
-        n_datazones=("datazone", "nunique"),
-        simd_rank_mean=("dz_simd_rank", "mean"),
-        simd_rank_median=("dz_simd_rank", "median"),
-        simd_quintile_mode=("dz_simd_quintile", _mode),
-        simd_decile_mode=("dz_simd_decile", _mode),
-        frac_deprived_q1=("dz_simd_quintile", lambda x: (x == 1).mean()),
-        wn_mid_date=("wn_mid_date", "first"),
-        window_idx=("window_idx", "first"),
-        pango_lineage=("pango_lineage", lambda x: x.mode().iloc[0] if len(x) > 0 else None),
-    ).reset_index()
+    agg: dict[str, tuple] = {
+        # Cluster features
+        "n_sequences": ("sequence_id", "nunique"),
+        "window_idx": ("window_idx", "first"),
+        "wn_mid_date": ("wn_mid_date", "first"),
+        "wn_prop_sequenced": ("wn_prop_sequenced", "first"),
+        "who_voc": ("who_voc", "first"),
+        "pango_lineage": ("pango_lineage", "first"),
+        "qc_frac_mediocre": ("_is_mediocre", "mean"),
+        "qc_frac_bad": ("_is_bad", "mean"),
+
+        # SIMD features
+        "simd_quintile_mode": ("dz_simd_quintile", _mode),
+        "simd_quintile_std": ("dz_simd_quintile", "std"),
+        "simd_decile_mode": ("dz_simd_decile", _mode),
+        "simd_decile_std": ("dz_simd_decile", "std"),
+    }
+    for dom, col in _simd_domain().items():
+        agg[f"simd_{dom}_mean"] = (col, "mean")
+
+    out = grp.agg(**agg).reset_index()
     out["is_singleton"] = (out["n_sequences"] == 1).astype(int)
-    out = out[out["n_sequences"] >= min_size]
-    return out
+    out["epoch"] = assign_epoch(out["wn_mid_date"])
+    out = out.dropna(subset=["epoch"]).copy()
+    if min_size > 1:
+        out = out[out["n_sequences"] >= min_size]
+    return out.reset_index(drop=True)
 
 
 # ---------------------------------------------------------------------------
@@ -403,30 +454,3 @@ def collapse_voc(voc: pd.Series) -> pd.Categorical:
     keep = list(KEPT_VOCS)
     out = voc.where(voc.isin(keep), "Other")
     return pd.Categorical(out, categories=keep + ["Other"], ordered=True)
-
-
-def canonical_cluster_sequence_counts(
-    resolution: float = PRIMARY_RESOLUTION,
-    qc: Iterable[str] | None = ("good",),
-    *,
-    paths: Paths | None = None,
-) -> pd.DataFrame:
-    """Return one row per (window_id, cluster_id) with its size, date, and lineage.
-
-    Useful for cluster-level analyses where the sequence-level parquet is
-    too wide. Cheaper than loading the full master parquet.
-    """
-    cols = ["window_id", "resolution", "cluster_id", "sequence_id",
-            "wn_mid_date", "pango_lineage", "who_voc"]
-    df = load_analysis_columns(cols, resolution=resolution, paths=paths)
-    if qc is not None:
-        df = df[df["nextclade_qc"].isin(list(qc))]
-    grp = df.groupby(["window_id", "cluster_id"], observed=True)
-    out = grp.agg(
-        n_sequences=("sequence_id", "nunique"),
-        wn_mid_date=("wn_mid_date", "first"),
-        pango_lineage=("pango_lineage", "first"),
-        who_voc=("who_voc", "first"),
-    ).reset_index()
-    out["is_singleton"] = (out["n_sequences"] == 1).astype(int)
-    return out

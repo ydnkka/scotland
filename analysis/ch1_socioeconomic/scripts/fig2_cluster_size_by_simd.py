@@ -78,6 +78,7 @@ def build_summary_table(cluster_simd: pd.DataFrame) -> pd.DataFrame:
                 "q3": float(np.quantile(v, 0.75)),
                 "mean": float(v.mean()),
                 "variances": float(v.var()),
+                "vrm": float(v.var() / v.mean()),
                 "stddev": float(v.std()),
                 "min": int(v.min()),
                 "max": int(v.max()),

@@ -203,20 +203,20 @@ def main(out_dir: Path | str = None) -> dict[str, Path]:
     tables_dir = out_dir.parent / "tables"
     tables_dir.mkdir(parents=True, exist_ok=True)
     build_lineage_summary().to_csv(
-        tables_dir / "fig5_lineage_summary.csv", index=False
+        tables_dir / "fig3_lineage_summary.csv", index=False
     )
     build_cell_long_table().to_csv(
-        tables_dir / "fig5_cells_long.csv", index=False
+        tables_dir / "fig3_cells_long.csv", index=False
     )
 
     mat, counts = build_matrix()
     fig = make_figure(mat, counts)
     paths_out = style.save_figure(
-        fig, out_dir / "fig5_deprivation_lineage_heatmap",
+        fig, out_dir / "fig3_deprivation_lineage_heatmap",
         width="double", save_png=True, save_pdf=True,
     )
     plt.close(fig)
-    paths_out["csv"] = tables_dir / "fig5_cells_long.csv"
+    paths_out["csv"] = tables_dir / "fig3_cells_long.csv"
     return paths_out
 
 
