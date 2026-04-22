@@ -15,4 +15,4 @@ stats
     coefficient tables for forest plots.
 """
 
-from . import data, style  # noqa: F401
+from . import data, bambi, style  # noqa: F401

@@ -90,36 +90,42 @@ def set_theme(
     font: str = "Arial",
     font_scale: float = 1.0,
 ) -> None:
+    # Seaborn's context scaling factors relative to "paper"
+    _context_scales = {"paper": 1.0, "notebook": 1.0, "talk": 1.3, "poster": 1.6}
+    scale = _context_scales.get(context, 1.0) * font_scale
+
     sns.set_theme(
         style="white",
-        context=context,
+        context=context,   # still sets line/marker base scaling via seaborn internals
         font_scale=font_scale,
         rc={
             "font.family": "sans-serif",
             "font.sans-serif": [font, "Arial", "Liberation Sans", "DejaVu Sans"],
+            # --- everything below now scales ---
+            "font.size":              9  * scale,
+            "axes.titlesize":         10 * scale,
+            "axes.labelsize":         9  * scale,
+            "xtick.labelsize":        8  * scale,
+            "ytick.labelsize":        8  * scale,
+            "legend.fontsize":        8  * scale,
+            "legend.title_fontsize":  8  * scale,
+            "axes.linewidth":         0.8 * scale,
+            "lines.linewidth":        1.5 * scale,
+            "lines.markersize":       5   * scale,
+            "patch.linewidth":        0.8 * scale,
+            "xtick.major.width":      0.8 * scale,
+            "ytick.major.width":      0.8 * scale,
+            "xtick.major.size":       3.5 * scale,
+            "ytick.major.size":       3.5 * scale,
+            # --- these are booleans/strings, don't scale ---
             "mathtext.fontset": "dejavusans",
             "figure.facecolor": "white",
             "axes.facecolor": "white",
             "savefig.facecolor": "white",
             "savefig.bbox": "tight",
             "savefig.pad_inches": 0.03,
-            "font.size": 9,
-            "axes.titlesize": 10,
-            "axes.labelsize": 9,
-            "xtick.labelsize": 8,
-            "ytick.labelsize": 8,
             "axes.spines.top": False,
             "axes.spines.right": False,
-            "legend.fontsize": 8,
-            "legend.title_fontsize": 8,
-            "axes.linewidth": 0.8,
-            "lines.linewidth": 1.5,
-            "lines.markersize": 5,
-            "patch.linewidth": 0.8,
-            "xtick.major.width": 0.8,
-            "ytick.major.width": 0.8,
-            "xtick.major.size": 3.5,
-            "ytick.major.size": 3.5,
             "xtick.direction": "out",
             "ytick.direction": "out",
             "axes.grid": False,
