@@ -234,33 +234,29 @@ def load_cluster_features(
 def load_individual_features(
     qc: tuple[str, ...] = ("good",),
 ) -> pl.DataFrame:
-    """Return one row per patient_id, averaging window-level metrics across
-    all (window_id, resolution) combinations the patient appears in.
+    """Return one row per sequence_id, averaging window-level metrics across
+    all (window_id, resolution) combinations the sequence appears in.
     """
     _NON_SINGLETON_RE = r"C\d+$"
-
     cols = [
         "window_id", "window_idx", "cluster_id", "patient_id", "sequence_id", "resolution",
         "wn_mid_date", "wn_prop_sequenced", "who_voc", "pango_lineage", "nextclade_qc",
         "datazone", "dz_simd_rank", "dz_simd_quintile", "dz_simd_decile",
         "dz_simd_income_rank", "dz_simd_employment_rank", "dz_simd_education_rank",
         "dz_simd_health_rank", "dz_simd_access_rank", "dz_simd_crime_rank",
-        "dz_simd_housing_rank", "age_band", "is_female", "is_vaccinated",
+        "dz_simd_housing_rank", "age_band", "is_female", "is_vaccinated", "collection_date",
     ]
-
     df = load_analysis_columns(cols, resolution=None, qc=qc)
-
     df = df.with_columns(
         pl.col("cluster_id").cast(pl.Utf8).str.contains(_NON_SINGLETON_RE)
         .cast(pl.UInt8).alias("_non_singleton")
     )
-
     stable = [
+        "patient_id", "collection_date",
         "age_band", "is_female", "is_vaccinated",
         "datazone", "dz_simd_quintile", "dz_simd_decile",
         *list(_simd_domain().values()), "pango_lineage",
     ]
-
     agg_exprs: list[pl.Expr] = (
         [pl.col(c).first() for c in stable]
         + [
@@ -269,16 +265,19 @@ def load_individual_features(
             pl.col("_non_singleton").count().alias("non_singleton_n"),
             pl.col("wn_prop_sequenced").mean(),
             pl.col("wn_prop_sequenced").log().mean().alias("log_seq_prop"),
-            pl.col("window_id").count().alias("n_windows"),
+            pl.col("window_id").n_unique().alias("n_windows"),
         ]
     )
+    out = df.group_by("sequence_id").agg(agg_exprs)
 
-    out = df.group_by("patient_id").agg(agg_exprs)
-
+    # Epoch assignment --------------------------------------------------------
+    out = out.with_columns(
+        assign_epoch(out["collection_date"]).alias("epoch")
+    )
+    out = out.filter(pl.col("epoch").is_not_null())
     assert out["log_seq_prop"].is_finite().all(), (
         "Non-finite offset values — check wn_prop_sequenced > 0"
     )
-
     return out
 
 

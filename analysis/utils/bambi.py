@@ -124,14 +124,14 @@ def fit_bambi_model(
         return model, trace
 
     print(f"[{run_id}] Fitting  : {formula}")
-    model = bmb.Model(formula, data, family=family)
+    model = bmb.Model(formula, data, family=family, dropna=True)
     trace = model.fit(
         draws=draws,
         tune=tune,
         target_accept=target_accept,
         chains=chains,
         random_seed=random_seed,
-        inference_method="numpyro",  # comment out for Ubuntu
+        # inference_method="numpyro",  # comment out for Ubuntu
     )
 
     summary = az.summary(trace)
