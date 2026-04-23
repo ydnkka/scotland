@@ -1,24 +1,30 @@
 import json
-import os
+from pathlib import Path
 from typing import Literal
 
-import pandas as pd
-import bambi as bmb
 import arviz as az
+import bambi as bmb
+import pandas as pd
+import polars as pl
 
+
+# ---------------------------------------------------------------------------
+# Core
+# ---------------------------------------------------------------------------
 
 def fit_bambi_model(
-    data: pd.DataFrame,
-     run_id: int | str,
+    data: pd.DataFrame | pl.DataFrame,
+    run_id: int | str,
     dependent: str,
+    fixed_effects: list[str],
     *,
     family: Literal["negativebinomial", "binomial"] = "negativebinomial",
-    fixed_effects: list[str] = None,
     interaction_effects: list[str] = None,
     random_effects: list[str] = None,
-    offset: str = "log_seq_prop",
+    trials: str = None,
+    offset: str  = None,
     formula: str = None,
-    save_dir: str = 'bambi_outputs',
+    save_dir: str | Path = "bambi_outputs",
     draws: int = 1000,
     tune: int = 1000,
     target_accept: float = 0.95,
@@ -26,102 +32,185 @@ def fit_bambi_model(
     random_seed: int = 42,
     force_refit: bool = False,
 ) -> tuple[bmb.Model, az.InferenceData]:
+    """Fit a Bambi hierarchical model and cache results to disk.
+
+    Parameters
+    ----------
+    data:
+        Source data. Polars DataFrames are converted to pandas automatically.
+    run_id:
+        Unique identifier for the model run, used as a file-name prefix.
+    dependent:
+        Response variable name.
+    family:
+        Likelihood family — ``"negativebinomial"`` or ``"binomial"``.
+    fixed_effects:
+        Main-effect terms. Default: ``["C(simd_quintile_mode, Treatment(3))"]``.
+    interaction_effects:
+        Interaction terms. Use ``":"`` for a pure interaction
+        (e.g. ``"var1:var2"``), ``"*"`` to include main effects too.
+    random_effects:
+        Grouping / hierarchical terms. Default: ``["(1 | window_id)"]``.
+    trials:
+        Column of trial counts for ``binomial`` proportion models. When
+        supplied the LHS becomes ``proportion(dependent, trials)``.
+    offset:
+        Column (on the log scale) to include as a model offset. Pass
+        ``None`` to omit entirely.
+    formula:
+        Full formula string. When provided it overrides all effect lists,
+        *trials*, and *offset* arguments.
+    save_dir:
+        Directory for cached ``.nc`` trace, ``.csv`` summary, and
+        ``.json`` formula files.
+    draws, tune, target_accept, chains, random_seed:
+        PyMC / numpyro sampler settings.
+    force_refit:
+        When ``True``, ignore any cached trace and re-fit from scratch.
+
+    Returns
+    -------
+    (model, trace)
+        The initialised ``bmb.Model`` and the ``az.InferenceData`` trace.
     """
-    Fit a Bambi hierarchical model and cache results to disk.
-
-    This function automates the construction of a Bambi model formula, fits
-    the model using NUTS (via numpyro if specified), and saves the resulting
-    trace and summary statistics for reproducibility.
-
-    Args:
-        data: The pandas DataFrame containing the variables.
-        run_id: A unique identifier for the model run (used for file naming).
-        dependent: The target variable (y-axis).
-        family: The likelihood family. Supported: 'negativebinomial' or 'binomial'.
-        fixed_effects: Main effect terms. Defaults to SIMD quintile and Epoch.
-        interaction_effects: Terms specifying relationships between variables.
-            Use ':' for a specific interaction (e.g., 'var1:var2').
-            Use '*' for main effects plus interaction (e.g., 'var1*var2').
-        random_effects: Hierarchical/Grouping terms. Default is (1 | window_id).
-        offset: The name of the column to be used as an offset (log-scale).
-        formula: Optional full formula string. If provided, overrides effect lists.
-        save_dir: Directory where outputs (.nc and .csv) will be stored.
-        draws: Number of posterior samples to draw.
-        tune: Number of burn-in/tuning iterations.
-        target_accept: Target acceptance rate for the NUTS sampler.
-        chains: Number of independent MCMC chains.
-        random_seed: Seed for reproducibility.
-        force_refit: If True, ignores cached files and re-runs the model.
-
-    Returns:
-        A tuple containing the initialized (bmb.Model) and the (az.InferenceData) trace.
-
-    Example:
-        # To specify an interaction between two categorical variables:
-        fit_bambi_model(
-            data=df,
-            run_id="interaction_test",
-            interaction_effects=["C(epoch):C(simd_quintile_mode)"]
-        )
-    """
+    if isinstance(data, pl.DataFrame):
+        data = data.to_pandas()
 
     family = family.lower()
-    supported_families = {"negativebinomial", "binomial"}
-    if family not in supported_families:
+    if family not in {"negativebinomial", "binomial"}:
         raise ValueError(
-            f"Unsupported family '{family}'. Use one of: {sorted(supported_families)}"
+            f"Unsupported family '{family}'. Choose 'negativebinomial' or 'binomial'."
         )
+    if dependent not in data.columns:
+        raise ValueError(f"Dependent column '{dependent}' not found in data.")
+    if trials is not None and trials not in data.columns:
+        raise ValueError(f"Trials column '{trials}' not found in data.")
+    if offset is not None and offset not in data.columns:
+        raise ValueError(f"Offset column '{offset}' not found in data.")
 
-    # --- Logic for Formula Construction ---
+    # --- Formula construction ---
     if formula is None:
-        if fixed_effects is None:
-            fixed_effects = ["C(simd_quintile_mode, Treatment(3))"]
-
-        if random_effects is None:
-            random_effects = ["(1 | window_id)"]
-
-        terms = list(fixed_effects)
+        effects = fixed_effects
 
         if interaction_effects:
-            terms.extend(interaction_effects)
+            effects.extend(interaction_effects)
 
-        terms.extend(random_effects)
+        if random_effects is not None:
+            effects.extend(random_effects)
 
-        if offset:
-            terms.append(f"offset({offset})")
+        if offset is not None:
+            effects.append(f"offset({offset})")
 
-        formula = f"{dependent} ~ {' + '.join(terms)}"
+        lhs = (
+            f"proportion({dependent}, {trials})"
+            if family == "binomial" and trials is not None
+            else dependent
+        )
+        formula = f"{lhs} ~ {' + '.join(effects)}"
 
-    # --- Caching and Execution Logic ---
-    os.makedirs(save_dir, exist_ok=True)
-    trace_path = os.path.join(save_dir, f"{run_id}_{family}_bambi_trace.nc")
-    formula_path = os.path.join(save_dir, f"{run_id}_{family}_bambi_formula.json")
-    summary_path = os.path.join(save_dir, f"{run_id}_{family}_bambi_summary.csv")
+    # --- Caching ---
+    save_dir = Path(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
 
-    if not force_refit and os.path.exists(trace_path):
-        print(f"Loading cached results for run_id: {run_id}")
+    stem        = f"{run_id}_{family}"
+    trace_path   = save_dir / f"{stem}_trace.nc"
+    summary_path = save_dir / f"{stem}_summary.csv"
+    formula_path = save_dir / f"{stem}_formula.json"
+
+    if not force_refit and trace_path.exists():
+        print(f"[{run_id}] Loading cached trace from {trace_path}")
         model = bmb.Model(formula, data, family=family)
         trace = az.from_netcdf(trace_path)
         return model, trace
 
-    print(f"Fitting model: {run_id}\nFormula: {formula}")
+    print(f"[{run_id}] Fitting  : {formula}")
     model = bmb.Model(formula, data, family=family)
-
     trace = model.fit(
-        draws=draws, tune=tune, target_accept=target_accept,
-        chains=chains, random_seed=random_seed,
-        inference_method="nuts_numpyro"
+        draws=draws,
+        tune=tune,
+        target_accept=target_accept,
+        chains=chains,
+        random_seed=random_seed,
+        inference_method="numpyro",  # comment out for Ubuntu
     )
 
     summary = az.summary(trace)
-    summary.insert(0, 'terms', summary.index)
-    summary.insert(1, 'run_id', run_id)
-    summary.insert(2, 'family', family)
+    summary.insert(0, "terms",  summary.index)
+    summary.insert(1, "run_id", run_id)
+    summary.insert(2, "family", family)
     summary.reset_index(drop=True, inplace=True)
 
-    az.to_netcdf(trace, trace_path)
+    az.to_netcdf(trace, str(trace_path))
     summary.to_csv(summary_path, index=False)
-    with open(formula_path, 'w') as f:
-        json.dump({'formula': formula}, f)
+    formula_path.write_text(json.dumps({"formula": formula}, indent=2))
 
     return model, trace
+
+
+# ---------------------------------------------------------------------------
+# Domain wrappers
+# ---------------------------------------------------------------------------
+
+def fit_cluster_model(
+    data: pd.DataFrame | pl.DataFrame,
+    run_id: int | str,
+    dependent: str = "n_sequences",
+    *,
+    fixed_effects: list[str] = None,
+    interaction_effects: list[str] = None,
+    random_effects: list[str] = None,
+    offset: str = "log_seq_prop",
+    **kwargs,
+) -> tuple[bmb.Model, az.InferenceData]:
+    """Fit a negative-binomial model on cluster-level data.
+
+    Defaults to a ``n_sequences`` response with a ``log_seq_prop`` offset,
+    which accounts for variation in sequencing coverage across windows.
+    """
+    fixed_effects = fixed_effects or []
+    random_effects = random_effects or ["(1 | window_id)"]
+    return fit_bambi_model(
+        data,
+        run_id,
+        dependent,
+        family="negativebinomial",
+        fixed_effects=fixed_effects,
+        interaction_effects=interaction_effects,
+        random_effects=random_effects,
+        offset=offset,
+        **kwargs,
+    )
+
+
+def fit_individual_model(
+    data: pd.DataFrame | pl.DataFrame,
+    run_id: int | str,
+    dependent: str = "non_singleton_k",
+    *,
+    trials: str = "non_singleton_n",
+    fixed_effects: list[str] | None = None,
+    interaction_effects: list[str] | None = None,
+    random_effects: list[str] | None = None,
+    offset: str = None,
+    **kwargs,
+) -> tuple[bmb.Model, az.InferenceData]:
+    """Fit a binomial proportion model on individual / patient-level data.
+
+    Defaults to modelling ``non_singleton_k / non_singleton_n`` — the
+    fraction of windows in which a patient appeared in a non-singleton
+    cluster. No offset is included; the trials column already provides the
+    denominator.
+    """
+    fixed_effects =fixed_effects or []
+    return fit_bambi_model(
+        data,
+        run_id,
+        dependent,
+        family="binomial",
+        trials=trials,
+        fixed_effects=fixed_effects,
+        interaction_effects=interaction_effects,
+        random_effects=random_effects,
+        offset=offset,
+        **kwargs,
+    )

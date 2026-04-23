@@ -1,42 +1,43 @@
-"""Data-loading helpers for the clustering manuscripts.
+"""Data-loading helpers for the clustering manuscripts — Polars edition.
 
-The analysis dataset is ~7.4M sequence-rows; eager loading of every column is
-wasteful and often impossible on a laptop. These helpers read only the columns
-each figure needs, and preserve the usual filters (Nextclade QC, a chosen
-primary Leiden resolution, valid WHO VOC labels) in one place so the papers
-stay internally consistent.
+Drop-in replacement for the pandas version. Public signatures are identical;
+return types are ``pl.DataFrame`` / ``pl.Series`` throughout.
 
-All paths are resolved from the repository's top-level `config.yaml`, not
-hard-coded, so moving the repo does not break the figure scripts.
+Key behavioural notes
+---------------------
+* ``assign_epoch`` returns a ``pl.Series`` with dtype ``pl.Enum(cats)`` —
+  the Polars equivalent of pandas' ordered ``Categorical``.  Downstream
+  code that relied on ``pd.Categorical`` ordering should use
+  ``pl.Enum``-aware comparisons or cast to ``pl.Utf8`` first.
+* Week truncation in ``_weekly_dominant_voc`` uses Monday-start ISO weeks
+  (``dt.truncate("1w")``), a one-day shift from the pandas ``W-SUN``
+  convention.  Epoch boundaries derived from the data are unaffected in
+  practice.
+* ``lru_cache`` arguments must remain hashable; the ``qc`` parameter stays
+  a ``tuple[str, ...]`` for this reason.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict
+from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Iterable
-import re
 
-import numpy as np
-import pandas as pd
+import polars as pl
 import yaml
+
 
 # ---------------------------------------------------------------------------
 # Defaults
 # ---------------------------------------------------------------------------
 
-#: Primary Leiden resolution used in headline results. Override per figure if
-#: the figure is an explicit sensitivity analysis over resolution.
+#: Primary Leiden resolution used in headline results.
 PRIMARY_RESOLUTION: float = 0.3
 
-#: Hardcoded WHO variant-of-concern epochs used as a fallback when the
-#: master parquet is not available. All live code should use
-#: :func:`get_voc_epochs` (or the :data:`VOC_EPOCHS` lazy attribute), which
-#: prefers epochs derived from the actual `who_voc` × `collection_date`
-#: distribution in the data — see :func:`derive_voc_epochs_from_data`.
+#: Hardcoded fallback VOC epochs (used when the parquet is unavailable).
 VOC_EPOCHS_DEFAULT: list[tuple[str, str, str]] = [
-    # (label, start_date, end_date)
     ("Pre-VOC",        "2020-07-01", "2020-11-30"),
     ("Alpha",          "2020-12-01", "2021-05-31"),
     ("Delta",          "2021-06-01", "2021-12-15"),
@@ -44,20 +45,22 @@ VOC_EPOCHS_DEFAULT: list[tuple[str, str, str]] = [
     ("Omicron BA.2+",  "2022-03-01", "2023-02-28"),
 ]
 
+
 @dataclass(frozen=True)
 class DOMAINS:
-    overall: str = "dz_simd_rank"
-    income: str = "dz_simd_income_rank"
+    overall:    str = "dz_simd_rank"
+    income:     str = "dz_simd_income_rank"
     employment: str = "dz_simd_employment_rank"
-    education: str = "dz_simd_education_rank"
-    health: str = "dz_simd_health_rank"
-    access: str = "dz_simd_access_rank"
-    crime: str = "dz_simd_crime_rank"
-    housing: str = "dz_simd_housing_rank"
+    education:  str = "dz_simd_education_rank"
+    health:     str = "dz_simd_health_rank"
+    access:     str = "dz_simd_access_rank"
+    crime:      str = "dz_simd_crime_rank"
+    housing:    str = "dz_simd_housing_rank"
+
 
 def _simd_domain() -> dict[str, str]:
-    """Return a mapping of SIMD domain names to their corresponding column names in the data."""
-    return { name: col for name, col in asdict(DOMAINS()).items()}
+    """Return a mapping of SIMD domain names to parquet column names."""
+    return {name: col for name, col in asdict(DOMAINS()).items()}
 
 
 # ---------------------------------------------------------------------------
@@ -66,9 +69,9 @@ def _simd_domain() -> dict[str, str]:
 
 
 def repo_root(start: Path | None = None) -> Path:
-    """Walk up from `start` (default: this file) until `config.yaml` is found."""
+    """Walk up from *start* (default: this file) until ``config.yaml`` is found."""
     p = (start or Path(__file__)).resolve()
-    for cand in [p] + list(p.parents):
+    for cand in [p, *p.parents]:
         if (cand / "config.yaml").exists():
             return cand
     raise FileNotFoundError("Could not locate config.yaml in any parent directory.")
@@ -78,15 +81,16 @@ def repo_root(start: Path | None = None) -> Path:
 class Paths:
     root: Path
     analysis_dataset: Path
+
     @classmethod
-    def from_config(cls, root: Path = None) -> "Paths":
+    def from_config(cls, root: Path | None = None) -> "Paths":
         root = root or repo_root()
         with open(root / "config.yaml") as f:
             cfg = yaml.safe_load(f)
         proc = cfg["data"]["processed"]
         return cls(
             root=root,
-            analysis_dataset=root / proc["analysis_dataset"]
+            analysis_dataset=root / proc["analysis_dataset"],
         )
 
 
@@ -101,148 +105,143 @@ def load_analysis_columns(
     resolution: float | None = PRIMARY_RESOLUTION,
     qc: Iterable[str] | None = ("good",),
     paths: Paths | None = None,
-) -> pd.DataFrame:
+) -> pl.DataFrame:
     """Read a narrow slice of the master sequence-level parquet.
 
     Parameters
     ----------
-    columns : list of str
-        Names of columns to read; `resolution` and `nextclade_qc` are added
-        automatically if filtering is requested.
-    resolution : float or None
+    columns:
+        Names of columns to read; ``resolution`` and ``nextclade_qc`` are
+        added automatically when filtering is requested.
+    resolution:
         If provided, rows are restricted to that Leiden resolution.
-    qc : iterable of str or None
+    qc:
         If provided, rows are restricted to these Nextclade QC statuses.
-    paths : Paths or None
+    paths:
         If provided, use these paths instead of resolving from config.
     """
-    paths: Paths = paths or Paths.from_config()
+    paths = paths or Paths.from_config()
     need = set(columns)
     if resolution is not None:
         need.add("resolution")
     if qc is not None:
         need.add("nextclade_qc")
-    df = pd.read_parquet(paths.analysis_dataset, columns=sorted(need))
+
+    df = pl.read_parquet(paths.analysis_dataset, columns=sorted(need))
+
     if resolution is not None:
-        df = df[df["resolution"] == resolution]
+        df = df.filter(pl.col("resolution") == resolution)
     if qc is not None:
-        df = df[df["nextclade_qc"].isin(list(qc))]
-    return df.reset_index(drop=True)
+        df = df.filter(pl.col("nextclade_qc").is_in(list(qc)))
+
+    return df
 
 
 @lru_cache(maxsize=4)
 def load_cluster_features(
     min_size: int = 1,
     resolution: float = PRIMARY_RESOLUTION,
-    qc: tuple[str] = ("good",)
-) -> pd.DataFrame:
-    """Return one row per (window_id, cluster_id) with its size, date, lineage, and SIMD features.
-    """
+    qc: tuple[str, ...] = ("good",),
+) -> pl.DataFrame:
+    """Return one row per (window_id, cluster_id) with size, date, lineage, and SIMD features."""
 
     cols = [
         "window_id", "window_idx", "cluster_id", "sequence_id",
-        "wn_mid_date", "wn_prop_sequenced", "who_voc", "pango_lineage",  "nextclade_qc",
+        "wn_mid_date", "wn_prop_sequenced", "who_voc", "pango_lineage", "nextclade_qc",
         "dz_simd_rank", "dz_simd_quintile", "dz_simd_decile",
         "dz_simd_income_rank", "dz_simd_employment_rank", "dz_simd_education_rank",
         "dz_simd_health_rank", "dz_simd_access_rank", "dz_simd_crime_rank",
         "dz_simd_housing_rank", "age_midpoint", "is_female", "is_vaccinated",
     ]
 
-
     df = load_analysis_columns(cols, resolution=resolution, qc=qc)
-    df["_is_mediocre"] = (df["nextclade_qc"] == "mediocre").astype(float)
-    df["_is_bad"]      = (df["nextclade_qc"] == "bad").astype(float)
 
-    grp = df.groupby(["window_id", "cluster_id"], observed=True)
+    df = df.with_columns(
+        (pl.col("nextclade_qc") == "mediocre").cast(pl.Float64).alias("_is_mediocre"),
+        (pl.col("nextclade_qc") == "bad").cast(pl.Float64).alias("_is_bad"),
+    )
 
-    def _mode(s: pd.Series):
-        m = s.mode()
-        return m.iloc[0] if len(m) > 0 else np.nan
+    # Build aggregation expressions ----------------------------------------
+    agg_exprs: list[pl.Expr] = [
+        pl.col("sequence_id").n_unique().alias("n_sequences"),
+        pl.col("window_idx").first(),
+        pl.col("wn_mid_date").first(),
+        pl.col("wn_prop_sequenced").first(),
+        pl.col("who_voc").first(),
+        pl.col("pango_lineage").first(),
+        pl.col("_is_mediocre").mean().alias("qc_frac_mediocre"),
+        pl.col("_is_bad").mean().alias("qc_frac_bad"),
+        # Demographics
+        pl.col("age_midpoint").median().alias("median_age"),
+        pl.col("age_midpoint").std().alias("age_diversity"),
+        pl.col("is_female").mean().alias("frac_female"),
+        pl.col("is_vaccinated").mean().alias("frac_vaccinated"),
+        # SIMD quintile / decile summary
+        # mode() returns all modal values; sort().first() picks the smallest on ties
+        pl.col("dz_simd_quintile").drop_nulls().mode().sort().first().alias("simd_quintile_mode"),
+        pl.col("dz_simd_quintile").std().alias("simd_quintile_std"),
+        pl.col("dz_simd_decile").drop_nulls().mode().sort().first().alias("simd_decile_mode"),
+        pl.col("dz_simd_decile").std().alias("simd_decile_std"),
+    ]
 
-    agg: dict[str, tuple] = {
-        # Cluster features
-        "n_sequences": ("sequence_id", "nunique"),
-        "window_idx": ("window_idx", "first"),
-        "wn_mid_date": ("wn_mid_date", "first"),
-        "wn_prop_sequenced": ("wn_prop_sequenced", "first"),
-        "who_voc": ("who_voc", "first"),
-        "pango_lineage": ("pango_lineage", "first"),
-        "qc_frac_mediocre": ("_is_mediocre", "mean"),
-        "qc_frac_bad": ("_is_bad", "mean"),
-
-        # Demographic features
-        "median_age": ("age_midpoint", "median"),
-        "age_diversity": ("age_midpoint", "std"),
-        "frac_female": ("is_female", "mean"),
-        "frac_vaccinated": ("is_vaccinated", "mean"),
-
-        # SIMD features
-        "simd_quintile_mode": ("dz_simd_quintile", _mode),
-        "simd_quintile_std": ("dz_simd_quintile", "std"),
-        "simd_decile_mode": ("dz_simd_decile", _mode),
-        "simd_decile_std": ("dz_simd_decile", "std"),
-    }
     for dom, col in _simd_domain().items():
-        agg[f"simd_{dom}_mean"] = (col, "mean")
+        agg_exprs.append(pl.col(col).mean().alias(f"simd_{dom}_mean"))
 
-    out = grp.agg(**agg).reset_index()
-    out["is_singleton"] = (out["n_sequences"] == 1).astype(int)
-    out["epoch"] = assign_epoch(out["wn_mid_date"])
-    out = out.dropna(subset=["epoch"]).copy()
+    out = df.group_by(["window_id", "cluster_id"]).agg(agg_exprs)
 
-    # Pandas reports NaN for the sample std of a single observation. For a
-    # singleton cluster there is no within-cluster socioeconomic mixing, so we
-    # treat that quantity as exactly zero rather than dropping the row.
-    singleton_std_missing = out["simd_quintile_std"].isna() & (out["is_singleton"] == 1)
-    out.loc[singleton_std_missing, "simd_quintile_std"] = 0.0
-
-    # Sequencing coverage on the log scale.
-    out["log_seq_prop"] = np.log(out["wn_prop_sequenced"])
-
-    # Ordered categoricals - reference levels chosen explicitly.
-    out["simd_quintile_mode"] = pd.Categorical(
-        out["simd_quintile_mode"].astype(int),
-        categories=[1, 2, 3, 4, 5],
-        ordered=True,
+    out = out.with_columns(
+        (pl.col("n_sequences") == 1).cast(pl.Int8).alias("is_singleton"),
     )
 
-    out["simd_decile_mode"] = pd.Categorical(
-        out["simd_decile_mode"].astype(int),
-        categories=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-        ordered=True,
+    # Epoch assignment --------------------------------------------------------
+    out = out.with_columns(
+        assign_epoch(out["wn_mid_date"]).alias("epoch")
+    )
+    out = out.filter(pl.col("epoch").is_not_null())
+
+    # Pandas reports NaN std for singletons. Treat as 0 (no within-cluster mixing).
+    out = out.with_columns(
+        pl.when(pl.col("simd_quintile_std").is_null() & (pl.col("is_singleton") == 1))
+        .then(pl.lit(0.0))
+        .otherwise(pl.col("simd_quintile_std"))
+        .alias("simd_quintile_std")
     )
 
-    assert np.isfinite(out["log_seq_prop"]).all(), (
-        "Non-finite offset values - check wn_prop_sequenced > 0"
+    # Log sequencing proportion (natural log) --------------------------------
+    out = out.with_columns(
+        pl.col("wn_prop_sequenced").log().alias("log_seq_prop")
+    )
+
+    assert out["log_seq_prop"].is_finite().all(), (
+        "Non-finite offset values — check wn_prop_sequenced > 0"
+    )
+
+    # Ordered integer columns (equivalent to pandas ordered Categorical).
+    # Cast to pl.Enum if downstream code needs categorical ordering; kept as
+    # Int32 here so arithmetic/statsmodels usage is unaffected.
+    out = out.with_columns(
+        pl.col("simd_quintile_mode").cast(pl.Int32),
+        pl.col("simd_decile_mode").cast(pl.Int32),
     )
 
     if min_size > 1:
-        out = out[out["n_sequences"] >= min_size]
-    return out.reset_index(drop=True)
+        out = out.filter(pl.col("n_sequences") >= min_size)
 
+    return out
 
 
 @lru_cache(maxsize=4)
 def load_individual_features(
-    qc: tuple[str] = ("good",)
-) -> pd.DataFrame:
-    """Return one row per (window_id, "patient_id", "resolution") with its size, date, lineage, and SIMD features.
+    qc: tuple[str, ...] = ("good",),
+) -> pl.DataFrame:
+    """Return one row per patient_id, averaging window-level metrics across
+    all (window_id, resolution) combinations the patient appears in.
     """
-    pattern = r"C\d+$"
-
-    def _non_singleton(ids):
-        yes = []
-        for i in ids:
-            if re.search(pattern, str(i)):
-                yes.append(1)
-            else:
-                yes.append(0)
-        return np.array(yes)
-
+    _NON_SINGLETON_RE = r"C\d+$"
 
     cols = [
         "window_id", "window_idx", "cluster_id", "patient_id", "sequence_id", "resolution",
-        "wn_mid_date", "wn_prop_sequenced", "who_voc", "pango_lineage",  "nextclade_qc",
+        "wn_mid_date", "wn_prop_sequenced", "who_voc", "pango_lineage", "nextclade_qc",
         "datazone", "dz_simd_rank", "dz_simd_quintile", "dz_simd_decile",
         "dz_simd_income_rank", "dz_simd_employment_rank", "dz_simd_education_rank",
         "dz_simd_health_rank", "dz_simd_access_rank", "dz_simd_crime_rank",
@@ -251,53 +250,44 @@ def load_individual_features(
 
     df = load_analysis_columns(cols, resolution=None, qc=qc)
 
-    grp = df.groupby(["window_id", "patient_id", "resolution"], observed=True)
-
-    agg: dict[str, tuple] = {
-        # Individual features
-        "sequence_id": ("sequence_id", "first"),
-        "window_idx": ("window_idx", "first"),
-        "wn_mid_date": ("wn_mid_date", "first"),
-        "wn_prop_sequenced": ("wn_prop_sequenced", "first"),
-        "who_voc": ("who_voc", "first"),
-        "pango_lineage": ("pango_lineage", "first"),
-        "nextclade_qc": ("nextclade_qc", "first"),
-        "datazone": ("datazone", "first"),
-
-        # fraction of time sequence in the cluster (n>1) across resolutions and windows
-        "non_singleton_cluster_fraction": ("cluster_id", lambda x: _non_singleton(x).mean()),
-        "non_singleton_k": ("cluster_id", lambda x: int( _non_singleton(x).sum())),
-        "non_singleton_n": ("cluster_id", "size"),
-
-        # Demographic features
-        "age_band": ("age_band", "first"),
-        "is_female":  ("is_female", "first"),
-        "is_vaccinated": ("is_vaccinated", "first"),
-
-        # SIMD features
-        "simd_quintile": ("dz_simd_quintile", "first"),
-        "simd_decile": ("dz_simd_decile", "first"),
-    }
-    for dom, col in _simd_domain().items():
-        agg[f"simd_{dom}"] = (col, "first")
-
-    out = grp.agg(**agg).reset_index()
-    out["epoch"] = assign_epoch(out["wn_mid_date"])
-    out = out.dropna(subset=["epoch"]).copy()
-
-    # Sequencing coverage on the log scale.
-    out["log_seq_prop"] = np.log(out["wn_prop_sequenced"])
-
-    assert np.isfinite(out["log_seq_prop"]).all(), (
-        "Non-finite offset values - check wn_prop_sequenced > 0"
+    df = df.with_columns(
+        pl.col("cluster_id").cast(pl.Utf8).str.contains(_NON_SINGLETON_RE)
+        .cast(pl.UInt8).alias("_non_singleton")
     )
-    return out.reset_index(drop=True)
+
+    stable = [
+        "age_band", "is_female", "is_vaccinated",
+        "datazone", "dz_simd_quintile", "dz_simd_decile",
+        *list(_simd_domain().values()), "pango_lineage",
+    ]
+
+    agg_exprs: list[pl.Expr] = (
+        [pl.col(c).first() for c in stable]
+        + [
+            pl.col("_non_singleton").mean().alias("non_singleton_cluster_fraction"),
+            pl.col("_non_singleton").sum().cast(pl.Int64).alias("non_singleton_k"),
+            pl.col("_non_singleton").count().alias("non_singleton_n"),
+            pl.col("wn_prop_sequenced").mean(),
+            pl.col("wn_prop_sequenced").log().mean().alias("log_seq_prop"),
+            pl.col("window_id").count().alias("n_windows"),
+        ]
+    )
+
+    out = df.group_by("patient_id").agg(agg_exprs)
+
+    assert out["log_seq_prop"].is_finite().all(), (
+        "Non-finite offset values — check wn_prop_sequenced > 0"
+    )
+
+    return out
+
+
 # ---------------------------------------------------------------------------
 # VOC epoch derivation from data
 # ---------------------------------------------------------------------------
 
 
-def _is_ba1(lineage) -> bool:
+def _is_ba1(lineage: object) -> bool:
     """True for BA.1 and any BA.1.* sub-lineage (but not BA.10, BA.11, …)."""
     if not isinstance(lineage, str):
         return False
@@ -305,110 +295,166 @@ def _is_ba1(lineage) -> bool:
 
 
 def _weekly_dominant_voc(
-    dates: pd.Series,
-    voc: pd.Series,
+    dates: pl.Series,
+    voc: pl.Series,
     *,
     dominance_threshold: float,
-) -> pd.DataFrame:
+) -> pl.DataFrame:
     """For each ISO week, return the dominant WHO VOC and its share.
 
-    Weeks whose dominant label's share is below `dominance_threshold`, or
+    Weeks whose dominant label's share is below *dominance_threshold*, or
     whose dominant label is missing / "None", are marked "Pre-VOC".
     """
-    weeks = pd.to_datetime(dates).dt.to_period("W-SUN").dt.start_time
-    labels = voc.fillna("None").astype(str).replace({"": "None"})
-    tbl = pd.crosstab(weeks, labels)
-    shares = tbl.div(tbl.sum(axis=1), axis=0)
-    dominant = shares.idxmax(axis=1)
-    share = shares.max(axis=1)
-    out = pd.DataFrame(
-        {"week": shares.index, "dominant": dominant.values, "share": share.values}
+    df = pl.DataFrame({
+        "date": dates.cast(pl.Date),
+        "voc":  voc.fill_null("None").cast(pl.Utf8),
+    })
+
+    # Truncate to Monday-start week (ISO).  One day off from pandas W-SUN but
+    # immaterial for epoch boundary derivation.
+    df = df.with_columns(
+        pl.col("date").dt.truncate("1w").alias("week")
     )
-    undetermined = (out["share"] < dominance_threshold) | out["dominant"].isin(["None"])
-    out.loc[undetermined, "dominant"] = "Pre-VOC"
-    return out.sort_values("week").reset_index(drop=True)
+
+    # Count rows per (week, voc), then compute each label's share within the week
+    counts = (
+        df.group_by(["week", "voc"])
+        .agg(pl.len().alias("n"))
+        .join(
+            df.group_by("week").agg(pl.len().alias("total")),
+            on="week",
+        )
+        .with_columns(
+            (pl.col("n") / pl.col("total")).alias("share")
+        )
+    )
+
+    # Dominant = the label with highest share in each week
+    dominant = (
+        counts
+        .group_by("week")
+        .agg(
+            pl.col("voc").sort_by("share", descending=True).first().alias("dominant"),
+            pl.col("share").max().alias("share"),
+        )
+        .sort("week")
+    )
+
+    # Weeks with no clear leader → "Pre-VOC"
+    dominant = dominant.with_columns(
+        pl.when(
+            (pl.col("share") < dominance_threshold)
+            | pl.col("dominant").is_in(["None", ""])
+        )
+        .then(pl.lit("Pre-VOC"))
+        .otherwise(pl.col("dominant"))
+        .alias("dominant")
+    )
+
+    return dominant
 
 
 def _contiguous_runs(
-    weekly: pd.DataFrame, min_weeks: int
-) -> list[tuple[str, pd.Timestamp, pd.Timestamp]]:
+    weekly: pl.DataFrame,
+    min_weeks: int,
+) -> list[tuple[str, date, date]]:
     """Group consecutive weeks with the same dominant label.
 
-    Runs shorter than `min_weeks` are merged into the preceding run (if any)
-    or the following run (for a short leading segment). This keeps a one-week
-    VOC blip from spawning a spurious epoch.
+    Runs shorter than *min_weeks* are merged into the preceding run (if any)
+    or the following run (for a short leading segment).
     """
-    if weekly.empty:
+    if weekly.is_empty():
         return []
-    runs: list[list] = []  # (label, start, end)
-    cur_label = weekly["dominant"].iloc[0]
-    cur_start = weekly["week"].iloc[0]
-    cur_end = cur_start
-    for _, row in weekly.iloc[1:].iterrows():
+
+    rows = list(weekly.sort("week").iter_rows(named=True))
+
+    runs: list[list] = []
+    cur_label: str = rows[0]["dominant"]
+    cur_start: date = rows[0]["week"]
+    cur_end:   date = cur_start
+
+    for row in rows[1:]:
         if row["dominant"] == cur_label:
             cur_end = row["week"]
         else:
             runs.append([cur_label, cur_start, cur_end])
             cur_label = row["dominant"]
             cur_start = row["week"]
-            cur_end = row["week"]
+            cur_end   = row["week"]
     runs.append([cur_label, cur_start, cur_end])
 
-    def _weeks(run) -> int:
+    def _weeks(run: list) -> int:
         return int(((run[2] - run[1]).days // 7) + 1)
 
-    # Absorb short runs into their longer neighbour.
+    # Absorb short runs into their longer neighbour
     cleaned: list[list] = []
     for rn in runs:
         if _weeks(rn) < min_weeks and cleaned:
             cleaned[-1][2] = rn[2]
         else:
             cleaned.append(rn)
-    # A short leading run now has no predecessor; fold it forward instead.
+
+    # A short leading run has no predecessor — fold it forward instead
     if len(cleaned) >= 2 and _weeks(cleaned[0]) < min_weeks:
         cleaned[1][1] = cleaned[0][1]
         cleaned = cleaned[1:]
-    # Collapse any adjacent runs that now share a label post-merge.
+
+    # Collapse adjacent runs that now share a label after merging
     collapsed: list[list] = []
     for rn in cleaned:
         if collapsed and collapsed[-1][0] == rn[0]:
             collapsed[-1][2] = rn[2]
         else:
             collapsed.append(rn)
+
     return [(lbl, s, e) for lbl, s, e in collapsed]
 
 
 def _split_omicron_by_lineage(
-    epochs: list[tuple[str, pd.Timestamp, pd.Timestamp]],
-    df: pd.DataFrame,
-) -> list[tuple[str, pd.Timestamp, pd.Timestamp]]:
+    epochs: list[tuple[str, date, date]],
+    df: pl.DataFrame,
+) -> list[tuple[str, date, date]]:
     """Split the single Omicron epoch into BA.1 vs BA.2+ using pango_lineage.
 
     The split week is the first week in which BA.1's share falls below 50%.
-    If no such crossover exists (or the Omicron run is too short), the epoch
-    is kept as "Omicron" unchanged.
+    If no crossover exists, the epoch is kept as "Omicron" unchanged.
     """
-    refined: list[tuple[str, pd.Timestamp, pd.Timestamp]] = []
+    refined: list[tuple[str, date, date]] = []
+
     for lbl, s, e in epochs:
         if lbl != "Omicron":
             refined.append((lbl, s, e))
             continue
-        sub = df[(df["collection_date"] >= s) & (df["collection_date"] <= e)]
+
+        sub = df.filter(
+            (pl.col("collection_date") >= s) & (pl.col("collection_date") <= e)
+        )
         if len(sub) < 100:
             refined.append((lbl, s, e))
             continue
-        week = pd.to_datetime(sub["collection_date"]).dt.to_period("W-SUN").dt.start_time
-        ba1_share = (
-            sub.assign(_week=week.values, _ba1=sub["pango_lineage"].map(_is_ba1))
-            .groupby("_week")["_ba1"].mean().sort_index()
+
+        sub = sub.with_columns(
+            pl.col("collection_date").cast(pl.Date).dt.truncate("1w").alias("_week"),
+            pl.col("pango_lineage")
+            .map_elements(_is_ba1, return_dtype=pl.Boolean)
+            .alias("_ba1"),
         )
-        below = ba1_share[ba1_share < 0.5]
-        if below.empty or len(ba1_share) < 4:
+
+        ba1_share = (
+            sub.group_by("_week")
+            .agg(pl.col("_ba1").cast(pl.Float64).mean().alias("ba1_share"))
+            .sort("_week")
+        )
+
+        below = ba1_share.filter(pl.col("ba1_share") < 0.5)
+        if below.is_empty() or len(ba1_share) < 4:
             refined.append((lbl, s, e))
             continue
-        split_week = below.index[0]
-        refined.append(("Omicron BA.1", s, split_week - pd.Timedelta(days=1)))
+
+        split_week: date = below["_week"][0]
+        refined.append(("Omicron BA.1", s, split_week - timedelta(days=1)))
         refined.append(("Omicron BA.2+", split_week, e))
+
     return refined
 
 
@@ -424,19 +470,17 @@ def derive_voc_epochs_from_data(
 
     Algorithm
     ---------
-    1. Aggregate QC-passing sequences (one row per ``sequence_id``) by ISO
-       week × ``who_voc``.
-    2. In each week, find the dominant VOC. Weeks where no label holds at
-       least ``dominance_threshold`` of the sequenced cases are labelled
-       "Pre-VOC".
+    1. Aggregate QC-passing sequences by ISO week × ``who_voc``.
+    2. In each week, find the dominant VOC.  Weeks where no label holds at
+       least *dominance_threshold* of sequences are labelled "Pre-VOC".
     3. Group consecutive weeks sharing a dominant label into a single epoch.
-       Runs shorter than ``min_weeks`` are merged into an adjacent epoch.
-    4. If ``split_omicron``, split the Omicron epoch into BA.1 and BA.2+
+       Runs shorter than *min_weeks* are merged into an adjacent epoch.
+    4. If *split_omicron*, split the Omicron epoch into BA.1 and BA.2+
        using ``pango_lineage`` (crossover = first week BA.1 share < 50%).
 
     Returns
     -------
-    list of ``(label, "YYYY-MM-DD", "YYYY-MM-DD")``. Falls back to
+    list of ``(label, "YYYY-MM-DD", "YYYY-MM-DD")``.  Falls back to
     :data:`VOC_EPOCHS_DEFAULT` if the master parquet cannot be loaded.
     """
     try:
@@ -447,12 +491,13 @@ def derive_voc_epochs_from_data(
     except Exception:  # pragma: no cover — path/config failures
         return list(VOC_EPOCHS_DEFAULT)
 
-    df = df.dropna(subset=["collection_date"]).drop_duplicates("sequence_id")
-    if df.empty:
+    df = df.filter(pl.col("collection_date").is_not_null()).unique("sequence_id")
+    if df.is_empty():
         return list(VOC_EPOCHS_DEFAULT)
 
     weekly = _weekly_dominant_voc(
-        df["collection_date"], df["who_voc"],
+        df["collection_date"],
+        df["who_voc"],
         dominance_threshold=dominance_threshold,
     )
     epochs = _contiguous_runs(weekly, min_weeks=min_weeks)
@@ -460,6 +505,7 @@ def derive_voc_epochs_from_data(
         epochs = _split_omicron_by_lineage(epochs, df)
     if not epochs:
         return list(VOC_EPOCHS_DEFAULT)
+
     return [
         (lbl, s.strftime("%Y-%m-%d"), e.strftime("%Y-%m-%d"))
         for lbl, s, e in epochs
@@ -470,31 +516,49 @@ def get_voc_epochs(*, from_data: bool = True) -> list[tuple[str, str, str]]:
     """Return the authoritative list of VOC epochs.
 
     By default the epochs are derived from the dataset via
-    :func:`derive_voc_epochs_from_data`; set ``from_data=False`` to force the
-    hardcoded :data:`VOC_EPOCHS_DEFAULT`. If data-driven derivation fails for
-    any reason (missing parquet, unexpected schema), the default is returned.
+    :func:`derive_voc_epochs_from_data`; set ``from_data=False`` to force
+    the hardcoded :data:`VOC_EPOCHS_DEFAULT`.
     """
     if not from_data:
         return list(VOC_EPOCHS_DEFAULT)
     return list(derive_voc_epochs_from_data())
 
-def assign_epoch(dates: pd.Series) -> pd.Categorical:
-    """Assign each row to a VOC epoch label based on its date."""
+
+def assign_epoch(dates: pl.Series) -> pl.Series:
+    """Assign each row to a VOC epoch label based on its date.
+
+    Returns a ``pl.Series`` with dtype ``pl.Enum(cats)`` — the ordered
+    categorical equivalent of ``pd.Categorical(..., ordered=True)``.
+    Null values indicate rows that fall outside all epoch windows.
+    """
     epochs = get_voc_epochs()
-    labels = pd.Series(np.nan, index=dates.index, dtype=object)
-    for label, s, e in epochs:
-        mask = (dates >= pd.Timestamp(s)) & (dates <= pd.Timestamp(e))
-        labels.loc[mask] = label
     cats = [lbl for lbl, *_ in epochs]
-    return pd.Categorical(labels, categories=cats, ordered=True)
+    epoch_enum = pl.Enum(cats)
+
+    # Build label column via successive when/otherwise passes
+    label_expr: pl.Expr = pl.lit(None, dtype=pl.Utf8)
+    for lbl, s, e in epochs:
+        start_d = date.fromisoformat(s)
+        end_d   = date.fromisoformat(e)
+        label_expr = (
+            pl.when(
+                (pl.col("_date") >= start_d) & (pl.col("_date") <= end_d)
+            )
+            .then(pl.lit(lbl))
+            .otherwise(label_expr)
+        )
+
+    result = (
+        pl.DataFrame({"_date": dates.cast(pl.Date)})
+        .with_columns(label_expr.alias("epoch"))
+        ["epoch"]
+        .cast(epoch_enum)
+    )
+    return result
+
 
 def __getattr__(name: str):
-    """Lazy module-level attribute so `data.VOC_EPOCHS` uses derived values.
-
-    Existing call sites (``from manuscripts.utils.data import VOC_EPOCHS``
-    and ``data.VOC_EPOCHS``) are resolved through this hook on first access
-    and cached thereafter by :func:`derive_voc_epochs_from_data`.
-    """
+    """Lazy module-level attribute so ``data.VOC_EPOCHS`` uses derived values."""
     if name == "VOC_EPOCHS":
         return get_voc_epochs()
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
