@@ -90,7 +90,7 @@ def fit_bambi_model(
 
     # --- Formula construction ---
     if formula is None:
-        effects = fixed_effects
+        effects = fixed_effects or []
 
         if interaction_effects:
             effects.extend(interaction_effects)
@@ -131,7 +131,7 @@ def fit_bambi_model(
         target_accept=target_accept,
         chains=chains,
         random_seed=random_seed,
-        # inference_method="numpyro",  # comment out for Ubuntu
+        inference_method="numpyro",  # comment out for Ubuntu
     )
 
     summary = az.summary(trace)
@@ -168,7 +168,7 @@ def fit_cluster_model(
     which accounts for variation in sequencing coverage across windows.
     """
     fixed_effects = fixed_effects or []
-    random_effects = random_effects or ["(1 | window_id)"]
+    random_effects = random_effects or []
     return fit_bambi_model(
         data,
         run_id,
@@ -201,7 +201,8 @@ def fit_individual_model(
     cluster. No offset is included; the trials column already provides the
     denominator.
     """
-    fixed_effects =fixed_effects or []
+    fixed_effects = fixed_effects or []
+    random_effects = random_effects or []
     return fit_bambi_model(
         data,
         run_id,
