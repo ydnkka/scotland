@@ -22,13 +22,12 @@ from __future__ import annotations
 from dataclasses import dataclass, asdict
 from functools import lru_cache
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Literal
 
 import numpy as np
 import ruptures as rpt
 import polars as pl
 import yaml
-from nbdime.config import Global
 
 # ---------------------------------------------------------------------------
 # Defaults
@@ -248,9 +247,19 @@ def load_cluster_features(
 @lru_cache(maxsize=4)
 def load_individual_features(
     qc: tuple[str, ...] = ("good",),
+    format: Literal["aggregate", "long"] = "aggregate",
 ) -> pl.DataFrame:
-    """Return one row per sequence_id, averaging window-level metrics across
-    all (window_id, resolution) combinations the sequence appears in.
+    """Return sequence-level features in aggregate or long format.
+
+    Parameters
+    ----------
+    qc:
+        QC filter values to pass to load_analysis_columns.
+    format:
+        - "aggregate" : one row per sequence_id, non_singleton_k/n summarised
+                        across all (window_id, resolution) combinations.
+        - "long"      : one row per (sequence_id, resolution, window_id), with binary
+                        in_non_singleton for use in mixed-effects models.
     """
     _NON_SINGLETON_RE = r"\|C\d+$"
     cols = [
@@ -259,7 +268,7 @@ def load_individual_features(
         "datazone", "dz_simd_rank", "dz_simd_quintile", "dz_simd_decile",
         "dz_simd_income_rank", "dz_simd_employment_rank", "dz_simd_education_rank",
         "dz_simd_health_rank", "dz_simd_access_rank", "dz_simd_crime_rank",
-        "dz_simd_housing_rank", "age_band", "is_female", "is_vaccinated", "collection_date",
+        "dz_simd_housing_rank", "age_band", "age_midpoint", "is_female", "is_vaccinated", "collection_date",
     ]
     df = load_analysis_columns(cols, resolution=None, qc=qc)
     df = df.with_columns(
@@ -267,12 +276,52 @@ def load_individual_features(
         .cast(pl.UInt8).alias("_non_singleton")
     )
 
+    # ── shared: stable per-sequence columns ─────────────────────────────────
     stable = [
         "patient_id", "collection_date",
-        "age_band", "is_female", "is_vaccinated", "who_voc",
+        "age_band", "age_midpoint", "is_female", "is_vaccinated", "who_voc",
         "datazone", "dz_simd_quintile", "dz_simd_decile",
         *list(_simd_domain().values()), "pango_lineage",
     ]
+
+    # ── wave detection (needed in both paths) ────────────────────────────────
+    _, wdf = detect_waves(df)
+    global WAVE
+    if WAVE is None:
+        WAVE = get_voc_waves(wdf)
+
+    # ════════════════════════════════════════════════════════════════════════
+    if format == "long":
+        return _build_long(df, stable, wdf)
+    else:
+        return _build_aggregate(df, stable, wdf)
+
+
+def _attach_stable_and_wave(
+    out: pl.DataFrame,
+    wdf: pl.DataFrame,
+) -> pl.DataFrame:
+    """Add z-scores, wave, and voc fill-null — shared by both paths."""
+    for dom in _simd_domain().keys():
+        col = "dz_simd_rank" if dom == "overall" else f"dz_simd_{dom}_rank"
+        out = out.with_columns(_standardise(out[col]).alias(f"{dom}_zscore"))
+
+    out = out.with_columns(
+        assign_wave(out["collection_date"], wdf).alias("wave")
+    )
+    out = out.with_columns(
+        pl.col("wave").fill_null("unknown"),
+        pl.col("who_voc").fill_null("non_voc"),
+    )
+    return out
+
+
+def _build_aggregate(
+    df: pl.DataFrame,
+    stable: list[str],
+    wdf: pl.DataFrame,
+) -> pl.DataFrame:
+    """One row per sequence_id — original behaviour."""
     agg_exprs: list[pl.Expr] = (
         [pl.col(c).first() for c in stable]
         + [
@@ -285,35 +334,63 @@ def load_individual_features(
         ]
     )
     out = df.group_by("sequence_id").agg(agg_exprs)
-
-    for dom in _simd_domain().keys():
-        if dom != "overall":
-            out = out.with_columns(_standardise(out[f"dz_simd_{dom}_rank"]).alias(f"{dom}_zscore"))
-        else:
-            out = out.with_columns(_standardise(out["dz_simd_rank"]).alias(f"{dom}_zscore"))
-
-    # Wave assignment --------------------------------------------------------
-    _, wdf = detect_waves(df)
-    global WAVE
-    if WAVE is None:
-        WAVE = get_voc_waves(wdf)
-    out = out.with_columns(
-        assign_wave(out["collection_date"], wdf).alias("wave")
-    )
-    out = out.with_columns(pl.col("wave").fill_null("unknown").alias("wave"))
-    out = out.with_columns(pl.col("who_voc").fill_null("non_voc").alias("who_voc"))
+    out = _attach_stable_and_wave(out, wdf)
 
     assert out["log_seq_prop"].is_finite().all(), (
         "Non-finite offset values — check wn_prop_sequenced > 0"
     )
-    out = out.select([
+    return out.select([
         "patient_id", "sequence_id", "collection_date", "log_seq_prop",
-        "age_band", "is_female", "is_vaccinated", "pango_lineage", "who_voc",
+        "age_band", "age_midpoint", "is_female", "is_vaccinated", "pango_lineage", "who_voc",
         "datazone", "dz_simd_quintile", "dz_simd_decile",
-        *list(f"{dom}_zscore" for dom in _simd_domain().keys()),
+        *[f"{dom}_zscore" for dom in _simd_domain().keys()],
         "non_singleton_k", "non_singleton_n", "n_windows", "n_resolutions", "wave",
     ])
-    return out
+
+
+def _build_long(
+    df: pl.DataFrame,
+    stable: list[str],
+    wdf: pl.DataFrame,
+) -> pl.DataFrame:
+    """One row per (sequence_id, resolution, window_id)."""
+    agg_exprs: list[pl.Expr] = (
+        [pl.col(c).first() for c in stable]
+        + [
+            pl.col("_non_singleton").max().alias("in_non_singleton"),
+            pl.col("wn_mid_date").first().alias("wn_mid_date"),
+            pl.col("window_idx").first().alias("window_idx"),
+            pl.col("wn_prop_sequenced").mean(),
+            pl.col("wn_prop_sequenced").log().mean().alias("log_seq_prop"),
+        ]
+    )
+    out = df.group_by(["sequence_id", "resolution", "window_id"]).agg(agg_exprs)
+    out = _attach_stable_and_wave(out, wdf)
+
+    assert out["log_seq_prop"].is_finite().all(), (
+        "Non-finite offset values — check wn_prop_sequenced > 0"
+    )
+
+    age_map = {
+        '00-04': '00-09', '05-09': '00-09',
+        '10-14': '10-19', '15-19': '10-19',
+        '20-24': '20-39', '25-29': '20-39', '30-34': '20-39', '35-39': '20-39',
+        '40-44': '40–59', '45-49': '40–59', '50-54': '40–59', '55-59': '40–59',
+        '60-64': '60-74', '65-69': '60-74', '70-74': '60-74',
+        '75+': 'elderly',
+    }
+
+    out = out.with_columns(
+        pl.col("age_band").replace(age_map).alias("age_group")
+    )
+    return out.select([
+        "patient_id", "sequence_id", "resolution", "window_id", "window_idx",
+        "wn_mid_date", "collection_date", "log_seq_prop",
+        "age_band", "age_group", "is_female", "age_midpoint", "is_vaccinated", "pango_lineage", "who_voc",
+        "datazone", "dz_simd_quintile", "dz_simd_decile",
+        *[f"{dom}_zscore" for dom in _simd_domain().keys()],
+        "in_non_singleton", "wave",
+    ])
 
 
 # ---------------------------------------------------------------------------

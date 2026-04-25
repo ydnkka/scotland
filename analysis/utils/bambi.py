@@ -45,12 +45,12 @@ def fit_bambi_model(
     family:
         Likelihood family — ``"negativebinomial"`` or ``"binomial"``.
     fixed_effects:
-        Main-effect terms. Default: ``["C(simd_quintile_mode, Treatment(3))"]``.
+        Main-effect terms.
     interaction_effects:
         Interaction terms. Use ``":"`` for a pure interaction
         (e.g. ``"var1:var2"``), ``"*"`` to include main effects too.
     random_effects:
-        Grouping / hierarchical terms. Default: ``["(1 | window_id)"]``.
+        Grouping / hierarchical terms.
     trials:
         Column of trial counts for ``binomial`` proportion models. When
         supplied the LHS becomes ``proportion(dependent, trials)``.
@@ -163,9 +163,6 @@ def fit_cluster_model(
     **kwargs,
 ) -> tuple[bmb.Model, az.InferenceData]:
     """Fit a negative-binomial model on cluster-level data.
-
-    Defaults to a ``n_sequences`` response with a ``log_seq_prop`` offset,
-    which accounts for variation in sequencing coverage across windows.
     """
     fixed_effects = fixed_effects or []
     random_effects = random_effects or []
@@ -195,11 +192,6 @@ def fit_individual_model(
     **kwargs,
 ) -> tuple[bmb.Model, az.InferenceData]:
     """Fit a binomial proportion model on individual / patient-level data.
-
-    Defaults to modelling ``non_singleton_k / non_singleton_n`` — the
-    fraction of windows in which a patient appeared in a non-singleton
-    cluster. No offset is included; the trials column already provides the
-    denominator.
     """
     fixed_effects = fixed_effects or []
     random_effects = random_effects or []
