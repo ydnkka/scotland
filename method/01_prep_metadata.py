@@ -45,11 +45,17 @@ def load_config(path: Path) -> dict:
         return yaml.safe_load(f)
 
 
-def band_to_midpoints(bands: pd.Series) -> pd.Series:
+def get_age_midpoints(bands: pd.Series) -> np.ndarray:
+    """Convert age-band strings (e.g. '30-34', '85+') to numeric midpoints.
+
+    Open-ended bands (e.g. '85+') are given a half-width of 5 years, placing
+    their midpoint at lower + 2.5 — consistent with closed 5-year bands.
+    """
     s = bands.astype("string")
     lower = s.str.extract(r"(\d+)")[0].astype(float)
     upper = s.str.extract(r"-(\d+)")[0].astype(float)
     open_ended = s.str.endswith("+").fillna(False)
+    # Give open-ended bands (e.g. '85+') a synthetic upper bound of lower + 5
     upper = np.where(open_ended, lower + 5.0, upper)
     with np.errstate(invalid="ignore"):
         mid = (lower + upper) / 2.0
@@ -57,6 +63,7 @@ def band_to_midpoints(bands: pd.Series) -> pd.Series:
 
 
 def prep_testing(csv_path: Path, out_path: Path) -> pd.DataFrame:
+    """Aggregate raw test records to daily datazone-level positive/negative counts."""
     df = pd.read_csv(csv_path, parse_dates=["date_ecoss_specimen"], date_format="%Y%m%d")
     df.rename(columns={
         "date_ecoss_specimen": "collection_date",
@@ -64,8 +71,13 @@ def prep_testing(csv_path: Path, out_path: Path) -> pd.DataFrame:
         "datazone2011": "datazone",
     }, inplace=True)
     df.sort_values("collection_date", inplace=True)
+
+    # Drop duplicate records for the same patient/specimen/datazone on the same day,
+    # keeping the first occurrence after sorting by date
     df.drop_duplicates(subset=["patient_id", "specimen_id", "datazone"], keep="first", inplace=True)
 
+    # Aggregate separately then merge so that zeros are preserved for
+    # datazones that had tests but no positives/negatives on a given day
     total = df.groupby(["collection_date", "datazone"]).size().reset_index(name="dz_total_tests")
     pos = (df[df["test_result"] == "POSITIVE"]
            .groupby(["collection_date", "datazone"]).size()
@@ -85,11 +97,15 @@ def prep_testing(csv_path: Path, out_path: Path) -> pd.DataFrame:
 
 
 def prep_simd(csv_path: Path, out_path: Path) -> pd.DataFrame:
+    """Select and rename SIMD 2020v2 domain ranks/deciles for each datazone."""
     df = pd.read_csv(csv_path)
     col_map = {
         "DZ": "datazone",
         "Population": "dz_population",
         "Working_Age_Population": "dz_working_age_population",
+        "URname": "dz_urban_rural_class",
+        "LAname": "dz_local_authority",
+        "HBname": "dz_health_board",
         "SIMD2020v2_Rank": "dz_simd_rank",
         "SIMD2020v2_Quintile": "dz_simd_quintile",
         "SIMD2020v2_Decile": "dz_simd_decile",
@@ -102,6 +118,7 @@ def prep_simd(csv_path: Path, out_path: Path) -> pd.DataFrame:
         "SIMD2020_Crime_Domain_Rank": "dz_simd_crime_rank",
         "SIMD2020_Housing_Domain_Rank": "dz_simd_housing_rank",
     }
+
     df.rename(columns=col_map, inplace=True)
     df = df[list(col_map.values())]
     assert df.notna().all().all(), "SIMD data contains unexpected nulls"
@@ -113,14 +130,18 @@ def prep_simd(csv_path: Path, out_path: Path) -> pd.DataFrame:
 
 
 def prep_geography(shp_path: Path, simd: pd.DataFrame, out_path: Path) -> gpd.GeoDataFrame:
+    """Compute datazone centroids and join SIMD attributes; retain geometry for geoparquet output."""
     gdf = gpd.read_file(shp_path).set_index("DataZone")
     gdf.index.name = "datazone"
+
+    # Compute centroids in the native CRS (OSGB36 / EPSG:27700)
     gdf["dz_centroid"] = gdf.geometry.centroid
     gdf["dz_xcoord"] = gdf["dz_centroid"].x
     gdf["dz_ycoord"] = gdf["dz_centroid"].y
 
     simd_idx = simd.set_index("datazone")
-    gdf = gdf[["dz_xcoord", "dz_ycoord"]].merge(
+
+    gdf = gdf[["geometry", "dz_xcoord", "dz_ycoord"]].merge(
         simd_idx, how="left", left_index=True, right_index=True
     )
 
@@ -131,6 +152,7 @@ def prep_geography(shp_path: Path, simd: pd.DataFrame, out_path: Path) -> gpd.Ge
 
 
 def prep_vaccination(csv_path: Path, out_path: Path) -> pd.DataFrame:
+    """Aggregate raw vaccination records to daily datazone-level summary statistics."""
     df = pd.read_csv(csv_path, low_memory=False)
     df["vacc_occurence_time"] = pd.to_datetime(df["vacc_occurence_time"], format="%Y%m%d", errors="coerce")
     df.dropna(subset=["vacc_occurence_time", "age_band"], inplace=True)
@@ -140,7 +162,7 @@ def prep_vaccination(csv_path: Path, out_path: Path) -> pd.DataFrame:
         "datazone2011": "datazone",
     }, inplace=True)
 
-    df["age_midpoint"] = band_to_midpoints(df["age_band"])
+    df["age_midpoint"] = get_age_midpoints(df["age_band"])
 
     out = (
         df.groupby(["vaccination_date", "datazone"])
@@ -167,11 +189,16 @@ def prep_sequence_metadata(
     geography: gpd.GeoDataFrame,
     out_path: Path,
 ) -> pd.DataFrame:
+    """Join sequence metadata with Nextclade QC/lineage calls, geography, and vaccination history."""
+
+    # --- Nextclade annotations ---
     nextclade = pd.read_table(nextclade_tsv, low_memory=False)
     assert not nextclade["seqName"].duplicated(keep=False).any(), "Duplicate seqName in nextclade TSV"
+    # Extract the numeric PHS sequence ID from the COGUK seqName (e.g. 'Scotland/LIVE-XXXXX/2021')
     nextclade["seq_id"] = nextclade["seqName"].str.split("/").apply(lambda x: x[1])
     nextclade = nextclade.set_index("seq_id")
 
+    # --- Core sequence metadata ---
     meta = pd.read_csv(metadata_csv, parse_dates=["Collection_Date"])
     meta.rename(columns={
         "Collection_Date": "collection_date",
@@ -183,36 +210,50 @@ def prep_sequence_metadata(
 
     assert set(meta["seq_id"]).issubset(set(nextclade.index)), "seq_ids not in nextclade"
 
+    # Attach Nextclade fields using seq_id as the alignment key
     meta["sequence_id"] = nextclade.loc[meta["seq_id"].values, "seqName"].values
     meta["clade"] = nextclade.loc[meta["seq_id"].values, "clade"].values
     meta["who_voc"] = nextclade.loc[meta["seq_id"].values, "clade_who"].values
     meta["pango_lineage"] = nextclade.loc[meta["seq_id"].values, "Nextclade_pango"].values
     meta["nextclade_qc"] = nextclade.loc[meta["seq_id"].values, "qc.overallStatus"].values
-    meta["age_midpoint"] = band_to_midpoints(meta["age_band"])
+    meta["age_midpoint"] = get_age_midpoints(meta["age_band"])
 
     meta.sort_values("collection_date", inplace=True)
+    # A small number of specimens have duplicate records; keep the earliest entry
     meta.drop_duplicates("specimen_id", keep="first", inplace=True)
 
+    # --- Geography: attach datazone centroid coordinates ---
     geo_cols = geography.reset_index()[["datazone", "dz_xcoord", "dz_ycoord"]]
     meta = meta.merge(geo_cols, on="datazone", how="left")
 
-    # Attach latest vaccination before collection date
+    # --- Vaccination history: find the most recent dose before each collection date ---
     vacc = pd.read_csv(vaccination_csv, low_memory=False)
     vacc["vacc_occurence_time"] = pd.to_datetime(vacc["vacc_occurence_time"], format="%Y%m%d", errors="coerce")
     vacc.dropna(subset=["vacc_occurence_time", "age_band"], inplace=True)
     vacc.rename(columns={"PatientID": "patient_id", "vacc_occurence_time": "vaccination_date"}, inplace=True)
 
+    # Cross-join sequences with vaccination records for the same patient, then
+    # keep only vaccinations that occurred on or before the sequence collection date.
+    # This produces one row per (sequence, prior vaccination) combination.
     seq_vacc = meta.merge(vacc[["patient_id", "vaccination_date", "vacc_dose_number"]], on="patient_id", how="left")
     seq_vacc = seq_vacc[seq_vacc["vaccination_date"] <= seq_vacc["collection_date"]]
+
+    # Group by both patient_id AND collection_date so that patients with
+    # multiple sequenced specimens each get the correct latest-prior-dose for
+    # their own collection date.
     latest_vacc = (
-        seq_vacc.sort_values(["patient_id", "vaccination_date"])
-        .groupby("patient_id")
-        .tail(1)[["patient_id", "vaccination_date", "vacc_dose_number"]]
+        seq_vacc.sort_values(["patient_id", "collection_date", "vaccination_date"])
+        .groupby(["patient_id", "collection_date"])
+        .tail(1)[["patient_id", "collection_date", "vaccination_date", "vacc_dose_number"]]
     )
-    meta = meta.merge(latest_vacc, on="patient_id", how="left")
+    meta = meta.merge(latest_vacc, on=["patient_id", "collection_date"], how="left")
+
     meta["is_female"] = (meta["sex"] == "Female").astype(float)
+
+    meta["vacc_dose_number"] = meta["vacc_dose_number"].fillna(0)
     meta["is_vaccinated"] = (meta["vacc_dose_number"] > 0).astype(float)
 
+    # Drop rows missing any field required for downstream modelling
     required = ["datazone", "collection_date", "patient_id", "sex", "age_band",
                 "sequence_id", "clade", "pango_lineage", "nextclade_qc"]
     meta.dropna(subset=required, inplace=True)
@@ -246,10 +287,10 @@ def main() -> int:
     proc = {k: args.root / v for k, v in cfg["data"]["processed"].items()}
 
     _ = prep_testing(raw["testing_csv"], proc["testing"])
+    _ = prep_vaccination(raw["vaccination_csv"], proc["vaccination"])
     simd = prep_simd(raw["simd_csv"], proc["simd"])
     geography = prep_geography(raw["geography_shp"], simd, proc["geography"])
-    prep_vaccination(raw["vaccination_csv"], proc["vaccination"])
-    prep_sequence_metadata(
+    _ = prep_sequence_metadata(
         raw["metadata_csv"], raw["nextclade_tsv"], raw["vaccination_csv"],
         geography, proc["metadata"],
     )

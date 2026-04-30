@@ -193,8 +193,8 @@ def main() -> int:
         "dz_simd_rank", "dz_simd_quintile", "dz_simd_decile", "dz_simd_vigintile",
         "dz_simd_income_rank", "dz_simd_employment_rank", "dz_simd_education_rank",
         "dz_simd_health_rank", "dz_simd_access_rank", "dz_simd_crime_rank", "dz_simd_housing_rank",
-        "dz_total_tests", "dz_positive_tests", "dz_negative_tests",
-        "dz_total_vaccinated", "dz_prop_vaccinated",
+        "dz_total_tests", "dz_positive_tests", "dz_negative_tests", "dz_total_vaccinated",
+        "dz_prop_vaccinated", "dz_urban_rural_class", "dz_local_authority", "dz_health_board",
     ]
     ds = ds[[c for c in column_order if c in ds.columns]].reset_index(drop=True)
 

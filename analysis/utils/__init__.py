@@ -13,6 +13,8 @@ stats
     Light statistical helpers: negative-binomial cluster-size regression,
     bootstrapped confidence intervals, singleton odds ratios, and tidy
     coefficient tables for forest plots.
+policy
+    Ordered policy-period helpers for Scotland COVID-19 restriction phases.
 """
 
-from . import data, bambi, style  # noqa: F401
+from . import data, bambi, policy, style  # noqa: F401

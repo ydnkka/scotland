@@ -87,7 +87,6 @@ SIMD_DOMAIN_PALETTE: dict[str, str] = {
 
 def set_theme(
     context: Literal["paper", "talk", "poster"] = "paper",
-    font: str = "Arial",
     font_scale: float = 1.0,
 ) -> None:
     # Seaborn's context scaling factors relative to "paper"
@@ -100,7 +99,7 @@ def set_theme(
         font_scale=font_scale,
         rc={
             "font.family": "sans-serif",
-            "font.sans-serif": [font, "Arial", "Liberation Sans", "DejaVu Sans"],
+            "font.sans-serif": ["Arial", "Arial", "Liberation Sans", "DejaVu Sans"],
             # --- everything below now scales ---
             "font.size":              9  * scale,
             "axes.titlesize":         10 * scale,
@@ -143,12 +142,14 @@ def save_figure(
     out_path: Path,
     width: Literal["single", "onehalf", "double", "slide"] = "single",
     *,
+    width_in: float | None = None,
     height_in: float | None = None,
     dpi: int = 600,
     save_pdf: bool = True,
     save_png: bool = False,
     save_tiff: bool = False,
     save_eps: bool = False,
+    save_svg: bool = False
 ) -> dict[str, Path]:
     if not (300 <= dpi <= 600):
         raise ValueError("dpi should usually be between 300 and 600 for PLOS scripts.")
@@ -156,7 +157,8 @@ def save_figure(
         raise ValueError("height_in must be positive when provided.")
 
     current_w, current_h = fig.get_size_inches()
-    w = FIG_WIDTHS_IN[width]
+
+    w = width_in if width_in is not None else FIG_WIDTHS_IN[width]
     if height_in is None:
         aspect = current_h / current_w
         h = w * aspect
@@ -182,6 +184,11 @@ def save_figure(
         eps_path = out_path.with_suffix(".eps")
         fig.savefig(eps_path, format="eps", dpi=dpi, transparent=False)
         saved_paths["eps"] = eps_path
+        
+    if save_svg:
+        svg_path = out_path.with_suffix(".svg")
+        fig.savefig(svg_path, format="eps", dpi=dpi, transparent=False)
+        saved_paths["svg"] = svg_path
 
     if save_tiff:
         tif_path = out_path.with_suffix(".tif")
@@ -224,13 +231,45 @@ def add_panel_labels(
 def new_figure(
     width: Literal["single", "onehalf", "double", "slide"] = "single",
     height_in: float | None = None,
+    width_in: float | None = None,
     nrows: int = 1,
     ncols: int = 1,
+    context: Literal["paper", "talk", "poster"] = "paper",
+    font_scale: float = 1.0,
     **subplots_kwargs,
-) -> tuple[plt.Figure, plt.Axes]:
-    """Create a figure with one of the paper-width presets."""
-    set_theme()
-    w = FIG_WIDTHS_IN[width]
+) -> tuple[plt.Figure, list[plt.Axes]]:
+    """Create a figure with one of the paper-width presets.
+
+    Parameters
+    ----------
+    width:
+        Named width preset (ignored when *width_in* is given).
+    height_in:
+        Explicit figure height in inches.  Defaults to
+        ``DEFAULT_HEIGHT_IN * nrows``.
+    width_in:
+        Explicit figure width in inches.  Overrides the *width* preset,
+        useful for large multi-panel figures that need more room than the
+        standard ``"double"`` (7.2 in) column allows.
+    nrows, ncols:
+        Passed to ``plt.subplots``.  The default is a single panel, but this
+        is often overridden for multi-panel figures.
+    context:
+        Seaborn context to set for the figure.
+        This controls the base scaling of fonts and lines.
+        The default is ``"paper"``, but for talks or posters, you may want
+         to use ``"talk"`` or ``"poster"`` for larger text.
+    font_scale:
+        Additional scaling factor for fonts and lines.  This is applied on top
+         of the scaling from the *context* parameter, allowing for fine-tuning of
+         text size without changing the overall context.
+         The default is 1.0 (no additional scaling), but you can increase this for
+          larger figures or decrease it for smaller ones.
+    **subplots_kwargs:
+        Additional keyword arguments passed to ``plt.subplots``.  This allows you to customize the subplots further, for example by setting ``sharex=True`` or ``gridspec_kw={"width            _ratios": [1, 2]}`` for uneven panels.  Note that the figure size is determined by the *width* and *height_in* parameters, so you should not set the *figsize* argument in *subplots_kwargs* when using this function.
+    """
+    set_theme(context=context, font_scale=font_scale)
+    w = width_in if width_in is not None else FIG_WIDTHS_IN[width]
     h = height_in if height_in is not None else DEFAULT_HEIGHT_IN * nrows
     fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=(w, h), **subplots_kwargs)
     return fig, ax

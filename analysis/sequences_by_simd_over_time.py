@@ -117,16 +117,16 @@ def main():
     )
 
     age_trend  = _cluster_trend_pl(cluster_df, "age_group")
-    sex_trend  = _cluster_trend_pl(cluster_df, "sex")
-    simd_trend = _cluster_trend_pl(cluster_df, "dz_simd_quintile")
+    # sex_trend  = _cluster_trend_pl(cluster_df, "sex")
+    # simd_trend = _cluster_trend_pl(cluster_df, "dz_simd_quintile")
 
-    # ── figure: 5 rows × 1 col ───────────────────────────────────────────────
-    fig, (ax_A, ax_B, ax_C, ax_D, ax_E) = style.new_figure(
-        width="slide", height_in=10,
-        nrows=5, ncols=1,
+    # ── figure: 3 rows × 1 col ───────────────────────────────────────────────
+    fig, (ax_A, ax_B, ax_C) = style.new_figure(
+        width="slide", height_in=6,
+        nrows=3, ncols=1,
         sharex=True,
         constrained_layout=True,
-        gridspec_kw={"height_ratios": [2, 1.1, 1.1, 1.1, 1.1], "hspace": 0.08},
+        gridspec_kw={"height_ratios": [2, 1.1, 1.1], "hspace": 0.08},
     )
 
     # ── A: weekly sequences (scaled to per-100 max) ───────────────────────────
@@ -158,30 +158,31 @@ def main():
     _plot_stratified(ax_C, age_trend, AGE_PALETTE)
     _outside_legend(ax_C, "Age group")
 
-    # ── D: cluster proportion by sex ─────────────────────────────────────────
-    SEX_PALETTE = {"Male": "#1565C0", "Female": "#E91E63"}
-    _plot_stratified(ax_D, sex_trend, SEX_PALETTE)
-    _outside_legend(ax_D, "Sex")
+    # # ── D: cluster proportion by sex ─────────────────────────────────────────
+    # SEX_PALETTE = {"Male": "#1565C0", "Female": "#E91E63"}
+    # _plot_stratified(ax_D, sex_trend, SEX_PALETTE)
+    # _outside_legend(ax_D, "Sex")
+    #
+    # # ── E: cluster proportion by SIMD quintile ───────────────────────────────
+    # SIMD_PALETTE = {str(q): style.SIMD_QUINTILE_PALETTE[q] for q in range(1, 6)}
+    # SIMD_LABELMAP = {
+    #     "1": "Q1 (most deprived)", "2": "Q2", "3": "Q3", "4": "Q4",
+    #     "5": "Q5 (least deprived)",
+    # }
+    # _plot_stratified(ax_E, simd_trend, SIMD_PALETTE, label_map=SIMD_LABELMAP)
+    # _outside_legend(ax_E, "SIMD quintile")
 
-    # ── E: cluster proportion by SIMD quintile ───────────────────────────────
-    SIMD_PALETTE = {str(q): style.SIMD_QUINTILE_PALETTE[q] for q in range(1, 6)}
-    SIMD_LABELMAP = {
-        "1": "Q1 (most deprived)", "2": "Q2", "3": "Q3", "4": "Q4",
-        "5": "Q5 (least deprived)",
-    }
-    _plot_stratified(ax_E, simd_trend, SIMD_PALETTE, label_map=SIMD_LABELMAP)
-    _outside_legend(ax_E, "SIMD quintile")
     fig.supxlabel("Date (from 2020-2023)")
 
     # ── shared formatting ─────────────────────────────────────────────────────
-    for ax in (ax_A, ax_B, ax_C, ax_D, ax_E):
+    for ax in (ax_A, ax_B, ax_C):
         ax.margins(x=0.005)
         ax.set_facecolor("#fafafa")
 
-    # style.add_panel_labels([ax_A, ax_B, ax_C, ax_D, ax_E], y=1.02)
+    # style.add_panel_labels([ax_A, ax_B, ax_C], y=1.02)
 
     _ = style.save_figure(
-        fig, out_dir / "surveillance_overview_5x1",
+        fig, out_dir / "surveillance_overview_3x1",
         width="slide", save_png=True, save_pdf=True,
     )
     plt.close(fig)

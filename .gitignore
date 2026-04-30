@@ -9,3 +9,4 @@ __pycache__/
 dist/
 .claude/
 analysis/bambi_outputs/
+/analysis/R/data/
