@@ -77,7 +77,7 @@ def main() -> int:
         lines.append(cmd)
         n += 1
 
-    cmd_file: Path = proc["cluster_long_dir"].parent / "cluster_commands.txt"
+    cmd_file: Path = proc["cluster_commands_file"]
     cmd_file.parent.mkdir(parents=True, exist_ok=True)
     cmd_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 

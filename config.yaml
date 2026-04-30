@@ -21,14 +21,17 @@ data:
     vaccination_csv: data/raw/phs/confidential/PHS_Vaccinations_2023-02-22.csv
     simd_csv: data/raw/datazone/2020v2_simd.csv
     geography_shp: data/raw/datazone/sg_datazone_bdry_2011.shp
+    daily_hb_trends_csv: data/raw/phs/confidential/daily_trend_by_health_board.csv
   processed:
     metadata: data/processed/scotland_sequence_metadata.parquet
     testing: data/processed/scotland_testing.parquet
     vaccination: data/processed/scotland_datazone_vaccinations.parquet
     simd: data/processed/scotland_datazone_simd_data.parquet
     geography: data/processed/scotland_geography.parquet
+    hb_trends: data/processed/scotland_hb_daily_trends.parquet
     group_fasta_dir: data/processed/group_fastas
     tn93_results_dir: data/processed/group_fastas/tn93_results
     tn93_commands_file: data/processed/group_fastas/tn93_commands.txt
     cluster_long_dir: data/processed/cluster_assignments_long
+    cluster_commands_file: data/processed/cluster_commands.txt
     analysis_dataset: data/processed/scotland_clustering_analysis_dataset.parquet

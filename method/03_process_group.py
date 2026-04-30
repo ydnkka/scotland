@@ -59,8 +59,6 @@ def parse_group_label(stem: str) -> tuple[str | None, str | None]:
 def load_metadata_dates(path: Path) -> pd.Series:
     df = pd.read_parquet(path, columns=["sequence_id", "collection_date"])
     df = df.drop_duplicates("sequence_id").set_index("sequence_id")
-    if "sequence_id" in df.columns:
-        df = df.drop_duplicates("sequence_id").set_index("sequence_id")
     ser = pd.to_datetime(df["collection_date"], errors="coerce").dropna()
     return ser
 
@@ -158,7 +156,7 @@ def process_group(
 
     df = df[df["weight"] > sparsification]
     if df.empty:
-        logging.warning("%s: all weights < %d → fallback isolates", stem, sparsification)
+        logging.warning("%s: all weights < %g → fallback isolates", stem, sparsification)
         result = fallback_isolates(group_ids, resolutions, window_id, lineage)
         result.to_parquet(out_path, index=False, compression="zstd")
         return out_path
