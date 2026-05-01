@@ -40,7 +40,7 @@ NATURAL_HISTORY: dict[str, Any] = {
     "relaxation": 0.33,
     "genome_length": 29903,  # keep in sync with pipeline.alignment_length in config.yaml
 }
-# MAXIMUM_DEPTH = 0 : only direct (depth-0) transmission links are scored.
+# MAXIMUM_DEPTH = 0 : only direct or co-primary transmission links are scored.
 # Increase to consider transmission chains of greater depth at the cost of
 # wider compatibility intervals and slower scoring.
 MUTATION_PROCESS = "stochastic"

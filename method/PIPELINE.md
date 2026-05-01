@@ -88,6 +88,8 @@ Central configuration for the entire pipeline. Contains three top-level sections
 
 **Role:** Executes a command file (one shell command per line) in parallel using GNU parallel.
 
+**Tmpdir note:** the wrapper writes GNU parallel's per-job buffers to a writable scratch directory, preferring `$TMPDIR`, then `/var/tmp`, then `/tmp`, and finally a project-local `.parallel-tmp` beside the joblog. For long batches, set `TMPDIR` or pass `--tmpdir <scratch_dir>` yourself to keep buffers off a cramped filesystem.
+
 **Usage:**
 ```bash
 ./method/parallel_run.sh -c <commands_file> [options]
@@ -198,6 +200,7 @@ config.yaml
     ├─► scotland_testing.parquet
     ├─► scotland_datazone_vaccinations.parquet
     ├─► scotland_datazone_simd_data.parquet
+    ├─► scotland_hb_daily_trends.parquet
     └─► scotland_geography.parquet
           │
           ▼
@@ -226,17 +229,17 @@ config.yaml
 
 ## Dependencies
 
-| Package | Use |
-|---|---|
-| `pandas`, `numpy` | Data manipulation throughout |
-| `geopandas` | Datazone shapefile reading and centroid computation (`01`) |
-| `pyarrow` / `fastparquet` | Parquet I/O |
-| `pyyaml` | Config parsing |
-| `igraph` (`python-igraph`) | Graph construction and Leiden clustering (`03`) |
-| `epilink` | Epidemiological compatibility scoring (`epilink_wrapper`, `03`) |
-| `samtools` | Per-group FASTA extraction from compressed multi-sequence file (`02`→`03`) |
-| `tn93` | Pairwise TN93 distance computation (`02`→`03`) |
-| `GNU parallel` | Parallel execution of TN93 and clustering steps |
+| Package                    | Use                                                                        |
+|----------------------------|----------------------------------------------------------------------------|
+| `pandas`, `numpy`          | Data manipulation throughout                                               |
+| `geopandas`                | Datazone shapefile reading and centroid computation (`01`)                 |
+| `pyarrow` / `fastparquet`  | Parquet I/O                                                                |
+| `pyyaml`                   | Config parsing                                                             |
+| `igraph` (`python-igraph`) | Graph construction and Leiden clustering (`03`)                            |
+| `epilink`                  | Epidemiological compatibility scoring (`epilink_wrapper`, `03`)            |
+| `samtools`                 | Per-group FASTA extraction from compressed multi-sequence file (`02`→`03`) |
+| `tn93`                     | Pairwise TN93 distance computation (`02`→`03`)                             |
+| `GNU parallel`             | Parallel execution of TN93 and clustering steps                            |
 
 ---
 

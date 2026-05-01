@@ -8,5 +8,3 @@ __pycache__/
 *.egg-info/
 dist/
 .claude/
-analysis/bambi_outputs/
-/analysis/R/data/

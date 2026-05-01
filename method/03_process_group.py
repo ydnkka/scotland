@@ -5,7 +5,7 @@ Process one (window, lineage) group: tn93 CSV → EpiLink compatibility weights 
 Reads:
   --tn93-csv    CSV with ID1, ID2, Distance columns (proportion, not SNP count)
   --seq-ids     Text file: one sequence_id per line (the full group membership)
-  --metadata    Parquet (or .obj) with columns: sequence_id index, collection_date
+  --metadata    Parquet with columns: sequence_id index, collection_date
 
 Writes:
   <out-long-dir>/<stem>.parquet  long-format with columns:

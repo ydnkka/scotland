@@ -39,8 +39,8 @@ Options:
       --timeout SECS     Per-job timeout in seconds
       --progress         Show live progress bar
       --resume-failed    Re-run only previously failed jobs from joblog
-      --tmpdir DIR       Parallel per-job buffer dir (default: next to joblog,
-                         or \$TMPDIR if set). Avoids filling /tmp.
+      --tmpdir DIR       Parallel per-job buffer dir (default: \$TMPDIR,
+                         then /var/tmp, then /tmp, then next to joblog)
       --no-compress      Disable parallel --compress (on by default)
       --dry-run          Print first 5 commands and exit
   -h, --help             Show this message
@@ -71,17 +71,34 @@ command -v parallel >/dev/null 2>&1 || { echo "Error: GNU parallel not on PATH."
 [[ -n "$JOBS" ]]   || JOBS="$(cpu_count)"
 [[ -n "$JOBLOG" ]] || JOBLOG="${COMMANDS_FILE%.*}.joblog.tsv"
 
-# Resolve tmpdir: explicit flag > $TMPDIR > a scratch dir next to the joblog.
-# This keeps parallel's per-job stdout/stderr buffers off /tmp, which routinely
-# fills up on long batches (e.g. samtools faidx over thousands of groups).
-if [[ -z "$TMPDIR_ARG" ]]; then
-  if [[ -n "${TMPDIR:-}" ]]; then
-    TMPDIR_ARG="$TMPDIR"
-  else
-    TMPDIR_ARG="$(dirname "$JOBLOG")/.parallel-tmp"
+resolve_tmpdir() {
+  local candidate
+
+  if [[ -n "$TMPDIR_ARG" ]]; then
+    if ! mkdir -p "$TMPDIR_ARG" 2>/dev/null; then
+      echo "Error: cannot create --tmpdir: $TMPDIR_ARG" >&2
+      exit 2
+    fi
+    [[ -w "$TMPDIR_ARG" ]] || { echo "Error: --tmpdir is not writable: $TMPDIR_ARG" >&2; exit 2; }
+    return 0
   fi
-fi
-mkdir -p "$TMPDIR_ARG"
+
+  for candidate in "${TMPDIR:-}" /var/tmp /tmp "$(dirname "$JOBLOG")/.parallel-tmp"; do
+    [[ -n "$candidate" ]] || continue
+    mkdir -p "$candidate" 2>/dev/null || continue
+    if [[ -w "$candidate" ]]; then
+      TMPDIR_ARG="$candidate"
+      return 0
+    fi
+  done
+
+  echo "Error: no writable tmpdir found (tried \$TMPDIR, /var/tmp, /tmp, and $(dirname "$JOBLOG")/.parallel-tmp)." >&2
+  exit 2
+}
+
+# Keep GNU parallel's per-job stdout/stderr buffers off the project filesystem
+# whenever possible; full temp volumes are the usual cause of this failure.
+resolve_tmpdir
 
 grep -q '[^[:space:]]' "$COMMANDS_FILE" || { echo "Commands file is empty."; exit 0; }
 

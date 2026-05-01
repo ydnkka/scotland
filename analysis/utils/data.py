@@ -20,25 +20,30 @@ from .policy import attach_period
 
 PRIMARY_RESOLUTION: float = 0.3
 
+# Obtained from wave_dates.py
 WAVE = [
-    ("Alpha_n27129", "2020-11-04", "2021-08-11"),
-    ("Delta_n99781", "2021-04-02", "2022-03-12"),
-    ("Omicron_n144698", "2021-09-01", "2023-02-10")
+    ("pre-Alpha (B.1.177)",       "2020-08-10",  "2021-02-08"),
+    ("Alpha (B.1.1.7)",           "2020-11-30",  "2021-06-14"),
+    ("Delta (AY.*/B.1.617.2)",    "2021-05-03",  "2021-12-27"),
+    ("Omicron (BA.1)",            "2021-12-06",  "2022-03-28"),
+    ("Omicron (BA.2)",            "2022-01-31",  "2022-07-04"),
+    ("Omicron (BA.4)",            "2022-05-23",  "2022-10-24"),
+    ("Omicron (BA.5 / BE.*)",     "2022-05-23",  "2022-12-19"),
+    ("Omicron (BQ.1)",            "2022-10-03",  "2023-02-06"),
+    ("Omicron (XBB)",             "2022-12-12",  "2023-02-06"),
 ]
-    # Actual Omicron first sequence date is "2021-02-20",
-    # move it forward because of long period of minimal transmission
 
 
 @dataclass(frozen=True)
 class DOMAINS:
-    overall:    str = "dz_simd_rank"
-    income:     str = "dz_simd_income_rank"
+    overall: str = "dz_simd_rank"
+    income: str = "dz_simd_income_rank"
     employment: str = "dz_simd_employment_rank"
-    education:  str = "dz_simd_education_rank"
-    health:     str = "dz_simd_health_rank"
-    access:     str = "dz_simd_access_rank"
-    crime:      str = "dz_simd_crime_rank"
-    housing:    str = "dz_simd_housing_rank"
+    education: str = "dz_simd_education_rank"
+    health: str = "dz_simd_health_rank"
+    access: str = "dz_simd_access_rank"
+    crime: str = "dz_simd_crime_rank"
+    housing: str = "dz_simd_housing_rank"
 
 
 def _simd_domain() -> dict[str, str]:
@@ -86,10 +91,12 @@ class Paths:
 
 QCStatus = Literal["good", "mediocre", "bad"]
 _VALID_QC: frozenset[str] = frozenset({"good", "mediocre", "bad"})
+
+
 def _validate_qc(qc: Iterable[QCStatus] | QCStatus) -> None:
     if qc is not None:
         if isinstance(qc, str):
-            qc :Iterable[QCStatus] = tuple((qc,))
+            qc: Iterable[QCStatus] = tuple((qc,))
         else:
             qc: Iterable[QCStatus] = tuple(qc)
         invalid = set(qc) - _VALID_QC
@@ -99,11 +106,12 @@ def _validate_qc(qc: Iterable[QCStatus] | QCStatus) -> None:
                 f"Must be one or more of {sorted(_VALID_QC)}"
             )
 
+
 def load_analysis_columns(
-    columns: Iterable[str],
-    *,
-    resolution: float | None = PRIMARY_RESOLUTION,
-    qc: Iterable[QCStatus] | QCStatus = "good"
+        columns: Iterable[str],
+        *,
+        resolution: float | None = PRIMARY_RESOLUTION,
+        qc: Iterable[QCStatus] | QCStatus = "good"
 ) -> pl.DataFrame:
     """Read a narrow slice of the master sequence-level parquet.
 
@@ -134,7 +142,7 @@ def load_analysis_columns(
         need.add("resolution")
     if qc is not None:
         need.add("nextclade_qc")
-        
+
     need = need.union(["sequence_id", "collection_date"])
 
     df = pl.read_parquet(paths.analysis_dataset, columns=sorted(need))
@@ -146,11 +154,12 @@ def load_analysis_columns(
         if isinstance(qc, str):
             qc: Iterable[QCStatus] = tuple((qc,))
         df = df.filter(pl.col("nextclade_qc").is_in(list(qc)))
-        
+
     df = _with_wave(df, "collection_date")
     df = _with_policy(df, "collection_date")
 
     return df
+
 
 def load_datazone_info(columns: Iterable[str]) -> gpd.GeoDataFrame:
     """Read a narrow slice of the datazone information parquet."""
@@ -168,6 +177,7 @@ def _standardise(values):
     """Negate z-score so higher values = greater deprivation."""
     return -(values - values.mean()) / values.std()
 
+
 def _shannon_entropy(counts: pl.Series) -> float:
     """Shannon entropy (bits) from a series of counts."""
     total = counts.sum()
@@ -178,10 +188,11 @@ def _shannon_entropy(counts: pl.Series) -> float:
     p = p.filter(p > 0)
     return -(p * p.log(base=2)).sum()
 
+
 @lru_cache(maxsize=4)
 def load_cluster_features(
-    qc: Iterable[QCStatus] | QCStatus = "good",
-    min_cluster_size: int = 5,
+        qc: Iterable[QCStatus] | QCStatus = "good",
+        min_cluster_size: int = 5,
 ) -> pl.DataFrame:
     """Return one row per (window_id, cluster_id) with size, date, lineage, and SIMD features."""
     _validate_qc(qc)
@@ -264,7 +275,7 @@ def load_cluster_features(
 
 @lru_cache(maxsize=4)
 def load_individual_features(
-    qc: Iterable[QCStatus] | QCStatus = "good"
+        qc: Iterable[QCStatus] | QCStatus = "good"
 ) -> pl.DataFrame:
     """Return sequence × resolution level features for GLMM.
 
@@ -316,15 +327,15 @@ def load_individual_features(
     # prop_clustered: mean of binary outcome across windows
     # ever_clustered: max of binary outcome across windows
     agg_exprs: list[pl.Expr] = (
-        [pl.col(c).first() for c in stable]
-        + [
-            pl.col("_non_singleton").mean().alias("prop_clustered"),
-            pl.col("_non_singleton").max().cast(pl.Int64).alias("ever_clustered"),
-            pl.col("wn_prop_sequenced").mean(),
-            pl.col("window_id").n_unique().alias("n_windows"),
-            pl.col("wn_start_date").min().alias("wn_start_date"),
-            pl.col("wn_end_date").max().alias("wn_end_date"),
-        ]
+            [pl.col(c).first() for c in stable]
+            + [
+                pl.col("_non_singleton").mean().alias("prop_clustered"),
+                pl.col("_non_singleton").max().cast(pl.Int64).alias("ever_clustered"),
+                pl.col("wn_prop_sequenced").mean(),
+                pl.col("window_id").n_unique().alias("n_windows"),
+                pl.col("wn_start_date").min().alias("wn_start_date"),
+                pl.col("wn_end_date").max().alias("wn_end_date"),
+            ]
     )
 
     out = df.group_by(["sequence_id", "resolution"]).agg(agg_exprs)
@@ -344,7 +355,7 @@ def load_individual_features(
         "20-24": "20-39", "25-29": "20-39", "30-34": "20-39", "35-39": "20-39",
         "40-44": "40-59", "45-49": "40-59", "50-54": "40-59", "55-59": "40-59",
         "60-64": "60-74", "65-69": "60-74", "70-74": "60-74",
-        "75+":   "elderly",
+        "75+": "elderly",
     }
     out = out.with_columns(
         pl.col("age_band").replace(age_map).alias("age_group")
@@ -360,7 +371,7 @@ def load_individual_features(
 
 
 def _normalise_waves(
-    waves: Sequence[tuple[str, date | str, date | str]]
+        waves: Sequence[tuple[str, date | str, date | str]]
 ) -> list[tuple[str, date, date]]:
     """Coerce wave tuples into date-backed tuples."""
     normalised: list[tuple[str, date, date]] = []
