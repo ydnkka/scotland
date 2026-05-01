@@ -19,9 +19,9 @@ Wrote 7079 commands to data/processed/cluster_commands.txt
 
 $ ./method/parallel_run.sh   -c data/processed/cluster_commands.txt  -j 18  --progress  --retries 2  --resume-failed   --tmpdir /var/tmp
 
-
 $ python3 method/05_consolidate.py
-2026-04-18 08:49:02 [INFO] 134 time windows
-2026-04-18 08:49:02 [INFO] Loading 7069 cluster parquets from data/processed/cluster_assignments_long
-2026-04-18 08:49:13 [INFO] Cluster rows: 7372456 + 22976 singletons = 7395432 total
-2026-04-18 08:49:42 [INFO] Analysis dataset: 7395432 rows × 44 cols → data/processed/scotland_clustering_analysis_dataset.parquet
+2026-05-01 09:22:37 [INFO] 134 time windows
+2026-05-01 09:22:37 [INFO] Loading 7068 cluster parquets from data/processed/cluster_assignments_long
+2026-05-01 09:22:48 [INFO] Cluster rows: 7264344 + 22976 singletons = 7287320 total
+2026-05-01 09:23:44 [INFO] Joined HB trends (11 columns).
+2026-05-01 09:24:07 [INFO] Analysis dataset: 7287320 rows × 81 cols → data/processed/scotland_clustering_analysis_dataset.parquet
