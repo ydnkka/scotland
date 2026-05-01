@@ -68,7 +68,6 @@ def attach_period(df: pl.DataFrame, date_col: str) -> pl.DataFrame:
         pl.col("period_label").alias("policy_period_label"),
         pl.col("intensity").alias("policy_intensity"),
     ])
-
     return (
         df
         .with_columns(assign_period(df[date_col]).alias("policy_period"))

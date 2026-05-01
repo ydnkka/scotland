@@ -586,6 +586,13 @@ def main() -> int:
         "hb_icu_admissions", "hb_icu_occupancy_lt28d", "hb_icu_occupancy_ge28d",
         "hb_daily_reinfections", "hb_reinfection_rate",
     ]
+    required_columns = {"test_type", "test_reason"}
+    missing_required = sorted(required_columns - set(ds.columns))
+    if missing_required:
+        raise KeyError(
+            "Dataset is missing expected specimen-level test columns after consolidation: "
+            f"{missing_required}. Rebuild processed metadata with method/01_prep_metadata.py."
+        )
     ds = ds[[c for c in column_order if c in ds.columns]].reset_index(drop=True)
 
     out_path: Path = proc["analysis_dataset"]

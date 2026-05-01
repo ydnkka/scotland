@@ -69,7 +69,7 @@ def repo_root(start: Path | None = None) -> Path:
 class Paths:
     root: Path
     analysis_dataset: Path
-    datazones: Path
+    geography: Path
 
     @classmethod
     def from_config(cls, root: Path = None) -> "Paths":
@@ -80,13 +80,64 @@ class Paths:
         return cls(
             root=root,
             analysis_dataset=root / proc["analysis_dataset"],
-            datazones=root / "data/processed/datazones_information.parquet"
+            geography=root / proc["geography"]
         )
 
 
+
 # ---------------------------------------------------------------------------
-# Column-level loaders
+# Helpers
 # ---------------------------------------------------------------------------
+
+def _normalise_waves(
+        waves: Sequence[tuple[str, date | str, date | str]]
+) -> list[tuple[str, date, date]]:
+    """Coerce wave tuples into date-backed tuples."""
+    normalised: list[tuple[str, date, date]] = []
+    for label, start, end in waves:
+        start_date = date.fromisoformat(start) if isinstance(start, str) else start
+        end_date = date.fromisoformat(end) if isinstance(end, str) else end
+        if end_date < start_date:
+            raise ValueError(f"Wave {label!r} ends before it starts.")
+        normalised.append((label, start_date, end_date))
+    return normalised
+
+
+WAVES = _normalise_waves(WAVE)
+
+
+def _assign_wave(dates: pl.Series) -> pl.Series:
+    """Assign each row to a configured epidemic wave label."""
+    if not WAVES:
+        return pl.Series("wave", ["unknown"] * len(dates), dtype=pl.String)
+
+    cats = [label for label, *_ in WAVES] + ["unknown"]
+    wave_enum = pl.Enum(cats)
+
+    label_expr: pl.Expr = pl.lit("unknown", dtype=pl.Utf8)
+    for label, start, end in WAVES:
+        label_expr = (
+            pl.when((pl.col("_date") >= start) & (pl.col("_date") <= end))
+            .then(pl.lit(label))
+            .otherwise(label_expr)
+        )
+
+    return (
+        pl.DataFrame({"_date": dates.cast(pl.Date)})
+        .with_columns(label_expr.alias("wave"))
+        .get_column("wave")
+        .cast(wave_enum)
+    )
+
+
+def _with_wave(df: pl.DataFrame, date_col: str) -> pl.DataFrame:
+    """Attach configured epidemic wave labels using the given date column."""
+    return df.with_columns(_assign_wave(df[date_col]).alias("wave"))
+
+
+def _with_policy(df: pl.DataFrame, date_col: str) -> pl.DataFrame:
+    """Attach configured policy-period labels using the given date column."""
+    return attach_period(df, date_col)
 
 
 QCStatus = Literal["good", "mediocre", "bad"]
@@ -107,11 +158,31 @@ def _validate_qc(qc: Iterable[QCStatus] | QCStatus) -> None:
             )
 
 
+def _standardise(values):
+    """Negate z-score so higher values = greater deprivation."""
+    return -(values - values.mean()) / values.std()
+
+
+def _shannon_entropy(counts):
+    """Shannon entropy (bits) from a series of counts."""
+    total = counts.sum()
+    if total == 0:
+        return 0.0
+    p = counts / total
+    # mask zeros to avoid log(0)
+    p = p.filter(p > 0)
+    return -(p * p.log(base=2)).sum()
+
+# ---------------------------------------------------------------------------
+# Column-level loaders
+# ---------------------------------------------------------------------------
+
 def load_analysis_columns(
-        columns: Iterable[str],
-        *,
-        resolution: float | None = PRIMARY_RESOLUTION,
-        qc: Iterable[QCStatus] | QCStatus = "good"
+    columns: Iterable[str],
+    *,
+    all_cols: bool = False,
+    resolution: float | None = PRIMARY_RESOLUTION,
+    qc: Iterable[QCStatus] | QCStatus = "good"
 ) -> pl.DataFrame:
     """Read a narrow slice of the master sequence-level parquet.
 
@@ -120,13 +191,52 @@ def load_analysis_columns(
     columns:
         Names of columns to read; ``resolution`` and ``nextclade_qc`` are
         added automatically when filtering is requested.
-        ``sequence_id``, ``collection_date`` are also added automatically.
+        ``sequence_id``, ``collection_date``, ``wave``,
+        ``policy_period``, ``policy_period_label``,  and ``policy_intensity``
+        are also added automatically.
+    all_cols:
+        If True, ignore *columns* and read all columns.  This is not recommended
+        for general use, but can be useful for exploratory analysis or when
+        debugging.
     resolution:
         If provided, rows are restricted to that Leiden resolution.
     qc:
         If provided, rows are restricted to these Nextclade QC statuses.
         Accepted values: ``"good"``, ``"mediocre"``, ``"bad"``.
         Pass ``None`` to skip QC filtering entirely.
+
+    Notes
+    -----
+    ``Available columns``:
+    'window_idx', 'window_id', 'wn_start_date', 'wn_mid_date',
+    'wn_end_date', 'wn_no_sequences', 'wn_positive_tests',
+    'wn_prop_sequenced', 'sequence_id', 'patient_id', 'resolution',
+    'cluster_id', 'cluster_size', 'cluster_n_datazones',
+    'cluster_start_date', 'cluster_end_date', 'cluster_duration_days',
+    'collection_date', 'datazone', 'dz_xcoord', 'dz_ycoord', 'sex',
+    'is_female', 'age_band', 'age_midpoint', 'is_vaccinated',
+    'vacc_dose_number', 'vacc_date_prior', 'vacc_product_name',
+    'vacc_booster', 'days_since_vaccination', 's_gene_status',
+    'is_reinfection', 'pango_lineage', 'clade', 'who_voc', 'nextclade_qc',
+    'dz_population', 'dz_working_age_population', 'dz_area_km2',
+    'dz_population_density', 'dz_simd_rank', 'dz_simd_quintile',
+    'dz_simd_decile', 'dz_simd_vigintile', 'dz_simd_income_rank',
+    'dz_simd_employment_rank', 'dz_simd_education_rank',
+    'dz_simd_health_rank', 'dz_simd_access_rank', 'dz_simd_crime_rank',
+    'dz_simd_housing_rank', 'dz_urban_rural_class', 'dz_local_authority',
+    'dz_local_authority_code', 'dz_health_board', 'dz_health_board_code',
+    'dz_total_tests', 'dz_positive_tests', 'dz_negative_tests',
+    'dz_pcr_positive_tests', 'dz_lfd_positive_tests', 'dz_care_home_tests',
+    'dz_test_positivity', 'dz_7d_test_positivity', 'dz_total_vaccinated',
+    'dz_cum_vaccinated', 'dz_cum_prop_vaccinated', 'dz_cum_sequences',
+    'dz_cum_positive_tests', 'dz_cum_prop_sequenced',
+    'dz_cum_incidence_per_capita', 'hb_daily_positive',
+    'hb_cumulative_positive', 'hb_hospital_admissions',
+    'hb_hospital_occupancy', 'hb_icu_admissions', 'hb_icu_occupancy_lt28d',
+    'hb_icu_occupancy_ge28d', 'hb_daily_reinfections',
+    'hb_reinfection_rate'
+
+    See ``data/processed/analysis_dataset_description.md`` for details.
 
     Raises
     ------
@@ -137,15 +247,18 @@ def load_analysis_columns(
 
     paths = Paths.from_config()
 
-    need = set(columns)
+    if all_cols:
+        return pl.read_parquet(paths.analysis_dataset)
+
+    need = {"sequence_id", "collection_date"}
+    need = need.union(columns)
+
     if resolution is not None:
         need.add("resolution")
     if qc is not None:
         need.add("nextclade_qc")
 
-    need = need.union(["sequence_id", "collection_date"])
-
-    df = pl.read_parquet(paths.analysis_dataset, columns=sorted(need))
+    df = pl.read_parquet(paths.analysis_dataset, columns=list(need))
 
     if resolution is not None:
         df = df.filter(pl.col("resolution") == resolution)
@@ -162,31 +275,34 @@ def load_analysis_columns(
 
 
 def load_datazone_info(columns: Iterable[str]) -> gpd.GeoDataFrame:
-    """Read a narrow slice of the datazone information parquet."""
+    """Read a narrow slice of the datazone information parquet.
+
+    Parameters
+    ----------
+    columns:
+        Names of columns to read; ``datazone`` and ``geometry`` columns are
+        added automatically.
+
+    Notes
+    -----
+    ``Available columns``:
+    'geometry', 'dz_xcoord', 'dz_ycoord', 'dz_area_km2', 'dz_population',
+    'dz_working_age_population', 'dz_urban_rural_class',
+    'dz_local_authority_code', 'dz_local_authority', 'dz_health_board_code',
+    'dz_health_board', 'dz_simd_rank', 'dz_simd_quintile', 'dz_simd_decile',
+    'dz_simd_vigintile', 'dz_simd_income_rank', 'dz_simd_employment_rank',
+    'dz_simd_education_rank', 'dz_simd_health_rank', 'dz_simd_access_rank',
+    'dz_simd_crime_rank', 'dz_simd_housing_rank'
+    """
     paths = Paths.from_config()
     need = {"datazone", "geometry"}
     need = need.union(columns)
-    return gpd.read_parquet(paths.datazones, columns=sorted(need))
+    return gpd.read_parquet(paths.geography, columns=list(need))
 
 
 # ---------------------------------------------------------------------------
 # Aggregation-level loaders
 # ---------------------------------------------------------------------------
-
-def _standardise(values):
-    """Negate z-score so higher values = greater deprivation."""
-    return -(values - values.mean()) / values.std()
-
-
-def _shannon_entropy(counts: pl.Series) -> float:
-    """Shannon entropy (bits) from a series of counts."""
-    total = counts.sum()
-    if total == 0:
-        return 0.0
-    p = counts / total
-    # mask zeros to avoid log(0)
-    p = p.filter(p > 0)
-    return -(p * p.log(base=2)).sum()
 
 
 @lru_cache(maxsize=4)
@@ -368,54 +484,3 @@ def load_individual_features(
         "policy_period_label", "policy_intensity", "prop_clustered", "ever_clustered",
         "dz_simd_quintile", "dz_simd_decile", *list(f"{dom}_zscore" for dom in _simd_domain().keys())
     ])
-
-
-def _normalise_waves(
-        waves: Sequence[tuple[str, date | str, date | str]]
-) -> list[tuple[str, date, date]]:
-    """Coerce wave tuples into date-backed tuples."""
-    normalised: list[tuple[str, date, date]] = []
-    for label, start, end in waves:
-        start_date = date.fromisoformat(start) if isinstance(start, str) else start
-        end_date = date.fromisoformat(end) if isinstance(end, str) else end
-        if end_date < start_date:
-            raise ValueError(f"Wave {label!r} ends before it starts.")
-        normalised.append((label, start_date, end_date))
-    return normalised
-
-
-WAVES = _normalise_waves(WAVE)
-
-
-def assign_wave(dates: pl.Series) -> pl.Series:
-    """Assign each row to a configured epidemic wave label."""
-    if not WAVES:
-        return pl.Series("wave", ["unknown"] * len(dates), dtype=pl.String)
-
-    cats = [label for label, *_ in WAVES] + ["unknown"]
-    wave_enum = pl.Enum(cats)
-
-    label_expr: pl.Expr = pl.lit("unknown", dtype=pl.Utf8)
-    for label, start, end in WAVES:
-        label_expr = (
-            pl.when((pl.col("_date") >= start) & (pl.col("_date") <= end))
-            .then(pl.lit(label))
-            .otherwise(label_expr)
-        )
-
-    return (
-        pl.DataFrame({"_date": dates.cast(pl.Date)})
-        .with_columns(label_expr.alias("wave"))
-        .get_column("wave")
-        .cast(wave_enum)
-    )
-
-
-def _with_wave(df: pl.DataFrame, date_col: str) -> pl.DataFrame:
-    """Attach configured epidemic wave labels using the given date column."""
-    return df.with_columns(assign_wave(df[date_col]).alias("wave"))
-
-
-def _with_policy(df: pl.DataFrame, date_col: str) -> pl.DataFrame:
-    """Attach configured policy-period labels using the given date column."""
-    return attach_period(df, date_col)

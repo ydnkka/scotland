@@ -86,7 +86,7 @@ SIMD_DOMAIN_PALETTE: dict[str, str] = {
 
 
 def set_theme(
-    context: Literal["paper", "talk", "poster"] = "paper",
+    context: Literal["paper", "talk", "poster", "notebook"] = "paper",
     font_scale: float = 1.0,
 ) -> None:
     # Seaborn's context scaling factors relative to "paper"
@@ -237,7 +237,7 @@ def new_figure(
     context: Literal["paper", "talk", "poster"] = "paper",
     font_scale: float = 1.0,
     **subplots_kwargs,
-) -> tuple[plt.Figure, list[plt.Axes]]:
+) -> tuple[plt.Figure, plt.Axes]:
     """Create a figure with one of the paper-width presets.
 
     Parameters

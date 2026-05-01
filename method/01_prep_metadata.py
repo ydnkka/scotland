@@ -306,6 +306,7 @@ def prep_sequence_metadata(
         "PatientID": "patient_id",
         "datazone2011": "datazone",
     }, inplace=True)
+    meta["specimen_id"] = meta["specimen_id"].astype("string").str.strip()
 
     assert set(meta["seq_id"]).issubset(set(nextclade.index)), "seq_ids not in nextclade"
 
@@ -344,13 +345,26 @@ def prep_sequence_metadata(
         "date_ecoss_specimen": "collection_date",
         "test_result_s_gene_status": "s_gene_status",
     }, inplace=True)
+    tests_raw["specimen_id"] = tests_raw["specimen_id"].astype("string").str.strip()
 
     # Specimen-level attributes: one row per specimen (keep earliest if duplicates).
+    test_attr_cols = ["test_type", "test_reason", "s_gene_status"]
     specimen_attrs = (
-        tests_raw[["specimen_id", "test_type", "test_reason", "s_gene_status"]]
+        tests_raw[["specimen_id"] + test_attr_cols]
         .drop_duplicates("specimen_id", keep="first")
     )
-    meta = meta.merge(specimen_attrs, on="specimen_id", how="left")
+    # The raw sequence metadata can already carry test_type/test_reason, which would
+    # otherwise force pandas to suffix the testing-derived columns and silently drop
+    # them from the final output schema.
+    meta = meta.merge(specimen_attrs, on="specimen_id", how="left", suffixes=("", "_testing"))
+    for col in test_attr_cols:
+        testing_col = f"{col}_testing"
+        if testing_col in meta.columns:
+            if col in meta.columns:
+                meta[col] = meta[testing_col].combine_first(meta[col])
+            else:
+                meta[col] = meta[testing_col]
+            meta.drop(columns=[testing_col], inplace=True)
 
     # Reinfection flag: is_reinfection = 1 if this positive test occurred ≥ 90 days
     # after the same patient's most-recent prior positive test.  First positives and
