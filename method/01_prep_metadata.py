@@ -389,16 +389,16 @@ def prep_sequence_metadata(
     vacc["vacc_occurence_time"] = pd.to_datetime(vacc["vacc_occurence_time"], format="%Y%m%d", errors="coerce")
     vacc.dropna(subset=["vacc_occurence_time", "age_band"], inplace=True)
     vacc.rename(columns={"PatientID": "patient_id", "vacc_occurence_time": "vaccination_date"}, inplace=True)
+    vacc["vacc_booster"] = np.where(vacc["vacc_booster"] == "TRUE", 1, 0)
 
     # Cross-join sequences with vaccination records for the same patient, then
     # keep only vaccinations that occurred on or before the sequence collection date.
     # This produces one row per (sequence, prior vaccination) combination.
-    vacc_cols = ["patient_id", "vaccination_date", "vacc_dose_number",
-                 "vacc_product_name", "vacc_booster"]
-    vacc_cols = [c for c in vacc_cols if c in vacc.columns]
+    vacc_cols = [
+        "patient_id", "vaccination_date", "vacc_dose_number", "vacc_product_name", "vacc_booster"
+    ]
     seq_vacc = meta.merge(vacc[vacc_cols], on="patient_id", how="left")
     seq_vacc = seq_vacc[seq_vacc["vaccination_date"] <= seq_vacc["collection_date"]]
-    seq_vacc["vacc_booster"] = seq_vacc["vacc_booster"].fillna(0).astype(bool).astype(float)
 
     # Group by both patient_id AND collection_date so that patients with
     # multiple sequenced specimens each get the correct latest-prior-dose for
