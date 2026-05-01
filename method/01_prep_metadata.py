@@ -398,6 +398,7 @@ def prep_sequence_metadata(
     vacc_cols = [c for c in vacc_cols if c in vacc.columns]
     seq_vacc = meta.merge(vacc[vacc_cols], on="patient_id", how="left")
     seq_vacc = seq_vacc[seq_vacc["vaccination_date"] <= seq_vacc["collection_date"]]
+    seq_vacc["vacc_booster"] = seq_vacc["vacc_booster"].fillna(0).astype(bool).astype(float)
 
     # Group by both patient_id AND collection_date so that patients with
     # multiple sequenced specimens each get the correct latest-prior-dose for
