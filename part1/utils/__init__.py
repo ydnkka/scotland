@@ -17,4 +17,4 @@ policy
     Ordered policy-period helpers for Scotland COVID-19 restriction phases.
 """
 
-from . import data, bambi, policy, style  # noqa: F401
+from . import data, policy, style  # noqa: F401

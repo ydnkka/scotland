@@ -145,8 +145,8 @@ def main():
         print("  ".join(str(row[col]).ljust(col_widths[col]) for col in table.columns))
 
     # Also save to CSV alongside the script
-    table.to_parquet("tables/wave_dates.parquet", index=False)
-    print("\nSaved to: tables/wave_dates.parquet")
+    table.to_parquet("wave_dates.parquet", index=False)
+    print("\nSaved to: wave_dates.parquet")
 
 
 if __name__ == "__main__":
