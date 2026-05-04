@@ -234,7 +234,7 @@ def new_figure(
     width_in: float | None = None,
     nrows: int = 1,
     ncols: int = 1,
-    context: Literal["paper", "talk", "poster"] = "paper",
+    context: Literal["paper", "talk", "poster", "notebook"] = "paper",
     font_scale: float = 1.0,
     **subplots_kwargs,
 ) -> tuple[plt.Figure, plt.Axes]:
