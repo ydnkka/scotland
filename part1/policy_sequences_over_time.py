@@ -416,8 +416,8 @@ def plot_lineage_frequency_and_overtakes(
 def main() -> None:
     style.set_theme(context="paper")
     paths = data.Paths.from_config()
-    out_dir = paths.root / "analysis/figures"
-    table_dir = paths.root / "analysis/tables"
+    out_dir = paths.root / "part1/figures"
+    table_dir = paths.root / "part1/tables"
     table_dir.mkdir(parents=True, exist_ok=True)
 
     qc_statuses: list[data.QCStatus] = ["good", "mediocre", "bad"]
