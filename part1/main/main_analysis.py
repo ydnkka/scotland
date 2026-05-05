@@ -19,6 +19,7 @@ import argparse
 import gc
 import math
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -60,6 +61,8 @@ SEQUENCE_COLUMNS = [
     "dz_cum_incidence_per_capita",
     "dz_cum_prop_sequenced",
     "dz_7d_test_positivity",
+    "wn_no_sequences",
+    "dz_health_board_code",
 ]
 
 PRIMARY_TERMS = [
@@ -72,6 +75,7 @@ PRIMARY_TERMS = [
 
 TERM_LABELS = {
     "deprivation_z": "Mean SIMD deprivation",
+    "index_deprivation_z": "Index-case SIMD deprivation",
     "local_incidence_z": "Local cumulative incidence",
     "local_seq_fraction_z": "Local sequencing fraction",
     "window_seq_fraction_z": "Window sequencing proportion",
@@ -346,9 +350,21 @@ def build_cluster_table(
             mean_local_seq_fraction=("dz_cum_prop_sequenced", "mean"),
             mean_window_seq_fraction=("wn_prop_sequenced", "mean"),
             mean_test_positivity=("dz_7d_test_positivity", "mean"),
+            wn_no_sequences=("wn_no_sequences", "first"),
+            health_board=("dz_health_board_code", "first"),
         )
         .reset_index()
     )
+
+    # Index-case SIMD: SIMD rank of the sequence with the earliest collection
+    # date within each cluster (ties broken by row order after sort).
+    _seq_sorted = seq.sort_values("collection_date")
+    _index_simd = (
+        _seq_sorted.groupby("cluster_id", observed=True)["dz_simd_rank"]
+        .first()
+        .rename("index_simd_rank")
+    )
+    clusters = clusters.merge(_index_simd, on="cluster_id", how="left")
 
     clusters["duration_days"] = (
         clusters["cluster_end_date"] - clusters["cluster_start_date"]
@@ -370,6 +386,7 @@ def build_cluster_table(
         )
 
     clusters["deprivation_raw"] = -clusters["mean_simd_rank"]
+    clusters["index_deprivation_raw"] = -clusters["index_simd_rank"]
     clusters["local_incidence_log"] = np.log1p(
         clusters["mean_local_incidence_per_capita"].clip(lower=0) * 1000
     )
@@ -381,6 +398,7 @@ def build_cluster_table(
     scaling_rows = []
     transforms = {
         "deprivation_z": "deprivation_raw",
+        "index_deprivation_z": "index_deprivation_raw",
         "local_incidence_z": "local_incidence_log",
         "local_seq_fraction_z": "local_seq_fraction_logit",
         "window_seq_fraction_z": "window_seq_fraction_logit",
@@ -528,6 +546,7 @@ def fit_binary_component(
     lineage_levels_all: list[str],
     calendar_cols: list[str],
     maxiter: int,
+    cluster_by: str = "window_id",
 ) -> tuple[pd.DataFrame, dict]:
     terms = model_terms(spec)
     if spec.include_size:
@@ -537,7 +556,7 @@ def fit_binary_component(
     use = use.dropna(subset=[spec.binary_col, *terms, *calendar_cols, "lineage_model"]).copy()
     y = use[spec.binary_col].astype(int)
     x = build_exog(use, terms, calendar_cols, lineage_levels_all)
-    groups = use["window_id"].astype(str).to_numpy()
+    groups = use[cluster_by].astype(str).to_numpy()
 
     model = sm.GLM(y, x, family=sm.families.Binomial())
     with warnings.catch_warnings(record=True) as caught:
@@ -575,6 +594,7 @@ def fit_binary_component(
         "n_lineage_levels_available": int(len(lineage_levels_all)),
         "n_lineage_terms_used": int(sum(col.startswith("lineage_") for col in x.columns)),
         "n_windows": int(use["window_id"].nunique()),
+        "cluster_by": cluster_by,
         "converged": bool(getattr(result, "converged", False)),
         "log_likelihood": float(result.llf),
         "aic": float(result.aic),
@@ -587,6 +607,7 @@ def ztnb_loglike_score(
     params: np.ndarray,
     y: np.ndarray,
     x: np.ndarray,
+    offset: np.ndarray | None = None,
 ) -> tuple[float, np.ndarray, np.ndarray]:
     """Return ZTNB log likelihood, summed score, and observation-level scores."""
     beta = params[:-1]
@@ -595,6 +616,8 @@ def ztnb_loglike_score(
     r = 1.0 / alpha
 
     eta = x @ beta
+    if offset is not None:
+        eta = eta + offset
     if not np.all(np.isfinite(eta)):
         bad = np.full_like(params, np.nan)
         return -np.inf, bad, np.full((len(y), len(params)), np.nan)
@@ -646,11 +669,36 @@ def ztnb_objective(
     params: np.ndarray,
     y: np.ndarray,
     x: np.ndarray,
+    offset: np.ndarray | None = None,
 ) -> tuple[float, np.ndarray]:
-    llf, score, _ = ztnb_loglike_score(params, y, x)
+    llf, score, _ = ztnb_loglike_score(params, y, x, offset)
     if not np.isfinite(llf) or not np.all(np.isfinite(score)):
         return 1e100, np.zeros_like(params)
     return -llf, -score
+
+
+def _ztnb_numerical_hessian(
+    params: np.ndarray,
+    y: np.ndarray,
+    x: np.ndarray,
+    offset: np.ndarray | None = None,
+    eps: float = 1e-4,
+) -> np.ndarray:
+    """Numerical Hessian of the ZTNB log-likelihood via first-order finite
+    differences on the analytical gradient.
+
+    Returns H such that H[i, j] = ∂²ℓ / ∂θᵢ ∂θⱼ at ``params``.
+    The Fisher information matrix (bread of the sandwich) is ``-H``.
+    """
+    n = len(params)
+    _, grad0, _ = ztnb_loglike_score(params, y, x, offset)
+    H = np.zeros((n, n))
+    for i in range(n):
+        p_fwd = params.copy()
+        p_fwd[i] += eps
+        _, grad_fwd, _ = ztnb_loglike_score(p_fwd, y, x, offset)
+        H[i] = (grad_fwd - grad0) / eps
+    return (H + H.T) / 2.0  # symmetrise to correct for numerical asymmetry
 
 
 def ztnb_start_params(y: np.ndarray, x: pd.DataFrame) -> np.ndarray:
@@ -672,13 +720,14 @@ def fit_ztnb(
     x: pd.DataFrame,
     groups: np.ndarray,
     maxiter: int,
+    offset: np.ndarray | None = None,
 ) -> ZTNBResult:
     x_array = np.asarray(x, dtype=float)
     start = ztnb_start_params(y, x)
     opt = minimize(
         ztnb_objective,
         start,
-        args=(y, x_array),
+        args=(y, x_array, offset),
         method="L-BFGS-B",
         jac=True,
         bounds=[(None, None)] * x_array.shape[1] + [(-10.0, 8.0)],
@@ -686,10 +735,15 @@ def fit_ztnb(
     )
     params = opt.x.copy()
     params[-1] = float(np.clip(params[-1], -10.0, 8.0))
-    llf, _, score_obs = ztnb_loglike_score(params, y, x_array)
+    llf, _, score_obs = ztnb_loglike_score(params, y, x_array, offset)
 
-    opg = score_obs.T @ score_obs
-    bread_inv = pinvh(opg, rtol=1e-10)
+    # Use the numerical Hessian as the bread of the sandwich estimator.
+    # Fisher information = -H (negative Hessian of the log-likelihood at the
+    # MLE). This is more robust than the OPG under model misspecification,
+    # which is the setting where cluster-robust inference is most needed.
+    H = _ztnb_numerical_hessian(params, y, x_array, offset)
+    info = -H
+    bread_inv = pinvh(info, rtol=1e-10)
 
     group_codes, inverse = np.unique(groups, return_inverse=True)
     cluster_scores = np.zeros((len(group_codes), len(params)), dtype=float)
@@ -726,6 +780,9 @@ def fit_positive_component(
     lineage_levels_all: list[str],
     calendar_cols: list[str],
     maxiter: int,
+    cluster_by: str = "window_id",
+    use_size_offset: bool = False,
+    winsorise_quantile: float = 0.0,
 ) -> tuple[pd.DataFrame, dict]:
     terms = model_terms(spec)
     use = clusters.loc[clusters[spec.positive_col] > 0].dropna(
@@ -733,12 +790,30 @@ def fit_positive_component(
     )
     use = use.copy()
     y = use[spec.positive_col].astype(int).to_numpy()
+
+    # Tail winsorisation sensitivity: cap extreme positive counts at the
+    # given quantile to check sensitivity to heavy-right-tail clusters.
+    winsorised = False
+    winsorise_cap: int | None = None
+    if winsorise_quantile > 0.0:
+        winsorise_cap = int(np.quantile(y, winsorise_quantile))
+        y = np.minimum(y, winsorise_cap)
+        winsorised = True
+
+    # Window-pool size offset for cluster-size model (SAP §6.1).
+    # Converts the estimand from raw cluster size to size relative to the
+    # number of sequences available in the analysis window.
+    offset: np.ndarray | None = None
+    if use_size_offset and spec.name == "cluster_size":
+        wn_seq = use["wn_no_sequences"].to_numpy(dtype=float)
+        offset = np.log(np.clip(wn_seq, 1.0, None))
+
     x = build_exog(use, terms, calendar_cols, lineage_levels_all)
-    groups = use["window_id"].astype(str).to_numpy()
+    groups = use[cluster_by].astype(str).to_numpy()
 
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        result = fit_ztnb(y, x, groups, maxiter=maxiter)
+        result = fit_ztnb(y, x, groups, maxiter=maxiter, offset=offset)
 
     idx = {name: i for i, name in enumerate(result.exog_names)}
     rows = []
@@ -782,6 +857,11 @@ def fit_positive_component(
         "n_lineage_levels_available": int(len(lineage_levels_all)),
         "n_lineage_terms_used": int(sum(col.startswith("lineage_") for col in x.columns)),
         "n_windows": int(use["window_id"].nunique()),
+        "cluster_by": cluster_by,
+        "size_offset_used": bool(offset is not None),
+        "winsorised": winsorised,
+        "winsorise_quantile": winsorise_quantile if winsorised else None,
+        "winsorise_cap": winsorise_cap,
         "converged": bool(result.converged),
         "iterations": int(result.nit),
         "log_likelihood": float(result.llf),
@@ -799,6 +879,9 @@ def fit_count_models(
     lineage_levels_all: list[str],
     calendar_cols: list[str],
     maxiter: int,
+    cluster_by: str = "window_id",
+    use_size_offset: bool = False,
+    winsorise_quantile: float = 0.0,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     result_frames = []
     diagnostics = []
@@ -806,14 +889,18 @@ def fit_count_models(
         if not spec.include_size:
             print(f"  - {spec.name}: hurdle binary", flush=True)
             rows, diag = fit_binary_component(
-                clusters, spec, lineage_levels_all, calendar_cols, maxiter
+                clusters, spec, lineage_levels_all, calendar_cols, maxiter,
+                cluster_by=cluster_by,
             )
             result_frames.append(rows)
             diagnostics.append(diag)
 
         print(f"  - {spec.name}: zero-truncated NB positive count", flush=True)
         rows, diag = fit_positive_component(
-            clusters, spec, lineage_levels_all, calendar_cols, maxiter
+            clusters, spec, lineage_levels_all, calendar_cols, maxiter,
+            cluster_by=cluster_by,
+            use_size_offset=use_size_offset,
+            winsorise_quantile=winsorise_quantile,
         )
         result_frames.append(rows)
         diagnostics.append(diag)
@@ -826,6 +913,7 @@ def fit_mixing_models(
     clusters: pd.DataFrame,
     lineage_levels_all: list[str],
     calendar_cols: list[str],
+    cluster_by: str = "window_id",
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     result_frames = []
     diagnostics = []
@@ -839,7 +927,7 @@ def fit_mixing_models(
         use = use.copy()
         y = use[outcome].astype(float)
         x = build_exog(use, terms, calendar_cols, lineage_levels_all)
-        groups = use["window_id"].astype(str).to_numpy()
+        groups = use[cluster_by].astype(str).to_numpy()
 
         model = sm.OLS(y, x)
         result = model.fit(cov_type="cluster", cov_kwds={"groups": groups})
@@ -977,11 +1065,8 @@ def summarise_dataset(
 
 
 def plot_count_effects(results: pd.DataFrame, out_base: Path) -> None:
-    setup_matplotlib_cache()
-    import matplotlib
-
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
+    style = load_plot_style()
+    from matplotlib.ticker import FixedLocator, FuncFormatter, NullFormatter, NullLocator
 
     primary = results[
         results["outcome"].isin(["cluster_size", "duration", "geographic_dispersion"])
@@ -989,27 +1074,18 @@ def plot_count_effects(results: pd.DataFrame, out_base: Path) -> None:
     ].copy()
     outcomes = ["cluster_size", "duration", "geographic_dispersion"]
     components = ["hurdle_binary", "positive_zero_truncated_count"]
-    colours = {
-        "deprivation_z": "#2b2b2b",
-        "local_incidence_z": "#4e79a7",
-        "local_seq_fraction_z": "#59a14f",
-        "window_seq_fraction_z": "#f28e2b",
-        "test_positivity_z": "#b07aa1",
-    }
+    colours = term_colours(style)
+    ratio_ticks = [0.8, 1.0, 1.5, 2.0, 3.0, 4.0]
 
-    plt.rcParams.update(
-        {
-            "font.size": 8,
-            "axes.labelsize": 8,
-            "xtick.labelsize": 7,
-            "ytick.labelsize": 8,
-            "legend.fontsize": 7,
-            "pdf.fonttype": 42,
-            "ps.fonttype": 42,
-        }
+    fig, axes = style.new_figure(
+        width="double",
+        height_in=5.8,
+        nrows=3,
+        ncols=2,
+        sharex=True,
+        font_scale=0.85,
+        layout="constrained"
     )
-
-    fig, axes = plt.subplots(3, 2, figsize=(8.0, 6.2), sharex=False)
     term_offsets = np.linspace(-0.3, 0.3, len(PRIMARY_TERMS))
     term_positions = dict(zip(PRIMARY_TERMS, term_offsets))
 
@@ -1036,14 +1112,16 @@ def plot_count_effects(results: pd.DataFrame, out_base: Path) -> None:
                 )
             ax.axvline(1, color="#666666", linewidth=0.8, linestyle="--")
             ax.set_xscale("log")
+            ax.set_xlim(0.75, 4.5)
+            ax.xaxis.set_major_locator(FixedLocator(ratio_ticks))
+            ax.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}"))
+            ax.xaxis.set_minor_locator(NullLocator())
+            ax.xaxis.set_minor_formatter(NullFormatter())
             ax.set_yticks([])
             ax.grid(axis="x", color="#dddddd", linewidth=0.6)
-            ax.spines["top"].set_visible(False)
-            ax.spines["right"].set_visible(False)
             if i == 0:
                 ax.set_title(
                     "Hurdle: any excess" if component == "hurdle_binary" else "Positive: ZTNB",
-                    fontsize=8,
                 )
             if j == 0:
                 ax.set_ylabel(
@@ -1053,7 +1131,7 @@ def plot_count_effects(results: pd.DataFrame, out_base: Path) -> None:
                     rotation=0,
                     ha="right",
                     va="center",
-                    labelpad=32,
+                    labelpad=20,
                 )
 
     handles, labels = axes[0, 0].get_legend_handles_labels()
@@ -1062,53 +1140,44 @@ def plot_count_effects(results: pd.DataFrame, out_base: Path) -> None:
         unique.values(),
         unique.keys(),
         loc="lower center",
-        ncol=2,
+        bbox_to_anchor=(0.6, -0.065),
+        ncol=3,
         frameon=False,
         columnspacing=1.4,
         handlelength=1.2,
     )
-    fig.supxlabel("Adjusted ratio per 1 SD higher cluster-level covariate", y=0.08, fontsize=8)
-    out_base.parent.mkdir(parents=True, exist_ok=True)
-    fig.subplots_adjust(left=0.16, right=0.98, top=0.93, bottom=0.24, hspace=0.42, wspace=0.22)
-    fig.savefig(out_base.with_suffix(".png"), dpi=300, bbox_inches="tight")
-    fig.savefig(out_base.with_suffix(".pdf"), bbox_inches="tight")
-    plt.close(fig)
+    fig.supxlabel("Adjusted ratio per 1 SD higher cluster-level covariate", x=0.6)
+    # fig.subplots_adjust(left=0.16, right=0.98, top=0.93, bottom=0.29, hspace=0.48, wspace=0.28)
+    style.save_figure(fig, out_base, width="double", height_in=6.2, dpi=600, save_pdf=True, save_png=True)
 
 
 def plot_mixing_effects(results: pd.DataFrame, out_base: Path) -> None:
-    setup_matplotlib_cache()
-    import matplotlib
-
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-
-    plt.rcParams.update(
-        {
-            "font.size": 8,
-            "axes.labelsize": 8,
-            "xtick.labelsize": 7,
-            "ytick.labelsize": 8,
-            "legend.fontsize": 7,
-            "pdf.fonttype": 42,
-            "ps.fonttype": 42,
-        }
-    )
+    style = load_plot_style()
+    from matplotlib.ticker import FuncFormatter, MultipleLocator
 
     models = ["simd", "age", "sex", "profile"]
     model_positions = {model: i for i, model in enumerate(models)}
     terms = PRIMARY_TERMS + ["log_cluster_size_z"]
     term_offsets = np.linspace(-0.32, 0.32, len(terms))
     term_positions = dict(zip(terms, term_offsets))
-    colours = {
-        "deprivation_z": "#2b2b2b",
-        "local_incidence_z": "#4e79a7",
-        "local_seq_fraction_z": "#59a14f",
-        "window_seq_fraction_z": "#f28e2b",
-        "test_positivity_z": "#b07aa1",
-        "log_cluster_size_z": "#7f7f7f",
-    }
+    colours = term_colours(style)
 
-    fig, ax = plt.subplots(figsize=(7.4, 4.6))
+    max_abs = float(
+        np.nanmax(
+            np.abs(
+                results[
+                    [
+                        "ci_low_percentage_points",
+                        "coefficient_percentage_points",
+                        "ci_high_percentage_points",
+                    ]
+                ].to_numpy()
+            )
+        )
+    )
+    x_limit = max(8, int(math.ceil(max_abs / 2.0) * 2))
+
+    fig, ax = style.new_figure(width="double", height_in=5, font_scale=0.85)
     for _, row in results.iterrows():
         y = model_positions[row["outcome"]] + term_positions[row["term"]]
         ax.plot(
@@ -1128,13 +1197,17 @@ def plot_mixing_effects(results: pd.DataFrame, out_base: Path) -> None:
         )
 
     ax.axvline(0, color="#666666", linewidth=0.8, linestyle="--")
-    ax.set_xlabel("Change in excess pairwise discordance, percentage points per 1 SD higher covariate")
+    ax.set_xlim(-x_limit, x_limit)
+    ax.xaxis.set_major_locator(MultipleLocator(2 if x_limit <= 10 else 5))
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}"))
+    ax.set_xlabel(
+        "Change in excess pairwise discordance (pp per 1 SD higher covariate)",
+        labelpad=5,
+    )
     ax.set_yticks(list(model_positions.values()))
     ax.set_yticklabels([MIXING_VARIABLES[m]["short_label"] for m in models])
     ax.set_ylim(-0.6, len(models) - 0.4)
     ax.invert_yaxis()
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
     ax.grid(axis="x", color="#dddddd", linewidth=0.6)
 
     handles, labels = ax.get_legend_handles_labels()
@@ -1143,17 +1216,40 @@ def plot_mixing_effects(results: pd.DataFrame, out_base: Path) -> None:
         unique.values(),
         unique.keys(),
         loc="upper center",
-        bbox_to_anchor=(0.5, -0.22),
-        ncol=2,
+        bbox_to_anchor=(0.5, -0.17),
+        ncol=3,
         frameon=False,
         columnspacing=1.4,
         handlelength=1.2,
     )
-    out_base.parent.mkdir(parents=True, exist_ok=True)
-    fig.subplots_adjust(bottom=0.34, left=0.2, right=0.98)
-    fig.savefig(out_base.with_suffix(".png"), dpi=300, bbox_inches="tight")
-    fig.savefig(out_base.with_suffix(".pdf"), bbox_inches="tight")
-    plt.close(fig)
+    fig.subplots_adjust(bottom=0.38, left=0.2, right=0.98)
+    style.save_figure(fig, out_base, width="double", height_in=4.6, dpi=600, save_pdf=True, save_png=True)
+
+
+def load_plot_style():
+    setup_matplotlib_cache()
+    import matplotlib
+
+    matplotlib.use("Agg")
+    root = repo_root()
+    root_str = str(root)
+    if root_str not in sys.path:
+        sys.path.insert(0, root_str)
+    from utils import style
+
+    return style
+
+
+def term_colours(style) -> dict[str, str]:
+    palette = style.SIMD_DOMAIN_PALETTE
+    return {
+        "deprivation_z": palette["overall"],
+        "local_incidence_z": palette["income"],
+        "local_seq_fraction_z": palette["employment"],
+        "window_seq_fraction_z": palette["education"],
+        "test_positivity_z": palette["health"],
+        "log_cluster_size_z": palette["access"],
+    }
 
 
 def setup_matplotlib_cache() -> None:
@@ -1170,11 +1266,22 @@ def run(
     lineage_min_clusters: int,
     calendar_spline_df: int,
     maxiter: int,
+    cluster_by: str = "window_id",
+    use_size_offset: bool = False,
+    winsorise_quantile: float = 0.0,
+    use_index_simd: bool = False,
+    window_stride: int = 1,
+    tables_dir: Path | None = None,
+    figures_dir: Path | None = None,
+    cache_dir: Path | None = None,
 ) -> None:
     out_dir = root / "part1" / "main"
-    tables_dir = out_dir / "tables"
-    figures_dir = out_dir / "figures"
-    cache_dir = out_dir / "cache"
+    if tables_dir is None:
+        tables_dir: Path = out_dir / "tables"
+    if figures_dir is None:
+        figures_dir: Path = out_dir / "figures"
+    if cache_dir is None:
+        cache_dir: Path = out_dir / "cache"
     tables_dir.mkdir(parents=True, exist_ok=True)
     figures_dir.mkdir(parents=True, exist_ok=True)
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -1188,6 +1295,30 @@ def run(
         lineage_min_clusters=lineage_min_clusters,
         calendar_spline_df=calendar_spline_df,
     )
+
+    # Non-overlapping window sensitivity: retain only every Nth window so that
+    # successive analysis windows do not share sequences.  window_stride=1 (the
+    # default) keeps all windows and is the primary analysis.
+    if window_stride > 1:
+        keep_idx = clusters["window_idx"] % window_stride == 0
+        n_before = len(clusters)
+        clusters = clusters.loc[keep_idx].copy()
+        print(
+            f"Non-overlapping window filter (stride={window_stride}): "
+            f"{n_before:,} → {len(clusters):,} clusters",
+            flush=True,
+        )
+
+    # Index-case SIMD sensitivity: swap deprivation_z for index_deprivation_z
+    # in the primary covariate list.
+    primary_terms = PRIMARY_TERMS.copy()
+    if use_index_simd:
+        primary_terms = [
+            "index_deprivation_z" if t == "deprivation_z" else t
+            for t in primary_terms
+        ]
+        print("Using index-case SIMD (index_deprivation_z) instead of mean cluster SIMD.", flush=True)
+
     calendar_cols = [col for col in clusters.columns if col.startswith("calendar_spline_")]
     lineage_levels_all = lineage_levels(clusters)
 
@@ -1200,12 +1331,26 @@ def run(
         f"{len(lineage_levels_all)} lineage model levels, {len(calendar_cols)} calendar spline terms",
         flush=True,
     )
+
+    # Index-case SIMD: temporarily swap deprivation_z in the module-level
+    # PRIMARY_TERMS list so model_terms() picks up index_deprivation_z.
+    if use_index_simd:
+        _orig_terms = PRIMARY_TERMS[:]
+        PRIMARY_TERMS[:] = primary_terms
+
     count_results, count_diagnostics = fit_count_models(
         clusters,
         lineage_levels_all=lineage_levels_all,
         calendar_cols=calendar_cols,
         maxiter=maxiter,
+        cluster_by=cluster_by,
+        use_size_offset=use_size_offset,
+        winsorise_quantile=winsorise_quantile,
     )
+
+    if use_index_simd:
+        PRIMARY_TERMS[:] = _orig_terms
+
     count_results.to_csv(tables_dir / "main_hurdle_count_model_results.csv", index=False)
     count_diagnostics.to_csv(tables_dir / "main_hurdle_count_model_diagnostics.csv", index=False)
 
@@ -1214,6 +1359,7 @@ def run(
         clusters,
         lineage_levels_all=lineage_levels_all,
         calendar_cols=calendar_cols,
+        cluster_by=cluster_by,
     )
     mixing_results.to_csv(tables_dir / "main_mixing_model_results.csv", index=False)
     mixing_diagnostics.to_csv(tables_dir / "main_mixing_model_diagnostics.csv", index=False)
@@ -1239,19 +1385,107 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--lineage-min-clusters", type=int, default=LINEAGE_MIN_CLUSTERS)
     parser.add_argument("--calendar-spline-df", type=int, default=CALENDAR_SPLINE_DF)
     parser.add_argument("--maxiter", type=int, default=1000)
+    parser.add_argument(
+        "--cluster-by",
+        default="window_id",
+        choices=["window_id", "health_board"],
+        help=(
+            "Column used to define clusters for the sandwich standard-error estimator. "
+            "'window_id' (default, primary analysis) clusters by sliding analysis window "
+            "to account for temporal dependency. 'health_board' clusters by NHS Health "
+            "Board (14 groups) to account for spatial dependency, as pre-specified in "
+            "the SAP."
+        ),
+    )
+    parser.add_argument(
+        "--use-size-offset",
+        action="store_true",
+        default=False,
+        help=(
+            "Include log(wn_no_sequences) as an offset in the cluster-size positive "
+            "count model (SAP §6.1 sensitivity). Changes the estimand from raw "
+            "reconstructed cluster size to size relative to the window sampling pool."
+        ),
+    )
+    parser.add_argument(
+        "--winsorise-quantile",
+        type=float,
+        default=0.0,
+        metavar="Q",
+        help=(
+            "Winsorise the positive count outcome at the Q-th quantile before fitting "
+            "the ZTNB (e.g. 0.99 caps the top 1%%). Set to 0 (default) to disable. "
+            "Use to test sensitivity to heavy-tail clusters."
+        ),
+    )
+    parser.add_argument(
+        "--use-index-simd",
+        action="store_true",
+        default=False,
+        help=(
+            "Sensitivity S2: replace mean cluster SIMD rank with the SIMD rank of the "
+            "index case (earliest collection date) as the deprivation exposure."
+        ),
+    )
+    parser.add_argument(
+        "--window-stride",
+        type=int,
+        default=1,
+        metavar="N",
+        help=(
+            "Retain only windows where window_idx %% N == 0. With stride=3 (and 1-week "
+            "steps on 3-week windows) this yields approximately non-overlapping windows, "
+            "removing cross-window sequence dependency. Default 1 keeps all windows."
+        ),
+    )
+    parser.add_argument(
+        "--tables-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory for output CSV tables. Defaults to part1/main/tables. "
+            "Set a different path for each sensitivity run to avoid overwriting "
+            "primary results (e.g. --tables-dir part1/main/tables_health_board)."
+        ),
+    )
+    parser.add_argument(
+        "--figures-dir",
+        type=Path,
+        default=None,
+        help="Directory for output figures. Defaults to part1/main/figures.",
+    )
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory for cached intermediate files (cluster table parquet). "
+            "Defaults to part1/main/cache. Set separately when running sensitivities "
+            "that require a different cluster table (e.g. --window-stride 3)."
+        ),
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: Iterable[str] | None = None) -> None:
     args = parse_args(argv)
     qc = None if str(args.qc).lower() == "none" else str(args.qc)
+    root = args.root.resolve()
     run(
-        root=args.root.resolve(),
+        root=root,
         qc=qc,
         primary_resolution=args.primary_resolution,
         lineage_min_clusters=args.lineage_min_clusters,
         calendar_spline_df=args.calendar_spline_df,
         maxiter=args.maxiter,
+        cluster_by=args.cluster_by,
+        use_size_offset=args.use_size_offset,
+        winsorise_quantile=args.winsorise_quantile,
+        use_index_simd=args.use_index_simd,
+        window_stride=args.window_stride,
+        tables_dir=args.tables_dir.resolve() if args.tables_dir else None,
+        figures_dir=args.figures_dir.resolve() if args.figures_dir else None,
+        cache_dir=args.cache_dir.resolve() if args.cache_dir else None,
     )
 
 

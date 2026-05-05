@@ -7,7 +7,7 @@ Generated for the main Part 1 analysis on 5 May 2026.
 Part 1 asks whether socioeconomic deprivation and local surveillance conditions
 are associated with SARS-CoV-2 genomic cluster characteristics in Scotland after
 accounting for lineage, calendar time, local incidence, sequencing intensity,
-test positivity, and clustering resolution.
+and test positivity, using one primary Leiden clustering resolution.
 
 The specific outcomes are:
 
@@ -93,14 +93,14 @@ For positive-count panels, the ratio is a ZTNB count ratio.
 In the pooled main model:
 
 - Cluster size hurdle: OR 0.971, 95% CI 0.960 to 0.983, p = 1.43e-06.
-- Positive cluster size: ZTNB count ratio 0.926, 95% CI 0.891 to 0.963,
-  p = 0.000126.
+- Positive cluster size: ZTNB count ratio 0.926, 95% CI 0.869 to 0.987,
+  p = 0.018.
 - Duration hurdle: OR 0.992, 95% CI 0.979 to 1.004, p = 0.192.
-- Positive duration: ZTNB count ratio 1.003, 95% CI 0.994 to 1.012,
-  p = 0.520.
+- Positive duration: ZTNB count ratio 1.003, 95% CI 0.995 to 1.011,
+  p = 0.451.
 - Geographic spread hurdle: OR 1.004, 95% CI 0.992 to 1.016, p = 0.522.
-- Positive geographic spread: ZTNB count ratio 0.851, 95% CI 0.813 to 0.891,
-  p = 3.36e-12.
+- Positive geographic spread: ZTNB count ratio 0.851, 95% CI 0.792 to 0.915,
+  p = 1.24e-05.
 
 The strongest SIMD deprivation result is therefore not larger clusters, but
 smaller positive cluster size and lower positive geographic spread after
@@ -214,27 +214,29 @@ lineage terms can cause separation or singular covariance estimates.
 
 Delta shows the clearest negative deprivation association:
 
-- Cluster size hurdle: OR 0.938, 95% CI 0.925 to 0.951.
-- Positive cluster size: count ratio 0.818, 95% CI 0.761 to 0.879.
-- Duration hurdle: OR 0.949, 95% CI 0.935 to 0.963.
-- Geographic spread hurdle: OR 0.962, 95% CI 0.949 to 0.976.
-- Positive geographic spread: count ratio 0.789, 95% CI 0.725 to 0.860.
+- Cluster size hurdle: OR 0.934, 95% CI 0.921 to 0.947.
+- Positive cluster size: count ratio 0.797, 95% CI 0.725 to 0.876.
+- Duration hurdle: OR 0.945, 95% CI 0.932 to 0.958.
+- Geographic spread hurdle: OR 0.958, 95% CI 0.945 to 0.971.
+- Positive geographic spread: count ratio 0.781, 95% CI 0.703 to 0.867.
 
 BA.2 shows a different pattern among clusters exceeding the structural minimum:
 
-- Positive cluster size: count ratio 1.26, 95% CI 1.18 to 1.34.
-- Positive geographic spread: count ratio 1.17, 95% CI 1.09 to 1.26.
+- Positive cluster size: count ratio 1.19, 95% CI 1.07 to 1.32.
+- Positive geographic spread: count ratio 1.10, 95% CI 0.97 to 1.24.
 
 BA.4 also shows positive positive-count effects:
 
-- Positive cluster size: count ratio 1.75, 95% CI 1.17 to 2.64.
-- Positive geographic spread: count ratio 1.67, 95% CI 1.11 to 2.51.
+- Positive cluster size: count ratio 1.68, 95% CI 0.27 to 10.28.
+- Positive geographic spread: count ratio 1.80, 95% CI 1.26 to 2.58.
 
 However, BA.4 has only 2,669 clusters, so these estimates should be interpreted
 as exploratory and more sensitive to sparse-wave structure.
 
 BA.5 has lower odds of non-singleton clusters and lower positive geographic
-spread with higher deprivation. BQ.1 has lower odds of non-singleton clusters.
+spread with higher deprivation. BQ.1 has lower odds of non-singleton clusters
+but higher positive cluster size and higher positive geographic spread among
+clusters exceeding the structural minimum.
 B.1.177 and Alpha show weaker or outcome-specific associations.
 
 ### Interpretation
@@ -276,9 +278,9 @@ remain after additionally adjusting the positive-count models for cluster size.
 After size adjustment, overall SIMD deprivation is weakly positively associated
 with:
 
-- positive duration: count ratio 1.01, 95% CI 1.01 to 1.02, p = 4.26e-05
+- positive duration: count ratio 1.012, 95% CI 1.006 to 1.019, p = 6.44e-05
 - positive geographic spread: count ratio 1.03, 95% CI 1.01 to 1.04,
-  p = 8.97e-05
+  p = 4.67e-11
 
 This is important because the unadjusted positive geographic-spread model shows
 a negative deprivation association. The size-adjusted sensitivity suggests that
@@ -388,6 +390,170 @@ The matrices are descriptive rather than inferential. They help make the
 regression mixing outcomes more interpretable by showing the pairwise structure
 behind the aggregate discordance metrics.
 
+## Sensitivity Analysis Results
+
+Five sensitivity runs were generated with `part1_sensitivities.sh`. Each run
+has its own result tables and manuscript figures so that the primary outputs are
+not overwritten:
+
+| Sensitivity | Tables | Figures |
+|---|---|---|
+| Health-board clustered standard errors | `part1/main/tables_health_board` | `part1/main/manuscript/figures_health_board` |
+| Cluster-size positive-count offset | `part1/main/tables_size_offset` | `part1/main/manuscript/figures_size_offset` |
+| Index-case SIMD exposure | `part1/main/tables_index_simd` | `part1/main/manuscript/figures_index_simd` |
+| 99th-percentile positive-count winsorisation | `part1/main/tables_winsorise99` | `part1/main/manuscript/figures_winsorise99` |
+| Approximately non-overlapping windows | `part1/main/tables_stride3` | `part1/main/manuscript/figures_stride3` |
+
+### Health-Board Clustered Standard Errors
+
+This sensitivity keeps the fitted coefficients unchanged but clusters standard
+errors by health board rather than by sliding window. It is therefore a
+standard-error sensitivity, not a point-estimate sensitivity.
+
+The main count point estimates are unchanged, but uncertainty is much wider for
+the primary unadjusted count components:
+
+- Cluster size hurdle: OR 0.971, 95% CI 0.914 to 1.032.
+- Positive cluster size: count ratio 0.926, 95% CI 0.664 to 1.293.
+- Positive geographic spread: count ratio 0.851, 95% CI 0.577 to 1.255.
+
+The size-adjusted positive-count results remain positive:
+
+- Positive duration, size-adjusted: count ratio 1.012, 95% CI 1.001 to 1.024.
+- Positive geographic spread, size-adjusted: count ratio 1.027, 95% CI 1.012
+  to 1.041.
+
+For mixing, age and sex associations remain clearly different from zero under
+health-board clustering, while the joint-profile estimate weakens:
+
+- SIMD mixing: +0.31 pp, 95% CI -3.36 to +3.98.
+- Age mixing: +1.66 pp, 95% CI +0.98 to +2.34.
+- Sex mixing: -0.78 pp, 95% CI -1.28 to -0.27.
+- Joint profile mixing: +0.48 pp, 95% CI -0.04 to +0.99.
+
+Interpretation: conclusions based on exact statistical significance are
+sensitive to clustering level, but the direction of the main deprivation
+estimates is unchanged. The most robust mixing signals are age and sex.
+
+### Cluster-Size Positive-Count Offset
+
+This sensitivity adds `log(wn_no_sequences)` as an offset in the cluster-size
+positive-count model, changing the estimand from raw positive cluster size to
+positive cluster size relative to the analysis-window sequencing pool.
+
+Only the cluster-size positive model changes. The SIMD deprivation estimate is
+almost identical to the primary result:
+
+- Primary positive cluster size: count ratio 0.926, 95% CI 0.869 to 0.987.
+- Offset positive cluster size: count ratio 0.925, 95% CI 0.868 to 0.985.
+
+Interpretation: the negative deprivation association for positive cluster size
+is not explained by differences in the number of sequences available in the
+analysis window.
+
+### Index-Case SIMD Exposure
+
+This sensitivity replaces mean cluster SIMD deprivation with the SIMD
+deprivation of the earliest collected sequence in the cluster. The current
+index-SIMD sensitivity output changes the count models; the mixing table in
+`tables_index_simd` still contains the primary `deprivation_z` term and should
+not be interpreted as an index-case SIMD mixing sensitivity.
+
+For the count models, index-case SIMD gives a different pattern from mean
+cluster SIMD:
+
+- Cluster size hurdle: OR 0.967, 95% CI 0.956 to 0.978.
+- Positive cluster size: count ratio 0.996, 95% CI 0.957 to 1.036.
+- Duration hurdle: OR 0.981, 95% CI 0.969 to 0.994.
+- Positive duration: count ratio 1.000, 95% CI 0.995 to 1.005.
+- Geographic spread hurdle: OR 0.994, 95% CI 0.983 to 1.006.
+- Positive geographic spread: count ratio 0.989, 95% CI 0.951 to 1.028.
+- Positive duration, size-adjusted: count ratio 1.002, 95% CI 0.999 to 1.006.
+- Positive geographic spread, size-adjusted: count ratio 1.002, 95% CI 0.998
+  to 1.006.
+
+Interpretation: the negative positive-count associations for mean cluster SIMD
+are much weaker when the exposure is the index-case SIMD. This suggests that
+mean cluster deprivation is capturing the composition of the whole cluster, not
+only the deprivation context of the earliest observed case.
+
+### Winsorising Positive Counts At The 99th Percentile
+
+This sensitivity caps positive count outcomes at the 99th percentile before
+fitting the ZTNB models. Binary hurdle components are unchanged.
+
+The main effect is attenuation of the positive cluster-size association:
+
+- Primary positive cluster size: count ratio 0.926, 95% CI 0.869 to 0.987.
+- Winsorised positive cluster size: count ratio 0.952, 95% CI 0.900 to 1.006.
+
+The negative positive geographic-spread association remains:
+
+- Primary positive geographic spread: count ratio 0.851, 95% CI 0.792 to 0.915.
+- Winsorised positive geographic spread: count ratio 0.889, 95% CI 0.837 to
+  0.944.
+
+The size-adjusted positive-count results remain positive:
+
+- Positive duration, size-adjusted: count ratio 1.013, 95% CI 1.006 to 1.019.
+- Positive geographic spread, size-adjusted: count ratio 1.027, 95% CI 1.019
+  to 1.036.
+
+Interpretation: the positive cluster-size deprivation estimate is sensitive to
+the extreme right tail, while the negative positive geographic-spread result and
+the size-adjusted positive results are less sensitive to winsorisation.
+
+### Approximately Non-Overlapping Windows
+
+This sensitivity keeps only windows where `window_idx % 3 == 0`, reducing the
+cluster table from 193,112 clusters to 63,991 clusters and the mixing-model
+population from 84,067 to 27,897 non-singleton clusters.
+
+Count-model results are directionally similar but less precise:
+
+- Cluster size hurdle: OR 0.972, 95% CI 0.954 to 0.991.
+- Positive cluster size: count ratio 0.920, 95% CI 0.811 to 1.044.
+- Duration hurdle: OR 0.990, 95% CI 0.969 to 1.012.
+- Positive duration: count ratio 1.001, 95% CI 0.988 to 1.015.
+- Geographic spread hurdle: OR 1.003, 95% CI 0.983 to 1.024.
+- Positive geographic spread: count ratio 0.861, 95% CI 0.745 to 0.996.
+- Positive duration, size-adjusted: count ratio 1.010, 95% CI 1.001 to 1.020.
+- Positive geographic spread, size-adjusted: count ratio 1.027, 95% CI 1.013
+  to 1.041.
+
+Mixing-model results remain close to the primary estimates for age, sex, and
+joint profile:
+
+- SIMD mixing: +0.24 pp, 95% CI -0.59 to +1.07.
+- Age mixing: +1.63 pp, 95% CI +0.92 to +2.34.
+- Sex mixing: -1.02 pp, 95% CI -1.63 to -0.40.
+- Joint profile mixing: +0.44 pp, 95% CI +0.16 to +0.72.
+
+Interpretation: reducing repeated-window dependence weakens precision, but the
+main qualitative story is stable: no clear SIMD-mixing effect, positive age and
+joint-profile mixing effects, negative sex-mixing effect, and only small or
+negative deprivation associations for unadjusted count magnitude.
+
+### Overall Sensitivity Interpretation
+
+The sensitivity analyses support a cautious version of the main findings:
+
+- The direction of the main mean-SIMD count estimates is generally stable, but
+  their precision depends on the standard-error clustering level and on how the
+  positive-count tail is handled.
+- The strongest unadjusted count result that persists across several
+  sensitivities is lower positive geographic spread with higher mean cluster
+  deprivation.
+- Size-adjusted positive duration and geographic spread remain weakly positive
+  under health-board clustering, winsorisation, and approximately
+  non-overlapping windows.
+- Index-case SIMD does not reproduce the positive-count associations seen with
+  mean cluster SIMD, implying that the cluster-level composition exposure is
+  scientifically different from the earliest-observed-case exposure.
+- Mixing results are comparatively stable for age and sex. SIMD-quintile mixing
+  remains near null, and joint-profile mixing is directionally positive but
+  less robust to health-board clustering.
+
 ## Suggested Results Paragraph
 
 In the main hurdle/ZTNB models, higher cluster-level SIMD deprivation was not
@@ -408,6 +574,12 @@ domain-quintile mixing, whereas access and housing deprivation were associated
 with lower domain-quintile mixing. Per-wave outcome models indicated that
 deprivation effects varied over time, with the strongest negative associations
 seen during Delta and more heterogeneous patterns in Omicron subwaves.
+Sensitivity analyses supported the qualitative pattern but showed that
+statistical precision depends on the clustering level and on the positive-count
+tail: health-board clustered standard errors widened several count-outcome
+intervals, 99th-percentile winsorisation attenuated the positive cluster-size
+association, and the index-case SIMD exposure did not reproduce the
+mean-cluster-SIMD positive-count associations.
 
 ## Interpretation For The Part 1 Question
 
@@ -425,6 +597,10 @@ The answer to the original question is therefore mixed:
   age mixing and joint profile mixing.
 - Wave-specific analyses suggest that lineage and epidemic context modify these
   associations.
+- Sensitivity analyses reinforce the need to separate point-estimate stability
+  from statistical precision: directions are mostly stable, but inference is
+  weaker under health-board clustered standard errors and when the heaviest
+  positive-count tail is capped.
 
 These results support a cautious conclusion: deprivation and local surveillance
 conditions are associated with observed genomic cluster structure, but the

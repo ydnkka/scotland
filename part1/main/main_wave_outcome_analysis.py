@@ -85,12 +85,32 @@ def build_wave_exog(
     calendar_cols: list[str],
     lineage_levels_wave: list[str],
 ) -> pd.DataFrame:
-    del lineage_levels_wave
+    """Build the design matrix for a wave-specific model.
+
+    Lineage dummies are included when ``lineage_levels_wave`` is non-empty.
+    ``drop_redundant_columns`` handles rank deficiency caused by sparse
+    lineages within a wave, so no manual lineage pre-filtering is needed.
+    The column ordering (intercept → covariates → calendar → lineage) means
+    ``drop_redundant_columns`` always preserves the substantive terms first.
+    """
     parts = [
         pd.DataFrame({"const": np.ones(len(df), dtype=float)}, index=df.index),
         df[terms].astype(float),
         df[calendar_cols].astype(float),
     ]
+    if lineage_levels_wave:
+        lineages = pd.Categorical(
+            df["lineage_model"].astype(str),
+            categories=lineage_levels_wave,
+            ordered=False,
+        )
+        lineage_dummies = pd.get_dummies(
+            pd.Series(lineages, index=df.index, name="lineage_model"),
+            prefix="lineage",
+            drop_first=True,
+            dtype=float,
+        )
+        parts.append(lineage_dummies)
     return drop_redundant_columns(pd.concat(parts, axis=1))
 
 
@@ -272,8 +292,8 @@ def fit_wave_binary_component(
         "event_fraction": float(y.mean()),
         "n_features": int(x.shape[1]),
         "n_lineage_levels_available": int(len(lineage_levels_all)),
-        "n_lineage_terms_used": 0,
-        "lineage_adjustment": "wave-stratified; no within-wave lineage dummies",
+        "n_lineage_terms_used": int(sum(col.startswith("lineage_") for col in x.columns)),
+        "lineage_adjustment": "wave-stratified; lineage dummies included, rank-dropped if collinear",
         "n_windows": n_windows,
         "covariance_method": "window-clustered sandwich with pseudo-inverse bread",
         "converged": bool(getattr(result, "converged", False)),
@@ -349,8 +369,8 @@ def fit_wave_positive_component(
         "max_response": int(np.max(y)),
         "n_features": int(x.shape[1]),
         "n_lineage_levels_available": int(len(lineage_levels_all)),
-        "n_lineage_terms_used": 0,
-        "lineage_adjustment": "wave-stratified; no within-wave lineage dummies",
+        "n_lineage_terms_used": int(sum(col.startswith("lineage_") for col in x.columns)),
+        "lineage_adjustment": "wave-stratified; lineage dummies included, rank-dropped if collinear",
         "n_windows": n_windows,
         "converged": bool(result.converged),
         "iterations": int(result.nit),
@@ -476,10 +496,14 @@ def run(
     min_windows: int,
     min_positive: int,
     min_events: int,
+    tables_dir: Path | None = None,
+    cache_dir: Path | None = None,
 ) -> None:
     main_dir = root / "part1" / "main"
-    tables_dir = main_dir / "tables"
-    cache_dir = main_dir / "cache"
+    if tables_dir is None:
+        tables_dir = main_dir / "tables"
+    if cache_dir is None:
+        cache_dir = main_dir / "cache"
     clusters = pd.read_parquet(cache_dir / "main_cluster_table.parquet")
     clusters["wave_group"] = clusters["pango_lineage"].astype(str).map(assign_wave)
 
@@ -509,18 +533,41 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--min-windows", type=int, default=4)
     parser.add_argument("--min-positive", type=int, default=500)
     parser.add_argument("--min-events", type=int, default=50)
+    parser.add_argument(
+        "--tables-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory for output CSV tables. Defaults to part1/main/tables. "
+            "Set to match the --tables-dir used by main_analysis.py for the "
+            "same sensitivity run."
+        ),
+    )
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory containing the main_cluster_table.parquet cache. "
+            "Defaults to part1/main/cache. Must match the --cache-dir used "
+            "by main_analysis.py for the same sensitivity run."
+        ),
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: Iterable[str] | None = None) -> None:
     args = parse_args(argv)
+    root = args.root.resolve()
     run(
-        root=args.root.resolve(),
+        root=root,
         maxiter=args.maxiter,
         min_clusters=args.min_clusters,
         min_windows=args.min_windows,
         min_positive=args.min_positive,
         min_events=args.min_events,
+        tables_dir=args.tables_dir.resolve() if args.tables_dir else None,
+        cache_dir=args.cache_dir.resolve() if args.cache_dir else None,
     )
 
 

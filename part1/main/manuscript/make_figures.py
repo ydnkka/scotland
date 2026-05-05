@@ -491,19 +491,31 @@ def plot_loglinear_comparison(
                 )
         ax.axvline(1.0, color="#666666", linestyle="--", linewidth=0.7)
         ax.set_xscale("log")
-        ax.set_xlim(0.75, 4.0)
+        # Extend the right xlim slightly so the "4.0" tick label doesn't clip
+        ax.set_xlim(0.75, 4.5)
         ticks = [0.8, 1.0, 1.5, 2.0, 3.0, 4.0]
         ax.set_xticks(ticks)
         ax.set_xticklabels([f"{tick:.1f}" for tick in ticks])
+        # Rotate tick labels to prevent crowding on narrow panels
+        ax.tick_params(axis="x", rotation=35)
+        for label in ax.get_xticklabels():
+            label.set_ha("right")
+            label.set_rotation_mode("anchor")
         ax.xaxis.set_minor_locator(NullLocator())
         ax.xaxis.set_minor_formatter(NullFormatter())
         ax.set_title(OUTCOME_LABELS[outcome], pad=4)
         ax.set_ylim(-0.8, len(PRIMARY_TERMS) - 0.2)
         ax.set_yticks(y_positions)
         ax.set_yticklabels([TERM_LABELS[t] for t in PRIMARY_TERMS] if idx == 0 else [])
-        ax.set_xlabel("Model-specific ratio per 1 SD higher covariate")
+        # No per-panel xlabel — use shared supxlabel below
         ax.grid(axis="x", color="#dddddd", linewidth=0.5)
 
+    # Single shared x-axis label (all panels share the same x axis)
+    fig.supxlabel(
+        "Model-specific ratio per 1 SD higher covariate",
+        y=0.01,
+        fontsize=8,
+    )
     handles, labels = axes[0].get_legend_handles_labels()
     unique = dict(zip(labels, handles))
     fig.legend(
@@ -512,10 +524,11 @@ def plot_loglinear_comparison(
         loc="lower center",
         ncol=3,
         frameon=False,
-        bbox_to_anchor=(0.54, 0.02),
+        bbox_to_anchor=(0.54, 0.07),
     )
     style.add_panel_labels(axes, x=-0.18, y=1.12, size=9)
-    fig.subplots_adjust(left=0.18, right=0.99, top=0.87, bottom=0.20, wspace=0.14)
+    # Extra bottom space for rotated tick labels + shared supxlabel + legend
+    fig.subplots_adjust(left=0.18, right=0.99, top=0.87, bottom=0.28, wspace=0.18)
     save_all(style, fig, out_dir / "supp_fig3_loglinear_vs_hurdle_ztnb", "double", 4.2)
 
 
@@ -810,10 +823,15 @@ def plot_simd_domain_quintile_mixing(
     ax.axvline(0.0, color="#666666", linestyle="--", linewidth=0.7)
     ax.set_yticks(y_positions)
     ax.set_yticklabels([DOMAIN_LABELS[d] for d in DOMAIN_ORDER])
-    ax.set_xlabel("Change in domain-quintile excess mixing (pp per 1 SD higher domain deprivation)")
+    # Wrap the long xlabel so it fits within the 1.5-column (5.2 inch) figure
+    ax.set_xlabel(
+        "Change in domain-quintile excess mixing\n(pp per 1 SD higher domain deprivation)",
+        labelpad=6,
+    )
     ax.set_xlim(-3.2, 0.8)
     ax.grid(axis="x", color="#dddddd", linewidth=0.5)
-    fig.subplots_adjust(left=0.26, right=0.98, top=0.96, bottom=0.16)
+    # Increase bottom margin to accommodate the two-line xlabel
+    fig.subplots_adjust(left=0.26, right=0.98, top=0.96, bottom=0.22)
     save_all(style, fig, out_dir / "supp_fig5_simd_domain_quintile_mixing", "onehalf", 3.4)
 
 
@@ -999,19 +1017,31 @@ def plot_observed_expected_matrices(
     plt.close("all")
 
 
-def run(root: Path) -> None:
+def run(
+    root: Path,
+    tables_dir: Path | None = None,
+    out_dir: Path | None = None,
+    cache_dir: Path | None = None,
+) -> None:
     setup_environment()
     style = load_style(root)
 
     main_dir = root / "part1" / "main"
-    out_dir = main_dir / "manuscript" / "figures"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    remove_stale_main_duplicates(out_dir)
+    if tables_dir is None:
+        tables_dir = main_dir / "tables"
+    if out_dir is None:
+        out_dir = main_dir / "manuscript" / "figures"
+    if cache_dir is None:
+        cache_dir = main_dir / "cache"
 
-    count_results = pd.read_csv(main_dir / "tables" / "main_hurdle_count_model_results.csv")
-    mixing_results = pd.read_csv(main_dir / "tables" / "main_mixing_model_results.csv")
-    cluster_table = pd.read_parquet(main_dir / "cache" / "main_cluster_table.parquet")
-    tables_dir = main_dir / "tables"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    # Only remove stale duplicates when writing to the canonical figures directory
+    if out_dir == main_dir / "manuscript" / "figures":
+        remove_stale_main_duplicates(out_dir)
+
+    count_results = pd.read_csv(tables_dir / "main_hurdle_count_model_results.csv")
+    mixing_results = pd.read_csv(tables_dir / "main_mixing_model_results.csv")
+    cluster_table = pd.read_parquet(cache_dir / "main_cluster_table.parquet")
 
     plot_main_count_results(style, count_results, out_dir)
     plot_main_mixing_results(style, mixing_results, out_dir)
@@ -1062,12 +1092,50 @@ def run(root: Path) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=repo_root())
+    parser.add_argument(
+        "--tables-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory containing the model result CSV tables to plot. "
+            "Defaults to part1/main/tables (primary results). "
+            "Pass the --tables-dir used for a sensitivity run to plot those results, "
+            "e.g. --tables-dir part1/main/tables_health_board."
+        ),
+    )
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory to write figures into. "
+            "Defaults to part1/main/manuscript/figures. "
+            "Set a different path for sensitivity figures to avoid overwriting "
+            "primary figures, e.g. --out-dir part1/main/manuscript/figures_health_board."
+        ),
+    )
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory containing main_cluster_table.parquet. "
+            "Defaults to part1/main/cache. Must match the --cache-dir used by "
+            "main_analysis.py for the same sensitivity run."
+        ),
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    run(args.root.resolve())
+    root = args.root.resolve()
+    run(
+        root,
+        tables_dir=args.tables_dir.resolve() if args.tables_dir else None,
+        out_dir=args.out_dir.resolve() if args.out_dir else None,
+        cache_dir=args.cache_dir.resolve() if args.cache_dir else None,
+    )
 
 
 if __name__ == "__main__":

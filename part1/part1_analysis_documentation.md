@@ -1,246 +1,380 @@
-# Part 1 Analysis Documentation
+# Part 1 Main Analysis Documentation
 
 ## Socioeconomic deprivation, surveillance conditions, and SARS-CoV-2 genomic cluster structure in Scotland
 
-This document describes the analyses implemented for Part 1 of the Scotland SARS-CoV-2 genomic clustering project. It is written as an implementation record: what data were used, how the cluster-level variables were constructed, what models were fitted, what outputs were produced, and what conclusions can be drawn.
+This document records the current main Part 1 analysis implemented in:
 
-The motivating research question was:
+```text
+part1/main/main_analysis.py
+```
 
-> After accounting for lineage, calendar time, Leiden resolution, local incidence, and sequencing intensity, are socioeconomic deprivation and local surveillance conditions associated with larger, longer-lasting, or more geographically dispersed SARS-CoV-2 genomic clusters in Scotland?
+It is written as an implementation record: what data were used, how sequence rows were collapsed to cluster rows, how outcomes and covariates were constructed, what models were fitted, what outputs were written, how the summary plots were produced, and what the current main results show.
 
-During the analysis, this question was expanded to include cluster composition:
+The main research questions are:
 
-> Do socioeconomic deprivation, SIMD domains, and local surveillance conditions shape who mixes with whom inside genomic clusters, in terms of socioeconomic and demographic composition?
+1. Are socioeconomic deprivation and local surveillance conditions associated with the probability that a genomic cluster exceeds its structural minimum size, duration, or geographic spread?
+2. Among clusters that exceed those structural minima, are the same covariates associated with the positive count magnitude?
+3. Among non-singleton clusters, are socioeconomic deprivation and surveillance conditions associated with within-cluster socioeconomic and demographic mixing beyond what would be expected for the same lineage and analysis window?
 
-The final Part 1 analysis therefore has two linked parts:
-
-1. Cluster magnitude: whether clusters are larger, longer lasting, or more geographically dispersed.
-2. Cluster composition: whether clusters are more or less mixed by SIMD, SIMD domains, age, sex, and joint demographic profiles than expected.
+The current main analysis deliberately uses one primary Leiden resolution, `0.3`, rather than treating repeated resolutions as independent observations.
 
 ## 1. Source Data
 
-The source dataset was:
+The source dataset is read from the repository configuration:
+
+```text
+config.yaml -> data.processed.analysis_dataset
+```
+
+In the current repository this resolves to:
 
 ```text
 data/processed/scotland_clustering_analysis_dataset.parquet
 ```
 
-This parquet is produced by the clustering pipeline described in:
+The source table is sequence-level and includes repeated sequence appearances across sliding windows and Leiden resolutions. The main analysis filters it before aggregation:
 
-```text
-method/PIPELINE.md
-method/05_consolidate.py
-```
-
-The source table is sequence-level but repeated across analysis windows and Leiden resolutions. Each row represents a sequenced case in a particular sliding time window and clustering resolution.
-
-Key features of the source dataset:
-
-| Feature | Value used in Part 1 |
+| Filter | Value |
 |---|---:|
-| Total rows in processed parquet | 7,287,320 |
-| Rows retained after `nextclade_qc == "good"` | 6,314,776 |
-| Cluster-level observations after aggregation | 2,482,667 |
-| Non-singleton clusters used in mixing regressions | 767,494 |
-| Sliding windows | 134 |
-| Pango lineages represented in cluster outcome models | 788 |
-| Leiden resolutions | 8 (`0.1` to `0.8`) |
+| Nextclade QC | `good` |
+| Leiden resolution | `0.3` |
 
-Only sequences with `nextclade_qc == "good"` were used in the implemented analyses.
+Only the columns required for the main analysis are read from parquet. These include identifiers, window metadata, collection dates, geography, lineage, QC status, SIMD, age, sex, incidence, sequencing proportions, test positivity, window sequence counts, and health board.
 
-## 2. Clustering Context
-
-Clusters were inferred before Part 1 analysis using the EpiLink/Leiden pipeline:
-
-1. Sequences were grouped by sliding 3-week window and Pango lineage.
-2. Pairwise TN93 genetic distances were computed within each group.
-3. Distances were converted into EpiLink compatibility weights.
-4. Weighted graphs were clustered using Leiden community detection.
-5. The procedure was repeated across Leiden resolutions `0.1` to `0.8`.
-6. Cluster assignments were merged with sequence metadata, SIMD data, testing data, vaccination data, and local surveillance variables.
-
-The main cluster identifier was `cluster_id`, which encodes the window, lineage, Leiden resolution, and community assignment.
-
-## 3. General Analytical Approach
-
-The first important decision was to analyse clusters, not individual rows. Outcomes such as size, duration, geographic spread, and mixing are cluster-level properties. Treating every sequence row as an independent observation would over-weight larger clusters and misrepresent the unit of analysis.
-
-For each unique `cluster_id`, sequence-level metadata were collapsed to one cluster-level row. Cluster-level averages were used for contextual variables such as mean deprivation, mean local incidence, and mean local sequencing coverage.
-
-The analyses adjusted for:
-
-| Adjustment | Implementation |
-|---|---|
-| Pango lineage | Fixed effects for `pango_lineage` |
-| Calendar time | Fixed effects for `window_id` |
-| Leiden resolution | Fixed effects for `resolution_label` |
-| Local incidence | Standardised log cumulative local incidence |
-| Local sequencing intensity | Standardised logit cumulative datazone sequencing fraction |
-| Window-level sequencing intensity | Standardised logit window sequencing proportion |
-| Local surveillance/testing pressure | Standardised logit local 7-day test positivity |
-| Cluster size | Included in composition/mixing models and size-adjusted duration/spread models |
-
-Continuous predictors were transformed and standardised so that coefficients correspond to a 1 standard deviation increase.
-
-For SIMD and SIMD domains, ranks were negated before standardisation, so that higher values mean greater deprivation.
-
-## 4. Cluster Outcome Analysis
-
-Implemented in:
-
-```text
-part1/cluster_outcome_models.py
-```
-
-Outputs:
-
-```text
-part1/tables/cluster_outcome_model_results.csv
-part1/tables/cluster_outcome_model_diagnostics.csv
-part1/tables/cluster_outcome_descriptives.csv
-part1/tables/cluster_outcome_covariate_scaling.csv
-part1/figures/cluster_outcome_model_effects.png
-part1/figures/cluster_outcome_model_effects.pdf
-```
-
-### 4.1 Outcomes
-
-Three primary cluster outcomes were analysed:
-
-| Outcome | Definition | Modelled variable |
-|---|---|---|
-| Cluster size | Number of unique sequences in the cluster | `log(cluster_size)` |
-| Duration | Days between first and last collection date | `log(cluster_duration_days + 1)` |
-| Geographic dispersion | Number of distinct datazones in the cluster | `log(cluster_n_datazones)` |
-
-Two additional size-adjusted models were fitted:
-
-| Model | Purpose |
-|---|---|
-| Duration, size-adjusted | Tests whether clusters are longer after accounting for their size |
-| Geographic dispersion, size-adjusted | Tests whether clusters span more datazones after accounting for their size |
-
-### 4.2 Model form
-
-The implemented model was a log-linear fixed-effect model:
-
-```text
-log(outcome_i) =
-    deprivation_i
-  + local_incidence_i
-  + local_sequencing_fraction_i
-  + window_sequencing_fraction_i
-  + test_positivity_i
-  + lineage fixed effects
-  + window fixed effects
-  + Leiden resolution fixed effects
-  + error_i
-```
-
-For the size-adjusted duration and geographic dispersion models, `log_cluster_size_z` was added.
-
-Models were solved with least squares on the log-transformed outcome. Standard errors were clustered by `window_id`. Exponentiated coefficients are interpreted as adjusted geometric mean ratios.
-
-### 4.3 Descriptive results
-
-After QC filtering and aggregation:
+Current retained analysis counts from `part1/main/tables/main_dataset_descriptives.csv`:
 
 | Quantity | Value |
 |---|---:|
-| Cluster rows | 2,482,667 |
-| Singleton cluster fraction | 69.1 percent |
-| Median cluster size | 1 |
-| 90th percentile cluster size | 3 |
-| 99th percentile cluster size | 22 |
-| Maximum cluster size | 4,930 |
-| Median duration | 0 days |
-| 90th percentile duration | 4 days |
-| Maximum duration | 20 days |
-| Median number of datazones | 1 |
-| 90th percentile number of datazones | 3 |
-| Maximum number of datazones | 3,142 |
+| Sequence rows used | 789,347 |
+| Sequence rows dropped for missing model fields | 105 |
+| Cluster rows | 193,112 |
+| Non-singleton clusters used in mixing models | 84,067 |
+| Sliding windows | 134 |
+| Raw Pango lineages | 788 |
+| Lineage model levels after rare-lineage pooling | 183 |
+| Minimum clusters for separate lineage level | 50 |
 
-### 4.4 Main outcome results
+## 2. Why This Is the Main Analysis
 
-For the three primary outcome models:
+Earlier exploratory Part 1 scripts fitted log-linear models across all Leiden resolutions. The current main analysis supersedes those scripts for the central manuscript-style estimates because it:
 
-| Predictor | Cluster size GMR | Duration GMR | Geographic dispersion GMR |
-|---|---:|---:|---:|
-| Mean SIMD deprivation | 0.996 | 0.999 | 1.000 |
-| Local cumulative incidence | 1.043 | 1.035 | 1.046 |
-| Local sequencing fraction | 1.005 | 1.005 | 0.999 |
-| Window sequencing proportion | 1.190 | 1.072 | 1.174 |
-| Local test positivity | 1.076 | 1.053 | 1.054 |
+1. Uses a single pre-specified primary resolution (`0.3`) to avoid counting the same underlying cluster structure repeatedly across resolutions.
+2. Models structural zeros explicitly with hurdle components instead of relying only on log-transformed outcomes.
+3. Uses zero-truncated negative-binomial models for the positive count components, matching the heavy-tailed count nature of cluster size and geographic spread.
+4. Keeps mixing models aligned with the same primary-resolution cluster table.
+5. Writes all primary tables, diagnostics, cache files, and summary figures under `part1/main/`.
 
-Interpretation:
+The older scripts remain useful as exploratory or supplementary analyses, but the outputs documented here are the main analysis outputs.
 
-- Overall SIMD deprivation was not meaningfully associated with larger, longer-lasting, or more geographically dispersed clusters.
-- The only primary deprivation association was a very small negative association with cluster size.
-- Local incidence, test positivity, and window-level sequencing proportion were much stronger predictors of cluster magnitude.
-- Local cumulative sequencing fraction was close to null in the primary cluster magnitude models.
+## 3. Cluster Table Construction
 
-In size-adjusted models, deprivation was associated with very small increases in duration and geographic dispersion, but these effects were tiny in magnitude and likely less important than cluster size itself.
+The function `build_cluster_table()` collapses sequence rows to one row per `cluster_id`.
 
-## 5. Socioeconomic and Demographic Mixing Analysis
+### 3.1 Required sequence fields
 
-Implemented in:
+Rows are dropped if they are missing fields required for model construction:
 
 ```text
-part1/cluster_mixing_analysis.py
+cluster_id
+sequence_id
+window_id
+window_idx
+collection_date
+datazone
+pango_lineage
+dz_simd_rank
+dz_cum_incidence_per_capita
+dz_cum_prop_sequenced
+wn_prop_sequenced
+dz_7d_test_positivity
 ```
 
-Outputs:
+### 3.2 Cluster-level aggregations
+
+For each cluster, the script computes:
+
+| Cluster field | Construction |
+|---|---|
+| `cluster_size` | Number of unique sequence IDs |
+| `cluster_n_datazones` | Number of distinct datazones represented |
+| `cluster_start_date` | Minimum collection date |
+| `cluster_end_date` | Maximum collection date |
+| `duration_days` | `cluster_end_date - cluster_start_date` in days |
+| `resolution` | First resolution value, after filtering to `0.3` |
+| `window_id` | First analysis-window ID |
+| `window_idx` | First numeric window index |
+| `wn_mid_date` | First window midpoint date |
+| `pango_lineage` | First lineage |
+| `mean_simd_rank` | Mean SIMD rank among cluster sequences |
+| `mean_local_incidence_per_capita` | Mean cumulative local incidence |
+| `mean_local_seq_fraction` | Mean cumulative datazone sequencing fraction |
+| `mean_window_seq_fraction` | Mean window sequencing proportion |
+| `mean_test_positivity` | Mean local 7-day test positivity |
+| `wn_no_sequences` | Window-level sequence count |
+| `health_board` | Health board code from the first cluster row |
+| `index_simd_rank` | SIMD rank of the earliest collected sequence in the cluster |
+
+The `index_simd_rank` field supports a sensitivity analysis in which index-case SIMD replaces mean cluster SIMD.
+
+### 3.3 Hurdle and positive-count variables
+
+The count outcomes have structural minima. The script therefore creates binary indicators for exceeding those minima and positive-count variables for clusters above the minima.
+
+| Outcome | Structural minimum | Binary component | Positive component |
+|---|---:|---|---|
+| Cluster size | 1 sequence | `cluster_size_gt1` | `cluster_size_excess = cluster_size - 1` |
+| Duration | 0 days | `duration_gt0` | `duration_positive_days = duration_days` |
+| Geographic dispersion | 1 datazone | `datazones_gt1` | `datazones_excess = cluster_n_datazones - 1` |
+
+The positive component is fitted only among clusters where the positive variable is greater than zero.
+
+### 3.4 Descriptive cluster distributions
+
+Current descriptive results:
+
+| Measure | Median | 75th percentile | 90th percentile | 99th percentile | Maximum | Structural-minimum fraction |
+|---|---:|---:|---:|---:|---:|---:|
+| Cluster size | 1 | 3 | 6 | 39 | 2,792 | 56.5 percent singleton |
+| Duration | 0 days | 3 days | 7 days | 12 days | 19 days | 63.1 percent zero-day |
+| Distinct datazones | 1 | 2 | 5 | 32 | 2,100 | 61.7 percent single-datazone |
+
+The distributions are strongly right-skewed, especially cluster size and geographic spread. This is the practical reason for using a hurdle model with zero-truncated negative-binomial positive components.
+
+## 4. Covariates and Transformations
+
+The primary covariates are:
+
+| Model term | Meaning | Source transformation |
+|---|---|---|
+| `deprivation_z` | Mean cluster SIMD deprivation | `-mean_simd_rank`, standardised |
+| `local_incidence_z` | Local cumulative incidence | `log1p(mean incidence per capita * 1000)`, standardised |
+| `local_seq_fraction_z` | Local cumulative datazone sequencing fraction | Clipped logit, standardised |
+| `window_seq_fraction_z` | Analysis-window sequencing proportion | Clipped logit, standardised |
+| `test_positivity_z` | Local 7-day test positivity | Clipped logit, standardised |
+| `log_cluster_size_z` | Cluster size for size-adjusted and mixing models | `log(cluster_size)`, standardised |
+
+SIMD ranks are negated before standardisation so that higher values mean greater deprivation.
+
+Current standardisation values:
+
+| Standardised column | Source column | Source mean | Source SD |
+|---|---|---:|---:|
+| `deprivation_z` | `deprivation_raw` | -3420.328 | 1793.221 |
+| `index_deprivation_z` | `index_deprivation_raw` | -3426.554 | 2031.553 |
+| `local_incidence_z` | `local_incidence_log` | 5.269 | 0.965 |
+| `local_seq_fraction_z` | `local_seq_fraction_logit` | -1.714 | 0.859 |
+| `window_seq_fraction_z` | `window_seq_fraction_logit` | -1.727 | 0.652 |
+| `test_positivity_z` | `test_positivity_logit` | -2.270 | 0.840 |
+| `log_cluster_size_z` | `log_cluster_size` | 0.604 | 0.888 |
+
+All reported model coefficients therefore correspond to a 1 SD higher covariate.
+
+## 5. Lineage and Calendar Adjustment
+
+The main analysis adjusts for lineage and calendar time as follows:
+
+| Adjustment | Implementation |
+|---|---|
+| Pango lineage | Fixed-effect dummy variables for `lineage_model` |
+| Rare lineages | Lineages with fewer than 50 clusters are pooled into `Other rare lineages` |
+| Calendar time | Cubic B-spline basis over `window_idx` |
+| Calendar spline complexity | `calendar_spline_df = 8` by default |
+
+The current model matrix uses 183 lineage model levels and 8 calendar spline columns. One lineage level is the reference level after dummy coding.
+
+The analysis does not include Leiden-resolution fixed effects because the data have already been filtered to one primary resolution.
+
+## 6. Count Models
+
+Count models are fitted by `fit_count_models()`. There are three primary outcomes plus two size-adjusted positive-count models.
+
+### 6.1 Model specifications
+
+| Model spec | Binary component | Positive component | Includes cluster size? |
+|---|---|---|---|
+| `cluster_size` | `cluster_size_gt1` | `cluster_size_excess` | No |
+| `duration` | `duration_gt0` | `duration_positive_days` | No |
+| `geographic_dispersion` | `datazones_gt1` | `datazones_excess` | No |
+| `duration_size_adjusted` | Not fitted | `duration_positive_days` | Yes |
+| `geographic_dispersion_size_adjusted` | Not fitted | `datazones_excess` | Yes |
+
+For the size-adjusted models, `log_cluster_size_z` is included so that duration and geographic spread are assessed conditional on reconstructed cluster size.
+
+### 6.2 Binary hurdle component
+
+The binary component asks whether the cluster exceeds its structural minimum.
+
+Model family:
 
 ```text
-part1/tables/cluster_mixing_model_results.csv
-part1/tables/cluster_mixing_model_diagnostics.csv
-part1/tables/cluster_mixing_descriptives.csv
-part1/tables/cluster_mixing_covariate_scaling.csv
-part1/figures/cluster_mixing_model_effects.png
-part1/figures/cluster_mixing_model_effects.pdf
+Binomial GLM with logit link
 ```
 
-### 5.1 Rationale
+Model form:
 
-The outcome models ask whether deprived areas generate bigger clusters. That does not fully answer whether transmission structure is socially patterned. A cluster may be the same size across deprivation contexts but differ in who is connected to whom.
+```text
+logit[P(Y_i > minimum)] =
+    beta_0
+  + beta_1 deprivation_z
+  + beta_2 local_incidence_z
+  + beta_3 local_seq_fraction_z
+  + beta_4 window_seq_fraction_z
+  + beta_5 test_positivity_z
+  + lineage fixed effects
+  + calendar spline terms
+```
 
-The mixing analysis therefore asks whether cases within the same genomic cluster are more or less mixed by socioeconomic or demographic category than expected.
+Binary component coefficients are exponentiated and reported as odds ratios.
 
-### 5.2 Pairwise discordance
+### 6.3 Positive zero-truncated count component
 
-For a categorical variable such as SIMD quintile, within-cluster mixing was measured as pairwise discordance:
+The positive component asks how large the count is after the structural minimum has been exceeded.
+
+Model family:
+
+```text
+Zero-truncated negative binomial
+```
+
+Model form:
+
+```text
+log[E(Y_i | Y_i > 0)] =
+    beta_0
+  + beta_1 deprivation_z
+  + beta_2 local_incidence_z
+  + beta_3 local_seq_fraction_z
+  + beta_4 window_seq_fraction_z
+  + beta_5 test_positivity_z
+  + optional beta_6 log_cluster_size_z
+  + lineage fixed effects
+  + calendar spline terms
+```
+
+The zero-truncated negative-binomial likelihood is implemented directly in `main_analysis.py`. The optimiser is `scipy.optimize.minimize()` with L-BFGS-B. The dispersion parameter is represented as `log_alpha` and bounded between `-10` and `8`.
+
+Cluster-robust standard errors for the custom ZTNB model are computed with a sandwich estimator:
+
+1. Observation-level scores are computed analytically.
+2. The bread is based on a numerical Hessian of the log likelihood at the maximum-likelihood estimate.
+3. Scores are summed by the selected clustering variable.
+4. The sandwich covariance uses the clustered score cross-product as meat.
+5. A finite-sample correction is applied when the number of groups is greater than one.
+
+Positive component coefficients are exponentiated and reported as count ratios.
+
+### 6.4 Standard-error clustering
+
+The default clustering variable is:
+
+```text
+window_id
+```
+
+This accounts for dependence among clusters from the same sliding analysis window. A command-line sensitivity option allows clustering by health board instead:
+
+```bash
+conda run -n PhD python part1/main/main_analysis.py --cluster-by health_board
+```
+
+The result table column remains named `std_error_clustered_by_window` for historical compatibility, while the diagnostics table records the actual `cluster_by` value used.
+
+### 6.5 Current count-model diagnostics
+
+Current diagnostics from `main_hurdle_count_model_diagnostics.csv`:
+
+| Outcome | Component | Observations | Events / mean response | Converged |
+|---|---|---:|---:|---|
+| Cluster size | Binary hurdle | 193,112 | 84,067 events | Yes |
+| Cluster size | Positive ZTNB | 84,067 | Mean positive response 7.09 | Yes |
+| Duration | Binary hurdle | 193,112 | 71,219 events | Yes |
+| Duration | Positive ZTNB | 71,219 | Mean positive response 5.11 | Yes |
+| Geographic dispersion | Binary hurdle | 193,112 | 74,010 events | Yes |
+| Geographic dispersion | Positive ZTNB | 74,010 | Mean positive response 6.46 | Yes |
+| Duration, size-adjusted | Positive ZTNB | 71,219 | Mean positive response 5.11 | Yes |
+| Geographic dispersion, size-adjusted | Positive ZTNB | 74,010 | Mean positive response 6.46 | Yes |
+
+The cluster-size positive component has a very large estimated `alpha` and is flagged at the upper bound. This reflects the extreme right tail of cluster-size excess counts and should be kept in mind when interpreting that positive-count component.
+
+The geographic dispersion positive component also has a very large estimated `alpha` (approximately 2,840), close to but technically below the upper bound of `exp(8) ≈ 2,981`. It is not flagged at the upper bound, but given its proximity the same caution applies: the dispersion estimate is unreliable and the heavy right tail of datazone-excess counts should be kept in mind when interpreting that component.
+
+## 7. Main Count Results
+
+### 7.1 Deprivation effects
+
+The main deprivation estimates are:
+
+| Outcome | Component | Ratio per 1 SD higher deprivation | 95 percent CI | Interpretation |
+|---|---|---:|---|---|
+| Cluster size | Binary hurdle | 0.971 | 0.960 to 0.983 | Lower odds of being non-singleton |
+| Cluster size | Positive ZTNB | 0.926 | 0.869 to 0.987 | Fewer additional sequences among non-singletons |
+| Duration | Binary hurdle | 0.992 | 0.979 to 1.004 | Near null |
+| Duration | Positive ZTNB | 1.003 | 0.995 to 1.011 | Near null |
+| Geographic dispersion | Binary hurdle | 1.004 | 0.992 to 1.016 | Near null |
+| Geographic dispersion | Positive ZTNB | 0.851 | 0.792 to 0.915 | Fewer additional datazones among multi-datazone clusters |
+| Duration, size-adjusted | Positive ZTNB | 1.012 | 1.006 to 1.019 | Slightly longer duration conditional on size |
+| Geographic dispersion, size-adjusted | Positive ZTNB | 1.027 | 1.019 to 1.035 | Slightly more datazones conditional on size |
+
+The primary interpretation is that mean cluster deprivation is not associated with a simple increase in cluster magnitude. It is slightly negatively associated with the probability and positive magnitude of cluster size, and with unadjusted positive geographic spread. After conditioning on cluster size, deprivation is associated with small increases in duration and geographic dispersion, suggesting that among clusters of similar reconstructed size, more deprived clusters may persist or spread spatially slightly more, but the effect sizes are small.
+
+### 7.2 Surveillance and incidence effects
+
+The surveillance and incidence covariates are much stronger predictors of count outcomes than deprivation.
+
+Selected ratios per 1 SD higher covariate:
+
+| Outcome/component | Local incidence | Local sequencing fraction | Window sequencing proportion | Test positivity |
+|---|---:|---:|---:|---:|
+| Cluster size hurdle | 1.173 | 1.067 | 1.252 | 1.448 |
+| Cluster size positive | 1.650 | 3.240 | 1.314 | 2.649 |
+| Duration hurdle | 1.199 | 1.044 | 1.246 | 1.363 |
+| Duration positive | 1.025 | 0.989 | 1.055 | 1.083 |
+| Geographic dispersion hurdle | 1.223 | 1.047 | 1.170 | 1.314 |
+| Geographic dispersion positive | 1.699 | 2.269 | 1.274 | 2.999 |
+
+These estimates support the interpretation that local epidemic intensity and surveillance conditions strongly shape whether clusters are detected as larger, longer, or more geographically dispersed.
+
+## 8. Mixing Outcomes
+
+The main analysis also fits mixing models among non-singleton clusters.
+
+### 8.1 Pairwise discordance
+
+Within each cluster, mixing is measured by pairwise discordance:
 
 ```text
 discordance = probability that two different cases drawn from the same cluster
               belong to different categories
 ```
 
-For a cluster with category counts `n_k` and total valid cases `n`, this was calculated as:
+For category counts `n_k` and total valid cases `n`:
 
 ```text
 discordance = 1 - sum_k n_k * (n_k - 1) / [n * (n - 1)]
 ```
 
-This was computed for:
+This is computed for four categorical variables:
 
-| Mixing outcome | Category variable |
+| Outcome | Category variable |
 |---|---|
 | SIMD mixing | `dz_simd_quintile` |
 | Age mixing | `age_band` |
 | Sex mixing | `sex` |
-| Joint socioeconomic-demographic profile mixing | `dz_simd_quintile + age_band + sex` |
+| Joint profile mixing | `dz_simd_quintile + age_band + sex` |
 
-Singleton clusters were excluded from mixing models because pairwise mixing is undefined for a cluster of size 1.
+Singleton clusters are excluded because pairwise discordance is undefined when `n = 1`.
 
-### 5.3 Expected mixing
+### 8.2 Expected discordance
 
-Observed discordance was compared with the expected discordance among sampled cases from the same:
+Observed cluster discordance is compared with expected discordance among sampled cases from the same:
 
 ```text
-window_id x pango_lineage x Leiden resolution
+window_id x pango_lineage
 ```
 
-The main mixing outcome was:
+Resolution is not included in the expected-mixing strata because the main analysis has already filtered to one primary resolution.
+
+The modelled outcome is:
 
 ```text
 excess discordance = observed cluster discordance - expected stratum discordance
@@ -250,409 +384,284 @@ Interpretation:
 
 | Value | Meaning |
 |---|---|
-| `0` | Cluster is as mixed as expected for that lineage, time window, and resolution |
+| `0` | Cluster is as mixed as expected for its lineage and window |
 | Positive | Cluster is more mixed than expected |
 | Negative | Cluster is more homogeneous or assortative than expected |
 
-### 5.4 Mixing model
+### 8.3 Mixing model form
 
-The regression model was:
+For each mixing outcome, the model is:
 
 ```text
 excess_mixing_i =
-    mean_SIMD_deprivation_i
-  + local_incidence_i
-  + local_sequencing_fraction_i
-  + window_sequencing_fraction_i
-  + test_positivity_i
-  + log_cluster_size_i
+    beta_0
+  + beta_1 deprivation_z
+  + beta_2 local_incidence_z
+  + beta_3 local_seq_fraction_z
+  + beta_4 window_seq_fraction_z
+  + beta_5 test_positivity_z
+  + beta_6 log_cluster_size_z
   + lineage fixed effects
-  + window fixed effects
-  + Leiden resolution fixed effects
+  + calendar spline terms
   + error_i
 ```
 
-Coefficients are reported in percentage points.
+Models are fitted as OLS regressions with clustered standard errors. Coefficients are reported as percentage-point changes in excess discordance per 1 SD higher covariate.
 
-### 5.5 Main mixing results
+### 8.4 Current mixing descriptives
 
-For overall SIMD deprivation:
+Among 84,067 non-singleton clusters:
 
-| Mixing outcome | Effect per 1 SD higher deprivation |
-|---|---:|
-| SIMD quintile mixing | -0.69 percentage points |
-| Age-band mixing | +1.55 percentage points |
-| Sex mixing | -0.70 percentage points |
-| Joint SIMD-age-sex profile mixing | +0.51 percentage points |
+| Outcome | Mean excess discordance | Median | 10th percentile | 90th percentile |
+|---|---:|---:|---:|---:|
+| SIMD | -0.161 | -0.047 | -0.798 | 0.203 |
+| Age | -0.077 | 0.031 | -0.333 | 0.083 |
+| Sex | 0.010 | 0.035 | -0.499 | 0.503 |
+| Joint profile | -0.025 | 0.008 | -0.039 | 0.010 |
 
-Interpretation:
+The negative mean SIMD and age values indicate that, before covariate adjustment, clusters tend to be less mixed by those dimensions than expected from their lineage-window sampling strata.
 
-- More deprived cluster composition was associated with slightly less SIMD mixing, meaning clusters were somewhat more SIMD-homogeneous.
-- More deprived cluster composition was associated with more age mixing.
-- More deprived cluster composition was associated with slightly less sex mixing.
-- The effects were statistically precise because of the large dataset, but most were modest in magnitude.
+## 9. Main Mixing Results
 
-Other covariates were also important:
+### 9.1 Deprivation effects
 
-- Higher local incidence was associated with more SIMD, age, and joint profile mixing.
-- Higher window sequencing proportion was associated with more mixing.
-- Higher test positivity was associated with less SIMD mixing but somewhat more sex mixing.
-- Larger clusters were generally more mixed, especially for SIMD and age.
+Effect per 1 SD higher mean cluster deprivation:
 
-## 6. SIMD Domain Analysis
+| Mixing outcome | Effect in percentage points | 95 percent CI | Interpretation |
+|---|---:|---|---|
+| SIMD quintile mixing | +0.31 pp | -0.17 to +0.80 | Not clearly different from zero |
+| Age-band mixing | +1.66 pp | +1.29 to +2.03 | More age mixing |
+| Sex mixing | -0.78 pp | -1.16 to -0.39 | Less sex mixing |
+| Joint SIMD-age-sex profile mixing | +0.48 pp | +0.29 to +0.66 | More joint profile mixing |
 
-Implemented in:
+The main mixing result is more nuanced than a simple deprivation-magnitude story. Deprivation does not clearly increase SIMD-quintile mixing in the current main model, but it is associated with more age mixing, less sex mixing, and slightly more joint profile mixing.
 
-```text
-part1/simd_domain_analysis.py
-```
+### 9.2 Other covariate effects
 
-Outputs:
+Selected effects in percentage points:
 
-```text
-part1/tables/simd_domain_outcome_model_results.csv
-part1/tables/simd_domain_outcome_model_diagnostics.csv
-part1/tables/simd_domain_mixing_model_results.csv
-part1/tables/simd_domain_mixing_model_diagnostics.csv
-part1/tables/simd_domain_covariate_scaling.csv
-part1/figures/simd_domain_outcome_effects.png
-part1/figures/simd_domain_outcome_effects.pdf
-part1/figures/simd_domain_mixing_effects.png
-part1/figures/simd_domain_mixing_effects.pdf
-```
+| Mixing outcome | Local incidence | Local sequencing fraction | Window sequencing proportion | Test positivity | Cluster size |
+|---|---:|---:|---:|---:|---:|
+| SIMD | +4.86 | -1.22 | -3.79 | -6.65 | +7.49 |
+| Age | +1.56 | -1.02 | -0.76 | -0.73 | +2.80 |
+| Sex | -0.79 | -0.36 | +0.61 | +1.15 | -1.20 |
+| Joint profile | +1.09 | -0.54 | -0.30 | -0.98 | +0.98 |
 
-### 6.1 Domains analysed
+Cluster size is a strong predictor of SIMD and age mixing. Test positivity has a strong negative association with SIMD excess mixing and a positive association with sex excess mixing.
 
-The following SIMD ranks were analysed:
+## 10. Sensitivity Options Built Into the Main Script
 
-| Domain | Source column |
-|---|---|
-| Overall | `dz_simd_rank` |
-| Income | `dz_simd_income_rank` |
-| Employment | `dz_simd_employment_rank` |
-| Education | `dz_simd_education_rank` |
-| Health | `dz_simd_health_rank` |
-| Access | `dz_simd_access_rank` |
-| Crime | `dz_simd_crime_rank` |
-| Housing | `dz_simd_housing_rank` |
+The command-line interface supports several pre-specified sensitivity runs.
 
-Each rank was negated and standardised so that higher values mean more domain-specific deprivation.
-
-### 6.2 Domain effects on cluster magnitude
-
-Each SIMD domain was entered one at a time into the cluster outcome models.
-
-Main results:
-
-- Domain effects on cluster size, duration, and geographic dispersion were generally small.
-- Housing deprivation showed the clearest negative association with cluster size and duration.
-- Access behaved differently from material domains: it showed a small positive association with cluster size and a small negative association with geographic dispersion.
-- These domain effects were much smaller than the effects of incidence, test positivity, and sequencing effort.
-
-### 6.3 Domain-quintile mixing
-
-For each domain, ranks were converted into domain-specific quintiles. The analysis then asked whether clusters were more or less mixed by those domain quintiles than expected.
-
-Effect of 1 SD higher domain deprivation on domain-quintile mixing:
-
-| Domain | Effect on domain-quintile excess mixing |
-|---|---:|
-| Overall | -0.69 percentage points |
-| Income | -1.09 percentage points |
-| Employment | -0.65 percentage points |
-| Education | -0.02 percentage points |
-| Health | -0.85 percentage points |
-| Access | -1.28 percentage points |
-| Crime | -0.26 percentage points |
-| Housing | -2.41 percentage points |
-
-Interpretation:
-
-- Housing, access, income, health, and employment deprivation were associated with more domain-specific homogeneity.
-- Education and crime showed little clear association with domain-quintile mixing.
-- Housing deprivation had the strongest association with reduced domain mixing.
-
-## 7. SIMD Domains and Demographic Mixing
-
-Implemented in:
-
-```text
-part1/simd_domain_demographic_mixing.py
-```
-
-Outputs:
-
-```text
-part1/tables/simd_domain_demographic_mixing_model_results.csv
-part1/tables/simd_domain_demographic_mixing_model_diagnostics.csv
-part1/tables/simd_domain_demographic_mixing_descriptives.csv
-part1/tables/simd_domain_demographic_mixing_covariate_scaling.csv
-part1/figures/simd_domain_demographic_mixing_effects.png
-part1/figures/simd_domain_demographic_mixing_effects.pdf
-```
-
-### 7.1 Purpose
-
-This analysis asked whether specific deprivation domains predicted demographic mixing within clusters.
-
-For each SIMD domain, the exposure was:
-
-```text
-cluster mean domain deprivation, standardised
-```
-
-The outcomes were:
-
-| Outcome | Meaning |
-|---|---|
-| Age-band excess mixing | More or less age mixing than expected |
-| Sex excess mixing | More or less sex mixing than expected |
-| Joint age-sex excess mixing | More or less joint age-sex profile mixing than expected |
-
-Each SIMD domain was modelled one at a time.
-
-### 7.2 Main results
-
-Effect per 1 SD higher domain deprivation:
-
-| Domain | Age mixing | Sex mixing | Age-sex profile mixing |
-|---|---:|---:|---:|
-| Overall | +1.55 pp | -0.70 pp | +0.71 pp |
-| Income | +1.54 pp | -0.64 pp | +0.68 pp |
-| Employment | +1.60 pp | -0.61 pp | +0.76 pp |
-| Education | +1.58 pp | -0.65 pp | +0.77 pp |
-| Health | +1.43 pp | -0.69 pp | +0.66 pp |
-| Access | -0.43 pp | +0.14 pp | -0.13 pp |
-| Crime | +0.57 pp | -0.62 pp | +0.20 pp |
-| Housing | +0.94 pp | -0.51 pp | +0.29 pp |
-
-Interpretation:
-
-- Material deprivation domains were consistently associated with more age mixing.
-- The same domains were generally associated with slightly less sex mixing.
-- Joint age-sex profile mixing was generally higher in more deprived material-domain clusters.
-- Access again behaved differently, suggesting it may capture rurality/remoteness rather than deprivation in the same sense as income, employment, education, health, or housing.
-
-## 8. Wave-Specific Domain-Demographic Mixing
-
-Implemented in:
-
-```text
-part1/wave_specific_domain_demographic_mixing.py
-```
-
-Outputs:
-
-```text
-part1/tables/wave_specific_domain_demographic_mixing_model_results.csv
-part1/tables/wave_specific_domain_demographic_mixing_model_diagnostics.csv
-part1/tables/wave_specific_domain_demographic_mixing_covariate_scaling.csv
-part1/figures/wave_specific_domain_demographic_mixing_effects.png
-part1/figures/wave_specific_domain_demographic_mixing_effects.pdf
-```
-
-### 8.1 Wave assignment
-
-Pango lineages were mapped to broad wave groups:
-
-| Wave group | Rule |
-|---|---|
-| B.1.177 | lineage starts with `B.1.177` |
-| Alpha | `B.1.1.7` or sublineage |
-| Delta | `AY.*` or `B.1.617.2` |
-| BA.1 | lineage starts with `BA.1` |
-| BA.2 | lineage starts with `BA.2` |
-| BA.4 | lineage starts with `BA.4` |
-| BA.5 | lineage starts with `BA.5` or `BE.*` |
-| BQ.1 | lineage starts with `BQ.` |
-| XBB | lineage starts with `XBB` |
-
-Wave-specific models were fitted only for waves with enough non-singleton clusters. XBB had 819 non-singleton clusters and was skipped by the default threshold.
-
-### 8.2 What was modelled
-
-Within each wave, the domain-demographic mixing models from Section 7 were refitted separately. This tested whether the relationship between SIMD domains and demographic mixing was stable across epidemic phases.
-
-### 8.3 Main findings
-
-The domain-demographic mixing effects were strongly wave-dependent.
-
-Examples of strongest domain effects by wave:
-
-| Wave | Mixing outcome | Strongest domain effect |
-|---|---|---:|
-| B.1.177 | Age mixing | Income, +5.36 pp |
-| B.1.177 | Age-sex mixing | Education, +4.05 pp |
-| Alpha | Age mixing | Health, +2.35 pp |
-| Delta | Age mixing | Education, +1.59 pp |
-| BA.1 | Age mixing | Education, +0.95 pp |
-| BA.2 | Sex mixing | Education, -1.67 pp |
-| BA.5 | Age mixing | Overall SIMD, +3.08 pp |
-| BQ.1 | Age mixing | Housing, +4.75 pp |
-
-Interpretation:
-
-- There is no single stable deprivation effect across the pandemic.
-- Age-mixing effects were particularly strong in B.1.177 and re-emerged in some later Omicron periods.
-- Sex-mixing effects were smaller and often negative, but varied by wave.
-- Access behaved differently across waves, reinforcing the idea that it reflects spatial/rural structure as much as material deprivation.
-
-## 9. Observed-vs-Expected Mixing Matrices
-
-Implemented in:
-
-```text
-part1/observed_expected_mixing_matrices.py
-```
-
-Outputs:
-
-```text
-part1/tables/observed_expected_mixing_matrices.csv
-part1/figures/observed_expected_simd_matrix_overall.png
-part1/figures/observed_expected_simd_matrix_overall.pdf
-part1/figures/observed_expected_age_matrix_overall.png
-part1/figures/observed_expected_age_matrix_overall.pdf
-part1/figures/observed_expected_simd_matrix_by_wave.png
-part1/figures/observed_expected_simd_matrix_by_wave.pdf
-```
-
-### 9.1 Purpose
-
-The scalar mixing scores indicate whether clusters are more or less mixed overall. The matrices show which groups are mixing more or less than expected.
-
-Matrices were produced for:
-
-| Matrix | Categories |
-|---|---|
-| SIMD | Quintiles 1 to 5 |
-| Age | 5-year age bands from `00-04` to `75+` |
-
-### 9.2 Observed pair probabilities
-
-For each cluster, ordered pairs of cases were counted. For categories `i` and `j`, the number of within-cluster ordered pairs was:
-
-```text
-n_i * n_j              if i != j
-n_i * (n_i - 1)        if i == j
-```
-
-These were summed across clusters.
-
-### 9.3 Expected pair probabilities
-
-Expected pairs were computed within the same:
-
-```text
-window_id x pango_lineage x Leiden resolution
-```
-
-Expected values were based on the marginal category composition of the sampled stratum, scaled by the number of within-cluster ordered pairs available in that stratum.
-
-The output table reports:
-
-| Column | Meaning |
-|---|---|
-| `observed_pairs` | Count of observed within-cluster ordered pairs |
-| `expected_pairs` | Expected count under stratum-level random mixing |
-| `observed_probability` | Observed pair probability |
-| `expected_probability` | Expected pair probability |
-| `excess_probability` | Observed minus expected probability |
-| `excess_percentage_points` | Excess probability in percentage points |
-| `observed_expected_ratio` | Observed probability divided by expected probability |
-
-### 9.4 Matrix findings
-
-Overall SIMD matrix:
-
-- The largest excess cell was SIMD Q1-Q1: +0.22 percentage points overall.
-- Q1-Q2 and Q2-Q1 were also slightly above expected.
-- Pairs involving Q5, especially Q5 with Q1/Q3/Q4/Q5, tended to be below expected.
-- Wave-specific matrices showed stronger patterns in some waves, for example Alpha Q1-Q1 was +2.03 percentage points.
-
-Overall age matrix:
-
-- The strongest excess was 20-24 with 20-24: +0.17 percentage points.
-- Adjacent young adult combinations such as 20-24 with 25-29 were also above expected.
-- This supports a young-adult assortativity signal within clusters.
-
-## 10. Overall Conclusions from Part 1
-
-The main conclusion is:
-
-> Socioeconomic deprivation was not strongly associated with cluster magnitude, but it was associated with cluster composition.
-
-More specifically:
-
-1. Deprivation did not meaningfully predict larger, longer, or more geographically dispersed genomic clusters after adjustment.
-2. Local epidemic and surveillance context mattered much more for cluster magnitude.
-3. Clusters were not socially or demographically random.
-4. SIMD mixing showed mild assortativity, especially around the most deprived quintiles.
-5. Material deprivation domains were associated with more age mixing but slightly less sex mixing.
-6. Housing, income, health, employment, and access domains were associated with more domain-specific homogeneity.
-7. Access behaved differently from material domains, probably because it captures rurality/remoteness.
-8. Domain-demographic mixing effects varied substantially by epidemic wave.
-9. The strongest scientific story is about transmission composition and social mixing, not simply cluster size.
-
-A concise manuscript-style interpretation would be:
-
-> After adjustment for lineage, calendar time, Leiden resolution, local incidence, sequencing intensity, and test positivity, socioeconomic deprivation was not meaningfully associated with larger, longer-lasting, or more geographically dispersed genomic clusters. However, inferred clusters were socially and demographically structured. Clusters showed modest excess assortativity by SIMD and age, and specific SIMD domains were associated with altered age and sex mixing. These associations varied across epidemic waves, suggesting that the social structure of recent transmission was shaped by changing variant, behavioural, policy, and surveillance contexts rather than by a single fixed deprivation gradient.
-
-## 11. Important Caveats
-
-These analyses are descriptive and associational, not causal.
-
-Important caveats:
-
-- Clusters represent inferred recent genomic linkage, not confirmed direct transmission.
-- All results depend on the EpiLink/Leiden clustering framework and the chosen window/resolution design.
-- The same sequences appear across multiple windows and Leiden resolutions, so observations are not fully independent.
-- Expected mixing is conditional on sampled cases within lineage, window, and resolution. It is not a population contact matrix.
-- Sequencing intensity is both a covariate and a source of ascertainment bias.
-- SIMD is area-based and may not represent individual socioeconomic position.
-- SIMD domains are correlated, so domain-specific models were fitted one at a time.
-- Large sample size makes small effects statistically precise; interpretation should focus on effect magnitude and consistency.
-
-## 12. Reproducibility
-
-The main scripts can be rerun from the repository root:
+### 10.1 Alternative standard-error clustering
 
 ```bash
-python3 part1/cluster_outcome_models.py
-python3 part1/cluster_mixing_analysis.py
-python3 part1/simd_domain_analysis.py
-python3 part1/simd_domain_demographic_mixing.py
-python3 part1/wave_specific_domain_demographic_mixing.py
-python3 part1/observed_expected_mixing_matrices.py
+conda run -n PhD python part1/main/main_analysis.py --cluster-by health_board
 ```
 
-The scripts write their outputs into:
+This clusters the sandwich standard errors by health board instead of window. The default is `window_id`.
+
+### 10.2 Size-offset cluster-size positive model
+
+```bash
+conda run -n PhD python part1/main/main_analysis.py --use-size-offset
+```
+
+This includes `log(wn_no_sequences)` as an offset in the cluster-size positive-count model. The estimand changes from raw reconstructed cluster size to cluster size relative to the number of sequences available in the analysis window.
+
+### 10.3 Tail winsorisation
+
+```bash
+conda run -n PhD python part1/main/main_analysis.py --winsorise-quantile 0.99
+```
+
+This caps positive count outcomes at the specified quantile before fitting the ZTNB models. It is intended to test sensitivity to very large right-tail clusters.
+
+### 10.4 Index-case SIMD exposure
+
+```bash
+conda run -n PhD python part1/main/main_analysis.py --use-index-simd
+```
+
+This replaces mean cluster SIMD deprivation with deprivation for the earliest collected sequence in the cluster.
+
+### 10.5 Approximately non-overlapping windows
+
+```bash
+conda run -n PhD python part1/main/main_analysis.py --window-stride 3
+```
+
+This keeps only clusters from windows where `window_idx % 3 == 0`. With 3-week windows advanced in 1-week steps, this approximates a non-overlapping window sensitivity.
+
+### 10.6 Separate output directories for sensitivities
+
+Sensitivity runs should use separate output directories to avoid overwriting primary results:
+
+```bash
+conda run -n PhD python part1/main/main_analysis.py \
+  --cluster-by health_board \
+  --tables-dir part1/main/tables_health_board \
+  --figures-dir part1/main/figures_health_board \
+  --cache-dir part1/main/cache_health_board
+```
+
+## 11. Outputs
+
+The main run writes tables to:
 
 ```text
-part1/tables/
-part1/figures/
+part1/main/tables/
 ```
 
-The key summary tables are:
+Primary table outputs:
+
+| File | Contents |
+|---|---|
+| `main_covariate_scaling.csv` | Means and SDs used for standardisation |
+| `main_dataset_descriptives.csv` | Analysis counts and descriptive outcome summaries |
+| `main_hurdle_count_model_results.csv` | Binary and positive count effect estimates |
+| `main_hurdle_count_model_diagnostics.csv` | Count-model diagnostics |
+| `main_mixing_model_results.csv` | Mixing-model effect estimates |
+| `main_mixing_model_diagnostics.csv` | Mixing-model diagnostics |
+
+The main run also writes the cluster cache:
 
 ```text
-part1/tables/cluster_outcome_model_results.csv
-part1/tables/cluster_mixing_model_results.csv
-part1/tables/simd_domain_mixing_model_results.csv
-part1/tables/simd_domain_demographic_mixing_model_results.csv
-part1/tables/wave_specific_domain_demographic_mixing_model_results.csv
-part1/tables/observed_expected_mixing_matrices.csv
+part1/main/cache/main_cluster_table.parquet
 ```
 
-The key figures are:
+Figures are written to:
 
 ```text
-part1/figures/cluster_outcome_model_effects.png
-part1/figures/cluster_mixing_model_effects.png
-part1/figures/simd_domain_demographic_mixing_effects.png
-part1/figures/wave_specific_domain_demographic_mixing_effects.png
-part1/figures/observed_expected_simd_matrix_overall.png
-part1/figures/observed_expected_age_matrix_overall.png
-part1/figures/observed_expected_simd_matrix_by_wave.png
+part1/main/figures/
 ```
 
+Primary summary figures:
+
+```text
+main_hurdle_count_effects.png
+main_hurdle_count_effects.pdf
+main_mixing_effects.png
+main_mixing_effects.pdf
+```
+
+## 12. Summary Plotting
+
+The summary plots are generated by:
+
+```text
+plot_count_effects()
+plot_mixing_effects()
+```
+
+Both functions now use the project style module:
+
+```text
+utils/style.py
+```
+
+Specifically, the plotting code:
+
+1. Sets the non-interactive Matplotlib backend through `load_plot_style()`.
+2. Imports `utils.style` from the repository root.
+3. Uses `style.new_figure()` for publication-style figure sizes and rcParams.
+4. Uses the shared `style.SIMD_DOMAIN_PALETTE` through `term_colours()`.
+5. Uses `style.save_figure()` to write both PDF and PNG outputs.
+
+The count summary plot:
+
+| Feature | Implementation |
+|---|---|
+| Figure file stem | `main_hurdle_count_effects` |
+| Layout | 3 outcomes x 2 components |
+| X-axis scale | Log ratio scale |
+| Reference line | Ratio = 1 |
+| Major ticks | `0.8`, `1`, `1.5`, `2`, `3`, `4` |
+| Minor ticks | Suppressed |
+| Output formats | PNG and PDF |
+
+The mixing summary plot:
+
+| Feature | Implementation |
+|---|---|
+| Figure file stem | `main_mixing_effects` |
+| Layout | Single horizontal coefficient plot |
+| X-axis scale | Percentage-point difference |
+| Reference line | Difference = 0 |
+| Major ticks | Symmetric ticks every 2 percentage points for the current axis range |
+| Output formats | PNG and PDF |
+
+The x-axis ticks were explicitly controlled because Matplotlib's defaults on log-ratio and wide percentage-point axes produced less readable tick placement in the summary figures.
+
+## 13. Reproducibility
+
+The main analysis can be rerun from the repository root with:
+
+```bash
+conda run -n PhD python part1/main/main_analysis.py
+```
+
+Important default arguments:
+
+| Argument | Default |
+|---|---|
+| `--qc` | `good` |
+| `--primary-resolution` | `0.3` |
+| `--lineage-min-clusters` | `50` |
+| `--calendar-spline-df` | `8` |
+| `--maxiter` | `1000` |
+| `--cluster-by` | `window_id` |
+| `--winsorise-quantile` | `0.0` |
+| `--window-stride` | `1` |
+
+To regenerate only the two summary figures from existing CSV results, use:
+
+```bash
+conda run -n PhD python -c "
+from pathlib import Path
+import pandas as pd
+from part1.main.main_analysis import plot_count_effects, plot_mixing_effects
+
+root = Path('.')
+tables = root / 'part1/main/tables'
+figures = root / 'part1/main/figures'
+plot_count_effects(
+    pd.read_csv(tables / 'main_hurdle_count_model_results.csv'),
+    figures / 'main_hurdle_count_effects',
+)
+plot_mixing_effects(
+    pd.read_csv(tables / 'main_mixing_model_results.csv'),
+    figures / 'main_mixing_effects',
+)
+"
+```
+
+## 14. Current Main Interpretation
+
+The current main results support three linked conclusions:
+
+1. Deprivation is not associated with larger cluster magnitude in a simple positive direction. In the main count models, higher mean cluster deprivation is associated with slightly lower odds of a non-singleton cluster, fewer additional sequences among non-singletons, and fewer additional datazones among clusters spanning multiple datazones.
+2. After conditioning on cluster size, deprivation is associated with very small increases in positive duration and geographic dispersion. This suggests that size is an important mediator or confounder for interpreting duration and spread.
+3. Local epidemic and surveillance context is much more strongly associated with cluster magnitude than deprivation. Local incidence, test positivity, local sequencing fraction, and window sequencing proportion show larger and more consistent effects across count components.
+
+For mixing, the current main results show:
+
+1. Mean cluster deprivation is not clearly associated with SIMD-quintile excess mixing in the primary model.
+2. Higher deprivation is associated with more age mixing, less sex mixing, and slightly more joint SIMD-age-sex profile mixing.
+3. Cluster size and test positivity are important predictors of mixing outcomes, especially SIMD mixing.
+
+Overall, the scientific story is not simply that deprived areas have bigger genomic clusters. The stronger story is that cluster detection and apparent magnitude are shaped by epidemic intensity and surveillance conditions, while cluster composition shows specific socioeconomic and demographic structure.
+
+## 15. Caveats
+
+Important caveats for interpreting the main analysis:
+
+1. Genomic clusters represent inferred recent linkage, not confirmed direct transmission.
+2. The analysis is descriptive and associational, not causal.
+3. The primary analysis uses one Leiden resolution to avoid repeated-resolution dependence, but results still depend on the clustering framework and the chosen resolution.
+4. Sliding analysis windows induce dependence; default standard errors are clustered by `window_id`, and non-overlapping-window sensitivity runs are available.
+5. Expected mixing is conditional on sampled sequences within lineage and window; it is not a population contact matrix.
+6. Sequencing intensity is both an adjustment variable and part of the ascertainment process.
+7. SIMD is area-based and may not represent individual socioeconomic position.
+8. Positive count components, especially cluster-size excess, are heavy-tailed; the cluster-size ZTNB dispersion estimate reaches its upper bound in the current main diagnostics.
+9. Large sample size makes small effects statistically precise, so interpretation should emphasise effect size and consistency rather than p-values alone.
