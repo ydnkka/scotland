@@ -207,8 +207,8 @@ main count analysis, but models are fitted separately by wave.
 The wave-specific outcome models adjust for the same main covariates: calendar
 time spline, local incidence, local sequencing fraction, window sequencing
 proportion, test positivity, and SIMD deprivation. Within-wave lineage dummies
-are omitted because the wave strata are already lineage-defined and nested
-lineage terms can cause separation or singular covariance estimates.
+are included where estimable, with rank-redundant columns dropped after the
+substantive covariates and calendar spline terms are kept.
 
 ### Main Patterns
 
@@ -454,10 +454,9 @@ analysis window.
 ### Index-Case SIMD Exposure
 
 This sensitivity replaces mean cluster SIMD deprivation with the SIMD
-deprivation of the earliest collected sequence in the cluster. The current
-index-SIMD sensitivity output changes the count models; the mixing table in
-`tables_index_simd` still contains the primary `deprivation_z` term and should
-not be interpreted as an index-case SIMD mixing sensitivity.
+deprivation of the earliest collected sequence in the cluster. The corrected
+index-SIMD sensitivity output applies this exposure consistently to the count
+models, mixing models, and sensitivity figures.
 
 For the count models, index-case SIMD gives a different pattern from mean
 cluster SIMD:
@@ -472,10 +471,19 @@ cluster SIMD:
 - Positive geographic spread, size-adjusted: count ratio 1.002, 95% CI 0.998
   to 1.006.
 
-Interpretation: the negative positive-count associations for mean cluster SIMD
-are much weaker when the exposure is the index-case SIMD. This suggests that
-mean cluster deprivation is capturing the composition of the whole cluster, not
-only the deprivation context of the earliest observed case.
+The index-case SIMD mixing estimates are also attenuated relative to the main
+mean-cluster SIMD estimates:
+
+- SIMD mixing: +0.13 pp, 95% CI -0.16 to +0.42.
+- Age mixing: +0.83 pp, 95% CI +0.61 to +1.06.
+- Sex mixing: -0.58 pp, 95% CI -0.84 to -0.31.
+- Joint profile mixing: +0.26 pp, 95% CI +0.15 to +0.37.
+
+Interpretation: the negative positive-count associations and demographic
+mixing associations for mean cluster SIMD are much weaker when the exposure is
+the index-case SIMD. This suggests that mean cluster deprivation is capturing
+the composition of the whole cluster, not only the deprivation context of the
+earliest observed case.
 
 ### Winsorising Positive Counts At The 99th Percentile
 

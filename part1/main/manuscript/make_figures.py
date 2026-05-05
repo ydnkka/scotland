@@ -25,6 +25,7 @@ OUTCOME_LABELS = {
 
 TERM_LABELS = {
     "deprivation_z": "SIMD deprivation",
+    "index_deprivation_z": "Index-case SIMD deprivation",
     "local_incidence_z": "Local incidence",
     "local_seq_fraction_z": "Local sequencing",
     "window_seq_fraction_z": "Window sequencing",
@@ -32,14 +33,14 @@ TERM_LABELS = {
     "log_cluster_size_z": "Cluster size",
 }
 
-PRIMARY_TERMS = [
-    "deprivation_z",
+SURVEILLANCE_TERMS = [
     "local_incidence_z",
     "local_seq_fraction_z",
     "window_seq_fraction_z",
     "test_positivity_z",
 ]
 
+PRIMARY_TERMS = ["deprivation_z", *SURVEILLANCE_TERMS]
 MIXING_TERMS = PRIMARY_TERMS + ["log_cluster_size_z"]
 
 MIXING_LABELS = {
@@ -107,12 +108,30 @@ def term_colours(style) -> dict[str, str]:
     palette = style.SIMD_DOMAIN_PALETTE
     return {
         "deprivation_z": palette["overall"],
+        "index_deprivation_z": palette["overall"],
         "local_incidence_z": palette["income"],
         "local_seq_fraction_z": palette["employment"],
         "window_seq_fraction_z": palette["education"],
         "test_positivity_z": palette["health"],
         "log_cluster_size_z": palette["access"],
     }
+
+
+def primary_terms_for_results(*frames: pd.DataFrame) -> list[str]:
+    observed_terms: set[str] = set()
+    for frame in frames:
+        if "term" in frame:
+            observed_terms.update(frame["term"].dropna().astype(str))
+    exposure = (
+        "index_deprivation_z"
+        if "index_deprivation_z" in observed_terms and "deprivation_z" not in observed_terms
+        else "deprivation_z"
+    )
+    return [exposure, *SURVEILLANCE_TERMS]
+
+
+def mixing_terms_for_results(*frames: pd.DataFrame) -> list[str]:
+    return [*primary_terms_for_results(*frames), "log_cluster_size_z"]
 
 
 def save_all(style, fig, out_base: Path, width: str, height_in: float) -> None:
@@ -244,6 +263,7 @@ def draw_difference_panel(
 
 def plot_main_count_results(style, count_results: pd.DataFrame, out_dir: Path) -> None:
     colours = term_colours(style)
+    primary_terms = primary_terms_for_results(count_results)
     outcomes = ["cluster_size", "duration", "geographic_dispersion"]
     components = ["hurdle_binary", "positive_zero_truncated_count"]
 
@@ -262,13 +282,13 @@ def plot_main_count_results(style, count_results: pd.DataFrame, out_dir: Path) -
             sub = count_results[
                 (count_results["outcome"] == outcome)
                 & (count_results["component"] == component)
-                & (count_results["term"].isin(PRIMARY_TERMS))
+                & (count_results["term"].isin(primary_terms))
             ]
             title = f"{OUTCOME_LABELS[outcome]}: {COMPONENT_LABELS[component]}"
             draw_ratio_panel(
                 ax,
                 sub,
-                PRIMARY_TERMS,
+                primary_terms,
                 colours,
                 title=title,
                 show_ylabels=j == 0,
@@ -289,6 +309,7 @@ def plot_main_count_results(style, count_results: pd.DataFrame, out_dir: Path) -
 
 def plot_main_mixing_results(style, mixing_results: pd.DataFrame, out_dir: Path) -> None:
     colours = term_colours(style)
+    mixing_terms = mixing_terms_for_results(mixing_results)
     outcomes = ["simd", "age", "sex", "profile"]
     fig, axes = style.new_figure(
         width="double",
@@ -305,7 +326,7 @@ def plot_main_mixing_results(style, mixing_results: pd.DataFrame, out_dir: Path)
         draw_difference_panel(
             ax,
             sub,
-            MIXING_TERMS,
+            mixing_terms,
             colours,
             title=f"{MIXING_LABELS[outcome]} excess mixing",
             show_ylabels=idx % 2 == 0,
@@ -372,6 +393,7 @@ def plot_outcome_distributions(style, cluster_table: pd.DataFrame, out_dir: Path
 
 def plot_size_adjusted_sensitivity(style, count_results: pd.DataFrame, out_dir: Path) -> None:
     colours = term_colours(style)
+    size_adjusted_terms = mixing_terms_for_results(count_results)
     outcomes = ["duration_size_adjusted", "geographic_dispersion_size_adjusted"]
     fig, axes = style.new_figure(
         width="double",
@@ -389,7 +411,7 @@ def plot_size_adjusted_sensitivity(style, count_results: pd.DataFrame, out_dir: 
         draw_ratio_panel(
             axes[idx],
             sub,
-            MIXING_TERMS,
+            size_adjusted_terms,
             colours,
             title=OUTCOME_LABELS[outcome],
             show_ylabels=idx == 0,

@@ -126,8 +126,8 @@ they fall below the minimum non-singleton cluster/window threshold.
 models separately by wave for cluster size, duration, and geographic spread.
 These wave-stratified outcome models retain the main calendar, incidence,
 sequencing, test-positivity, and SIMD-deprivation covariates. Within-wave
-lineage dummies are omitted because the wave strata are already lineage-defined
-and nested lineage terms can cause separation or singular covariance estimates.
+lineage dummies are included where estimable, with rank-redundant columns
+dropped after the substantive covariates and calendar spline terms are kept.
 XBB is retained in descriptives but skipped in the regression table because it
 falls below the minimum cluster count.
 

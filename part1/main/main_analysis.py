@@ -1244,6 +1244,7 @@ def term_colours(style) -> dict[str, str]:
     palette = style.SIMD_DOMAIN_PALETTE
     return {
         "deprivation_z": palette["overall"],
+        "index_deprivation_z": palette["overall"],
         "local_incidence_z": palette["income"],
         "local_seq_fraction_z": palette["employment"],
         "window_seq_fraction_z": palette["education"],
@@ -1333,39 +1334,42 @@ def run(
     )
 
     # Index-case SIMD: temporarily swap deprivation_z in the module-level
-    # PRIMARY_TERMS list so model_terms() picks up index_deprivation_z.
+    # PRIMARY_TERMS list so count models, mixing models, and plots use the
+    # same exposure definition throughout the sensitivity run.
+    _orig_terms: list[str] | None = None
     if use_index_simd:
-        _orig_terms = PRIMARY_TERMS[:]
+        _orig_terms = PRIMARY_TERMS.copy()
         PRIMARY_TERMS[:] = primary_terms
 
-    count_results, count_diagnostics = fit_count_models(
-        clusters,
-        lineage_levels_all=lineage_levels_all,
-        calendar_cols=calendar_cols,
-        maxiter=maxiter,
-        cluster_by=cluster_by,
-        use_size_offset=use_size_offset,
-        winsorise_quantile=winsorise_quantile,
-    )
+    try:
+        count_results, count_diagnostics = fit_count_models(
+            clusters,
+            lineage_levels_all=lineage_levels_all,
+            calendar_cols=calendar_cols,
+            maxiter=maxiter,
+            cluster_by=cluster_by,
+            use_size_offset=use_size_offset,
+            winsorise_quantile=winsorise_quantile,
+        )
 
-    if use_index_simd:
-        PRIMARY_TERMS[:] = _orig_terms
+        count_results.to_csv(tables_dir / "main_hurdle_count_model_results.csv", index=False)
+        count_diagnostics.to_csv(tables_dir / "main_hurdle_count_model_diagnostics.csv", index=False)
 
-    count_results.to_csv(tables_dir / "main_hurdle_count_model_results.csv", index=False)
-    count_diagnostics.to_csv(tables_dir / "main_hurdle_count_model_diagnostics.csv", index=False)
+        print("Fitting mixing models", flush=True)
+        mixing_results, mixing_diagnostics = fit_mixing_models(
+            clusters,
+            lineage_levels_all=lineage_levels_all,
+            calendar_cols=calendar_cols,
+            cluster_by=cluster_by,
+        )
+        mixing_results.to_csv(tables_dir / "main_mixing_model_results.csv", index=False)
+        mixing_diagnostics.to_csv(tables_dir / "main_mixing_model_diagnostics.csv", index=False)
 
-    print("Fitting mixing models", flush=True)
-    mixing_results, mixing_diagnostics = fit_mixing_models(
-        clusters,
-        lineage_levels_all=lineage_levels_all,
-        calendar_cols=calendar_cols,
-        cluster_by=cluster_by,
-    )
-    mixing_results.to_csv(tables_dir / "main_mixing_model_results.csv", index=False)
-    mixing_diagnostics.to_csv(tables_dir / "main_mixing_model_diagnostics.csv", index=False)
-
-    plot_count_effects(count_results, figures_dir / "main_hurdle_count_effects")
-    plot_mixing_effects(mixing_results, figures_dir / "main_mixing_effects")
+        plot_count_effects(count_results, figures_dir / "main_hurdle_count_effects")
+        plot_mixing_effects(mixing_results, figures_dir / "main_mixing_effects")
+    finally:
+        if _orig_terms is not None:
+            PRIMARY_TERMS[:] = _orig_terms
 
     print(f"Wrote {tables_dir / 'main_hurdle_count_model_results.csv'}", flush=True)
     print(f"Wrote {tables_dir / 'main_mixing_model_results.csv'}", flush=True)
