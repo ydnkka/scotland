@@ -8,3 +8,9 @@ __pycache__/
 *.egg-info/
 dist/
 .claude/
+/part1/main/cache/
+/part1/main/figures/
+/part1/main/tables/
+/part1/tables/
+/part1/figures/
+/part1/main/manuscript/figures/
