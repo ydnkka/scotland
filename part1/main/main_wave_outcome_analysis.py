@@ -1,10 +1,10 @@
 """Wave-specific main-formulation cluster outcome models.
 
 Fits the main hurdle/ZTNB count models separately within epidemic wave groups
-for cluster size, duration, and geographic spread. The figure generated from
-these tables focuses on the wave-specific SIMD-deprivation coefficient; the
-tables retain all main covariates. A companion sensitivity adds the main
-excess-mixing metrics as outcome predictors.
+for cluster size and geographic spread. The figure generated from these tables
+focuses on the wave-specific SIMD-deprivation coefficient; the tables retain
+all main covariates. A companion sensitivity adds the main excess-mixing
+metrics as outcome predictors.
 """
 
 from __future__ import annotations
@@ -23,30 +23,19 @@ from scipy.stats import norm
 import statsmodels.api as sm
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
-try:
-    from .main_analysis import (
-        COUNT_MODEL_SPECS,
-        MIXING_PREDICTOR_TERMS,
-        PRIMARY_TERMS,
-        TERM_LABELS as MAIN_TERM_LABELS,
-        ensure_mixing_predictor_columns,
-        fit_ztnb,
-        lineage_levels,
-        repo_root,
-    )
-    from .main_domain_wave_analysis import WAVE_LABELS, WAVE_ORDER, assign_wave
-except ImportError:
-    from main_analysis import (
-        COUNT_MODEL_SPECS,
-        MIXING_PREDICTOR_TERMS,
-        PRIMARY_TERMS,
-        TERM_LABELS as MAIN_TERM_LABELS,
-        ensure_mixing_predictor_columns,
-        fit_ztnb,
-        lineage_levels,
-        repo_root,
-    )
-    from main_domain_wave_analysis import WAVE_LABELS, WAVE_ORDER, assign_wave
+
+from main_analysis import (  # noqa: E402
+    COUNT_MODEL_SPECS,
+    MIXING_PREDICTOR_TERMS,
+    PRIMARY_TERMS,
+    TERM_LABELS as MAIN_TERM_LABELS,
+    ensure_mixing_predictor_columns,
+    fit_ztnb,
+    lineage_levels,
+    load_main_cluster_table,
+    repo_root,
+)
+from main_domain_wave_analysis import WAVE_LABELS, WAVE_ORDER, assign_wave  # noqa: E402
 
 
 TERM_LABELS = {
@@ -556,7 +545,7 @@ def run(
     if cache_dir is None:
         cache_dir = main_dir / "cache"
     clusters = ensure_mixing_predictor_columns(
-        pd.read_parquet(cache_dir / "main_cluster_table.parquet")
+        load_main_cluster_table(root=root, cache_dir=cache_dir)
     )
     clusters["wave_group"] = clusters["pango_lineage"].astype(str).map(assign_wave)
 

@@ -12,7 +12,6 @@ and test positivity, using one primary Leiden clustering resolution.
 The specific outcomes are:
 
 - cluster size
-- cluster duration
 - geographic spread, measured by the number of distinct datazones in a cluster
 - observed-minus-expected socioeconomic and demographic mixing within clusters
 
@@ -26,8 +25,8 @@ The main analysis uses good-QC sequences at Leiden resolution 0.3. This produces
 windows. Rare Pango lineages are pooled at a threshold of 50 clusters, giving
 183 lineage model levels in the main pooled analysis.
 
-The count outcomes have large structural masses at their minimum values, so the
-main count analysis uses two-part hurdle models:
+The modelled count outcomes have large structural masses at their minimum
+values, so the main count analysis uses two-part hurdle models:
 
 - a binomial hurdle component for whether a cluster exceeds the structural
   minimum
@@ -35,9 +34,13 @@ main count analysis uses two-part hurdle models:
   among clusters exceeding the structural minimum
 
 For cluster size, the hurdle is `cluster_size > 1` and the positive count is
-`cluster_size - 1`. For duration, the hurdle is `duration_days > 0` and the
-positive count is `duration_days`. For geographic spread, the hurdle is
+`cluster_size - 1`. For geographic spread, the hurdle is
 `cluster_n_datazones > 1` and the positive count is `cluster_n_datazones - 1`.
+
+Cluster duration remains in the descriptive cluster summaries and the
+supplementary outcome-distribution figure, but it is not modelled in the
+current main count analysis because the fixed three-week clustering windows
+mechanically constrain the observed span.
 
 Mixing outcomes are fitted among non-singleton clusters. They are defined as
 observed pairwise discordance within a cluster minus expected discordance among
@@ -50,20 +53,18 @@ on the transformed and standardised SIMD rank scale.
 ## Overall Results Summary
 
 The main analysis does not support the simple hypothesis that more deprived
-clusters are generally larger, longer lasting, and more geographically dispersed.
+clusters are generally larger and more geographically dispersed.
 In the pooled main models, higher SIMD deprivation is associated with slightly
 lower odds of being non-singleton, smaller positive cluster sizes, and
-substantially lower positive geographic spread. Duration is not materially
-associated with overall SIMD deprivation in the primary count models.
+substantially lower positive geographic spread.
 
 Surveillance and epidemic-intensity variables show much stronger and more
 consistent associations with cluster outcomes. Higher local incidence, higher
 window-level sequencing proportion, and higher test positivity are associated
-with larger, longer-lasting, and more geographically dispersed clusters. Local
-sequencing fraction is especially strongly associated with larger positive
-cluster size and positive geographic spread, consistent with the idea that
-local sampling intensity affects the apparent scale of reconstructed genomic
-clusters.
+with larger and more geographically dispersed clusters. Local sequencing
+fraction is especially strongly associated with larger positive cluster size and
+positive geographic spread, consistent with the idea that local sampling
+intensity affects the apparent scale of reconstructed genomic clusters.
 
 Mixing results tell a different story. Overall SIMD deprivation is not clearly
 associated with SIMD-quintile excess mixing, but it is associated with greater
@@ -84,9 +85,9 @@ falls below the minimum cluster count.
 File stem: `fig1_main_cluster_outcomes`
 
 This figure shows the main hurdle and zero-truncated negative-binomial results
-for cluster size, duration, and geographic spread. Each point is an adjusted
-ratio per 1 SD higher covariate. For hurdle panels, the ratio is an odds ratio.
-For positive-count panels, the ratio is a ZTNB count ratio.
+for cluster size and geographic spread. Each point is an adjusted ratio per
+1 SD higher covariate. For hurdle panels, the ratio is an odds ratio. For
+positive-count panels, the ratio is a ZTNB count ratio.
 
 ### SIMD Deprivation
 
@@ -95,9 +96,6 @@ In the pooled main model:
 - Cluster size hurdle: OR 0.971, 95% CI 0.960 to 0.983, p = 1.43e-06.
 - Positive cluster size: ZTNB count ratio 0.926, 95% CI 0.869 to 0.987,
   p = 0.018.
-- Duration hurdle: OR 0.992, 95% CI 0.979 to 1.004, p = 0.192.
-- Positive duration: ZTNB count ratio 1.003, 95% CI 0.995 to 1.011,
-  p = 0.451.
 - Geographic spread hurdle: OR 1.004, 95% CI 0.992 to 1.016, p = 0.522.
 - Positive geographic spread: ZTNB count ratio 0.851, 95% CI 0.792 to 0.915,
   p = 1.24e-05.
@@ -113,7 +111,7 @@ test positivity are much more consistently associated with larger apparent
 clusters:
 
 - Higher local incidence is associated with higher odds of exceeding the
-  structural minimum for all three count outcomes and with larger positive
+  structural minimum for both modelled count outcomes and with larger positive
   cluster size and geographic spread.
 - Higher local sequencing fraction is strongly associated with positive cluster
   size, count ratio 3.24, and positive geographic spread, count ratio 2.27.
@@ -200,9 +198,9 @@ and crime.
 
 File stem: `fig4_wave_specific_cluster_outcomes`
 
-This figure shows the per-wave overall SIMD deprivation effect on cluster size,
-duration, and geographic spread. It uses the same hurdle/ZTNB framing as the
-main count analysis, but models are fitted separately by wave.
+This figure shows the per-wave overall SIMD deprivation effect on cluster size
+and geographic spread. It uses the same hurdle/ZTNB framing as the main count
+analysis, but models are fitted separately by wave.
 
 The wave-specific outcome models adjust for the same main covariates: calendar
 time spline, local incidence, local sequencing fraction, window sequencing
@@ -216,7 +214,6 @@ Delta shows the clearest negative deprivation association:
 
 - Cluster size hurdle: OR 0.934, 95% CI 0.921 to 0.947.
 - Positive cluster size: count ratio 0.797, 95% CI 0.725 to 0.876.
-- Duration hurdle: OR 0.945, 95% CI 0.932 to 0.958.
 - Geographic spread hurdle: OR 0.958, 95% CI 0.945 to 0.971.
 - Positive geographic spread: count ratio 0.781, 95% CI 0.703 to 0.867.
 
@@ -276,20 +273,19 @@ centred slightly below zero.
 
 File stem: `supp_fig2_size_adjusted_positive_counts`
 
-This sensitivity analysis asks whether duration and geographic spread effects
-remain after additionally adjusting the positive-count models for cluster size.
+This sensitivity analysis asks whether the geographic spread effect remains
+after additionally adjusting the positive-count model for cluster size.
 
 After size adjustment, overall SIMD deprivation is weakly positively associated
 with:
 
-- positive duration: count ratio 1.012, 95% CI 1.006 to 1.019, p = 6.44e-05
 - positive geographic spread: count ratio 1.03, 95% CI 1.01 to 1.04,
   p = 4.67e-11
 
 This is important because the unadjusted positive geographic-spread model shows
 a negative deprivation association. The size-adjusted sensitivity suggests that
 more deprived clusters are generally smaller, but among clusters of comparable
-size there may be slightly longer duration or wider geographic spread.
+size there may be slightly wider geographic spread.
 
 ## Supplementary Figure 3: Log-Linear Versus Hurdle/ZTNB
 
@@ -301,13 +297,11 @@ formulation.
 For SIMD deprivation, the log-linear estimates are:
 
 - cluster size geometric mean ratio 0.992, 95% CI 0.987 to 0.997
-- duration geometric mean ratio 0.999, 95% CI 0.994 to 1.004
 - geographic spread geometric mean ratio 1.001, 95% CI 0.996 to 1.006
 
-The log-linear model broadly agrees that duration is not meaningfully associated
-with overall deprivation, but it substantially attenuates the positive-count
-patterns seen in the ZTNB models. This supports the decision to use hurdle/ZTNB
-models for the main count outcomes.
+The log-linear model substantially attenuates the positive-count patterns seen
+in the ZTNB models, especially for cluster size and geographic spread. This
+supports the decision to use hurdle/ZTNB models for the main count outcomes.
 
 ## Supplementary Figure 4: SIMD-Domain Cluster Outcomes
 
@@ -318,9 +312,9 @@ two-part count structure as Figure 1.
 
 The strongest negative domain effects are for housing and crime deprivation.
 Housing deprivation is associated with lower odds of non-singleton clusters,
-lower odds of positive duration, lower odds of multi-datazone clusters, and
-lower positive geographic spread. Crime deprivation is associated with smaller
-positive cluster size and lower positive geographic spread.
+lower odds of multi-datazone clusters, and lower positive geographic spread.
+Crime deprivation is associated with smaller positive cluster size and lower
+positive geographic spread.
 
 Access deprivation behaves differently. It is associated with slightly higher
 odds of non-singleton clusters and higher positive geographic spread, while
@@ -421,9 +415,8 @@ the primary unadjusted count components:
 - Positive cluster size: count ratio 0.926, 95% CI 0.664 to 1.293.
 - Positive geographic spread: count ratio 0.851, 95% CI 0.577 to 1.255.
 
-The size-adjusted positive-count results remain positive:
+The size-adjusted positive-count result remains positive:
 
-- Positive duration, size-adjusted: count ratio 1.012, 95% CI 1.001 to 1.024.
 - Positive geographic spread, size-adjusted: count ratio 1.027, 95% CI 1.012
   to 1.041.
 
@@ -467,11 +460,8 @@ cluster SIMD:
 
 - Cluster size hurdle: OR 0.967, 95% CI 0.956 to 0.978.
 - Positive cluster size: count ratio 0.996, 95% CI 0.957 to 1.036.
-- Duration hurdle: OR 0.981, 95% CI 0.969 to 0.994.
-- Positive duration: count ratio 1.000, 95% CI 0.995 to 1.005.
 - Geographic spread hurdle: OR 0.994, 95% CI 0.983 to 1.006.
 - Positive geographic spread: count ratio 0.989, 95% CI 0.951 to 1.028.
-- Positive duration, size-adjusted: count ratio 1.002, 95% CI 0.999 to 1.006.
 - Positive geographic spread, size-adjusted: count ratio 1.002, 95% CI 0.998
   to 1.006.
 
@@ -505,9 +495,8 @@ The negative positive geographic-spread association remains:
 - Winsorised positive geographic spread: count ratio 0.889, 95% CI 0.837 to
   0.944.
 
-The size-adjusted positive-count results remain positive:
+The size-adjusted positive-count result remains positive:
 
-- Positive duration, size-adjusted: count ratio 1.013, 95% CI 1.006 to 1.019.
 - Positive geographic spread, size-adjusted: count ratio 1.027, 95% CI 1.019
   to 1.036.
 
@@ -525,11 +514,8 @@ Count-model results are directionally similar but less precise:
 
 - Cluster size hurdle: OR 0.972, 95% CI 0.954 to 0.991.
 - Positive cluster size: count ratio 0.920, 95% CI 0.811 to 1.044.
-- Duration hurdle: OR 0.990, 95% CI 0.969 to 1.012.
-- Positive duration: count ratio 1.001, 95% CI 0.988 to 1.015.
 - Geographic spread hurdle: OR 1.003, 95% CI 0.983 to 1.024.
 - Positive geographic spread: count ratio 0.861, 95% CI 0.745 to 0.996.
-- Positive duration, size-adjusted: count ratio 1.010, 95% CI 1.001 to 1.020.
 - Positive geographic spread, size-adjusted: count ratio 1.027, 95% CI 1.013
   to 1.041.
 
@@ -556,9 +542,9 @@ The sensitivity analyses support a cautious version of the main findings:
 - The strongest unadjusted count result that persists across several
   sensitivities is lower positive geographic spread with higher mean cluster
   deprivation.
-- Size-adjusted positive duration and geographic spread remain weakly positive
-  under health-board clustering, winsorisation, and approximately
-  non-overlapping windows.
+- Size-adjusted positive geographic spread remains weakly positive under
+  health-board clustering, winsorisation, and approximately non-overlapping
+  windows.
 - Index-case SIMD does not reproduce the positive-count associations seen with
   mean cluster SIMD, implying that the cluster-level composition exposure is
   scientifically different from the earliest-observed-case exposure.
@@ -569,36 +555,35 @@ The sensitivity analyses support a cautious version of the main findings:
 ## Suggested Results Paragraph
 
 In the main hurdle/ZTNB models, higher cluster-level SIMD deprivation was not
-associated with larger or longer-lasting genomic clusters after adjustment for
-lineage, calendar time, local incidence, sequencing intensity, and test
-positivity. Instead, deprivation was associated with slightly lower odds of
-being non-singleton and smaller positive cluster size, and with substantially
-lower positive geographic spread. Duration showed little evidence of an overall
-deprivation association. Local epidemic and surveillance conditions were much
-more strongly associated with cluster scale: higher incidence, window-level
-sequencing proportion, and test positivity were consistently associated with
-larger, longer-lasting, and more geographically dispersed clusters. Mixing
-analyses showed a more nuanced socioeconomic pattern. Overall deprivation was
-not clearly associated with SIMD-quintile mixing, but was associated with
-greater age and joint socio-demographic mixing and lower sex mixing. SIMD-domain
-models showed that education and crime deprivation were associated with greater
-domain-quintile mixing, whereas access and housing deprivation were associated
-with lower domain-quintile mixing. Per-wave outcome models indicated that
-deprivation effects varied over time, with the strongest negative associations
-seen during Delta and more heterogeneous patterns in Omicron subwaves.
-Sensitivity analyses supported the qualitative pattern but showed that
-statistical precision depends on the clustering level and on the positive-count
-tail: health-board clustered standard errors widened several count-outcome
-intervals, 99th-percentile winsorisation attenuated the positive cluster-size
-association, and the index-case SIMD exposure did not reproduce the
-mean-cluster-SIMD positive-count associations.
+associated with larger or more geographically dispersed genomic clusters after
+adjustment for lineage, calendar time, local incidence, sequencing intensity,
+and test positivity. Instead, deprivation was associated with slightly lower
+odds of being non-singleton and smaller positive cluster size, and with
+substantially lower positive geographic spread. Local epidemic and surveillance
+conditions were much more strongly associated with cluster scale: higher
+incidence, window-level sequencing proportion, and test positivity were
+consistently associated with larger and more geographically dispersed clusters.
+Mixing analyses showed a more nuanced socioeconomic pattern. Overall
+deprivation was not clearly associated with SIMD-quintile mixing, but was
+associated with greater age and joint socio-demographic mixing and lower sex
+mixing. SIMD-domain models showed that education and crime deprivation were
+associated with greater domain-quintile mixing, whereas access and housing
+deprivation were associated with lower domain-quintile mixing. Per-wave outcome
+models indicated that deprivation effects varied over time, with the strongest
+negative associations seen during Delta and more heterogeneous patterns in
+Omicron subwaves. Sensitivity analyses supported the qualitative pattern but
+showed that statistical precision depends on the clustering level and on the
+positive-count tail: health-board clustered standard errors widened several
+count-outcome intervals, 99th-percentile winsorisation attenuated the positive
+cluster-size association, and the index-case SIMD exposure did not reproduce
+the mean-cluster-SIMD positive-count associations.
 
 ## Interpretation For The Part 1 Question
 
 The answer to the original question is therefore mixed:
 
 - Socioeconomic deprivation is associated with some cluster outcomes, but not in
-  the simple direction of larger, longer-lasting, or more dispersed clusters.
+  the simple direction of larger or more dispersed clusters.
 - Surveillance and epidemic-intensity variables are strongly associated with
   apparent cluster scale, reinforcing the need to adjust for sequencing and
   testing context.

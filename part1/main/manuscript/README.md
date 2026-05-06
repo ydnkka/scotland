@@ -16,20 +16,20 @@ The accompanying narrative description is
 ## Figure Set
 
 - `fig1_main_cluster_outcomes`: main hurdle and zero-truncated negative-binomial
-  count results for cluster size, duration, and geographic spread.
+  count results for cluster size and geographic spread.
 - `fig2_main_cluster_mixing`: main observed-minus-expected mixing model results.
 - `fig3_simd_domain_mixing`: SIMD-domain effects on domain-quintile, age, sex,
   and joint age-sex excess mixing.
 - `fig4_wave_specific_cluster_outcomes`: wave-specific deprivation effects on
-  cluster size, duration, and geographic spread.
+  cluster size and geographic spread.
 - `supp_fig1_outcome_distributions`: distributions of non-singleton cluster
   size, duration, geography, and age, sex, and deprivation excess mixing.
 - `supp_fig2_size_adjusted_positive_counts`: size-adjusted positive-count
-  sensitivity models for duration and geographic spread.
+  sensitivity model for geographic spread.
 - `supp_fig3_loglinear_vs_hurdle_ztnb`: comparison of main-formulation
   log-linear estimates with the main hurdle and positive ZTNB components.
 - `supp_fig4_simd_domain_cluster_outcomes`: SIMD domain deprivation effects on
-  cluster size, duration, and geographic spread.
+  cluster size and geographic spread.
 - `supp_fig5_simd_domain_quintile_mixing`: domain-specific deprivation effects
   on domain-quintile excess mixing.
 - `supp_fig6_simd_domain_demographic_mixing`: SIMD domain effects on age, sex,
@@ -50,3 +50,7 @@ The accompanying narrative description is
 All manuscript figures are generated from `part1/main/tables` and
 `part1/main/cache`; the legacy `part1/tables` outputs are not used by the
 manuscript figure script.
+
+Duration is retained only in `supp_fig1_outcome_distributions` as a descriptive
+outcome distribution because the fixed three-week clustering windows
+mechanically constrain the observed span.

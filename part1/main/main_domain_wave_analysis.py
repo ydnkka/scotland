@@ -27,46 +27,29 @@ import warnings
 
 import numpy as np
 import pandas as pd
-import yaml
 from patsy import dmatrix
 from scipy.stats import norm
 import statsmodels.api as sm
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
-try:
-    from .main_analysis import (
-        CALENDAR_SPLINE_DF,
-        COUNT_MODEL_SPECS,
-        LINEAGE_MIN_CLUSTERS,
-        PRIMARY_RESOLUTION,
-        QC_DEFAULT,
-        build_exog,
-        expected_stratum_discordance,
-        fit_ztnb,
-        lineage_levels,
-        logit_clipped,
-        observed_cluster_discordance,
-        repo_root,
-        zscore,
-        analysis_dataset_path,
-    )
-except ImportError:
-    from main_analysis import (
-        CALENDAR_SPLINE_DF,
-        COUNT_MODEL_SPECS,
-        LINEAGE_MIN_CLUSTERS,
-        PRIMARY_RESOLUTION,
-        QC_DEFAULT,
-        build_exog,
-        expected_stratum_discordance,
-        fit_ztnb,
-        lineage_levels,
-        logit_clipped,
-        observed_cluster_discordance,
-        repo_root,
-        zscore,
-        analysis_dataset_path,
-    )
+
+from main_analysis import (  # noqa: E402
+    CALENDAR_SPLINE_DF,
+    COUNT_MODEL_SPECS,
+    LINEAGE_MIN_CLUSTERS,
+    PRIMARY_RESOLUTION,
+    QC_DEFAULT,
+    build_exog,
+    expected_stratum_discordance,
+    fit_ztnb,
+    lineage_levels,
+    logit_clipped,
+    load_analysis_columns_pandas,
+    load_simd_columns_pandas,
+    observed_cluster_discordance,
+    repo_root,
+    zscore,
+)
 
 
 DOMAINS = {
@@ -192,15 +175,9 @@ BASE_SEQUENCE_COLUMNS = [
 ]
 
 
-def processed_simd_path(root: Path) -> Path:
-    with open(root / "config.yaml", "r", encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
-    return root / cfg["data"]["processed"]["simd"]
-
-
-def domain_rank_maxima(root: Path) -> dict[str, float]:
+def domain_rank_maxima() -> dict[str, float]:
     cols = [spec["rank_col"] for spec in DOMAINS.values()]
-    simd = pd.read_parquet(processed_simd_path(root), columns=cols)
+    simd = load_simd_columns_pandas(columns=cols)
     return {
         domain: float(simd[spec["rank_col"]].max())
         for domain, spec in DOMAINS.items()
@@ -237,24 +214,19 @@ def assign_wave(lineage: str) -> str:
 
 
 def read_sequence_rows(
-    root: Path,
+    _: Path,
     qc: str | None,
     primary_resolution: float,
 ) -> pd.DataFrame:
     rank_cols = [spec["rank_col"] for spec in DOMAINS.values()]
     columns = list(dict.fromkeys([*BASE_SEQUENCE_COLUMNS, *rank_cols]))
-    filters: list[tuple[str, str, object]] = [("resolution", "==", primary_resolution)]
-    if qc is not None:
-        filters.append(("nextclade_qc", "==", qc))
-
-    seq = pd.read_parquet(
-        analysis_dataset_path(root),
+    seq = load_analysis_columns_pandas(
         columns=columns,
-        filters=filters,
-        engine="pyarrow",
+        resolution=primary_resolution,
+        qc=qc,
     )
 
-    maxima = domain_rank_maxima(root)
+    maxima = domain_rank_maxima()
     for domain, spec in DOMAINS.items():
         q_col = f"{domain}_domain_quintile"
         if domain == "overall":

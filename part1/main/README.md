@@ -7,8 +7,8 @@ models for the primary cluster outcomes.
 
 After accounting for lineage, calendar time, local incidence, sequencing
 intensity, and test positivity, are socioeconomic deprivation and surveillance
-conditions associated with larger, longer-lasting, more geographically dispersed,
-or more socially mixed SARS-CoV-2 genomic clusters in Scotland?
+conditions associated with larger, more geographically dispersed, or more
+socially mixed SARS-CoV-2 genomic clusters in Scotland?
 
 ## Analysis Population
 
@@ -40,8 +40,8 @@ proportion, making that surveillance coefficient non-identifiable.
 
 ## Count Outcomes
 
-Cluster size, duration, and number of datazones have large structural masses at
-their minimum values. They are therefore modelled with two-part hurdle models:
+Cluster size and number of datazones have large structural masses at their
+minimum values. They are therefore modelled with two-part hurdle models:
 
 - Binary hurdle component: binomial GLM with logit link
 - Positive count component: zero-truncated negative binomial model
@@ -50,14 +50,17 @@ Outcome definitions:
 
 - `cluster_size`: hurdle is `cluster_size > 1`; positive count is
   `cluster_size - 1`
-- `duration`: hurdle is `duration_days > 0`; positive count is `duration_days`
 - `geographic_dispersion`: hurdle is `cluster_n_datazones > 1`; positive count
   is `cluster_n_datazones - 1`
 
-Size-adjusted duration and geographic-dispersion sensitivities are fitted only
-for the positive zero-truncated count component. The binary hurdle component is
-not used for size-adjusted sensitivity models because cluster size partly
-defines whether a cluster can exceed the structural minimum.
+The size-adjusted geographic-dispersion sensitivity is fitted only for the
+positive zero-truncated count component. The binary hurdle component is not used
+for the size-adjusted sensitivity model because cluster size partly defines
+whether a cluster can exceed the structural minimum.
+
+Duration remains available only in descriptive summaries and the supplementary
+outcome-distribution figure because the fixed three-week clustering windows
+mechanically constrain the observed span.
 
 ## Mixing Outcomes
 
@@ -83,8 +86,8 @@ predictors in sensitivity models for the cluster count outcomes. These models
 are reported separately from the primary hurdle/ZTNB tables because mixing is
 only defined for clusters with at least two valid cases. The cluster-size hurdle
 component is therefore skipped in the mixing-predictor tables; positive count
-components and the duration/geographic-spread hurdle components are estimated
-on the complete-case population with non-missing mixing metrics.
+components and the geographic-spread hurdle component are estimated on the
+complete-case population with non-missing mixing metrics.
 
 ## Outputs
 
@@ -142,8 +145,8 @@ descriptives and matrices but skipped in the wave-specific regression table when
 they fall below the minimum non-singleton cluster/window threshold.
 
 `main_wave_outcome_analysis.py` also refits the main hurdle/ZTNB cluster-outcome
-models separately by wave for cluster size, duration, and geographic spread.
-These wave-stratified outcome models retain the main calendar, incidence,
+models separately by wave for cluster size and geographic spread. These
+wave-stratified outcome models retain the main calendar, incidence,
 sequencing, test-positivity, and SIMD-deprivation covariates. Within-wave
 lineage dummies are included where estimable, with rank-redundant columns
 dropped after the substantive covariates and calendar spline terms are kept.

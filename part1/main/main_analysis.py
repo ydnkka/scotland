@@ -4,7 +4,7 @@ This script is the primary modelling pass for Part 1. It uses one Leiden
 resolution to avoid treating repeated cluster resolutions as independent, then
 fits:
 
-* hurdle models for cluster size, duration, and geographic dispersion
+* hurdle models for cluster size and geographic dispersion
 * zero-truncated negative-binomial models for the positive count components
 * sensitivity count models with excess mixing metrics as predictors
 * linear models for observed-minus-expected within-cluster mixing
@@ -28,7 +28,6 @@ import warnings
 
 import numpy as np
 import pandas as pd
-import yaml
 from patsy import dmatrix
 from scipy.linalg import pinvh
 from scipy.optimize import minimize
@@ -36,6 +35,29 @@ from scipy.stats import norm
 from scipy.special import digamma, gammaln
 import statsmodels.api as sm
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
+
+
+def _bootstrap_repo_root_for_utils() -> Path:
+    """Ensure the repository root is importable for direct script execution."""
+    here = Path(__file__).resolve()
+    for candidate in [here, *here.parents]:
+        if (candidate / "config.yaml").exists():
+            root_str = str(candidate)
+            if root_str not in sys.path:
+                sys.path.insert(0, root_str)
+            return candidate
+    raise FileNotFoundError("Could not locate config.yaml.")
+
+
+_bootstrap_repo_root_for_utils()
+
+from utils.data import (  # noqa: E402
+    Paths as DataPaths,
+    load_analysis_columns_pandas,
+    load_main_cluster_table as data_load_main_cluster_table,
+    load_simd_columns_pandas as data_load_simd_columns_pandas,
+    repo_root as data_repo_root,
+)
 
 
 QC_DEFAULT = "good"
@@ -144,7 +166,8 @@ class ZTNBResult:
     aic: float
     alpha: float
 
-
+# Duration is excluded from the primary count outcomes because the fixed
+# three-week clustering windows mechanically constrain the observed span.
 COUNT_MODEL_SPECS = [
     CountModelSpec(
         name="cluster_size",
@@ -155,29 +178,12 @@ COUNT_MODEL_SPECS = [
         positive_label="Additional sequences among non-singleton clusters",
     ),
     CountModelSpec(
-        name="duration",
-        label="Duration",
-        raw_outcome="duration_days",
-        binary_col="duration_gt0",
-        positive_col="duration_positive_days",
-        positive_label="Days among clusters lasting more than one day",
-    ),
-    CountModelSpec(
         name="geographic_dispersion",
         label="Geographic dispersion",
         raw_outcome="cluster_n_datazones",
         binary_col="datazones_gt1",
         positive_col="datazones_excess",
         positive_label="Additional datazones among multi-datazone clusters",
-    ),
-    CountModelSpec(
-        name="duration_size_adjusted",
-        label="Duration, size-adjusted",
-        raw_outcome="duration_days",
-        binary_col="duration_gt0",
-        positive_col="duration_positive_days",
-        positive_label="Days among clusters lasting more than one day",
-        include_size=True,
     ),
     CountModelSpec(
         name="geographic_dispersion_size_adjusted",
@@ -192,17 +198,25 @@ COUNT_MODEL_SPECS = [
 
 
 def repo_root(start: Path | None = None) -> Path:
-    p = (start or Path(__file__)).resolve()
-    for candidate in [p, *p.parents]:
-        if (candidate / "config.yaml").exists():
-            return candidate
-    raise FileNotFoundError("Could not locate config.yaml.")
+    return data_repo_root(start)
 
 
 def analysis_dataset_path(root: Path) -> Path:
-    with open(root / "config.yaml", "r", encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
-    return root / cfg["data"]["processed"]["analysis_dataset"]
+    return DataPaths.from_config(root).analysis_dataset
+
+
+def load_simd_columns_pandas(
+    columns: Iterable[str] | None = None,
+    all_cols: bool = False,
+) -> pd.DataFrame:
+    return data_load_simd_columns_pandas(columns=columns, all_cols=all_cols)
+
+
+def load_main_cluster_table(
+    root: Path | None = None,
+    cache_dir: Path | None = None,
+) -> pd.DataFrame:
+    return data_load_main_cluster_table(root=root, cache_dir=cache_dir)
 
 
 def zscore(values: pd.Series) -> tuple[pd.Series, float, float]:
@@ -234,19 +248,14 @@ def logit_clipped(values: pd.Series, eps: float = 1e-5) -> pd.Series:
 
 
 def read_sequence_rows(
-    path: Path,
+    root: Path,
     qc: str | None,
     primary_resolution: float,
 ) -> pd.DataFrame:
-    filters: list[tuple[str, str, object]] = [("resolution", "==", primary_resolution)]
-    if qc is not None:
-        filters.append(("nextclade_qc", "==", qc))
-
-    seq = pd.read_parquet(
-        path,
+    seq = load_analysis_columns_pandas(
         columns=SEQUENCE_COLUMNS,
-        filters=filters,
-        engine="pyarrow",
+        resolution=primary_resolution,
+        qc=qc,
     )
 
     categorical = [
@@ -1218,19 +1227,21 @@ def plot_count_effects(results: pd.DataFrame, out_base: Path) -> None:
     style = load_plot_style()
     from matplotlib.ticker import FixedLocator, FuncFormatter, NullFormatter, NullLocator
 
+    outcomes = ["cluster_size", "geographic_dispersion"]
     primary = results[
-        results["outcome"].isin(["cluster_size", "duration", "geographic_dispersion"])
+        results["outcome"].isin(outcomes)
         & results["term"].isin(PRIMARY_TERMS)
     ].copy()
-    outcomes = ["cluster_size", "duration", "geographic_dispersion"]
+    if primary.empty:
+        return
     components = ["hurdle_binary", "positive_zero_truncated_count"]
     colours = term_colours(style)
     ratio_ticks = [0.8, 1.0, 1.5, 2.0, 3.0, 4.0]
 
     fig, axes = style.new_figure(
         width="double",
-        height_in=5.8,
-        nrows=3,
+        height_in=4.4,
+        nrows=len(outcomes),
         ncols=2,
         sharex=True,
         font_scale=0.85,
@@ -1275,9 +1286,7 @@ def plot_count_effects(results: pd.DataFrame, out_base: Path) -> None:
                 )
             if j == 0:
                 ax.set_ylabel(
-                    {"cluster_size": "Size", "duration": "Duration", "geographic_dispersion": "Datazones"}[
-                        outcome
-                    ],
+                    {"cluster_size": "Size", "geographic_dispersion": "Datazones"}[outcome],
                     rotation=0,
                     ha="right",
                     va="center",
@@ -1298,22 +1307,22 @@ def plot_count_effects(results: pd.DataFrame, out_base: Path) -> None:
     )
     fig.supxlabel("Adjusted ratio per 1 SD higher cluster-level covariate", x=0.6)
     # fig.subplots_adjust(left=0.16, right=0.98, top=0.93, bottom=0.29, hspace=0.48, wspace=0.28)
-    style.save_figure(fig, out_base, width="double", height_in=6.2, dpi=600, save_pdf=True, save_png=True)
+    style.save_figure(fig, out_base, width="double", height_in=4.8, dpi=600, save_pdf=True, save_png=True)
 
 
 def plot_mixing_predictor_count_effects(results: pd.DataFrame, out_base: Path) -> None:
     style = load_plot_style()
     from matplotlib.ticker import FixedLocator, FuncFormatter, NullFormatter, NullLocator
 
+    outcomes = ["cluster_size", "geographic_dispersion"]
     data = results[
-        results["outcome"].isin(["cluster_size", "duration", "geographic_dispersion"])
+        results["outcome"].isin(outcomes)
         & results["component"].isin(["hurdle_binary", "positive_zero_truncated_count"])
         & results["term"].isin(MIXING_PREDICTOR_TERMS)
     ].copy()
     if data.empty:
         return
 
-    outcomes = ["cluster_size", "duration", "geographic_dispersion"]
     components = ["hurdle_binary", "positive_zero_truncated_count"]
     colours = term_colours(style)
     ci_min = float(data["ratio_ci_low"].min())
@@ -1327,8 +1336,8 @@ def plot_mixing_predictor_count_effects(results: pd.DataFrame, out_base: Path) -
 
     fig, axes = style.new_figure(
         width="double",
-        height_in=5.8,
-        nrows=3,
+        height_in=4.4,
+        nrows=len(outcomes),
         ncols=2,
         sharex=True,
         font_scale=0.85,
@@ -1404,9 +1413,7 @@ def plot_mixing_predictor_count_effects(results: pd.DataFrame, out_base: Path) -
                 )
             if j == 0:
                 ax.set_ylabel(
-                    {"cluster_size": "Size", "duration": "Duration", "geographic_dispersion": "Datazones"}[
-                        outcome
-                    ],
+                    {"cluster_size": "Size", "geographic_dispersion": "Datazones"}[outcome],
                     rotation=0,
                     ha="right",
                     va="center",
@@ -1430,7 +1437,7 @@ def plot_mixing_predictor_count_effects(results: pd.DataFrame, out_base: Path) -
         fig,
         out_base,
         width="double",
-        height_in=6.2,
+        height_in=4.8,
         dpi=600,
         save_pdf=True,
         save_png=True,
@@ -1579,7 +1586,7 @@ def run(
 
     path = analysis_dataset_path(root)
     print(f"Reading primary-resolution sequence rows from {path}", flush=True)
-    seq = read_sequence_rows(path, qc=qc, primary_resolution=primary_resolution)
+    seq = read_sequence_rows(root, qc=qc, primary_resolution=primary_resolution)
     print(f"Building cluster table from {len(seq):,} sequence rows", flush=True)
     clusters, scaling, dropped = build_cluster_table(
         seq,

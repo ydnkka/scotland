@@ -17,9 +17,7 @@ import pandas as pd
 
 OUTCOME_LABELS = {
     "cluster_size": "Cluster size",
-    "duration": "Duration",
     "geographic_dispersion": "Geographic spread",
-    "duration_size_adjusted": "Duration, size-adjusted",
     "geographic_dispersion_size_adjusted": "Geographic spread, size-adjusted",
 }
 
@@ -99,6 +97,9 @@ DOMAIN_LABELS = {
 }
 
 WAVE_ORDER = ["B.1.177", "Alpha", "Delta", "BA.1", "BA.2", "BA.4", "BA.5", "BQ.1"]
+COUNT_OUTCOMES = ["cluster_size", "geographic_dispersion"]
+COUNT_COMPONENTS = ["hurdle_binary", "positive_zero_truncated_count"]
+SIZE_ADJUSTED_OUTCOMES = ["geographic_dispersion_size_adjusted"]
 
 
 def repo_root(start: Path | None = None) -> Path:
@@ -288,13 +289,13 @@ def draw_difference_panel(
 def plot_main_count_results(style, count_results: pd.DataFrame, out_dir: Path) -> None:
     colours = term_colours(style)
     primary_terms = primary_terms_for_results(count_results)
-    outcomes = ["cluster_size", "duration", "geographic_dispersion"]
-    components = ["hurdle_binary", "positive_zero_truncated_count"]
+    outcomes = COUNT_OUTCOMES
+    components = COUNT_COMPONENTS
 
     fig, axes = style.new_figure(
         width="double",
-        height_in=6.0,
-        nrows=3,
+        height_in=4.6,
+        nrows=len(outcomes),
         ncols=2,
         sharex=True,
         font_scale=0.85,
@@ -319,16 +320,16 @@ def plot_main_count_results(style, count_results: pd.DataFrame, out_dir: Path) -
                 xlim=(0.75, 4.0),
                 xlabel=(
                     "Odds ratio per 1 SD higher covariate"
-                    if component == "hurdle_binary" and i == 2
+                    if component == "hurdle_binary" and i == len(outcomes) - 1
                     else "ZTNB count ratio per 1 SD higher covariate"
-                    if component == "positive_zero_truncated_count" and i == 2
+                    if component == "positive_zero_truncated_count" and i == len(outcomes) - 1
                     else None
                 ),
             )
 
     style.add_panel_labels(axes.ravel(), x=-0.08, y=1.15, size=9)
     fig.subplots_adjust(left=0.21, right=0.98, top=0.94, bottom=0.10, hspace=0.42, wspace=0.14)
-    save_all(style, fig, out_dir / "fig1_main_cluster_outcomes", "double", 6.0)
+    save_all(style, fig, out_dir / "fig1_main_cluster_outcomes", "double", 4.6)
 
 
 def plot_mixing_predictor_cluster_outcomes(
@@ -339,8 +340,8 @@ def plot_mixing_predictor_cluster_outcomes(
     from matplotlib.ticker import NullFormatter, NullLocator
 
     colours = term_colours(style)
-    outcomes = ["cluster_size", "duration", "geographic_dispersion"]
-    components = ["hurdle_binary", "positive_zero_truncated_count"]
+    outcomes = COUNT_OUTCOMES
+    components = COUNT_COMPONENTS
     data = mixing_predictor_results[
         mixing_predictor_results["outcome"].isin(outcomes)
         & mixing_predictor_results["component"].isin(components)
@@ -363,8 +364,8 @@ def plot_mixing_predictor_cluster_outcomes(
 
     fig, axes = style.new_figure(
         width="double",
-        height_in=6.0,
-        nrows=3,
+        height_in=4.6,
+        nrows=len(outcomes),
         ncols=2,
         sharex=True,
         font_scale=0.85,
@@ -431,7 +432,7 @@ def plot_mixing_predictor_cluster_outcomes(
 
     style.add_panel_labels(axes.ravel(), x=-0.08, y=1.15, size=9)
     fig.subplots_adjust(left=0.24, right=0.98, top=0.94, bottom=0.10, hspace=0.42, wspace=0.13)
-    save_all(style, fig, out_dir / "supp_fig9_mixing_predictor_cluster_outcomes", "double", 6.0)
+    save_all(style, fig, out_dir / "supp_fig9_mixing_predictor_cluster_outcomes", "double", 4.6)
 
 
 def plot_main_mixing_results(style, mixing_results: pd.DataFrame, out_dir: Path) -> None:
@@ -479,6 +480,7 @@ def plot_outcome_distributions(style, cluster_table: pd.DataFrame, out_dir: Path
     if non_singleton.empty:
         return
 
+    # Duration is retained only in this descriptive supplementary figure.
     count_specs = [
         (
             "cluster_size",
@@ -553,33 +555,29 @@ def plot_outcome_distributions(style, cluster_table: pd.DataFrame, out_dir: Path
 def plot_size_adjusted_sensitivity(style, count_results: pd.DataFrame, out_dir: Path) -> None:
     colours = term_colours(style)
     size_adjusted_terms = mixing_terms_for_results(count_results)
-    outcomes = ["duration_size_adjusted", "geographic_dispersion_size_adjusted"]
-    fig, axes = style.new_figure(
-        width="double",
+    outcome = SIZE_ADJUSTED_OUTCOMES[0]
+    fig, ax = style.new_figure(
+        width="onehalf",
         height_in=3.0,
-        nrows=1,
-        ncols=2,
-        sharex=True,
         font_scale=0.85,
     )
-    for idx, outcome in enumerate(outcomes):
-        sub = count_results[
-            (count_results["outcome"] == outcome)
-            & (count_results["component"] == "positive_zero_truncated_count")
-        ]
-        draw_ratio_panel(
-            axes[idx],
-            sub,
-            size_adjusted_terms,
-            colours,
-            title=OUTCOME_LABELS[outcome],
-            show_ylabels=idx == 0,
-            xlim=(0.85, 3.2),
-            xlabel="ZTNB count ratio per 1 SD higher covariate",
-        )
-    style.add_panel_labels(axes, x=-0.08, y=1.15, size=9)
-    fig.subplots_adjust(left=0.20, right=0.98, top=0.86, bottom=0.17, wspace=0.12)
-    save_all(style, fig, out_dir / "supp_fig2_size_adjusted_positive_counts", "double", 3.0)
+    sub = count_results[
+        (count_results["outcome"] == outcome)
+        & (count_results["component"] == "positive_zero_truncated_count")
+    ]
+    draw_ratio_panel(
+        ax,
+        sub,
+        size_adjusted_terms,
+        colours,
+        title=OUTCOME_LABELS[outcome],
+        show_ylabels=True,
+        xlim=(0.85, 3.2),
+        xlabel="ZTNB count ratio per 1 SD higher covariate",
+    )
+    style.add_panel_labels([ax], x=-0.08, y=1.15, size=9)
+    fig.subplots_adjust(left=0.32, right=0.98, top=0.86, bottom=0.19)
+    save_all(style, fig, out_dir / "supp_fig2_size_adjusted_positive_counts", "onehalf", 3.0)
 
 
 def plot_loglinear_comparison(
@@ -590,7 +588,7 @@ def plot_loglinear_comparison(
 ) -> None:
     from matplotlib.ticker import NullFormatter, NullLocator
 
-    outcomes = ["cluster_size", "duration", "geographic_dispersion"]
+    outcomes = COUNT_OUTCOMES
     model_colours = {
         "Log-linear": "#666666",
         "Hurdle": "#4e79a7",
@@ -600,7 +598,6 @@ def plot_loglinear_comparison(
 
     log_map = {
         "cluster_size": "cluster_size",
-        "duration": "duration",
         "geographic_dispersion": "geographic_dispersion",
     }
     pieces = []
@@ -638,9 +635,9 @@ def plot_loglinear_comparison(
 
     fig, axes = style.new_figure(
         width="double",
-        height_in=4.2,
+        height_in=4.0,
         nrows=1,
-        ncols=3,
+        ncols=len(outcomes),
         sharex=True,
         font_scale=0.85,
         layout="constrained",
@@ -693,11 +690,7 @@ def plot_loglinear_comparison(
         ax.grid(axis="x", color="#dddddd", linewidth=0.5)
 
     # Single shared x-axis label (all panels share the same x axis)
-    fig.supxlabel(
-        "Model-specific ratio per 1 SD higher covariate",
-        y=0.01,
-        fontsize=8,
-    )
+    fig.supxlabel("Model-specific ratio per 1 SD higher covariate", x=0.575, fontsize=8)
     handles, labels = axes[0].get_legend_handles_labels()
     unique = dict(zip(labels, handles))
     fig.legend(
@@ -706,12 +699,10 @@ def plot_loglinear_comparison(
         loc="lower center",
         ncol=3,
         frameon=False,
-        bbox_to_anchor=(0.6, 0.07),
+        bbox_to_anchor=(0.575, -0.065),
     )
-    style.add_panel_labels(axes, x=-0.1, y=1.12, size=9)
-    # Extra bottom space for rotated tick labels + shared supxlabel + legend
-    # fig.subplots_adjust(left=0.18, right=0.99, top=0.87, bottom=0.28, wspace=0.18)
-    save_all(style, fig, out_dir / "supp_fig3_loglinear_vs_hurdle_ztnb", "double", 4.2)
+    style.add_panel_labels(axes, x=-0.1, y=1.1, size=9)
+    save_all(style, fig, out_dir / "supp_fig3_loglinear_vs_hurdle_ztnb", "double", 4.0)
 
 
 def plot_mixing_predictor_loglinear_comparison(
@@ -722,7 +713,7 @@ def plot_mixing_predictor_loglinear_comparison(
 ) -> None:
     from matplotlib.ticker import NullFormatter, NullLocator
 
-    outcomes = ["cluster_size", "duration", "geographic_dispersion"]
+    outcomes = COUNT_OUTCOMES
     model_colours = {
         "Log-linear": "#666666",
         "Hurdle": "#4e79a7",
@@ -777,11 +768,12 @@ def plot_mixing_predictor_loglinear_comparison(
 
     fig, axes = style.new_figure(
         width="double",
-        height_in=4.2,
+        height_in=4.0,
         nrows=1,
-        ncols=3,
+        ncols=len(outcomes),
         sharex=True,
         font_scale=0.85,
+        layout="constrained",
     )
     offsets = {"Log-linear": -0.18, "Hurdle": 0.0, "ZTNB positive": 0.18}
     y_positions = np.arange(len(MIXING_PREDICTOR_TERMS))[::-1]
@@ -813,7 +805,7 @@ def plot_mixing_predictor_loglinear_comparison(
         ax.set_xscale("log")
         ax.set_xlim(lower, upper)
         ax.set_xticks(ticks)
-        ax.set_xlim(0.75, 4.5)
+        ax.set_xlim(0.6, 4.5)
         ax.set_xticklabels([f"{tick:.1f}" for tick in ticks], ha="center")
         ax.xaxis.set_minor_locator(NullLocator())
         ax.xaxis.set_minor_formatter(NullFormatter())
@@ -823,7 +815,7 @@ def plot_mixing_predictor_loglinear_comparison(
         ax.set_yticklabels([TERM_LABELS[t] for t in MIXING_PREDICTOR_TERMS] if idx == 0 else [])
         ax.grid(axis="x", color="#dddddd", linewidth=0.5)
 
-    fig.supxlabel("Model-specific ratio per 1 SD higher excess mixing", y=0.01, fontsize=8)
+    fig.supxlabel("Model-specific ratio per 1 SD higher excess mixing", x=0.575, fontsize=8)
     handles, labels = axes[0].get_legend_handles_labels()
     unique = dict(zip(labels, handles))
     fig.legend(
@@ -832,16 +824,15 @@ def plot_mixing_predictor_loglinear_comparison(
         loc="lower center",
         ncol=3,
         frameon=False,
-        bbox_to_anchor=(0.56, 0.07),
+        bbox_to_anchor=(0.575, -0.065),
     )
-    style.add_panel_labels(axes, x=-0.1, y=1.12, size=9)
-    fig.subplots_adjust(left=0.24, right=0.99, top=0.87, bottom=0.28, wspace=0.18)
+    style.add_panel_labels(axes, x=-0.1, y=1.1, size=9)
     save_all(
         style,
         fig,
         out_dir / "supp_fig10_mixing_predictor_loglinear_vs_hurdle_ztnb",
         "double",
-        4.2,
+        4.0,
     )
 
 
@@ -871,8 +862,8 @@ def plot_simd_domain_outcomes(
     from matplotlib.ticker import NullFormatter, NullLocator
 
     colours = style.SIMD_DOMAIN_PALETTE
-    outcomes = ["cluster_size", "duration", "geographic_dispersion"]
-    components = ["hurdle_binary", "positive_zero_truncated_count"]
+    outcomes = COUNT_OUTCOMES
+    components = COUNT_COMPONENTS
     data = domain_effect_rows(domain_outcomes)
     ci_min = float(data["ratio_ci_low"].min())
     ci_max = float(data["ratio_ci_high"].max())
@@ -884,8 +875,8 @@ def plot_simd_domain_outcomes(
 
     fig, axes = style.new_figure(
         width="double",
-        height_in=6.0,
-        nrows=3,
+        height_in=4.8,
+        nrows=len(outcomes),
         ncols=2,
         sharex=True,
         font_scale=0.85,
@@ -942,7 +933,7 @@ def plot_simd_domain_outcomes(
 
     style.add_panel_labels(axes.ravel(), x=-0.08, y=1.15, size=9)
     fig.subplots_adjust(left=0.18, right=0.99, top=0.93, bottom=0.09, hspace=0.42, wspace=0.12)
-    save_all(style, fig, out_dir / "supp_fig4_simd_domain_cluster_outcomes", "double", 6.0)
+    save_all(style, fig, out_dir / "supp_fig4_simd_domain_cluster_outcomes", "double", 4.8)
 
 
 def plot_domain_mixing_predictor_cluster_outcomes(
@@ -953,8 +944,8 @@ def plot_domain_mixing_predictor_cluster_outcomes(
     from matplotlib.colors import TwoSlopeNorm
     import matplotlib.pyplot as plt
 
-    outcomes = ["cluster_size", "duration", "geographic_dispersion"]
-    components = ["hurdle_binary", "positive_zero_truncated_count"]
+    outcomes = COUNT_OUTCOMES
+    components = COUNT_COMPONENTS
     data = domain_mixing_predictor_results.copy()
     data["predictor"] = data.apply(domain_mixing_predictor_key, axis=1)
     data = data[data["predictor"].isin(DOMAIN_MIXING_PREDICTOR_ORDER)].copy()
@@ -971,8 +962,8 @@ def plot_domain_mixing_predictor_cluster_outcomes(
 
     fig, axes = style.new_figure(
         width="double",
-        height_in=6.6,
-        nrows=3,
+        height_in=5.2,
+        nrows=len(outcomes),
         ncols=2,
         font_scale=0.80,
     )
@@ -1028,8 +1019,8 @@ def plot_domain_mixing_predictor_cluster_outcomes(
                 )
 
     assert image is not None
-    fig.subplots_adjust(left=0.18, right=0.84, top=0.93, bottom=0.17, hspace=0.44, wspace=0.12)
-    cbar_ax = fig.add_axes([0.875, 0.22, 0.022, 0.58])
+    fig.subplots_adjust(left=0.18, right=0.84, top=0.93, bottom=0.17, hspace=0.40, wspace=0.12)
+    cbar_ax = fig.add_axes([0.875, 0.24, 0.022, 0.50])
     cbar = fig.colorbar(image, cax=cbar_ax)
     cbar.set_label("Log ratio per 1 SD higher excess mixing")
     style.add_panel_labels(axes.ravel(), x=-0.08, y=1.15, size=9)
@@ -1038,7 +1029,7 @@ def plot_domain_mixing_predictor_cluster_outcomes(
         fig,
         out_dir / "supp_fig11_simd_domain_mixing_predictor_cluster_outcomes",
         "double",
-        6.6,
+        5.2,
     )
     plt.close("all")
 
@@ -1123,8 +1114,8 @@ def plot_wave_cluster_outcomes(
     from matplotlib.ticker import NullFormatter, NullLocator
 
     colour = style.SIMD_DOMAIN_PALETTE["overall"]
-    outcomes = ["cluster_size", "duration", "geographic_dispersion"]
-    components = ["hurdle_binary", "positive_zero_truncated_count"]
+    outcomes = COUNT_OUTCOMES
+    components = COUNT_COMPONENTS
     data = wave_count_results[
         wave_count_results["term"].eq("deprivation_z")
         & wave_count_results["outcome"].isin(outcomes)
@@ -1155,8 +1146,8 @@ def plot_wave_cluster_outcomes(
 
     fig, axes = style.new_figure(
         width="double",
-        height_in=6.0,
-        nrows=3,
+        height_in=4.8,
+        nrows=len(outcomes),
         ncols=2,
         sharex=False,
         font_scale=0.85,
@@ -1210,7 +1201,7 @@ def plot_wave_cluster_outcomes(
 
     style.add_panel_labels(axes.ravel(), x=-0.08, y=1.15, size=9)
     fig.subplots_adjust(left=0.13, right=0.99, top=0.93, bottom=0.10, hspace=0.42, wspace=0.13)
-    save_all(style, fig, out_dir / "fig4_wave_specific_cluster_outcomes", "double", 6.0)
+    save_all(style, fig, out_dir / "fig4_wave_specific_cluster_outcomes", "double", 4.8)
 
 
 def plot_wave_mixing_predictor_cluster_outcomes(
@@ -1221,8 +1212,8 @@ def plot_wave_mixing_predictor_cluster_outcomes(
     from matplotlib.colors import TwoSlopeNorm
     import matplotlib.pyplot as plt
 
-    outcomes = ["cluster_size", "duration", "geographic_dispersion"]
-    components = ["hurdle_binary", "positive_zero_truncated_count"]
+    outcomes = COUNT_OUTCOMES
+    components = COUNT_COMPONENTS
     data = wave_mixing_predictor_results[
         wave_mixing_predictor_results["outcome"].isin(outcomes)
         & wave_mixing_predictor_results["component"].isin(components)
@@ -1242,8 +1233,8 @@ def plot_wave_mixing_predictor_cluster_outcomes(
 
     fig, axes = style.new_figure(
         width="double",
-        height_in=6.8,
-        nrows=3,
+        height_in=5.4,
+        nrows=len(outcomes),
         ncols=2,
         font_scale=0.80,
     )
@@ -1293,8 +1284,8 @@ def plot_wave_mixing_predictor_cluster_outcomes(
                 )
 
     assert image is not None
-    fig.subplots_adjust(left=0.12, right=0.84, top=0.93, bottom=0.17, hspace=0.30, wspace=0.12)
-    cbar_ax = fig.add_axes([0.875, 0.22, 0.022, 0.58])
+    fig.subplots_adjust(left=0.12, right=0.84, top=0.93, bottom=0.17, hspace=0.28, wspace=0.12)
+    cbar_ax = fig.add_axes([0.875, 0.24, 0.022, 0.50])
     cbar = fig.colorbar(image, cax=cbar_ax)
     cbar.set_label("Log ratio per 1 SD higher excess mixing")
     style.add_panel_labels(axes.ravel(), x=-0.08, y=1.15, size=9)
@@ -1303,7 +1294,7 @@ def plot_wave_mixing_predictor_cluster_outcomes(
         fig,
         out_dir / "supp_fig12_wave_specific_mixing_predictor_cluster_outcomes",
         "double",
-        6.8,
+        5.4,
     )
     plt.close("all")
 

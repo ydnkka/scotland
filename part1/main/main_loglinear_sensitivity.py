@@ -10,26 +10,16 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 
-try:
-    from .main_analysis import (
-        MIXING_PREDICTOR_TERMS,
-        PRIMARY_TERMS,
-        TERM_LABELS as MAIN_TERM_LABELS,
-        build_exog,
-        ensure_mixing_predictor_columns,
-        lineage_levels,
-        repo_root,
-    )
-except ImportError:
-    from main_analysis import (
-        MIXING_PREDICTOR_TERMS,
-        PRIMARY_TERMS,
-        TERM_LABELS as MAIN_TERM_LABELS,
-        build_exog,
-        ensure_mixing_predictor_columns,
-        lineage_levels,
-        repo_root,
-    )
+from main_analysis import (  # noqa: E402
+    MIXING_PREDICTOR_TERMS,
+    PRIMARY_TERMS,
+    TERM_LABELS as MAIN_TERM_LABELS,
+    build_exog,
+    ensure_mixing_predictor_columns,
+    lineage_levels,
+    load_main_cluster_table,
+    repo_root,
+)
 
 
 OUTCOMES = {
@@ -37,11 +27,6 @@ OUTCOMES = {
         "label": "Cluster size",
         "source": "cluster_size",
         "log_plus": 0,
-    },
-    "duration": {
-        "label": "Duration",
-        "source": "duration_days",
-        "log_plus": 1,
     },
     "geographic_dispersion": {
         "label": "Geographic dispersion",
@@ -119,7 +104,7 @@ def run(root: Path) -> None:
     main_dir = root / "part1" / "main"
     tables_dir = main_dir / "tables"
     clusters = ensure_mixing_predictor_columns(
-        pd.read_parquet(main_dir / "cache" / "main_cluster_table.parquet")
+        load_main_cluster_table(root=root, cache_dir=main_dir / "cache")
     )
     results = fit_loglinear_models(clusters)
     out = tables_dir / "main_loglinear_count_model_results.csv"

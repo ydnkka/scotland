@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, asdict
 from datetime import date
-from functools import lru_cache
 from pathlib import Path
 from typing import Iterable, Literal, Sequence
 
-import polars as pl
 import geopandas as gpd
+import pandas as pd
+import polars as pl
 import yaml
 
 from .policy import attach_period
@@ -69,6 +69,7 @@ def repo_root(start: Path | None = None) -> Path:
 class Paths:
     root: Path
     analysis_dataset: Path
+    simd: Path
     geography: Path
 
     @classmethod
@@ -80,6 +81,7 @@ class Paths:
         return cls(
             root=root,
             analysis_dataset=root / proc["analysis_dataset"],
+            simd=root / proc["simd"],
             geography=root / proc["geography"]
         )
 
@@ -237,9 +239,6 @@ def load_analysis_columns(
 
     paths = Paths.from_config()
 
-    if all_cols:
-        return pl.read_parquet(paths.analysis_dataset)
-
     need = {"sequence_id", "collection_date"}
     if columns is not None:
         need = need.union(columns)
@@ -249,15 +248,20 @@ def load_analysis_columns(
     if qc is not None:
         need.add("nextclade_qc")
 
-    df = pl.read_parquet(paths.analysis_dataset, columns=list(need))
+    lf = pl.scan_parquet(paths.analysis_dataset)
 
     if resolution is not None:
-        df = df.filter(pl.col("resolution") == resolution)
+        lf = lf.filter(pl.col("resolution") == resolution)
 
     if qc is not None:
         if isinstance(qc, str):
             qc: Iterable[QCStatus] = tuple((qc,))
-        df = df.filter(pl.col("nextclade_qc").is_in(list(qc)))
+        lf = lf.filter(pl.col("nextclade_qc").is_in(list(qc)))
+
+    if not all_cols:
+        lf = lf.select(list(need))
+
+    df = lf.collect()
 
     if add_wave:
         df = _with_wave(df, "collection_date")
@@ -265,6 +269,69 @@ def load_analysis_columns(
         df = _with_policy(df, "collection_date")
 
     return df
+
+
+def load_analysis_columns_pandas(
+    columns: Iterable[str] | None = None,
+    all_cols: bool = False,
+    resolution: float | None = PRIMARY_RESOLUTION,
+    qc: Iterable[QCStatus] | QCStatus = "good",
+    add_wave: bool = False,
+    add_policy: bool = False,
+) -> pd.DataFrame:
+    """Pandas wrapper around ``load_analysis_columns``."""
+    return load_analysis_columns(
+        columns=columns,
+        all_cols=all_cols,
+        resolution=resolution,
+        qc=qc,
+        add_wave=add_wave,
+        add_policy=add_policy,
+    ).to_pandas()
+
+
+def load_simd_columns(
+    columns: Iterable[str] | None = None,
+    all_cols: bool = False,
+) -> pl.DataFrame:
+    """Read a narrow slice of the processed SIMD parquet."""
+    paths = Paths.from_config()
+    lf = pl.scan_parquet(paths.simd)
+
+    if not all_cols:
+        need = {"datazone"}
+        if columns is not None:
+            need = need.union(columns)
+        lf = lf.select(list(need))
+
+    return lf.collect()
+
+
+def load_simd_columns_pandas(
+    columns: Iterable[str] | None = None,
+    all_cols: bool = False,
+) -> pd.DataFrame:
+    """Pandas wrapper around ``load_simd_columns``."""
+    return load_simd_columns(columns=columns, all_cols=all_cols).to_pandas()
+
+
+def main_cluster_table_path(
+    root: Path | None = None,
+    cache_dir: Path | None = None,
+) -> Path:
+    """Return the default main cluster-cache parquet path."""
+    root = (root or repo_root()).resolve()
+    if cache_dir is not None:
+        return cache_dir / "main_cluster_table.parquet"
+    return root / "part1" / "main" / "cache" / "main_cluster_table.parquet"
+
+
+def load_main_cluster_table(
+    root: Path | None = None,
+    cache_dir: Path | None = None,
+) -> pd.DataFrame:
+    """Load the cached Part 1 main cluster table."""
+    return pd.read_parquet(main_cluster_table_path(root=root, cache_dir=cache_dir))
 
 
 def load_datazone_info(columns: Iterable[str]) -> gpd.GeoDataFrame:
