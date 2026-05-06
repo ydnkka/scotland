@@ -157,32 +157,17 @@ def _validate_qc(qc: Iterable[QCStatus] | QCStatus) -> None:
                 f"Must be one or more of {sorted(_VALID_QC)}"
             )
 
-
-def _standardise(values):
-    """Negate z-score so higher values = greater deprivation."""
-    return -(values - values.mean()) / values.std()
-
-
-def _shannon_entropy(counts):
-    """Shannon entropy (bits) from a series of counts."""
-    total = counts.sum()
-    if total == 0:
-        return 0.0
-    p = counts / total
-    # mask zeros to avoid log(0)
-    p = p.filter(p > 0)
-    return -(p * p.log(base=2)).sum()
-
 # ---------------------------------------------------------------------------
 # Column-level loaders
 # ---------------------------------------------------------------------------
 
 def load_analysis_columns(
-    columns: Iterable[str],
-    *,
+    columns: Iterable[str] | None = None,
     all_cols: bool = False,
     resolution: float | None = PRIMARY_RESOLUTION,
-    qc: Iterable[QCStatus] | QCStatus = "good"
+    qc: Iterable[QCStatus] | QCStatus = "good",
+    add_wave: bool = False,
+    add_policy: bool = False,
 ) -> pl.DataFrame:
     """Read a narrow slice of the master sequence-level parquet.
 
@@ -191,9 +176,7 @@ def load_analysis_columns(
     columns:
         Names of columns to read; ``resolution`` and ``nextclade_qc`` are
         added automatically when filtering is requested.
-        ``sequence_id``, ``collection_date``, ``wave``,
-        ``policy_period``, ``policy_period_label``,  and ``policy_intensity``
-        are also added automatically.
+        ``sequence_id``, and ``collection_date`` are also added automatically.
     all_cols:
         If True, ignore *columns* and read all columns.  This is not recommended
         for general use, but can be useful for exploratory analysis or when
@@ -204,6 +187,13 @@ def load_analysis_columns(
         If provided, rows are restricted to these Nextclade QC statuses.
         Accepted values: ``"good"``, ``"mediocre"``, ``"bad"``.
         Pass ``None`` to skip QC filtering entirely.
+    add_wave:
+        If True, attach a ``wave`` column with labels according to the configured
+        wave date ranges.
+    add_policy:
+        If True, attach policy period labels ``policy_period``,
+         ``policy_period_label``,  and ``policy_intensity``
+         using the configured policy periods.
 
     Notes
     -----
@@ -251,7 +241,8 @@ def load_analysis_columns(
         return pl.read_parquet(paths.analysis_dataset)
 
     need = {"sequence_id", "collection_date"}
-    need = need.union(columns)
+    if columns is not None:
+        need = need.union(columns)
 
     if resolution is not None:
         need.add("resolution")
@@ -268,8 +259,10 @@ def load_analysis_columns(
             qc: Iterable[QCStatus] = tuple((qc,))
         df = df.filter(pl.col("nextclade_qc").is_in(list(qc)))
 
-    df = _with_wave(df, "collection_date")
-    df = _with_policy(df, "collection_date")
+    if add_wave:
+        df = _with_wave(df, "collection_date")
+    if add_policy:
+        df = _with_policy(df, "collection_date")
 
     return df
 

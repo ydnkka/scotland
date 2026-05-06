@@ -3,7 +3,8 @@
 Fits the main hurdle/ZTNB count models separately within epidemic wave groups
 for cluster size, duration, and geographic spread. The figure generated from
 these tables focuses on the wave-specific SIMD-deprivation coefficient; the
-tables retain all main covariates.
+tables retain all main covariates. A companion sensitivity adds the main
+excess-mixing metrics as outcome predictors.
 """
 
 from __future__ import annotations
@@ -25,7 +26,10 @@ from statsmodels.tools.sm_exceptions import ConvergenceWarning
 try:
     from .main_analysis import (
         COUNT_MODEL_SPECS,
+        MIXING_PREDICTOR_TERMS,
         PRIMARY_TERMS,
+        TERM_LABELS as MAIN_TERM_LABELS,
+        ensure_mixing_predictor_columns,
         fit_ztnb,
         lineage_levels,
         repo_root,
@@ -34,7 +38,10 @@ try:
 except ImportError:
     from main_analysis import (
         COUNT_MODEL_SPECS,
+        MIXING_PREDICTOR_TERMS,
         PRIMARY_TERMS,
+        TERM_LABELS as MAIN_TERM_LABELS,
+        ensure_mixing_predictor_columns,
         fit_ztnb,
         lineage_levels,
         repo_root,
@@ -49,6 +56,7 @@ TERM_LABELS = {
     "window_seq_fraction_z": "Window sequencing proportion",
     "test_positivity_z": "Local test positivity",
 }
+TERM_LABELS.update({term: MAIN_TERM_LABELS[term] for term in MIXING_PREDICTOR_TERMS})
 
 
 def drop_redundant_columns(x: pd.DataFrame, tol: float = 1e-8) -> pd.DataFrame:
@@ -227,8 +235,11 @@ def fit_wave_binary_component(
     *,
     maxiter: int,
     min_events: int,
+    extra_terms: list[str] | None = None,
 ) -> tuple[pd.DataFrame, dict]:
     terms = PRIMARY_TERMS.copy()
+    if extra_terms:
+        terms.extend(extra_terms)
     use = wave_df.dropna(subset=[spec.binary_col, *terms, *calendar_cols, "lineage_model"]).copy()
     y = use[spec.binary_col].astype(int)
     n_events = int(y.sum())
@@ -314,8 +325,11 @@ def fit_wave_positive_component(
     maxiter: int,
     min_positive: int,
     min_windows: int,
+    extra_terms: list[str] | None = None,
 ) -> tuple[pd.DataFrame, dict]:
     terms = PRIMARY_TERMS.copy()
+    if extra_terms:
+        terms.extend(extra_terms)
     use = wave_df.loc[wave_df[spec.positive_col] > 0].dropna(
         subset=[spec.positive_col, *terms, *calendar_cols, "lineage_model"]
     )
@@ -392,6 +406,9 @@ def fit_wave_outcome_models(
     min_windows: int,
     min_positive: int,
     min_events: int,
+    extra_terms: list[str] | None = None,
+    predictor_set: str | None = None,
+    skip_cluster_size_binary: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     primary_specs = [spec for spec in COUNT_MODEL_SPECS if not spec.include_size]
     calendar_cols = [col for col in clusters.columns if col.startswith("calendar_spline_")]
@@ -403,33 +420,59 @@ def fit_wave_outcome_models(
         n_windows = int(wave_df["window_id"].nunique())
         if len(wave_df) < min_clusters or n_windows < min_windows:
             for spec in primary_specs:
-                diagnostics.append(
-                    skipped_diag(
-                        wave,
-                        spec,
-                        "all_components",
-                        "below minimum clusters/windows",
-                        len(wave_df),
-                        n_windows,
-                    )
+                diag = skipped_diag(
+                    wave,
+                    spec,
+                    "all_components",
+                    "below minimum clusters/windows",
+                    len(wave_df),
+                    n_windows,
                 )
+                if predictor_set is not None:
+                    diag["predictor_set"] = predictor_set
+                    diag["extra_predictor_terms"] = ";".join(extra_terms or [])
+                diagnostics.append(diag)
             continue
 
         lineage_levels_wave = lineage_levels(wave_df)
         for spec in primary_specs:
-            print(f"  - {wave} {spec.name}: hurdle binary", flush=True)
-            rows, diag = fit_wave_binary_component(
-                wave_df,
-                wave,
-                spec,
-                lineage_levels_wave,
-                calendar_cols,
-                maxiter=maxiter,
-                min_events=min_events,
-            )
-            if not rows.empty:
-                frames.append(rows)
-            diagnostics.append(diag)
+            if skip_cluster_size_binary and spec.name == "cluster_size":
+                diag = skipped_diag(
+                    wave,
+                    spec,
+                    "hurdle_binary",
+                    (
+                        "mixing predictors require at least two valid cases, "
+                        "so the cluster-size hurdle has no singleton comparison group"
+                    ),
+                    len(wave_df.dropna(subset=[*MIXING_PREDICTOR_TERMS])),
+                    n_windows,
+                )
+                if predictor_set is not None:
+                    diag["predictor_set"] = predictor_set
+                    diag["extra_predictor_terms"] = ";".join(extra_terms or [])
+                diagnostics.append(diag)
+            else:
+                print(f"  - {wave} {spec.name}: hurdle binary", flush=True)
+                rows, diag = fit_wave_binary_component(
+                    wave_df,
+                    wave,
+                    spec,
+                    lineage_levels_wave,
+                    calendar_cols,
+                    maxiter=maxiter,
+                    min_events=min_events,
+                    extra_terms=extra_terms,
+                )
+                if predictor_set is not None:
+                    if not rows.empty:
+                        rows = rows.copy()
+                        rows["predictor_set"] = predictor_set
+                    diag["predictor_set"] = predictor_set
+                    diag["extra_predictor_terms"] = ";".join(extra_terms or [])
+                if not rows.empty:
+                    frames.append(rows)
+                diagnostics.append(diag)
 
             print(f"  - {wave} {spec.name}: zero-truncated NB positive count", flush=True)
             rows, diag = fit_wave_positive_component(
@@ -441,13 +484,21 @@ def fit_wave_outcome_models(
                 maxiter=maxiter,
                 min_positive=min_positive,
                 min_windows=min_windows,
+                extra_terms=extra_terms,
             )
+            if predictor_set is not None:
+                if not rows.empty:
+                    rows = rows.copy()
+                    rows["predictor_set"] = predictor_set
+                diag["predictor_set"] = predictor_set
+                diag["extra_predictor_terms"] = ";".join(extra_terms or [])
             if not rows.empty:
                 frames.append(rows)
             diagnostics.append(diag)
             gc.collect()
 
-    return pd.concat(frames, ignore_index=True), pd.DataFrame(diagnostics)
+    results = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    return results, pd.DataFrame(diagnostics)
 
 
 def summarise_wave_outcomes(clusters: pd.DataFrame) -> pd.DataFrame:
@@ -504,7 +555,9 @@ def run(
         tables_dir = main_dir / "tables"
     if cache_dir is None:
         cache_dir = main_dir / "cache"
-    clusters = pd.read_parquet(cache_dir / "main_cluster_table.parquet")
+    clusters = ensure_mixing_predictor_columns(
+        pd.read_parquet(cache_dir / "main_cluster_table.parquet")
+    )
     clusters["wave_group"] = clusters["pango_lineage"].astype(str).map(assign_wave)
 
     print("Fitting wave-specific cluster outcome models", flush=True)
@@ -518,11 +571,36 @@ def run(
     )
     results.to_csv(tables_dir / "main_wave_specific_hurdle_count_model_results.csv", index=False)
     diagnostics.to_csv(tables_dir / "main_wave_specific_hurdle_count_model_diagnostics.csv", index=False)
+
+    print("Fitting wave-specific cluster outcome models with mixing predictors", flush=True)
+    mixing_results, mixing_diagnostics = fit_wave_outcome_models(
+        clusters,
+        maxiter=maxiter,
+        min_clusters=min_clusters,
+        min_windows=min_windows,
+        min_positive=min_positive,
+        min_events=min_events,
+        extra_terms=MIXING_PREDICTOR_TERMS,
+        predictor_set="primary_plus_mixing",
+        skip_cluster_size_binary=True,
+    )
+    mixing_results.to_csv(
+        tables_dir / "main_wave_specific_mixing_predictor_hurdle_count_model_results.csv",
+        index=False,
+    )
+    mixing_diagnostics.to_csv(
+        tables_dir / "main_wave_specific_mixing_predictor_hurdle_count_model_diagnostics.csv",
+        index=False,
+    )
     summarise_wave_outcomes(clusters).to_csv(
         tables_dir / "main_wave_cluster_outcome_descriptives.csv",
         index=False,
     )
     print(f"Wrote {tables_dir / 'main_wave_specific_hurdle_count_model_results.csv'}", flush=True)
+    print(
+        f"Wrote {tables_dir / 'main_wave_specific_mixing_predictor_hurdle_count_model_results.csv'}",
+        flush=True,
+    )
 
 
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:

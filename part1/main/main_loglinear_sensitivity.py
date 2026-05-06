@@ -11,9 +11,25 @@ import pandas as pd
 import statsmodels.api as sm
 
 try:
-    from .main_analysis import PRIMARY_TERMS, build_exog, lineage_levels, repo_root
+    from .main_analysis import (
+        MIXING_PREDICTOR_TERMS,
+        PRIMARY_TERMS,
+        TERM_LABELS as MAIN_TERM_LABELS,
+        build_exog,
+        ensure_mixing_predictor_columns,
+        lineage_levels,
+        repo_root,
+    )
 except ImportError:
-    from main_analysis import PRIMARY_TERMS, build_exog, lineage_levels, repo_root
+    from main_analysis import (
+        MIXING_PREDICTOR_TERMS,
+        PRIMARY_TERMS,
+        TERM_LABELS as MAIN_TERM_LABELS,
+        build_exog,
+        ensure_mixing_predictor_columns,
+        lineage_levels,
+        repo_root,
+    )
 
 
 OUTCOMES = {
@@ -41,14 +57,22 @@ TERM_LABELS = {
     "window_seq_fraction_z": "Window sequencing proportion",
     "test_positivity_z": "Local test positivity",
 }
+TERM_LABELS.update({term: MAIN_TERM_LABELS[term] for term in MIXING_PREDICTOR_TERMS})
 
 
-def fit_loglinear_models(clusters: pd.DataFrame) -> pd.DataFrame:
+def fit_loglinear_models(
+    clusters: pd.DataFrame,
+    *,
+    extra_terms: list[str] | None = None,
+    predictor_set: str | None = None,
+) -> pd.DataFrame:
     calendar_cols = [col for col in clusters.columns if col.startswith("calendar_spline_")]
     lineage_levels_all = lineage_levels(clusters)
     frames = []
     for outcome, spec in OUTCOMES.items():
         terms = PRIMARY_TERMS.copy()
+        if extra_terms:
+            terms.extend(extra_terms)
         use = clusters.dropna(subset=[spec["source"], *terms, *calendar_cols, "lineage_model"]).copy()
         y_raw = use[spec["source"]].astype(float) + float(spec["log_plus"])
         y = np.log(y_raw)
@@ -67,24 +91,26 @@ def fit_loglinear_models(clusters: pd.DataFrame) -> pd.DataFrame:
             i = idx[term]
             coef = float(params[i])
             stderr = float(bse[i])
-            rows.append(
-                {
-                    "model": outcome,
-                    "model_label": spec["label"],
-                    "outcome": spec["source"],
-                    "term": term,
-                    "term_label": TERM_LABELS[term],
-                    "coefficient_log_ratio": coef,
-                    "std_error_clustered_by_window": stderr,
-                    "z": coef / stderr if stderr > 0 else np.nan,
-                    "p_value": float(pvalues[i]),
-                    "geometric_mean_ratio": float(np.exp(coef)),
-                    "ci_low": float(np.exp(coef - 1.96 * stderr)),
-                    "ci_high": float(np.exp(coef + 1.96 * stderr)),
-                    "n_observations": int(len(use)),
-                    "r2": float(result.rsquared),
-                }
-            )
+            row = {
+                "model": outcome,
+                "model_label": spec["label"],
+                "outcome": spec["source"],
+                "term": term,
+                "term_label": TERM_LABELS[term],
+                "coefficient_log_ratio": coef,
+                "std_error_clustered_by_window": stderr,
+                "z": coef / stderr if stderr > 0 else np.nan,
+                "p_value": float(pvalues[i]),
+                "geometric_mean_ratio": float(np.exp(coef)),
+                "ci_low": float(np.exp(coef - 1.96 * stderr)),
+                "ci_high": float(np.exp(coef + 1.96 * stderr)),
+                "n_observations": int(len(use)),
+                "r2": float(result.rsquared),
+            }
+            if predictor_set is not None:
+                row["predictor_set"] = predictor_set
+                row["extra_predictor_terms"] = ";".join(extra_terms or [])
+            rows.append(row)
         frames.append(pd.DataFrame(rows))
     return pd.concat(frames, ignore_index=True)
 
@@ -92,11 +118,22 @@ def fit_loglinear_models(clusters: pd.DataFrame) -> pd.DataFrame:
 def run(root: Path) -> None:
     main_dir = root / "part1" / "main"
     tables_dir = main_dir / "tables"
-    clusters = pd.read_parquet(main_dir / "cache" / "main_cluster_table.parquet")
+    clusters = ensure_mixing_predictor_columns(
+        pd.read_parquet(main_dir / "cache" / "main_cluster_table.parquet")
+    )
     results = fit_loglinear_models(clusters)
     out = tables_dir / "main_loglinear_count_model_results.csv"
     results.to_csv(out, index=False)
     print(f"Wrote {out}", flush=True)
+
+    mixing_predictor_results = fit_loglinear_models(
+        clusters,
+        extra_terms=MIXING_PREDICTOR_TERMS,
+        predictor_set="primary_plus_mixing",
+    )
+    mixing_out = tables_dir / "main_mixing_predictor_loglinear_count_model_results.csv"
+    mixing_predictor_results.to_csv(mixing_out, index=False)
+    print(f"Wrote {mixing_out}", flush=True)
 
 
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:

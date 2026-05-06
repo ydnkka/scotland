@@ -6,6 +6,7 @@ fits:
 
 * hurdle models for cluster size, duration, and geographic dispersion
 * zero-truncated negative-binomial models for the positive count components
+* sensitivity count models with excess mixing metrics as predictors
 * linear models for observed-minus-expected within-cluster mixing
 
 Run from the repository root with:
@@ -106,6 +107,18 @@ MIXING_VARIABLES = {
     },
 }
 
+MIXING_PREDICTOR_TERMS = [
+    f"{prefix}_excess_mixing_z"
+    for prefix in MIXING_VARIABLES
+]
+
+TERM_LABELS.update(
+    {
+        f"{prefix}_excess_mixing_z": f"{spec['short_label']} excess mixing"
+        for prefix, spec in MIXING_VARIABLES.items()
+    }
+)
+
 
 @dataclass(frozen=True)
 class CountModelSpec:
@@ -198,6 +211,21 @@ def zscore(values: pd.Series) -> tuple[pd.Series, float, float]:
     if not math.isfinite(sd) or sd == 0:
         raise ValueError(f"Cannot standardise {values.name!r}: zero or invalid SD.")
     return (values - mean) / sd, mean, sd
+
+
+def ensure_mixing_predictor_columns(clusters: pd.DataFrame) -> pd.DataFrame:
+    """Add standardised excess-mixing predictors to older cached cluster tables."""
+    missing = [
+        (f"{prefix}_excess_mixing_z", f"{prefix}_excess_discordance")
+        for prefix in MIXING_VARIABLES
+        if f"{prefix}_excess_mixing_z" not in clusters.columns
+    ]
+    if not missing:
+        return clusters
+    clusters = clusters.copy()
+    for z_col, raw_col in missing:
+        clusters[z_col], _, _ = zscore(clusters[raw_col])
+    return clusters
 
 
 def logit_clipped(values: pd.Series, eps: float = 1e-5) -> pd.Series:
@@ -405,6 +433,12 @@ def build_cluster_table(
         "test_positivity_z": "test_positivity_logit",
         "log_cluster_size_z": "log_cluster_size",
     }
+    transforms.update(
+        {
+            f"{prefix}_excess_mixing_z": f"{prefix}_excess_discordance"
+            for prefix in MIXING_VARIABLES
+        }
+    )
     for z_col, raw_col in transforms.items():
         clusters[z_col], mean, sd = zscore(clusters[raw_col])
         scaling_rows.append(
@@ -483,8 +517,10 @@ def build_exog(
     return x
 
 
-def model_terms(spec: CountModelSpec) -> list[str]:
+def model_terms(spec: CountModelSpec, extra_terms: list[str] | None = None) -> list[str]:
     terms = PRIMARY_TERMS.copy()
+    if extra_terms:
+        terms.extend(extra_terms)
     if spec.include_size:
         terms.append("log_cluster_size_z")
     return terms
@@ -547,8 +583,10 @@ def fit_binary_component(
     calendar_cols: list[str],
     maxiter: int,
     cluster_by: str = "window_id",
+    extra_terms: list[str] | None = None,
+    analysis_population_label: str | None = None,
 ) -> tuple[pd.DataFrame, dict]:
-    terms = model_terms(spec)
+    terms = model_terms(spec, extra_terms=extra_terms)
     if spec.include_size:
         use = clusters.loc[clusters["cluster_size"] > 1].copy()
     else:
@@ -588,7 +626,8 @@ def fit_binary_component(
         "n_events": int(y.sum()),
         "event_fraction": float(y.mean()),
         "analysis_population": (
-            "non-singleton clusters" if spec.include_size else "all primary-resolution clusters"
+            analysis_population_label
+            or ("non-singleton clusters" if spec.include_size else "all primary-resolution clusters")
         ),
         "n_features": int(x.shape[1]),
         "n_lineage_levels_available": int(len(lineage_levels_all)),
@@ -783,8 +822,9 @@ def fit_positive_component(
     cluster_by: str = "window_id",
     use_size_offset: bool = False,
     winsorise_quantile: float = 0.0,
+    extra_terms: list[str] | None = None,
 ) -> tuple[pd.DataFrame, dict]:
-    terms = model_terms(spec)
+    terms = model_terms(spec, extra_terms=extra_terms)
     use = clusters.loc[clusters[spec.positive_col] > 0].dropna(
         subset=[spec.positive_col, *terms, *calendar_cols, "lineage_model"]
     )
@@ -901,6 +941,116 @@ def fit_count_models(
             cluster_by=cluster_by,
             use_size_offset=use_size_offset,
             winsorise_quantile=winsorise_quantile,
+        )
+        result_frames.append(rows)
+        diagnostics.append(diag)
+        gc.collect()
+
+    return pd.concat(result_frames, ignore_index=True), pd.DataFrame(diagnostics)
+
+
+def add_predictor_set_metadata(
+    rows: pd.DataFrame,
+    diag: dict,
+    *,
+    predictor_set: str,
+    extra_terms: list[str],
+) -> tuple[pd.DataFrame, dict]:
+    rows = rows.copy()
+    if not rows.empty:
+        rows["predictor_set"] = predictor_set
+    diag = diag.copy()
+    diag["predictor_set"] = predictor_set
+    diag["extra_predictor_terms"] = ";".join(extra_terms)
+    return rows, diag
+
+
+def skipped_mixing_predictor_diag(
+    spec: CountModelSpec,
+    component: str,
+    response: str,
+    reason: str,
+) -> dict:
+    return {
+        "outcome": spec.name,
+        "component": component,
+        "model_family": None,
+        "response": response,
+        "skipped": True,
+        "reason": reason,
+        "analysis_population": "clusters with non-missing mixing predictors",
+        "predictor_set": "primary_plus_mixing",
+        "extra_predictor_terms": ";".join(MIXING_PREDICTOR_TERMS),
+    }
+
+
+def fit_mixing_predictor_count_models(
+    clusters: pd.DataFrame,
+    lineage_levels_all: list[str],
+    calendar_cols: list[str],
+    maxiter: int,
+    cluster_by: str = "window_id",
+    use_size_offset: bool = False,
+    winsorise_quantile: float = 0.0,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Fit count-outcome sensitivities with excess mixing metrics as predictors."""
+    result_frames = []
+    diagnostics = []
+    predictor_set = "primary_plus_mixing"
+    analysis_population = "clusters with non-missing mixing predictors"
+
+    for spec in COUNT_MODEL_SPECS:
+        if not spec.include_size:
+            if spec.name == "cluster_size":
+                diagnostics.append(
+                    skipped_mixing_predictor_diag(
+                        spec,
+                        "hurdle_binary",
+                        spec.binary_col,
+                        (
+                            "mixing predictors require at least two valid cases, "
+                            "so the cluster-size hurdle has no singleton comparison group"
+                        ),
+                    )
+                )
+            else:
+                print(f"  - {spec.name}: hurdle binary with mixing predictors", flush=True)
+                rows, diag = fit_binary_component(
+                    clusters,
+                    spec,
+                    lineage_levels_all,
+                    calendar_cols,
+                    maxiter,
+                    cluster_by=cluster_by,
+                    extra_terms=MIXING_PREDICTOR_TERMS,
+                    analysis_population_label=analysis_population,
+                )
+                rows, diag = add_predictor_set_metadata(
+                    rows,
+                    diag,
+                    predictor_set=predictor_set,
+                    extra_terms=MIXING_PREDICTOR_TERMS,
+                )
+                result_frames.append(rows)
+                diagnostics.append(diag)
+
+        print(f"  - {spec.name}: zero-truncated NB positive count with mixing predictors", flush=True)
+        rows, diag = fit_positive_component(
+            clusters,
+            spec,
+            lineage_levels_all,
+            calendar_cols,
+            maxiter,
+            cluster_by=cluster_by,
+            use_size_offset=use_size_offset,
+            winsorise_quantile=winsorise_quantile,
+            extra_terms=MIXING_PREDICTOR_TERMS,
+        )
+        rows, diag = add_predictor_set_metadata(
+            rows,
+            diag,
+            predictor_set=predictor_set,
+            extra_terms=MIXING_PREDICTOR_TERMS,
         )
         result_frames.append(rows)
         diagnostics.append(diag)
@@ -1151,6 +1301,142 @@ def plot_count_effects(results: pd.DataFrame, out_base: Path) -> None:
     style.save_figure(fig, out_base, width="double", height_in=6.2, dpi=600, save_pdf=True, save_png=True)
 
 
+def plot_mixing_predictor_count_effects(results: pd.DataFrame, out_base: Path) -> None:
+    style = load_plot_style()
+    from matplotlib.ticker import FixedLocator, FuncFormatter, NullFormatter, NullLocator
+
+    data = results[
+        results["outcome"].isin(["cluster_size", "duration", "geographic_dispersion"])
+        & results["component"].isin(["hurdle_binary", "positive_zero_truncated_count"])
+        & results["term"].isin(MIXING_PREDICTOR_TERMS)
+    ].copy()
+    if data.empty:
+        return
+
+    outcomes = ["cluster_size", "duration", "geographic_dispersion"]
+    components = ["hurdle_binary", "positive_zero_truncated_count"]
+    colours = term_colours(style)
+    ci_min = float(data["ratio_ci_low"].min())
+    ci_max = float(data["ratio_ci_high"].max())
+    x_min = max(0.25, np.floor(ci_min * 10.0) / 10.0)
+    x_max = min(5.0, np.ceil(ci_max * 10.0) / 10.0)
+    x_min = min(x_min, 0.8)
+    x_max = max(x_max, 1.2)
+    tick_candidates = [0.3, 0.5, 0.8, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0]
+    ratio_ticks = [tick for tick in tick_candidates if x_min <= tick <= x_max]
+
+    fig, axes = style.new_figure(
+        width="double",
+        height_in=5.8,
+        nrows=3,
+        ncols=2,
+        sharex=True,
+        font_scale=0.85,
+        layout="constrained",
+    )
+    term_offsets = np.linspace(-0.27, 0.27, len(MIXING_PREDICTOR_TERMS))
+    term_positions = dict(zip(MIXING_PREDICTOR_TERMS, term_offsets))
+
+    for i, outcome in enumerate(outcomes):
+        for j, component in enumerate(components):
+            ax = axes[i, j]
+            sub = data[(data["outcome"] == outcome) & (data["component"] == component)]
+            if not sub.empty:
+                for _, row in sub.iterrows():
+                    y = term_positions[row["term"]]
+                    ax.plot(
+                        [row["ratio_ci_low"], row["ratio_ci_high"]],
+                        [y, y],
+                        color=colours[row["term"]],
+                        linewidth=1.1,
+                        solid_capstyle="round",
+                    )
+                    ax.scatter(
+                        row["ratio"],
+                        y,
+                        color=colours[row["term"]],
+                        s=18,
+                        zorder=3,
+                        label=TERM_LABELS[row["term"]],
+                    )
+
+                ax.axvline(1, color="#666666", linewidth=0.8, linestyle="--")
+                ax.set_xscale("log")
+                ax.set_xlim(x_min, x_max)
+                ax.xaxis.set_major_locator(FixedLocator(ratio_ticks))
+                ax.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}"))
+                ax.xaxis.set_minor_locator(NullLocator())
+                ax.xaxis.set_minor_formatter(NullFormatter())
+                ax.set_yticks([])
+                ax.grid(axis="x", color="#dddddd", linewidth=0.6)
+
+            else:
+                for _, row in sub.iterrows():
+                    y = term_positions[row["term"]]
+                    ax.plot(
+                        [row["ratio_ci_low"], row["ratio_ci_high"]],
+                        [y, y],
+                        color=colours[row["term"]],
+                        linewidth=1.1,
+                        solid_capstyle="round",
+                    )
+                    ax.scatter(
+                        row["ratio"],
+                        y,
+                        color=colours[row["term"]],
+                        s=18,
+                        zorder=3,
+                        label=TERM_LABELS[row["term"]],
+                    )
+                ax.text(
+                    2.0,
+                    0.5,
+                    "Not estimable",
+                    ha="center",
+                    va="center",
+                    fontsize=8,
+                    color="#666666",
+                )
+                ax.set_yticks([])
+            if i == 0:
+                ax.set_title(
+                    "Hurdle: any excess" if component == "hurdle_binary" else "Positive: ZTNB",
+                )
+            if j == 0:
+                ax.set_ylabel(
+                    {"cluster_size": "Size", "duration": "Duration", "geographic_dispersion": "Datazones"}[
+                        outcome
+                    ],
+                    rotation=0,
+                    ha="right",
+                    va="center",
+                    labelpad=20,
+                )
+
+    handles, labels = axes[1, 0].get_legend_handles_labels()
+    unique = dict(zip(labels, handles))
+    fig.legend(
+        unique.values(),
+        unique.keys(),
+        loc="lower center",
+        bbox_to_anchor=(0.6, -0.05),
+        ncol=4,
+        frameon=False,
+        columnspacing=1.1,
+        handlelength=1.2,
+    )
+    fig.supxlabel("Adjusted ratio per 1 SD higher excess-mixing predictor", x=0.6)
+    style.save_figure(
+        fig,
+        out_base,
+        width="double",
+        height_in=6.2,
+        dpi=600,
+        save_pdf=True,
+        save_png=True,
+    )
+
+
 def plot_mixing_effects(results: pd.DataFrame, out_base: Path) -> None:
     style = load_plot_style()
     from matplotlib.ticker import FuncFormatter, MultipleLocator
@@ -1250,6 +1536,10 @@ def term_colours(style) -> dict[str, str]:
         "window_seq_fraction_z": palette["education"],
         "test_positivity_z": palette["health"],
         "log_cluster_size_z": palette["access"],
+        "simd_excess_mixing_z": palette["crime"],
+        "age_excess_mixing_z": palette["housing"],
+        "sex_excess_mixing_z": palette["overall"],
+        "profile_excess_mixing_z": palette["income"],
     }
 
 
@@ -1355,6 +1645,27 @@ def run(
         count_results.to_csv(tables_dir / "main_hurdle_count_model_results.csv", index=False)
         count_diagnostics.to_csv(tables_dir / "main_hurdle_count_model_diagnostics.csv", index=False)
 
+        print("Fitting count models with mixing predictors", flush=True)
+        mixing_predictor_count_results, mixing_predictor_count_diagnostics = (
+            fit_mixing_predictor_count_models(
+                clusters,
+                lineage_levels_all=lineage_levels_all,
+                calendar_cols=calendar_cols,
+                maxiter=maxiter,
+                cluster_by=cluster_by,
+                use_size_offset=use_size_offset,
+                winsorise_quantile=winsorise_quantile,
+            )
+        )
+        mixing_predictor_count_results.to_csv(
+            tables_dir / "main_mixing_predictor_hurdle_count_model_results.csv",
+            index=False,
+        )
+        mixing_predictor_count_diagnostics.to_csv(
+            tables_dir / "main_mixing_predictor_hurdle_count_model_diagnostics.csv",
+            index=False,
+        )
+
         print("Fitting mixing models", flush=True)
         mixing_results, mixing_diagnostics = fit_mixing_models(
             clusters,
@@ -1366,14 +1677,26 @@ def run(
         mixing_diagnostics.to_csv(tables_dir / "main_mixing_model_diagnostics.csv", index=False)
 
         plot_count_effects(count_results, figures_dir / "main_hurdle_count_effects")
+        plot_mixing_predictor_count_effects(
+            mixing_predictor_count_results,
+            figures_dir / "main_mixing_predictor_hurdle_count_effects",
+        )
         plot_mixing_effects(mixing_results, figures_dir / "main_mixing_effects")
     finally:
         if _orig_terms is not None:
             PRIMARY_TERMS[:] = _orig_terms
 
     print(f"Wrote {tables_dir / 'main_hurdle_count_model_results.csv'}", flush=True)
+    print(
+        f"Wrote {tables_dir / 'main_mixing_predictor_hurdle_count_model_results.csv'}",
+        flush=True,
+    )
     print(f"Wrote {tables_dir / 'main_mixing_model_results.csv'}", flush=True)
     print(f"Wrote {figures_dir / 'main_hurdle_count_effects.png'}", flush=True)
+    print(
+        f"Wrote {figures_dir / 'main_mixing_predictor_hurdle_count_effects.png'}",
+        flush=True,
+    )
     print(f"Wrote {figures_dir / 'main_mixing_effects.png'}", flush=True)
 
 

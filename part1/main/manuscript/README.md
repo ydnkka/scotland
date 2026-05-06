@@ -22,8 +22,8 @@ The accompanying narrative description is
   and joint age-sex excess mixing.
 - `fig4_wave_specific_cluster_outcomes`: wave-specific deprivation effects on
   cluster size, duration, and geographic spread.
-- `supp_fig1_outcome_distributions`: distribution of the three count outcomes,
-  showing structural minima and heavy right tails.
+- `supp_fig1_outcome_distributions`: distributions of non-singleton cluster
+  size, duration, geography, and age, sex, and deprivation excess mixing.
 - `supp_fig2_size_adjusted_positive_counts`: size-adjusted positive-count
   sensitivity models for duration and geographic spread.
 - `supp_fig3_loglinear_vs_hurdle_ztnb`: comparison of main-formulation
@@ -38,6 +38,14 @@ The accompanying narrative description is
   for SIMD domain effects on demographic mixing.
 - `supp_fig8_observed_expected_mixing_matrices`: observed-minus-expected SIMD
   and age mixing matrices.
+- `supp_fig9_mixing_predictor_cluster_outcomes`: sensitivity count models using
+  the excess-mixing metrics as predictors.
+- `supp_fig10_mixing_predictor_loglinear_vs_hurdle_ztnb`: comparison of
+  log-linear, hurdle, and positive ZTNB mixing-predictor sensitivities.
+- `supp_fig11_simd_domain_mixing_predictor_cluster_outcomes`: SIMD-domain
+  sensitivity count models using domain and demographic mixing predictors.
+- `supp_fig12_wave_specific_mixing_predictor_cluster_outcomes`: wave-specific
+  sensitivity count models using excess-mixing predictors.
 
 All manuscript figures are generated from `part1/main/tables` and
 `part1/main/cache`; the legacy `part1/tables` outputs are not used by the

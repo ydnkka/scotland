@@ -76,6 +76,16 @@ The main mixing outcomes are:
 Mixing outcomes are fitted with linear models with the same adjustment set plus
 cluster size.
 
+## Mixing Predictors
+
+The same observed-minus-expected excess mixing metrics are also fitted as
+predictors in sensitivity models for the cluster count outcomes. These models
+are reported separately from the primary hurdle/ZTNB tables because mixing is
+only defined for clusters with at least two valid cases. The cluster-size hurdle
+component is therefore skipped in the mixing-predictor tables; positive count
+components and the duration/geographic-spread hurdle components are estimated
+on the complete-case population with non-missing mixing metrics.
+
 ## Outputs
 
 Tables:
@@ -84,15 +94,22 @@ Tables:
 - `tables/main_covariate_scaling.csv`
 - `tables/main_hurdle_count_model_results.csv`
 - `tables/main_hurdle_count_model_diagnostics.csv`
+- `tables/main_mixing_predictor_hurdle_count_model_results.csv`
+- `tables/main_mixing_predictor_hurdle_count_model_diagnostics.csv`
 - `tables/main_mixing_model_results.csv`
 - `tables/main_mixing_model_diagnostics.csv`
 - `tables/main_loglinear_count_model_results.csv`
+- `tables/main_mixing_predictor_loglinear_count_model_results.csv`
 - `tables/main_simd_domain_hurdle_count_model_results.csv`
+- `tables/main_simd_domain_mixing_predictor_hurdle_count_model_results.csv`
+- `tables/main_simd_domain_mixing_predictor_hurdle_count_model_diagnostics.csv`
 - `tables/main_simd_domain_quintile_mixing_model_results.csv`
 - `tables/main_simd_domain_demographic_mixing_model_results.csv`
 - `tables/main_wave_specific_domain_demographic_mixing_model_results.csv`
 - `tables/main_wave_specific_hurdle_count_model_results.csv`
 - `tables/main_wave_specific_hurdle_count_model_diagnostics.csv`
+- `tables/main_wave_specific_mixing_predictor_hurdle_count_model_results.csv`
+- `tables/main_wave_specific_mixing_predictor_hurdle_count_model_diagnostics.csv`
 - `tables/main_wave_cluster_outcome_descriptives.csv`
 - `tables/main_observed_expected_mixing_matrices.csv`
 
@@ -100,6 +117,8 @@ Figures:
 
 - `figures/main_hurdle_count_effects.png`
 - `figures/main_hurdle_count_effects.pdf`
+- `figures/main_mixing_predictor_hurdle_count_effects.png`
+- `figures/main_mixing_predictor_hurdle_count_effects.pdf`
 - `figures/main_mixing_effects.png`
 - `figures/main_mixing_effects.pdf`
 

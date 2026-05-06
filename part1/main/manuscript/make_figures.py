@@ -31,6 +31,11 @@ TERM_LABELS = {
     "window_seq_fraction_z": "Window sequencing",
     "test_positivity_z": "Test positivity",
     "log_cluster_size_z": "Cluster size",
+    "simd_excess_mixing_z": "SIMD excess mixing",
+    "age_excess_mixing_z": "Age excess mixing",
+    "sex_excess_mixing_z": "Sex excess mixing",
+    "profile_excess_mixing_z": "Joint-profile excess mixing",
+    "age_sex_excess_mixing_z": "Age-sex excess mixing",
 }
 
 SURVEILLANCE_TERMS = [
@@ -42,6 +47,20 @@ SURVEILLANCE_TERMS = [
 
 PRIMARY_TERMS = ["deprivation_z", *SURVEILLANCE_TERMS]
 MIXING_TERMS = PRIMARY_TERMS + ["log_cluster_size_z"]
+MIXING_PREDICTOR_TERMS = [
+    "simd_excess_mixing_z",
+    "age_excess_mixing_z",
+    "sex_excess_mixing_z",
+    "profile_excess_mixing_z",
+]
+
+DOMAIN_MIXING_PREDICTOR_ORDER = ["domain_quintile", "age", "sex", "age_sex"]
+DOMAIN_MIXING_PREDICTOR_LABELS = {
+    "domain_quintile": "Domain quintile",
+    "age": "Age",
+    "sex": "Sex",
+    "age_sex": "Age-sex",
+}
 
 MIXING_LABELS = {
     "simd": "SIMD",
@@ -114,6 +133,11 @@ def term_colours(style) -> dict[str, str]:
         "window_seq_fraction_z": palette["education"],
         "test_positivity_z": palette["health"],
         "log_cluster_size_z": palette["access"],
+        "simd_excess_mixing_z": palette["crime"],
+        "age_excess_mixing_z": palette["housing"],
+        "sex_excess_mixing_z": palette["overall"],
+        "profile_excess_mixing_z": palette["income"],
+        "age_sex_excess_mixing_z": palette["income"],
     }
 
 
@@ -302,9 +326,112 @@ def plot_main_count_results(style, count_results: pd.DataFrame, out_dir: Path) -
                 ),
             )
 
-    style.add_panel_labels(axes.ravel(), x=-0.18, y=1.14, size=9)
+    style.add_panel_labels(axes.ravel(), x=-0.08, y=1.15, size=9)
     fig.subplots_adjust(left=0.21, right=0.98, top=0.94, bottom=0.10, hspace=0.42, wspace=0.14)
     save_all(style, fig, out_dir / "fig1_main_cluster_outcomes", "double", 6.0)
+
+
+def plot_mixing_predictor_cluster_outcomes(
+    style,
+    mixing_predictor_results: pd.DataFrame,
+    out_dir: Path,
+) -> None:
+    from matplotlib.ticker import NullFormatter, NullLocator
+
+    colours = term_colours(style)
+    outcomes = ["cluster_size", "duration", "geographic_dispersion"]
+    components = ["hurdle_binary", "positive_zero_truncated_count"]
+    data = mixing_predictor_results[
+        mixing_predictor_results["outcome"].isin(outcomes)
+        & mixing_predictor_results["component"].isin(components)
+        & mixing_predictor_results["term"].isin(MIXING_PREDICTOR_TERMS)
+    ].copy()
+    if data.empty:
+        return
+
+    ci_min = float(data["ratio_ci_low"].min())
+    ci_max = float(data["ratio_ci_high"].max())
+    lower = max(0.25, np.floor(ci_min * 10.0) / 10.0)
+    upper = min(5.0, np.ceil(ci_max * 10.0) / 10.0)
+    lower = min(lower, 0.8)
+    upper = max(upper, 1.2)
+    ticks = [
+        tick
+        for tick in [0.3, 0.5, 0.8, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 5.0]
+        if lower <= tick <= upper
+    ]
+
+    fig, axes = style.new_figure(
+        width="double",
+        height_in=6.0,
+        nrows=3,
+        ncols=2,
+        sharex=True,
+        font_scale=0.85,
+    )
+    y_positions = np.arange(len(MIXING_PREDICTOR_TERMS))[::-1]
+    pos = dict(zip(MIXING_PREDICTOR_TERMS, y_positions))
+
+    for idx, outcome in enumerate(outcomes):
+        for jdx, component in enumerate(components):
+            ax = axes[idx, jdx]
+            sub = data[(data["outcome"] == outcome) & (data["component"] == component)]
+            for term in MIXING_PREDICTOR_TERMS:
+                row = sub[sub["term"] == term]
+                if row.empty:
+                    continue
+                row = row.iloc[0]
+                y = pos[term]
+                ax.plot(
+                    [row["ratio_ci_low"], row["ratio_ci_high"]],
+                    [y, y],
+                    color=colours[term],
+                    linewidth=1.1,
+                    solid_capstyle="round",
+                )
+                ax.scatter(
+                    row["ratio"],
+                    y,
+                    color=colours[term],
+                    edgecolor="white",
+                    linewidth=0.3,
+                    s=18,
+                    zorder=3,
+                )
+            if sub.empty:
+                ax.text(
+                    1.0,
+                    float(np.mean(y_positions)),
+                    "Not estimable",
+                    ha="center",
+                    va="center",
+                    fontsize=8,
+                    color="#666666",
+                )
+            ax.axvline(1.0, color="#666666", linestyle="--", linewidth=0.7)
+            ax.set_xscale("log")
+            ax.set_xlim(lower, upper)
+            ax.set_xticks(ticks)
+            ax.set_xticklabels([f"{tick:g}" for tick in ticks])
+            ax.xaxis.set_minor_locator(NullLocator())
+            ax.xaxis.set_minor_formatter(NullFormatter())
+            ax.set_title(f"{OUTCOME_LABELS[outcome]}: {COMPONENT_LABELS[component]}", pad=4)
+            ax.set_ylim(-0.7, len(MIXING_PREDICTOR_TERMS) - 0.3)
+            ax.set_yticks(y_positions)
+            ax.set_yticklabels(
+                [TERM_LABELS[t] for t in MIXING_PREDICTOR_TERMS] if jdx == 0 else []
+            )
+            if idx == len(outcomes) - 1:
+                ax.set_xlabel(
+                    "Odds ratio per 1 SD higher excess mixing"
+                    if component == "hurdle_binary"
+                    else "ZTNB count ratio per 1 SD higher excess mixing"
+                )
+            ax.grid(axis="x", color="#dddddd", linewidth=0.5)
+
+    style.add_panel_labels(axes.ravel(), x=-0.08, y=1.15, size=9)
+    fig.subplots_adjust(left=0.24, right=0.98, top=0.94, bottom=0.10, hspace=0.42, wspace=0.13)
+    save_all(style, fig, out_dir / "supp_fig9_mixing_predictor_cluster_outcomes", "double", 6.0)
 
 
 def plot_main_mixing_results(style, mixing_results: pd.DataFrame, out_dir: Path) -> None:
@@ -333,7 +460,7 @@ def plot_main_mixing_results(style, mixing_results: pd.DataFrame, out_dir: Path)
             xlim=(-8.5, 8.5),
         )
 
-    style.add_panel_labels(axes.ravel(), x=-0.18, y=1.13, size=9)
+    style.add_panel_labels(axes.ravel(), x=-0.08, y=1.15, size=9)
     fig.supxlabel("Change in excess mixing (pp per 1 SD higher covariate)", y=0.04, fontsize=8)
     fig.subplots_adjust(left=0.20, right=0.98, top=0.93, bottom=0.14, hspace=0.36, wspace=0.14)
     save_all(style, fig, out_dir / "fig2_main_cluster_mixing", "double", 5.0)
@@ -348,12 +475,16 @@ def binned_percent(values: pd.Series, bins: list[float], labels: list[str]) -> p
 
 def plot_outcome_distributions(style, cluster_table: pd.DataFrame, out_dir: Path) -> None:
     grey = "#6f6f6f"
-    specs = [
+    non_singleton = cluster_table.loc[cluster_table["cluster_size"] > 1].copy()
+    if non_singleton.empty:
+        return
+
+    count_specs = [
         (
             "cluster_size",
             "Cluster size",
-            [-np.inf, 1.5, 2.5, 3.5, 5.5, 10.5, 20.5, 50.5, np.inf],
-            ["1", "2", "3", "4-5", "6-10", "11-20", "21-50", ">50"],
+            [-np.inf, 2.5, 3.5, 5.5, 10.5, 20.5, 50.5, np.inf],
+            ["2", "3", "4-5", "6-10", "11-20", "21-50", ">50"],
         ),
         (
             "duration_days",
@@ -368,27 +499,55 @@ def plot_outcome_distributions(style, cluster_table: pd.DataFrame, out_dir: Path
             ["1", "2", "3", "4-5", "6-10", "11-20", "21-50", ">50"],
         ),
     ]
+    mixing_specs = [
+        ("age_excess_discordance", "Age mixing"),
+        ("sex_excess_discordance", "Sex mixing"),
+        ("simd_excess_discordance", "Deprivation mixing"),
+    ]
+    mixing_bins = np.arange(-100, 101, 10)
+
+    def histogram_percent(values: pd.Series) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        clean = values.dropna().to_numpy(dtype=float)
+        counts, edges = np.histogram(clean, bins=mixing_bins)
+        total = counts.sum()
+        percent = counts / total * 100 if total else counts.astype(float)
+        centres = (edges[:-1] + edges[1:]) / 2
+        widths = np.diff(edges)
+        return centres, widths, percent
 
     fig, axes = style.new_figure(
         width="double",
-        height_in=2.45,
-        nrows=1,
+        height_in=4.8,
+        nrows=2,
         ncols=3,
         font_scale=0.85,
     )
 
-    for ax, (col, title, bins, labels) in zip(axes, specs):
-        data = binned_percent(cluster_table[col], bins, labels)
+    flat_axes = axes.ravel()
+    for ax, (col, title, bins, labels) in zip(flat_axes[:3], count_specs):
+        data = binned_percent(non_singleton[col], bins, labels)
         ax.bar(data["bin"].astype(str), data["percent"], color=grey, width=0.78)
         ax.set_title(title, pad=4)
-        ax.set_ylabel("Clusters (%)" if ax is axes[0] else "")
-        ax.set_ylim(0, max(65, data["percent"].max() * 1.15))
+        ax.set_ylabel("Clusters (%)" if ax is flat_axes[0] else "")
+        ax.set_ylim(0, max(30, data["percent"].max() * 1.15))
         ax.tick_params(axis="x", rotation=45)
         ax.grid(axis="y", color="#dddddd", linewidth=0.5)
 
-    style.add_panel_labels(axes, x=-0.18, y=1.14, size=9)
-    fig.subplots_adjust(left=0.08, right=0.99, top=0.86, bottom=0.28, wspace=0.26)
-    save_all(style, fig, out_dir / "supp_fig1_outcome_distributions", "double", 2.45)
+    for ax, (col, title) in zip(flat_axes[3:], mixing_specs):
+        centres, widths, percent = histogram_percent(non_singleton[col] * 100)
+        ax.bar(centres, percent, width=widths * 0.92, color=grey, align="center")
+        ax.axvline(0, color="#666666", linestyle="--", linewidth=0.7)
+        ax.set_title(title, pad=4)
+        ax.set_xlabel("Excess mixing (pp)")
+        ax.set_ylabel("Clusters (%)" if ax is flat_axes[3] else "")
+        ax.set_xlim(mixing_bins[0], mixing_bins[-1])
+        ax.set_xticks([-100, -50, 0, 50, 100])
+        ax.set_ylim(0, max(30, percent.max() * 1.15))
+        ax.grid(axis="y", color="#dddddd", linewidth=0.5)
+
+    style.add_panel_labels(flat_axes, x=-0.18, y=1.14, size=9)
+    fig.subplots_adjust(left=0.08, right=0.99, top=0.92, bottom=0.12, hspace=0.52, wspace=0.28)
+    save_all(style, fig, out_dir / "supp_fig1_outcome_distributions", "double", 4.8)
 
 
 def plot_size_adjusted_sensitivity(style, count_results: pd.DataFrame, out_dir: Path) -> None:
@@ -418,7 +577,7 @@ def plot_size_adjusted_sensitivity(style, count_results: pd.DataFrame, out_dir: 
             xlim=(0.85, 3.2),
             xlabel="ZTNB count ratio per 1 SD higher covariate",
         )
-    style.add_panel_labels(axes, x=-0.18, y=1.14, size=9)
+    style.add_panel_labels(axes, x=-0.08, y=1.15, size=9)
     fig.subplots_adjust(left=0.20, right=0.98, top=0.86, bottom=0.17, wspace=0.12)
     save_all(style, fig, out_dir / "supp_fig2_size_adjusted_positive_counts", "double", 3.0)
 
@@ -484,6 +643,7 @@ def plot_loglinear_comparison(
         ncols=3,
         sharex=True,
         font_scale=0.85,
+        layout="constrained",
     )
     offsets = {"Log-linear": -0.18, "Hurdle": 0.0, "ZTNB positive": 0.18}
     y_positions = np.arange(len(PRIMARY_TERMS))[::-1]
@@ -517,12 +677,12 @@ def plot_loglinear_comparison(
         ax.set_xlim(0.75, 4.5)
         ticks = [0.8, 1.0, 1.5, 2.0, 3.0, 4.0]
         ax.set_xticks(ticks)
-        ax.set_xticklabels([f"{tick:.1f}" for tick in ticks])
+        ax.set_xticklabels([f"{tick:.1f}" for tick in ticks], ha="center")
         # Rotate tick labels to prevent crowding on narrow panels
-        ax.tick_params(axis="x", rotation=35)
-        for label in ax.get_xticklabels():
-            label.set_ha("right")
-            label.set_rotation_mode("anchor")
+        # ax.tick_params(axis="x", )
+        # for label in ax.get_xticklabels():
+        #     label.set_ha("right")
+        #     label.set_rotation_mode("anchor")
         ax.xaxis.set_minor_locator(NullLocator())
         ax.xaxis.set_minor_formatter(NullFormatter())
         ax.set_title(OUTCOME_LABELS[outcome], pad=4)
@@ -546,16 +706,161 @@ def plot_loglinear_comparison(
         loc="lower center",
         ncol=3,
         frameon=False,
-        bbox_to_anchor=(0.54, 0.07),
+        bbox_to_anchor=(0.6, 0.07),
     )
-    style.add_panel_labels(axes, x=-0.18, y=1.12, size=9)
+    style.add_panel_labels(axes, x=-0.1, y=1.12, size=9)
     # Extra bottom space for rotated tick labels + shared supxlabel + legend
-    fig.subplots_adjust(left=0.18, right=0.99, top=0.87, bottom=0.28, wspace=0.18)
+    # fig.subplots_adjust(left=0.18, right=0.99, top=0.87, bottom=0.28, wspace=0.18)
     save_all(style, fig, out_dir / "supp_fig3_loglinear_vs_hurdle_ztnb", "double", 4.2)
+
+
+def plot_mixing_predictor_loglinear_comparison(
+    style,
+    count_results: pd.DataFrame,
+    loglinear_results: pd.DataFrame,
+    out_dir: Path,
+) -> None:
+    from matplotlib.ticker import NullFormatter, NullLocator
+
+    outcomes = ["cluster_size", "duration", "geographic_dispersion"]
+    model_colours = {
+        "Log-linear": "#666666",
+        "Hurdle": "#4e79a7",
+        "ZTNB positive": "#f28e2b",
+    }
+    markers = {"Log-linear": "o", "Hurdle": "s", "ZTNB positive": "^"}
+
+    pieces = []
+    log = loglinear_results[
+        loglinear_results["model"].isin(outcomes)
+        & loglinear_results["term"].isin(MIXING_PREDICTOR_TERMS)
+    ].copy()
+    log["outcome"] = log["model"]
+    log["model_type"] = "Log-linear"
+    log = log.rename(
+        columns={
+            "geometric_mean_ratio": "ratio",
+            "ci_low": "ratio_ci_low",
+            "ci_high": "ratio_ci_high",
+        }
+    )
+    pieces.append(log[["outcome", "term", "model_type", "ratio", "ratio_ci_low", "ratio_ci_high"]])
+
+    hurdle = count_results[
+        (count_results["outcome"].isin(outcomes))
+        & (count_results["component"] == "hurdle_binary")
+        & (count_results["term"].isin(MIXING_PREDICTOR_TERMS))
+    ].copy()
+    hurdle["model_type"] = "Hurdle"
+    pieces.append(hurdle[["outcome", "term", "model_type", "ratio", "ratio_ci_low", "ratio_ci_high"]])
+
+    ztnb = count_results[
+        (count_results["outcome"].isin(outcomes))
+        & (count_results["component"] == "positive_zero_truncated_count")
+        & (count_results["term"].isin(MIXING_PREDICTOR_TERMS))
+    ].copy()
+    ztnb["model_type"] = "ZTNB positive"
+    pieces.append(ztnb[["outcome", "term", "model_type", "ratio", "ratio_ci_low", "ratio_ci_high"]])
+    comp = pd.concat(pieces, ignore_index=True)
+    if comp.empty:
+        return
+
+    ci_min = float(comp["ratio_ci_low"].min())
+    ci_max = float(comp["ratio_ci_high"].max())
+    lower = min(0.8, max(0.25, np.floor(ci_min * 10.0) / 10.0))
+    upper = max(1.2, min(5.0, np.ceil(ci_max * 10.0) / 10.0))
+    ticks = [
+        tick
+        for tick in [0.3, 0.5, 0.8, 1.0, 1.5, 2.0, 3.0, 4.0]
+        if lower <= tick <= upper
+    ]
+
+    fig, axes = style.new_figure(
+        width="double",
+        height_in=4.2,
+        nrows=1,
+        ncols=3,
+        sharex=True,
+        font_scale=0.85,
+    )
+    offsets = {"Log-linear": -0.18, "Hurdle": 0.0, "ZTNB positive": 0.18}
+    y_positions = np.arange(len(MIXING_PREDICTOR_TERMS))[::-1]
+    pos = dict(zip(MIXING_PREDICTOR_TERMS, y_positions))
+    for idx, outcome in enumerate(outcomes):
+        ax = axes[idx]
+        sub = comp[comp["outcome"] == outcome]
+        for model_type in ["Log-linear", "Hurdle", "ZTNB positive"]:
+            model_sub = sub[sub["model_type"] == model_type]
+            for _, row in model_sub.iterrows():
+                y = pos[row["term"]] + offsets[model_type]
+                ax.plot(
+                    [row["ratio_ci_low"], row["ratio_ci_high"]],
+                    [y, y],
+                    color=model_colours[model_type],
+                    linewidth=0.9,
+                    solid_capstyle="round",
+                )
+                ax.scatter(
+                    row["ratio"],
+                    y,
+                    color=model_colours[model_type],
+                    marker=markers[model_type],
+                    s=17,
+                    zorder=3,
+                    label=model_type,
+                )
+        ax.axvline(1.0, color="#666666", linestyle="--", linewidth=0.7)
+        ax.set_xscale("log")
+        ax.set_xlim(lower, upper)
+        ax.set_xticks(ticks)
+        ax.set_xlim(0.75, 4.5)
+        ax.set_xticklabels([f"{tick:.1f}" for tick in ticks], ha="center")
+        ax.xaxis.set_minor_locator(NullLocator())
+        ax.xaxis.set_minor_formatter(NullFormatter())
+        ax.set_title(OUTCOME_LABELS[outcome], pad=4)
+        ax.set_ylim(-0.8, len(MIXING_PREDICTOR_TERMS) - 0.2)
+        ax.set_yticks(y_positions)
+        ax.set_yticklabels([TERM_LABELS[t] for t in MIXING_PREDICTOR_TERMS] if idx == 0 else [])
+        ax.grid(axis="x", color="#dddddd", linewidth=0.5)
+
+    fig.supxlabel("Model-specific ratio per 1 SD higher excess mixing", y=0.01, fontsize=8)
+    handles, labels = axes[0].get_legend_handles_labels()
+    unique = dict(zip(labels, handles))
+    fig.legend(
+        unique.values(),
+        unique.keys(),
+        loc="lower center",
+        ncol=3,
+        frameon=False,
+        bbox_to_anchor=(0.56, 0.07),
+    )
+    style.add_panel_labels(axes, x=-0.1, y=1.12, size=9)
+    fig.subplots_adjust(left=0.24, right=0.99, top=0.87, bottom=0.28, wspace=0.18)
+    save_all(
+        style,
+        fig,
+        out_dir / "supp_fig10_mixing_predictor_loglinear_vs_hurdle_ztnb",
+        "double",
+        4.2,
+    )
 
 
 def domain_effect_rows(df: pd.DataFrame) -> pd.DataFrame:
     return df[df["term"].astype(str).eq(df["domain"].astype(str) + "_deprivation_z")].copy()
+
+
+def domain_mixing_predictor_key(row: pd.Series) -> str | None:
+    term = str(row["term"])
+    domain = str(row["domain"])
+    if term == f"{domain}_domain_excess_mixing_z":
+        return "domain_quintile"
+    if term == "age_excess_mixing_z":
+        return "age"
+    if term == "sex_excess_mixing_z":
+        return "sex"
+    if term == "age_sex_excess_mixing_z":
+        return "age_sex"
+    return None
 
 
 def plot_simd_domain_outcomes(
@@ -635,9 +940,107 @@ def plot_simd_domain_outcomes(
             )
             ax.grid(axis="x", color="#dddddd", linewidth=0.5)
 
-    style.add_panel_labels(axes.ravel(), x=-0.18, y=1.12, size=9)
+    style.add_panel_labels(axes.ravel(), x=-0.08, y=1.15, size=9)
     fig.subplots_adjust(left=0.18, right=0.99, top=0.93, bottom=0.09, hspace=0.42, wspace=0.12)
     save_all(style, fig, out_dir / "supp_fig4_simd_domain_cluster_outcomes", "double", 6.0)
+
+
+def plot_domain_mixing_predictor_cluster_outcomes(
+    style,
+    domain_mixing_predictor_results: pd.DataFrame,
+    out_dir: Path,
+) -> None:
+    from matplotlib.colors import TwoSlopeNorm
+    import matplotlib.pyplot as plt
+
+    outcomes = ["cluster_size", "duration", "geographic_dispersion"]
+    components = ["hurdle_binary", "positive_zero_truncated_count"]
+    data = domain_mixing_predictor_results.copy()
+    data["predictor"] = data.apply(domain_mixing_predictor_key, axis=1)
+    data = data[data["predictor"].isin(DOMAIN_MIXING_PREDICTOR_ORDER)].copy()
+    if data.empty:
+        return
+
+    data["log_ratio"] = np.log(data["ratio"].astype(float))
+    finite = data["log_ratio"].to_numpy(dtype=float)
+    finite = finite[np.isfinite(finite)]
+    if len(finite) == 0:
+        return
+    vmax = max(0.1, float(np.nanmax(np.abs(finite))))
+    norm = TwoSlopeNorm(vcenter=0.0, vmin=-vmax, vmax=vmax)
+
+    fig, axes = style.new_figure(
+        width="double",
+        height_in=6.6,
+        nrows=3,
+        ncols=2,
+        font_scale=0.80,
+    )
+    image = None
+    for idx, outcome in enumerate(outcomes):
+        for jdx, component in enumerate(components):
+            ax = axes[idx, jdx]
+            sub = data[(data["outcome"] == outcome) & (data["component"] == component)]
+            if sub.empty:
+                matrix = pd.DataFrame(
+                    np.nan,
+                    index=DOMAIN_MIXING_PREDICTOR_ORDER,
+                    columns=DOMAIN_ORDER,
+                )
+            else:
+                matrix = (
+                    sub.pivot_table(
+                        index="predictor",
+                        columns="domain",
+                        values="log_ratio",
+                        aggfunc="first",
+                    )
+                    .reindex(index=DOMAIN_MIXING_PREDICTOR_ORDER, columns=DOMAIN_ORDER)
+                )
+            image = ax.imshow(matrix.to_numpy(dtype=float), cmap="RdBu_r", norm=norm, aspect="auto")
+            ax.set_title(f"{OUTCOME_LABELS[outcome]}: {COMPONENT_LABELS[component]}", pad=4)
+            ax.set_yticks(np.arange(len(DOMAIN_MIXING_PREDICTOR_ORDER)))
+            ax.set_yticklabels(
+                [DOMAIN_MIXING_PREDICTOR_LABELS[k] for k in DOMAIN_MIXING_PREDICTOR_ORDER]
+                if jdx == 0
+                else []
+            )
+            ax.set_xticks(np.arange(len(DOMAIN_ORDER)))
+            ax.set_xticklabels(
+                [DOMAIN_LABELS[d] for d in DOMAIN_ORDER] if idx == len(outcomes) - 1 else [],
+                rotation=35,
+                ha="right",
+            )
+            ax.tick_params(length=0)
+            for y in np.arange(len(DOMAIN_MIXING_PREDICTOR_ORDER) + 1) - 0.5:
+                ax.axhline(y, color="white", linewidth=0.6)
+            for x in np.arange(len(DOMAIN_ORDER) + 1) - 0.5:
+                ax.axvline(x, color="white", linewidth=0.6)
+            if sub.empty:
+                ax.text(
+                    (len(DOMAIN_ORDER) - 1) / 2,
+                    (len(DOMAIN_MIXING_PREDICTOR_ORDER) - 1) / 2,
+                    "Not estimable",
+                    ha="center",
+                    va="center",
+                    color="#666666",
+                    fontsize=8,
+                )
+
+    assert image is not None
+    fig.subplots_adjust(left=0.18, right=0.84, top=0.93, bottom=0.17, hspace=0.44, wspace=0.12)
+    cbar_ax = fig.add_axes([0.875, 0.22, 0.022, 0.58])
+    cbar = fig.colorbar(image, cax=cbar_ax)
+    cbar.set_label("Log ratio per 1 SD higher excess mixing")
+    style.add_panel_labels(axes.ravel(), x=-0.08, y=1.15, size=9)
+    save_all(
+        style,
+        fig,
+        out_dir / "supp_fig11_simd_domain_mixing_predictor_cluster_outcomes",
+        "double",
+        6.6,
+    )
+    plt.close("all")
 
 
 def plot_main_domain_mixing_results(
@@ -706,7 +1109,7 @@ def plot_main_domain_mixing_results(
         ax.set_yticklabels([DOMAIN_LABELS[d] for d in DOMAIN_ORDER] if idx % 2 == 0 else [])
         ax.grid(axis="x", color="#dddddd", linewidth=0.5)
 
-    style.add_panel_labels(axes.ravel(), x=-0.16, y=1.12, size=9)
+    style.add_panel_labels(axes.ravel(), x=-0.08, y=1.15, size=9)
     fig.supxlabel("Change in excess mixing (pp per 1 SD higher domain deprivation)", y=0.04, fontsize=8)
     fig.subplots_adjust(left=0.18, right=0.99, top=0.90, bottom=0.14, hspace=0.32, wspace=0.12)
     save_all(style, fig, out_dir / "fig3_simd_domain_mixing", "double", 5.0)
@@ -805,9 +1208,104 @@ def plot_wave_cluster_outcomes(
                 )
             ax.grid(axis="x", color="#dddddd", linewidth=0.5)
 
-    style.add_panel_labels(axes.ravel(), x=-0.16, y=1.12, size=9)
+    style.add_panel_labels(axes.ravel(), x=-0.08, y=1.15, size=9)
     fig.subplots_adjust(left=0.13, right=0.99, top=0.93, bottom=0.10, hspace=0.42, wspace=0.13)
     save_all(style, fig, out_dir / "fig4_wave_specific_cluster_outcomes", "double", 6.0)
+
+
+def plot_wave_mixing_predictor_cluster_outcomes(
+    style,
+    wave_mixing_predictor_results: pd.DataFrame,
+    out_dir: Path,
+) -> None:
+    from matplotlib.colors import TwoSlopeNorm
+    import matplotlib.pyplot as plt
+
+    outcomes = ["cluster_size", "duration", "geographic_dispersion"]
+    components = ["hurdle_binary", "positive_zero_truncated_count"]
+    data = wave_mixing_predictor_results[
+        wave_mixing_predictor_results["outcome"].isin(outcomes)
+        & wave_mixing_predictor_results["component"].isin(components)
+        & wave_mixing_predictor_results["term"].isin(MIXING_PREDICTOR_TERMS)
+    ].copy()
+    waves = [wave for wave in WAVE_ORDER if wave in set(data["wave_group"])]
+    if data.empty or not waves:
+        return
+
+    data["log_ratio"] = np.log(data["ratio"].astype(float))
+    finite = data["log_ratio"].to_numpy(dtype=float)
+    finite = finite[np.isfinite(finite)]
+    if len(finite) == 0:
+        return
+    vmax = max(0.1, float(np.nanmax(np.abs(finite))))
+    norm = TwoSlopeNorm(vcenter=0.0, vmin=-vmax, vmax=vmax)
+
+    fig, axes = style.new_figure(
+        width="double",
+        height_in=6.8,
+        nrows=3,
+        ncols=2,
+        font_scale=0.80,
+    )
+    image = None
+    for idx, outcome in enumerate(outcomes):
+        for jdx, component in enumerate(components):
+            ax = axes[idx, jdx]
+            sub = data[(data["outcome"] == outcome) & (data["component"] == component)]
+            if sub.empty:
+                matrix = pd.DataFrame(np.nan, index=waves, columns=MIXING_PREDICTOR_TERMS)
+            else:
+                matrix = (
+                    sub.pivot_table(
+                        index="wave_group",
+                        columns="term",
+                        values="log_ratio",
+                        aggfunc="first",
+                    )
+                    .reindex(index=waves, columns=MIXING_PREDICTOR_TERMS)
+                )
+            image = ax.imshow(matrix.to_numpy(dtype=float), cmap="RdBu_r", norm=norm, aspect="auto")
+            ax.set_title(f"{OUTCOME_LABELS[outcome]}: {COMPONENT_LABELS[component]}", pad=4)
+            ax.set_yticks(np.arange(len(waves)))
+            ax.set_yticklabels(waves if jdx == 0 else [])
+            ax.set_xticks(np.arange(len(MIXING_PREDICTOR_TERMS)))
+            ax.set_xticklabels(
+                [MIXING_LABELS[t.replace("_excess_mixing_z", "")] for t in MIXING_PREDICTOR_TERMS]
+                if idx == len(outcomes) - 1
+                else [],
+                rotation=35,
+                ha="right",
+            )
+            ax.tick_params(length=0)
+            for y in np.arange(len(waves) + 1) - 0.5:
+                ax.axhline(y, color="white", linewidth=0.6)
+            for x in np.arange(len(MIXING_PREDICTOR_TERMS) + 1) - 0.5:
+                ax.axvline(x, color="white", linewidth=0.6)
+            if sub.empty:
+                ax.text(
+                    (len(MIXING_PREDICTOR_TERMS) - 1) / 2,
+                    (len(waves) - 1) / 2,
+                    "Not estimable",
+                    ha="center",
+                    va="center",
+                    color="#666666",
+                    fontsize=8,
+                )
+
+    assert image is not None
+    fig.subplots_adjust(left=0.12, right=0.84, top=0.93, bottom=0.17, hspace=0.30, wspace=0.12)
+    cbar_ax = fig.add_axes([0.875, 0.22, 0.022, 0.58])
+    cbar = fig.colorbar(image, cax=cbar_ax)
+    cbar.set_label("Log ratio per 1 SD higher excess mixing")
+    style.add_panel_labels(axes.ravel(), x=-0.08, y=1.15, size=9)
+    save_all(
+        style,
+        fig,
+        out_dir / "supp_fig12_wave_specific_mixing_predictor_cluster_outcomes",
+        "double",
+        6.8,
+    )
+    plt.close("all")
 
 
 def plot_simd_domain_quintile_mixing(
@@ -847,10 +1345,10 @@ def plot_simd_domain_quintile_mixing(
     ax.set_yticklabels([DOMAIN_LABELS[d] for d in DOMAIN_ORDER])
     # Wrap the long xlabel so it fits within the 1.5-column (5.2 inch) figure
     ax.set_xlabel(
-        "Change in domain-quintile excess mixing\n(pp per 1 SD higher domain deprivation)",
+        "Change in domain-quintile excess mixing (pp per 1 SD higher domain deprivation)",
         labelpad=6,
     )
-    ax.set_xlim(-3.2, 0.8)
+    ax.set_xlim(-3, 3)
     ax.grid(axis="x", color="#dddddd", linewidth=0.5)
     # Increase bottom margin to accommodate the two-line xlabel
     fig.subplots_adjust(left=0.26, right=0.98, top=0.96, bottom=0.22)
@@ -907,9 +1405,9 @@ def plot_domain_demographic_mixing(
         ax.set_yticklabels([DOMAIN_LABELS[d] for d in DOMAIN_ORDER] if idx == 0 else [])
         ax.grid(axis="x", color="#dddddd", linewidth=0.5)
 
-    style.add_panel_labels(axes, x=-0.18, y=1.12, size=9)
-    fig.supxlabel("Change in excess mixing (pp per 1 SD higher domain deprivation)", y=0.04, fontsize=8)
-    fig.subplots_adjust(left=0.18, right=0.99, top=0.86, bottom=0.18, wspace=0.13)
+    style.add_panel_labels(axes, x=-0.08, y=1.12, size=9)
+    fig.supxlabel("Change in excess mixing (pp per 1 SD higher domain deprivation)", x=0.6, fontsize=8)
+    fig.subplots_adjust(left=0.18, right=0.99, top=0.86, bottom=0.1, wspace=0.13)
     save_all(style, fig, out_dir / "supp_fig6_simd_domain_demographic_mixing", "double", 3.8)
 
 
@@ -953,7 +1451,7 @@ def plot_wave_domain_demographic_mixing(
         ax.set_yticks(np.arange(len(DOMAIN_ORDER)))
         ax.set_yticklabels([DOMAIN_LABELS[d] for d in DOMAIN_ORDER])
         ax.set_xticks(np.arange(len(waves)))
-        ax.set_xticklabels(waves, rotation=35, ha="right")
+        ax.set_xticklabels(waves, ha="center")
         ax.tick_params(length=0)
         for y in np.arange(len(DOMAIN_ORDER) + 1) - 0.5:
             ax.axhline(y, color="white", linewidth=0.6)
@@ -965,7 +1463,7 @@ def plot_wave_domain_demographic_mixing(
     cbar_ax = fig.add_axes([0.875, 0.20, 0.022, 0.62])
     cbar = fig.colorbar(image, cax=cbar_ax)
     cbar.set_label("pp per 1 SD higher domain deprivation")
-    style.add_panel_labels(axes, x=-0.14, y=1.10, size=9)
+    style.add_panel_labels(axes, x=-0.1, y=1.10, size=9)
     save_all(style, fig, out_dir / out_name, "double", 6.2)
     plt.close("all")
 
@@ -1034,7 +1532,7 @@ def plot_observed_expected_matrices(
     cbar_ax = fig.add_axes([0.875, 0.28, 0.024, 0.50])
     cbar = fig.colorbar(image, cax=cbar_ax)
     cbar.set_label("Observed - expected pair probability (pp)")
-    style.add_panel_labels(axes, x=-0.14, y=1.12, size=9)
+    style.add_panel_labels(axes, x=-0.1, y=1.12, size=9)
     save_all(style, fig, out_dir / "supp_fig8_observed_expected_mixing_matrices", "double", 3.7)
     plt.close("all")
 
@@ -1066,6 +1564,15 @@ def run(
     cluster_table = pd.read_parquet(cache_dir / "main_cluster_table.parquet")
 
     plot_main_count_results(style, count_results, out_dir)
+    mixing_predictor_count_results = None
+    mixing_predictor_count_path = tables_dir / "main_mixing_predictor_hurdle_count_model_results.csv"
+    if mixing_predictor_count_path.exists():
+        mixing_predictor_count_results = pd.read_csv(mixing_predictor_count_path)
+        plot_mixing_predictor_cluster_outcomes(
+            style,
+            mixing_predictor_count_results,
+            out_dir,
+        )
     plot_main_mixing_results(style, mixing_results, out_dir)
     plot_outcome_distributions(style, cluster_table, out_dir)
     plot_size_adjusted_sensitivity(style, count_results, out_dir)
@@ -1076,6 +1583,16 @@ def run(
     domain_outcome_path = tables_dir / "main_simd_domain_hurdle_count_model_results.csv"
     if domain_outcome_path.exists():
         plot_simd_domain_outcomes(style, pd.read_csv(domain_outcome_path), out_dir)
+
+    domain_mixing_predictor_path = (
+        tables_dir / "main_simd_domain_mixing_predictor_hurdle_count_model_results.csv"
+    )
+    if domain_mixing_predictor_path.exists():
+        plot_domain_mixing_predictor_cluster_outcomes(
+            style,
+            pd.read_csv(domain_mixing_predictor_path),
+            out_dir,
+        )
 
     domain_mixing_path = tables_dir / "main_simd_domain_quintile_mixing_model_results.csv"
     if domain_mixing_path.exists():
@@ -1094,6 +1611,16 @@ def run(
     if wave_count_path.exists():
         plot_wave_cluster_outcomes(style, pd.read_csv(wave_count_path), out_dir)
 
+    wave_mixing_predictor_path = (
+        tables_dir / "main_wave_specific_mixing_predictor_hurdle_count_model_results.csv"
+    )
+    if wave_mixing_predictor_path.exists():
+        plot_wave_mixing_predictor_cluster_outcomes(
+            style,
+            pd.read_csv(wave_mixing_predictor_path),
+            out_dir,
+        )
+
     wave_domain_demo_path = tables_dir / "main_wave_specific_domain_demographic_mixing_model_results.csv"
     if wave_domain_demo_path.exists():
         wave_domain_demo = pd.read_csv(wave_domain_demo_path)
@@ -1107,6 +1634,15 @@ def run(
     if loglinear_path.exists():
         loglinear_results = pd.read_csv(loglinear_path)
         plot_loglinear_comparison(style, count_results, loglinear_results, out_dir)
+
+    mixing_predictor_loglinear_path = tables_dir / "main_mixing_predictor_loglinear_count_model_results.csv"
+    if mixing_predictor_loglinear_path.exists() and mixing_predictor_count_results is not None:
+        plot_mixing_predictor_loglinear_comparison(
+            style,
+            mixing_predictor_count_results,
+            pd.read_csv(mixing_predictor_loglinear_path),
+            out_dir,
+        )
 
     print(f"Wrote manuscript figures to {out_dir}")
 

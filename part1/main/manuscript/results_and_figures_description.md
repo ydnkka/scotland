@@ -251,22 +251,26 @@ subwaves show more heterogeneous associations.
 
 File stem: `supp_fig1_outcome_distributions`
 
-This figure documents why hurdle/ZTNB models are used. The three count outcomes
-are heavily concentrated at their structural minima and have long right tails.
+This figure now summarises the model outcomes among non-singleton clusters
+(`cluster_size > 1`). The first row shows the distributions of cluster size,
+duration, and distinct datazones in this non-singleton population. The second
+row shows observed-minus-expected excess mixing for age, sex, and SIMD
+deprivation quintile composition.
 
-In the main cluster table:
+In the main cluster table, 84,067 clusters are non-singletons (43.5% of all
+clusters). Among these non-singleton clusters:
 
-- 56.5% of clusters are singletons.
-- 63.1% have duration zero days.
-- 61.7% are observed in a single datazone.
-- The median is 1 for cluster size, 0 for duration, and 1 for distinct
-  datazones.
+- The median cluster size is 3 sequences, and 38.8% have size 2.
+- The median duration is 4 days; 15.3% still have duration zero days.
+- The median geographic spread is 3 distinct datazones; 12.0% remain within a
+  single datazone.
 - The maximum observed values are 2,792 sequences, 19 days, and 2,100
   datazones.
 
-The distributional shape makes ordinary log-linear modelling too compressed for
-the main question, because it blends the structural-minimum process with the
-positive-count tail.
+The count outcomes retain long right tails even after removing singletons. The
+mixing panels show that the excess-mixing outcomes are also heterogeneous, with
+age and sex mixing centred slightly above zero and SIMD deprivation mixing
+centred slightly below zero.
 
 ## Supplementary Figure 2: Size-Adjusted Positive Counts
 

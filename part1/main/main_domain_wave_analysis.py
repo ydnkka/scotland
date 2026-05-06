@@ -8,6 +8,7 @@ errors as the main Part 1 analysis.
 Outputs are written under ``part1/main``:
 
 * SIMD-domain hurdle/ZTNB count models
+* SIMD-domain hurdle/ZTNB count models with mixing predictors
 * SIMD-domain quintile mixing models
 * SIMD-domain demographic mixing models
 * wave-specific SIMD-domain demographic mixing models
@@ -109,6 +110,11 @@ DEMOGRAPHIC_MIXING = {
         "short_label": "Age-sex",
     },
 }
+
+DEMOGRAPHIC_MIXING_PREDICTOR_TERMS = [
+    f"{prefix}_excess_mixing_z"
+    for prefix in DEMOGRAPHIC_MIXING
+]
 
 WAVE_ORDER = [
     "B.1.177",
@@ -374,6 +380,18 @@ def build_cluster_table(
         "test_positivity_z": "test_positivity_logit",
         "log_cluster_size_z": "log_cluster_size",
     }
+    transforms.update(
+        {
+            f"{domain}_domain_excess_mixing_z": f"{domain}_domain_excess_discordance"
+            for domain in DOMAINS
+        }
+    )
+    transforms.update(
+        {
+            f"{prefix}_excess_mixing_z": f"{prefix}_excess_discordance"
+            for prefix in DEMOGRAPHIC_MIXING
+        }
+    )
     for z_col, raw_col in transforms.items():
         clusters[z_col], mean, sd = zscore(clusters[raw_col])
         scaling_rows.append(
@@ -429,6 +447,21 @@ def domain_term_label(domain: str) -> str:
     return f"{DOMAINS[domain]['label']} deprivation"
 
 
+def domain_mixing_predictor_terms(domain: str) -> list[str]:
+    return [f"{domain}_domain_excess_mixing_z", *DEMOGRAPHIC_MIXING_PREDICTOR_TERMS]
+
+
+def term_label(domain: str, term: str) -> str:
+    if term == f"{domain}_deprivation_z":
+        return domain_term_label(domain)
+    if term == f"{domain}_domain_excess_mixing_z":
+        return f"{DOMAINS[domain]['label']} domain-quintile excess mixing"
+    for prefix, spec in DEMOGRAPHIC_MIXING.items():
+        if term == f"{prefix}_excess_mixing_z":
+            return f"{spec['short_label']} excess mixing"
+    return term
+
+
 def extract_ratio_rows(
     *,
     params: np.ndarray,
@@ -465,7 +498,7 @@ def extract_ratio_rows(
                 "model_family": model_family,
                 "response": response,
                 "term": term,
-                "term_label": domain_term_label(domain) if term == f"{domain}_deprivation_z" else term,
+                "term_label": term_label(domain, term),
                 "coefficient": coef,
                 "std_error_clustered_by_window": stderr,
                 "z": coef / stderr if stderr > 0 else np.nan,
@@ -487,8 +520,11 @@ def fit_domain_binary_component(
     lineage_levels_all: list[str],
     calendar_cols: list[str],
     maxiter: int,
+    extra_terms: list[str] | None = None,
 ) -> tuple[pd.DataFrame, dict]:
     terms = [f"{domain}_deprivation_z", *SHARED_COUNT_TERMS]
+    if extra_terms:
+        terms.extend(extra_terms)
     use = clusters.dropna(subset=[spec.binary_col, *terms, *calendar_cols, "lineage_model"]).copy()
     y = use[spec.binary_col].astype(int)
     x = build_exog(use, terms, calendar_cols, lineage_levels_all)
@@ -544,8 +580,11 @@ def fit_domain_positive_component(
     lineage_levels_all: list[str],
     calendar_cols: list[str],
     maxiter: int,
+    extra_terms: list[str] | None = None,
 ) -> tuple[pd.DataFrame, dict]:
     terms = [f"{domain}_deprivation_z", *SHARED_COUNT_TERMS]
+    if extra_terms:
+        terms.extend(extra_terms)
     use = clusters.loc[clusters[spec.positive_col] > 0].dropna(
         subset=[spec.positive_col, *terms, *calendar_cols, "lineage_model"]
     )
@@ -611,23 +650,69 @@ def fit_domain_count_models(
     lineage_levels_all: list[str],
     calendar_cols: list[str],
     maxiter: int,
+    include_mixing_predictors: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     primary_specs = [spec for spec in COUNT_MODEL_SPECS if not spec.include_size]
     frames = []
     diagnostics = []
+    predictor_set = "domain_primary_plus_mixing"
     for domain in DOMAINS:
+        extra_terms = domain_mixing_predictor_terms(domain) if include_mixing_predictors else []
         for spec in primary_specs:
-            print(f"  - {domain} {spec.name}: hurdle binary", flush=True)
-            rows, diag = fit_domain_binary_component(
-                clusters, spec, domain, lineage_levels_all, calendar_cols, maxiter
-            )
-            frames.append(rows)
-            diagnostics.append(diag)
+            if include_mixing_predictors and spec.name == "cluster_size":
+                diagnostics.append(
+                    {
+                        "domain": domain,
+                        "domain_label": DOMAINS[domain]["label"],
+                        "outcome": spec.name,
+                        "component": "hurdle_binary",
+                        "model_family": None,
+                        "response": spec.binary_col,
+                        "skipped": True,
+                        "reason": (
+                            "mixing predictors require at least two valid cases, "
+                            "so the cluster-size hurdle has no singleton comparison group"
+                        ),
+                        "predictor_set": predictor_set,
+                        "extra_predictor_terms": ";".join(extra_terms),
+                    }
+                )
+            else:
+                suffix = " with mixing predictors" if include_mixing_predictors else ""
+                print(f"  - {domain} {spec.name}: hurdle binary{suffix}", flush=True)
+                rows, diag = fit_domain_binary_component(
+                    clusters,
+                    spec,
+                    domain,
+                    lineage_levels_all,
+                    calendar_cols,
+                    maxiter,
+                    extra_terms=extra_terms,
+                )
+                if include_mixing_predictors:
+                    rows = rows.copy()
+                    rows["predictor_set"] = predictor_set
+                    diag["predictor_set"] = predictor_set
+                    diag["extra_predictor_terms"] = ";".join(extra_terms)
+                frames.append(rows)
+                diagnostics.append(diag)
 
-            print(f"  - {domain} {spec.name}: zero-truncated NB positive count", flush=True)
+            suffix = " with mixing predictors" if include_mixing_predictors else ""
+            print(f"  - {domain} {spec.name}: zero-truncated NB positive count{suffix}", flush=True)
             rows, diag = fit_domain_positive_component(
-                clusters, spec, domain, lineage_levels_all, calendar_cols, maxiter
+                clusters,
+                spec,
+                domain,
+                lineage_levels_all,
+                calendar_cols,
+                maxiter,
+                extra_terms=extra_terms,
             )
+            if include_mixing_predictors:
+                rows = rows.copy()
+                rows["predictor_set"] = predictor_set
+                diag["predictor_set"] = predictor_set
+                diag["extra_predictor_terms"] = ";".join(extra_terms)
             frames.append(rows)
             diagnostics.append(diag)
             gc.collect()
@@ -672,7 +757,7 @@ def fit_linear_model(
             "outcome_label": outcome_label,
             "response": outcome,
             "term": term,
-            "term_label": domain_term_label(domain) if term == f"{domain}_deprivation_z" else term,
+            "term_label": term_label(domain, term),
             "coefficient_excess_discordance": coef,
             "coefficient_percentage_points": coef * 100,
             "std_error_clustered_by_window": stderr,
@@ -1073,6 +1158,23 @@ def run(
     )
     count_diagnostics.to_csv(
         tables_dir / "main_simd_domain_hurdle_count_model_diagnostics.csv",
+        index=False,
+    )
+
+    print("Fitting SIMD-domain hurdle/ZTNB count models with mixing predictors", flush=True)
+    mixing_predictor_count_results, mixing_predictor_count_diagnostics = fit_domain_count_models(
+        clusters,
+        lineage_levels_all=lineage_levels_all,
+        calendar_cols=calendar_cols,
+        maxiter=maxiter,
+        include_mixing_predictors=True,
+    )
+    mixing_predictor_count_results.to_csv(
+        tables_dir / "main_simd_domain_mixing_predictor_hurdle_count_model_results.csv",
+        index=False,
+    )
+    mixing_predictor_count_diagnostics.to_csv(
+        tables_dir / "main_simd_domain_mixing_predictor_hurdle_count_model_diagnostics.csv",
         index=False,
     )
 
