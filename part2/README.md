@@ -101,9 +101,6 @@ Main outputs:
 - `tables/vaccination_descriptives.csv`
 - `tables/vaccination_key_questions.csv`
 
-The script currently writes tables/cache only. Plotting code is intentionally
-left out while Part 2 figure choices are being planned from these summaries.
-
 The Part 2 framing is descriptive cluster characterisation rather than causal
 vaccine-effectiveness estimation. Vaccination status among sequenced cases is
 strongly confounded by rollout time, age eligibility, variant wave, prior
