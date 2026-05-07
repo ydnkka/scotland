@@ -1,15 +1,15 @@
 # Summary Report: Scottish SARS-CoV-2 Genomic Cluster Analyses
 
-Prepared: 7 May 2026
+7 May 2026
 
-## Purpose
+## 1. Purpose
 
 This report summarises the Scottish SARS-CoV-2 genomic cluster analyses intended
 for three distinct thesis chapters. It outlines the focus of each chapter, the
 main results, key figures and tables, and a short request for advice on how best
 to shape the work into a manuscript.
 
-## Executive Summary
+## 2. Summary
 
 The three analyses form a coherent thesis arc. Part 1 is the strongest
 analytical chapter and examines deprivation, surveillance, and genomic cluster
@@ -26,7 +26,7 @@ not as a simple pattern of larger or more geographically dispersed clusters in
 more deprived areas. The clearest deprivation-related signals are in cluster
 composition and demographic mixing.
 
-## Chapter Overview
+## 3. Chapter Overview
 
 | Thesis part | Main focus                                       | Core contribution                                                                                                                                                   | Manuscript potential                                                        |
 |-------------|--------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------|
@@ -34,7 +34,7 @@ composition and demographic mixing.
 | Part 2      | Vaccination profiles within clusters             | Describes how clusters shifted from unvaccinated to mixed to predominantly vaccinated across rollout and variant waves.                                             | Useful as a descriptive chapter or supporting context.                      |
 | Part 3      | Policy periods and cluster structure             | Places cluster dynamics on the Scottish policy timeline and uses targeted ITS analyses at selected transitions.                                                     | Best framed as contextual or secondary unless paired carefully with Part 1. |
 
-## Analysis Population
+## 4. Analysis Population
 
 | Measure                                   |                                          Value |
 |-------------------------------------------|-----------------------------------------------:|
@@ -49,16 +49,16 @@ composition and demographic mixing.
 | Raw Pango lineages                        |                                            788 |
 | Modelled lineage levels after pooling     |                                            183 |
 
-## Part 1: Socioeconomic Deprivation, Surveillance, and Cluster Structure
+## 5. Part 1: Socioeconomic Deprivation, Surveillance, and Cluster Structure
 
-### Focus
+### 5.1. Focus
 
 Part 1 asks whether clusters linked to more deprived areas were larger, more
 geographically dispersed, or more socially and demographically mixed. Outcomes
 include cluster size, number of distinct datazones, and observed-minus-expected
 mixing by SIMD, age, sex, and joint SIMD-age-sex profile.
 
-### Key Results
+### 5.2. Key Results
 
 | Result                                          |                                       Estimate | Interpretation                                                                                                     |
 |-------------------------------------------------|-----------------------------------------------:|--------------------------------------------------------------------------------------------------------------------|
@@ -71,7 +71,7 @@ mixing by SIMD, age, sex, and joint SIMD-age-sex profile.
 | Sex excess mixing                               | -0.78 percentage points, 95% CI -1.16 to -0.39 | More deprived clusters showed lower sex mixing.                                                                    |
 | Joint SIMD-age-sex excess mixing                |   +0.48 percentage points, 95% CI 0.29 to 0.67 | More deprived clusters showed greater joint demographic-profile mixing.                                            |
 
-### Main Insight
+### 5.3. Main Insight
 
 The main models do not support a simple hypothesis that deprivation produces
 larger or more geographically dispersed genomic clusters. Surveillance and
@@ -80,7 +80,7 @@ sequencing proportion, and test positivity, were more consistent predictors of
 apparent cluster scale. Deprivation-related signals were clearest in demographic
 mixing and varied across SIMD domains.
 
-### Key Figures
+### 5.4. Key Figures
 
 | Figure          | What it shows                                                                                    |
 |-----------------|--------------------------------------------------------------------------------------------------|
@@ -97,7 +97,7 @@ mixing and varied across SIMD domains.
 
 ![Part 1 Figure 4: Wave-specific cluster outcomes](part1/main/manuscript/figures/fig4_wave_specific_cluster_outcomes.png)
 
-### Key Tables
+### 5.5. Key Tables
 
 | Table                                  | File                                                                                                                             |
 |----------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
@@ -107,16 +107,16 @@ mixing and varied across SIMD domains.
 | SIMD-domain demographic mixing results | [main_simd_domain_demographic_mixing_model_results.csv](part1/main/tables/main_simd_domain_demographic_mixing_model_results.csv) |
 | Wave-specific hurdle count results     | [main_wave_specific_hurdle_count_model_results.csv](part1/main/tables/main_wave_specific_hurdle_count_model_results.csv)         |
 
-## Part 2: Vaccination Profiles Within Genomic Clusters
+## 6. Part 2: Vaccination Profiles Within Genomic Clusters
 
-### Focus
+### 6.1. Focus
 
 Part 2 characterises vaccination status within non-singleton genomic clusters
 across epidemic waves, cluster size, geographic-dispersion categories, and SIMD
 quintiles. This is descriptive rather than causal and should not be interpreted
 as vaccine-effectiveness analysis.
 
-### Key Results
+### 6.2. Key Results
 
 | Wave    | None vaccinated | Mixed vaccination | All vaccinated |
 |---------|----------------:|------------------:|---------------:|
@@ -137,7 +137,7 @@ as vaccine-effectiveness analysis.
 | Dose recency                            | Median days since vaccination increased from 13 days in B.1.177 to 218 days in XBB.                                     |
 | Large clusters                          | More likely to be homogeneous by SIMD, consistent with geographic concentration of large transmission events.           |
 
-### Main Insight
+### 6.3. Main Insight
 
 Cluster vaccination profiles largely tracked the national rollout. Mixed
 vaccination-status clusters were most common when vaccine coverage was changing
@@ -145,7 +145,7 @@ rapidly across the population. Later clusters were predominantly all-vaccinated
 because vaccination had become the background condition among sequenced cases,
 not because vaccinated cases formed exceptional clusters.
 
-### Key Figures
+### 6.4. Key Figures
 
 | Figure          | What it shows                                                                                     |
 |-----------------|---------------------------------------------------------------------------------------------------|
@@ -162,7 +162,7 @@ not because vaccinated cases formed exceptional clusters.
 
 ![Part 2 Figure 6: Booster coverage and dose recency by SIMD](part2/manuscript/figures/fig6_dose_recency_by_simd.png)
 
-### Key Tables
+### 6.5. Key Tables
 
 | Table                                     | File                                                                                                        |
 |-------------------------------------------|-------------------------------------------------------------------------------------------------------------|
@@ -172,16 +172,16 @@ not because vaccinated cases formed exceptional clusters.
 | Vaccination cluster wave/category summary | [vaccination_cluster_wave_category_summary.csv](part2/tables/vaccination_cluster_wave_category_summary.csv) |
 | SIMD-domain vaccination gradients         | [supp_simd_domain_vaccination_gradients.csv](part2/tables/supp_simd_domain_vaccination_gradients.csv)       |
 
-## Part 3: Policy Restrictions and Cluster Structure
+## 7. Part 3: Policy Restrictions and Cluster Structure
 
-### Focus
+### 7.1. Focus
 
 Part 3 examines how Scottish COVID-19 restriction periods align with genomic
 cluster size, geographic dispersion, and demographic mixing. Because restriction
 periods are strongly confounded with calendar time, variant waves, immunity, and
 surveillance changes, the analysis is descriptive and associational.
 
-### Policy Period Codes
+### 7.2. Policy Period Codes
 
 Policy intensity is an ordinal restriction score where higher values indicate
 more restrictive conditions. The genomic cluster analysis begins in P3, so E0,
@@ -207,7 +207,7 @@ the Part 3 cluster models.
 | FE   | Final easing         | 2022-01-24 to 2022-04-17 |        15 | Yes                 |
 | PR   | Post-restriction     | 2022-04-18 to 2023-05-05 |         3 | Yes                 |
 
-### Key Results
+### 7.3. Key Results
 
 | Analysis                                            |              Result | Interpretation                                                                   |
 |-----------------------------------------------------|--------------------:|----------------------------------------------------------------------------------|
@@ -222,7 +222,7 @@ the Part 3 cluster models.
 | L2 to SL, April 2021   | beta = -0.21, p = 0.034 | beta = -0.36, p = 0.006 | No significant changes | Decline likely reflects Alpha-wave tail dynamics rather than easing itself.                              |
 | NN onset, August 2021  | beta = +0.12, p = 0.068 | beta = +0.32, p = 0.015 | No significant changes | Geographic spread increased after legal distancing requirements ended, within strong Delta-wave context. |
 
-### Main Insight
+### 7.4. Main Insight
 
 Restriction intensity was correlated with cluster size and spread across the
 whole epidemic, but these correlations are mainly contextual rather than causal.
@@ -232,7 +232,7 @@ significantly across the selected policy transitions, supporting the Part 1
 interpretation that cluster composition reflects local social structure more
 than broad policy intensity.
 
-### Key Figures
+### 7.5. Key Figures
 
 | Figure          | What it shows                                                                          |
 |-----------------|----------------------------------------------------------------------------------------|
@@ -246,7 +246,7 @@ than broad policy intensity.
 
 ![Part 3 Figure 3: Policy-period outcomes](part3/manuscript/figures/fig3_period_outcomes.png)
 
-### Key Tables
+### 7.6. Key Tables
 
 | Table                         | File                                                                                          |
 |-------------------------------|-----------------------------------------------------------------------------------------------|
@@ -256,7 +256,7 @@ than broad policy intensity.
 | Lagged intensity correlations | [supp_lagged_intensity_correlations.csv](part3/tables/supp_lagged_intensity_correlations.csv) |
 | ITS window sensitivity        | [supp_its_window_sensitivity.csv](part3/tables/supp_its_window_sensitivity.csv)               |
 
-## Overall Interpretation
+## 8. Overall Interpretation
 
 The strongest recurring conclusion is that genomic clusters cannot be interpreted
 as direct measures of transmission scale without accounting for surveillance and
@@ -270,7 +270,7 @@ they operate through different parts of the system:
   cannot be separated cleanly from variant waves and calendar time in these
   data.
 
-## Manuscript Advice Request
+## 9. Manuscript Advice Request
 
 I would appreciate advice on the best manuscript strategy. My current view is
 that Part 1 is the strongest standalone paper because it has the clearest
