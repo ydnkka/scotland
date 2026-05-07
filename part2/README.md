@@ -101,6 +101,33 @@ Main outputs:
 - `tables/vaccination_descriptives.csv`
 - `tables/vaccination_key_questions.csv`
 
+## Supplementary Questions
+
+`supplementary_questions.py` generates extra descriptive tables for thesis
+interpretation. It does not change the main Part 2 tables or figures. The
+current supplementary pass checks:
+
+- whether vaccination-status completeness varies by wave, age, SIMD, sex, or
+  sequencing-fraction quartile
+- whether vaccination-profile groups differ in cluster size, geographic
+  dispersion, or Part 1 demographic-mixing categories within waves
+- whether booster coverage and dose recency have consistent Q5-minus-Q1
+  gradients across SIMD domains
+
+Run:
+
+```bash
+conda run -n PhD python part2/supplementary_questions.py
+```
+
+Outputs:
+
+- `tables/supp_vaccination_missingness_summary.csv`
+- `tables/supp_vaccination_profile_cluster_mixing_summary.csv`
+- `tables/supp_vaccination_mixing_demographic_summary.csv`
+- `tables/supp_simd_domain_vaccination_by_quintile.csv`
+- `tables/supp_simd_domain_vaccination_gradients.csv`
+
 The Part 2 framing is descriptive cluster characterisation rather than causal
 vaccine-effectiveness estimation. Vaccination status among sequenced cases is
 strongly confounded by rollout time, age eligibility, variant wave, prior

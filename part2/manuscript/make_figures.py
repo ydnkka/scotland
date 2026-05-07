@@ -161,6 +161,29 @@ def waves_present(df: pd.DataFrame, col: str = "wave_group") -> list[str]:
     return [w for w in WAVE_ORDER if w in present]
 
 
+def bottom_legend(
+    ax,
+    *,
+    title: str,
+    ncol: int = 3,
+    y: float = -0.28,
+) -> None:
+    """Place a compact panel legend below the plotting area."""
+    ax.legend(
+        title=title,
+        fontsize=6.5,
+        title_fontsize=7,
+        loc="upper center",
+        bbox_to_anchor=(0.5, y),
+        ncol=ncol,
+        frameon=False,
+        handlelength=1.0,
+        columnspacing=0.9,
+        handletextpad=0.4,
+        borderaxespad=0.0,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Figure 1 — Vaccinated-case proportion over time
 # ---------------------------------------------------------------------------
@@ -214,16 +237,17 @@ def plot_vaccinated_cases_over_time(
     ax.set_ylim(0, 105)
     ax.xaxis.set_major_locator(mdates.YearLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
-    ax.set_ylabel("Vaccinated sequenced cases (%)")
+    ax.set_ylabel("Vaccinated cases (%)")
     ax.set_title("By JCVI rollout age group", pad=4)
     ax.grid(axis="y", color="#dddddd", linewidth=0.5)
 
     # Compact 2-column legend inside panel
     ax.legend(
         title="Age group",
-        fontsize=6,
-        title_fontsize=6.5,
+        fontsize=5.6,
+        title_fontsize=6,
         loc="upper left",
+        ncol=2,
         frameon=False,
         handlelength=1.0,
         handletextpad=0.4,
@@ -283,7 +307,7 @@ def plot_vaccinated_cases_over_time(
     style.add_panel_labels(axes, x=-0.07, y=1.12, size=9)
     fig.text(0.5, 0.01, "Calendar week", ha="center", fontsize=8)
     fig.subplots_adjust(
-        left=0.09, right=0.99, top=0.90, bottom=0.12, wspace=0.22,
+        left=0.14, right=0.99, top=0.90, bottom=0.12, wspace=0.22,
     )
     save_all(style, fig, out_dir / "fig1_vaccinated_cases_over_time", "double", 3.6)
 
@@ -358,16 +382,9 @@ def plot_vaccination_mixing_by_wave(
     ax.set_ylabel("Non-singleton clusters (%)")
     ax.set_title("Vaccination-status mixing by wave", pad=4)
     ax.grid(axis="y", color="#dddddd", linewidth=0.5)
-    ax.legend(
-        title="Mixing category",
-        fontsize=7,
-        title_fontsize=7.5,
-        loc="lower right",
-        frameon=False,
-        handlelength=1.0,
-    )
+    bottom_legend(ax, title="Mixing category", ncol=3, y=-0.12)
 
-    fig.subplots_adjust(left=0.14, right=0.97, top=0.92, bottom=0.20)
+    fig.subplots_adjust(left=0.15, right=0.97, top=0.90, bottom=0.26)
     save_all(style, fig, out_dir / "fig3_vaccination_mixing_by_wave", "onehalf", 3.8)
 
 
@@ -413,7 +430,7 @@ def plot_cluster_vaccination_by_wave_and_category(
     waves_b = waves_present(size_data)
 
     fig, axes = style.new_figure(
-        width="double", height_in=3.8, nrows=1, ncols=2,
+        width="double", height_in=3.9, nrows=1, ncols=2,
         font_scale=0.85,
     )
 
@@ -441,14 +458,7 @@ def plot_cluster_vaccination_by_wave_and_category(
     ax.set_ylabel("Clusters (%)")
     ax.set_title("Cluster vaccination profile by wave", pad=4)
     ax.grid(axis="y", color="#dddddd", linewidth=0.5)
-    ax.legend(
-        title="Profile",
-        fontsize=7,
-        title_fontsize=7.5,
-        loc="center left",
-        frameon=False,
-        handlelength=1.0,
-    )
+    bottom_legend(ax, title="Profile", ncol=3, y=-0.12)
 
     # --- Panel B: dot plot mean proportion vaccinated by wave × size ---
     ax = axes[1]
@@ -479,26 +489,19 @@ def plot_cluster_vaccination_by_wave_and_category(
     ax.set_xticks(x)
     ax.set_xticklabels(waves_b, rotation=40, ha="right", fontsize=7)
     ax.set_ylim(0, 105)
-    ax.set_ylabel("Mean cluster proportion vaccinated (%)")
+    ax.set_ylabel("Mean vaccinated (%)")
     ax.set_title("Mean vaccination by wave and cluster size", pad=4)
     ax.grid(axis="y", color="#dddddd", linewidth=0.5)
-    ax.legend(
-        title="Cluster size",
-        fontsize=7,
-        title_fontsize=7.5,
-        loc="upper left",
-        frameon=False,
-        handlelength=1.2,
-    )
+    bottom_legend(ax, title="Cluster size", ncol=3, y=-0.12)
 
     style.add_panel_labels(axes, x=-0.07, y=1.12, size=9)
     fig.subplots_adjust(
-        left=0.09, right=0.99, top=0.90, bottom=0.22, wspace=0.28,
+        left=0.09, right=0.99, top=0.88, bottom=0.25, wspace=0.28,
     )
     save_all(
         style, fig,
         out_dir / "fig2_cluster_vaccination_by_wave_and_category",
-        "double", 3.8,
+        "double", 3.9,
     )
 
 
@@ -947,16 +950,24 @@ def plot_demographic_mixing_by_wave(
         ax.set_ylabel("Non-singleton clusters (%)" if idx % 2 == 0 else "")
         ax.grid(axis="y", color="#dddddd", linewidth=0.5)
 
-        if idx == 1:
-            ax.legend(
-                title="Mixing category",
-                fontsize=7, title_fontsize=7.5,
-                loc="lower right", frameon=False, handlelength=1.0,
-            )
+    handles, labels = axes.ravel()[0].get_legend_handles_labels()
+    fig.legend(
+        handles,
+        labels,
+        title="Mixing category",
+        loc="upper center",
+        bbox_to_anchor=(0.56, 0.99),
+        ncol=3,
+        fontsize=7,
+        title_fontsize=7.5,
+        frameon=False,
+        handlelength=1.0,
+        columnspacing=1.0,
+    )
 
     style.add_panel_labels(axes.ravel(), x=-0.06, y=1.12, size=9)
     fig.subplots_adjust(
-        left=0.09, right=0.99, top=0.93, bottom=0.16, hspace=0.52, wspace=0.12,
+        left=0.09, right=0.99, top=0.86, bottom=0.16, hspace=0.52, wspace=0.12,
     )
     save_all(style, fig, out_dir / "fig4_demographic_mixing_by_wave", "double", 5.6)
 
@@ -1007,7 +1018,7 @@ def plot_geographic_dispersion_by_wave(
     )
 
     fig, axes = style.new_figure(
-        width="double", height_in=3.8, nrows=1, ncols=2,
+        width="double", height_in=3.9, nrows=1, ncols=2,
         font_scale=0.85,
     )
 
@@ -1034,11 +1045,7 @@ def plot_geographic_dispersion_by_wave(
     ax.set_ylabel("Clusters (%)")
     ax.set_title("Geographic dispersion category by wave", pad=4)
     ax.grid(axis="y", color="#dddddd", linewidth=0.5)
-    ax.legend(
-        title="Dispersion",
-        fontsize=7, title_fontsize=7.5,
-        loc="lower right", frameon=False, handlelength=1.0,
-    )
+    bottom_legend(ax, title="Dispersion", ncol=3, y=-0.12)
 
     # --- Panel B: mean prop vaccinated by wave × dispersion ---
     ax = axes[1]
@@ -1071,20 +1078,16 @@ def plot_geographic_dispersion_by_wave(
     ax.set_xticks(x)
     ax.set_xticklabels(waves, rotation=40, ha="right", fontsize=7)
     ax.set_ylim(0, 105)
-    ax.set_ylabel("Mean cluster proportion vaccinated (%)")
+    ax.set_ylabel("Mean vaccinated (%)")
     ax.set_title("Mean vaccination by wave and dispersion", pad=4)
     ax.grid(axis="y", color="#dddddd", linewidth=0.5)
-    ax.legend(
-        title="Dispersion",
-        fontsize=7, title_fontsize=7.5,
-        loc="upper left", frameon=False, handlelength=1.2,
-    )
+    bottom_legend(ax, title="Dispersion", ncol=3, y=-0.12)
 
     style.add_panel_labels(axes, x=-0.07, y=1.12, size=9)
     fig.subplots_adjust(
-        left=0.09, right=0.99, top=0.90, bottom=0.22, wspace=0.30,
+        left=0.09, right=0.99, top=0.88, bottom=0.25, wspace=0.30,
     )
-    save_all(style, fig, out_dir / "fig5_geographic_dispersion_by_wave", "double", 3.8)
+    save_all(style, fig, out_dir / "fig5_geographic_dispersion_by_wave", "double", 3.9)
 
 
 # ---------------------------------------------------------------------------

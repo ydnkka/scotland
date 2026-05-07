@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 from typing import Callable
 
 import matplotlib.dates as mdates
@@ -10,6 +12,21 @@ from matplotlib.lines import Line2D
 from matplotlib.ticker import PercentFormatter
 import pandas as pd
 import polars as pl
+
+
+def _bootstrap_repo_root_for_utils() -> Path:
+    """Ensure the repository root is importable for direct script execution."""
+    here = Path(__file__).resolve()
+    for candidate in [here, *here.parents]:
+        if (candidate / "config.yaml").exists():
+            root_str = str(candidate)
+            if root_str not in sys.path:
+                sys.path.insert(0, root_str)
+            return candidate
+    raise FileNotFoundError("Could not locate config.yaml.")
+
+
+ROOT = _bootstrap_repo_root_for_utils()
 
 from utils import data, policy, style
 
@@ -415,9 +432,8 @@ def plot_lineage_frequency_and_overtakes(
 
 def main() -> None:
     style.set_theme(context="paper")
-    paths = data.Paths.from_config()
-    out_dir = paths.root / "figures"
-    table_dir = paths.root / "tables"
+    out_dir = ROOT / "surveillance" / "figures"
+    table_dir = ROOT / "surveillance" / "tables"
     table_dir.mkdir(parents=True, exist_ok=True)
 
     qc_statuses: list[data.QCStatus] = ["good", "mediocre", "bad"]

@@ -193,8 +193,6 @@ def plot_weekly_time_series(weekly: pd.DataFrame, out_dir: Path) -> None:
     ax_top.legend(handles=handles, loc="upper right", fontsize=6,
                   title="Policy intensity", title_fontsize=6)
 
-    style.add_panel_labels([ax_top], x=-0.07, y=1.05)
-
     # Panel B: stepped policy intensity line
     _add_period_bands(ax_bot, 0, 1)
     ax_bot.step(
@@ -220,7 +218,7 @@ def plot_weekly_time_series(weekly: pd.DataFrame, out_dir: Path) -> None:
             ha="center", va="bottom", fontsize=5, color="#333333",
         )
 
-    style.add_panel_labels([ax_bot], x=-0.07, y=1.05)
+    style.add_panel_labels([ax_top, ax_bot], x=-0.07, y=1.05)
 
     fig.subplots_adjust(left=0.10, right=0.97, top=0.93, bottom=0.09)
 
@@ -320,8 +318,12 @@ def plot_its_transitions(
 
     style.add_panel_labels(axes.ravel(), x=-0.18, y=1.07)
 
-    # Common legend for top row
-    axes[0, 0].legend(fontsize=6, loc="lower left", framealpha=0.7)
+    # Figure-level legend at the top of the figure
+    handles, labels = axes[0, 0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper center", ncol=2, fontsize=6,
+               framealpha=0.7, bbox_to_anchor=(0.5, 1.05),
+               bbox_transform=fig.transFigure)
+
     axes[2, 0].set_xlabel("Week from transition", fontsize=7)
     axes[2, 1].set_xlabel("Week from transition", fontsize=7)
 

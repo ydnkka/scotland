@@ -95,9 +95,60 @@ quintile. Joint profile mixing is predominantly at baseline, reflecting that
 the full SIMD-age-sex combination is a highly specific category where random
 within-stratum variation dominates.
 
-## 4. Key Findings
+## 4. Main Figures
 
-### 4.1 Breakthrough-case frequency rose sharply and earlier in older and less deprived groups
+### 4.1 Vaccinated-Case Proportions Over Time
+
+This figure shows how the proportion of sequenced cases who were vaccinated
+changed over calendar time by rollout-informed age group and overall SIMD
+quintile. It is the entry point for the Part 2 narrative because it separates
+the rollout calendar from the later cluster-level summaries.
+
+![Figure 1](figures/fig1_vaccinated_cases_over_time.png)
+
+### 4.2 Cluster Vaccination Profile By Wave And Size
+
+This figure shows the shift from none-vaccinated clusters in the pre-rollout
+period to mixed-vaccination clusters during rollout and predominantly
+all-vaccinated clusters in later Omicron waves. The second panel compares mean
+cluster vaccination by wave and cluster-size category.
+
+![Figure 2](figures/fig2_cluster_vaccination_by_wave_and_category.png)
+
+### 4.3 Vaccination-Status Mixing By Wave
+
+This figure summarises whether non-singleton clusters were more homogeneous,
+near baseline, or more mixed by vaccination status than expected for cases from
+the same lineage and calendar window.
+
+![Figure 3](figures/fig3_vaccination_mixing_by_wave.png)
+
+### 4.4 Demographic Mixing Categories By Wave
+
+This figure places vaccination-status findings alongside the Part 1
+demographic-mixing framework, showing SIMD, age, sex, and joint profile mixing
+categories across epidemic waves.
+
+![Figure 4](figures/fig4_demographic_mixing_by_wave.png)
+
+### 4.5 Geographic Dispersion By Wave
+
+This figure shows how geographic-dispersion categories varied by wave and how
+cluster vaccination proportion differed across dispersion groups.
+
+![Figure 5](figures/fig5_geographic_dispersion_by_wave.png)
+
+### 4.6 Booster Coverage And Dose Recency By SIMD
+
+This figure summarises booster coverage and days since last prior vaccination
+across wave and overall SIMD quintile, highlighting modest deprivation
+gradients during the booster era.
+
+![Figure 6](figures/fig6_dose_recency_by_simd.png)
+
+## 5. Key Findings
+
+### 5.1 Breakthrough-case frequency rose sharply and earlier in older and less deprived groups
 
 The weekly proportion of sequenced cases who were vaccinated increased rapidly
 from near zero in 2021 Q1 to above 80–90% by 2022 across most age and SIMD
@@ -109,7 +160,7 @@ proportions earlier, while the most deprived quintile (Q1) lagged behind during
 primary vaccination. Gradients converged by the booster phase but differences
 by deprivation were visible throughout.
 
-### 4.2 Cluster vaccination profiles shifted monotonically across waves
+### 5.2 Cluster vaccination profiles shifted monotonically across waves
 
 In B.1.177, 89.5% of non-singleton clusters contained no vaccinated members
 and only 0.5% were all-vaccinated. By XBB, these proportions had entirely
@@ -132,7 +183,7 @@ onwards, all-vaccinated clusters were the majority and continued to grow.
 | BQ.1    |            0.6% |             20.5% |          78.9% |
 | XBB     |            0.0% |             19.4% |          80.6% |
 
-### 4.3 Vaccination-status mixing within clusters peaked during mixed-coverage waves
+### 5.3 Vaccination-status mixing within clusters peaked during mixed-coverage waves
 
 Vaccination-status mixing categories show a clear wave pattern that tracks the
 trajectory of population vaccine coverage.
@@ -160,7 +211,7 @@ vaccination status has little residual discriminatory power.
 | BQ.1    |       51.7% |    29.7% | 18.6% |
 | XBB     |       29.5% |    56.6% | 14.0% |
 
-### 4.4 Dose recency increased monotonically, plateauing in late Omicron
+### 5.4 Dose recency increased monotonically, plateauing in late Omicron
 
 Median days since last vaccination among vaccinated cluster members increased
 from 13 days in B.1.177 to 218 days in XBB. The largest jump occurred between
@@ -170,7 +221,7 @@ the past. In BA.4 through XBB, median dose recency stabilised at roughly 208–2
 days — consistent with a period when the most recent booster campaigns had been
 completed months earlier and no new major rollout had occurred.
 
-### 4.5 Deprivation gradients in booster coverage and dose recency are modest but present
+### 5.5 Deprivation gradients in booster coverage and dose recency are modest but present
 
 Among all-wave non-singleton clusters, there is modest variation in booster
 coverage and days since vaccination across SIMD quintiles within waves. The
@@ -186,7 +237,7 @@ health domains broadly follow the overall SIMD gradient, while geographic access
 deprivation is systematically different in direction and magnitude from the
 other domains in several waves.
 
-### 4.6 Large clusters show stronger homogeneous mixing by SIMD and size
+### 5.6 Large clusters show stronger homogeneous mixing by SIMD and size
 
 Cross-category heatmaps show that SIMD-deprivation "less mix" fractions are
 substantially higher for large and very large clusters than for small/moderate
@@ -205,7 +256,7 @@ clusters (79–89% less mix in large clusters across some quintiles), reflecting
 that large clusters tend to be internally homogeneous on the combined
 SIMD-age-sex profile.
 
-## 5. Interpretation
+## 6. Interpretation
 
 The Part 2 results should be read alongside Part 1 rather than in isolation.
 Part 1 showed that deprivation was not associated with larger or more
@@ -235,7 +286,7 @@ population, but that these gradients were not large enough to produce the
 simple pattern of more and larger clusters in deprived areas that might be
 predicted by a naive vaccine-protection hypothesis.
 
-## 6. Takeaway
+## 7. Takeaway
 
 In Scottish SARS-CoV-2 genomic clusters, vaccination profiles reflected the
 national rollout trajectory rather than any exceptional clustering of vaccinated

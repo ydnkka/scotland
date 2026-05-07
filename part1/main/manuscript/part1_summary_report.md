@@ -25,7 +25,8 @@ summary information about the dataset:
 - QC filter: `nextclade_qc == "good"`
 - Unit of analysis: one inferred genomic cluster at the primary resolution within calendar window
 - Sequence rows used: 789,347 (281,320 unique sequences)
-- Inferred clusters: 193,160
+- Inferred clusters before model-field filtering: 193,160
+- Cluster rows used in the main regression models: 193,112
 - Sliding time windows: 134
 - Raw Pango lineages: 788
 - Modelled lineage levels after rare-lineage pooling: 183

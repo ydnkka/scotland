@@ -9,8 +9,8 @@ is not appropriate.
 Analytical components
 ---------------------
 1. Period-level descriptive tables — median cluster size, datazones, mixing
-   indices, singleton fraction, and policy intensity for each of the 16 policy
-   periods observed in the study data.
+   indices, singleton fraction, and policy intensity for each policy period
+   observed in the study data.
 2. Weekly aggregate series — ISO-week summaries of cluster outcomes annotated
    with the dominant policy period and its intensity for all downstream figure
    production.
@@ -295,8 +295,7 @@ def compute_weekly_summaries(df: pd.DataFrame) -> pd.DataFrame:
 def compute_intensity_correlations(weekly: pd.DataFrame) -> pd.DataFrame:
     """Compute Spearman correlations between policy intensity and cluster outcomes.
 
-    Correlations are computed (a) pooled across all weeks, and (b) separately
-    within each dominant policy period to give a within-period partial picture.
+    Correlations are computed pooled across all weeks.
     """
     outcome_cols = [
         "median_log_cluster_size",

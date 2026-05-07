@@ -66,9 +66,37 @@ majority of sequenced clusters by volume (48,407 and 51,701 respectively),
 reflecting both the high incidence of these waves and the substantial sequencing
 effort sustained through 2021–2022.
 
-## 4. Key Findings
+## 4. Main Figures
 
-### 4.1 Policy intensity shows strong positive correlation with cluster size but not SIMD mixing
+### 4.1 Weekly Cluster Outcomes And Policy Context
+
+This figure shows the full Part 3 policy context. Weekly median log cluster
+size is plotted over time with policy-period background shading, while the
+policy-intensity panel shows the restriction timeline and the three ITS
+transition dates.
+
+![Figure 1](figures/fig1_weekly_time_series.png)
+
+### 4.2 Interrupted Time-Series At Three Policy Transitions
+
+This figure shows the segmented-regression analyses for the three selected
+policy transitions: T1-onset, L2→SL, and NN-onset. The panels compare weekly
+median log cluster size and median log datazones before and after each
+transition.
+
+![Figure 2](figures/fig2_its_transitions.png)
+
+### 4.3 Policy-Period Cluster Outcomes
+
+This figure compares median log cluster size and median log datazones across
+the observed policy periods, with points coloured by policy intensity and
+annotated with non-singleton cluster counts.
+
+![Figure 3](figures/fig3_period_outcomes.png)
+
+## 5. Key Findings
+
+### 5.1 Policy intensity shows strong positive correlation with cluster size but not SIMD mixing
 
 Spearman correlations between weekly median log cluster size and weekly policy
 intensity are strongly positive (ρ = 0.74, n = 134 weeks). Weekly log
@@ -80,7 +108,7 @@ the same calendar windows with high restriction intensity also correspond to
 waves (B.1.177, Alpha) that produced the largest, most geographically
 concentrated clusters — and do not represent causal policy effects.
 
-### 4.2 No detectable change in cluster structure at T1-onset (Oct 2020)
+### 5.2 No detectable change in cluster structure at T1-onset (Oct 2020)
 
 The introduction of the five-level tiered framework (Pre-tier tightening, T1)
 in October 2020 was not associated with significant changes in cluster size
@@ -92,7 +120,7 @@ actual contact behaviour between P3 and T1, a lag between policy change and
 genomic cluster formation, or insufficient statistical power in the 16-week
 ITS window.
 
-### 4.3 Cluster size and geographic spread declined at the L2→SL transition (Apr 2021)
+### 5.3 Cluster size and geographic spread declined at the L2→SL transition (Apr 2021)
 
 When the second lockdown eased to Stay-local Level 3 on 2 April 2021, there
 were statistically significant reductions in both median log cluster size
@@ -105,7 +133,7 @@ wave, when cluster sizes were already contracting independently of the policy
 change. The short duration of the SL period (24 days) limits the interpretive
 value of this transition.
 
-### 4.4 Geographic dispersal increased significantly at NN-onset (Aug 2021)
+### 5.4 Geographic dispersal increased significantly at NN-onset (Aug 2021)
 
 The full removal of legal distancing requirements at the Near-normal (NN)
 onset on 9 August 2021 was associated with a significant increase in cluster
@@ -118,7 +146,7 @@ restrictions allowed transmission to span a wider geographic footprint within
 the Delta wave, though simultaneous high Delta incidence means the policy and
 wave effects cannot be disentangled.
 
-### 4.5 Demographic mixing metrics were unaffected by any of the three transitions
+### 5.5 Demographic mixing metrics were unaffected by any of the three transitions
 
 Across all three ITS transitions, neither SIMD excess discordance nor age
 excess discordance showed statistically significant level changes (all p > 0.27
@@ -129,18 +157,18 @@ transmission events. Policy changes that affect contact rates globally do not
 appear to substantially alter the socioeconomic composition of who transmits
 to whom within a cluster.
 
-## 5. Interpretation
+## 6. Interpretation
 
 The Part 3 results complement Parts 1 and 2 rather than superseding them.
 
 The strong pooled correlation between policy intensity and cluster size (ρ =
 0.74) is informative precisely because it is largely confounded: it reflects
-the fact that the periods of highest restriction produced the largest, most
-genomically coherent clusters (household transmission during lockdowns), while
-the post-restriction period produced many small, geographically diffuse
-clusters (community transmission in a largely immune population). This is the
-expected signature of epidemic suppression and should not be interpreted as
-evidence that restrictions per se generated larger clusters.
+the fact that periods of high restriction coincided with some of the largest,
+most genomically coherent clusters, while the post-restriction period produced
+many smaller clusters in a population with substantial accumulated immunity.
+This pattern is consistent with changing epidemic phase, variant composition,
+contact opportunities, and surveillance intensity, and should not be
+interpreted as evidence that restrictions per se generated larger clusters.
 
 The ITS analyses are more informative at the transition level. The null result
 at T1-onset suggests that the formal introduction of a tiered policy framework
@@ -150,13 +178,13 @@ dispersal at full legal easing — is the most a priori consistent finding,
 and its statistical significance survives the short observation window.
 
 The absence of any mixing-metric signal across all three transitions reinforces
-the Part 1 conclusion that demographic mixing within clusters is determined by
-the local social structure of transmission (which household, neighbourhood, and
-community you belong to) rather than by the overall policy environment. Policies
-that restrict contacts broadly do not appear to change the socioeconomic
-composition of the contacts that still occur.
+the Part 1 conclusion that demographic mixing within clusters is more closely
+related to local social and geographic structure than to the overall policy
+environment. Policies that restrict contacts broadly do not appear, in these
+data, to substantially change the socioeconomic composition of the sampled
+clusters that still occur.
 
-## 6. Takeaway
+## 7. Takeaway
 
 In Scottish SARS-CoV-2 genomic clusters, policy restriction intensity is
 positively correlated with cluster size and geographic spread across the
@@ -171,3 +199,104 @@ start of Delta's community spread). Demographic mixing metrics were unaffected
 by all three transitions, supporting the Part 1 conclusion that socioeconomic
 composition of clusters is driven by local social structure rather than the
 broad policy environment.
+
+---
+
+## 8. Supplementary Analyses
+
+*Generated by `part3/supplementary_questions.py`. Tables are in
+`part3/tables/supp_*.csv`.*
+
+### 8.1 Lagged Intensity Correlations (`supp_lagged_intensity_correlations.csv`)
+
+Spearman correlations between weekly policy intensity and five cluster outcomes
+were computed at lags of 0–4 weeks (intensity lagged relative to outcome),
+including singleton fraction as an additional outcome not in the primary tables.
+
+| Outcome | Lag 0 | Lag 1 | Lag 2 | Lag 3 | Lag 4 |
+|---|---:|---:|---:|---:|---:|
+| Median log cluster size | 0.74 | 0.75 | 0.76 | 0.77 | 0.78 |
+| Median log datazones | 0.58 | 0.59 | 0.61 | 0.61 | 0.62 |
+| Singleton fraction | −0.62 | −0.63 | −0.65 | −0.67 | −0.70 |
+| Mean SIMD excess discordance | 0.02 | −0.01 | −0.04 | −0.08 | −0.12 |
+| Mean age excess discordance | 0.59 | 0.59 | 0.58 | 0.56 | 0.53 |
+
+*All n = 130–134 weeks.*
+
+**Interpretation.** Correlations with cluster size, datazones, and singleton
+fraction all strengthen marginally as intensity is lagged by 1–4 weeks,
+consistent with a plausible 2–4 week delay between restriction changes and
+detectable changes in genomic cluster structure (reflecting incubation,
+transmission interval, and sequencing lag). However the strengthening is
+modest and driven by the same wave confounding as the lag-0 correlations;
+it should not be interpreted as evidence of a causal lagged policy effect.
+SIMD excess discordance remains near zero across all lags (drifting to ρ =
+−0.12 at lag 4), confirming that demographic mixing is not captured by the
+policy intensity signal at any lag. Age excess discordance is highest at lag 0
+and weakens slightly with lag.
+
+### 8.2 ITS Window Sensitivity (`supp_its_window_sensitivity.csv`)
+
+The primary ITS analysis used a ±8-week window around each transition. This
+sensitivity repeats the ITS fits using windows of ±6, ±8, ±10, and ±12 weeks.
+Key results for the two primary outcomes (log cluster size and log datazones):
+
+**T1-onset (Oct 2020) — null result is robust across all windows.**
+The level-change estimate for log cluster size ranges from −0.06 (±6 weeks,
+p = 0.66) to −0.12 (±12 weeks, p = 0.15). Log datazones ranges from +0.03
+(±6 weeks, p = 0.83) to −0.16 (±12 weeks, p = 0.17). No window produces a
+significant level change, confirming the null result is not artefactual.
+
+**L2→SL (Apr 2021) — datazones signal is robust; cluster size is window-sensitive.**
+Log datazones shows a significant negative level shift at all four windows
+(p = 0.020 at ±6; p = 0.006 at ±8; p = 0.015 at ±10; p = 0.013 at ±12),
+with estimates ranging from −0.28 to −0.38. Log cluster size is significant
+only at the primary ±8-week window (β = −0.21, p = 0.034) and marginal at ±10
+(p = 0.058), but non-significant at ±6 (p = 0.191) and ±12 (p = 0.115). The
+cluster-size result should therefore be interpreted with caution; the datazones
+result is more reliable.
+
+**NN-onset (Aug 2021) — datazones signal is robust and strengthens with wider window.**
+Log datazones is significant at all four windows (p = 0.038 at ±6; p = 0.015
+at ±8; p = 0.009 at ±10; p = 0.001 at ±12), with estimates ranging from +0.27
+to +0.38 — entirely consistent across window widths. Log cluster size is
+non-significant at ±6 (p = 0.280) but significant at ±10 (p = 0.076,
+borderline) and ±12 (p = 0.013), suggesting that the size effect accumulates
+more gradually than the geographic dispersal effect.
+
+### 8.3 Policy-Lineage Context (`supp_policy_lineage_context.csv`)
+
+This table annotates each policy period start date with the dominant lineage
+at that moment and the timing of the nearest variant overtake event, to
+quantify how closely policy transitions coincide with variant changes.
+
+| Period | Start | Dominant lineage | Frequency | Days to next overtake |
+|---|---|---|---:|---:|
+| P3 | 2020-07-10 | B.1.177 | 100% | +185 (Alpha) |
+| T1 | 2020-10-02 | B.1.177 | 100% | +101 (Alpha) |
+| F5 | 2020-11-02 | B.1.177 | 99.9% | +70 (Alpha) |
+| **L2** | **2021-01-05** | **B.1.177** | **56%** | **+6 (Alpha)** |
+| SL | 2021-04-02 | Alpha | 99.9% | +52 (Delta) |
+| L3 | 2021-04-26 | Alpha | 97.3% | +28 (Delta) |
+| L21 | 2021-05-17 | Alpha | 66.4% | +7 (Delta) |
+| L0 | 2021-07-19 | Delta | 99.6% | +154 (BA.1) |
+| NN | 2021-08-09 | Delta | 99.9% | +133 (BA.1) |
+| **OM** | **2021-11-29** | **Delta** | **98.1%** | **+21 (BA.1)** |
+| FE | 2022-01-24 | BA.1 | 96.5% | +49 (BA.2) |
+| PR | 2022-04-18 | BA.2 | 98.8% | +63 (BA.5) |
+
+**Bold rows indicate periods where a variant overtake occurred within ≤ 21 days
+of the policy start date, making any ITS analysis at that transition maximally
+confounded.**
+
+**Interpretation.** The three ITS transitions were selected partly to minimise
+variant confounding, and this table confirms that selection was reasonable:
+T1-onset falls 101 days before Alpha's overtake (pure B.1.177); L2→SL falls
+52 days after Alpha's dominance was established; NN-onset falls 133 days before
+BA.1's overtake (pure Delta). By contrast, the L2 start date (second lockdown)
+is the single most confounded policy moment in the dataset: Alpha overtook
+B.1.177 just 6 days after L2 began, meaning that any analysis treating L2 as a
+"pre" period is conflating the start of the Alpha wave with the lockdown. The
+OM onset is similarly confounded (BA.1 overtake 21 days later). This table
+provides a useful reference for thesis discussion of which policy periods can
+and cannot support causal interpretation.

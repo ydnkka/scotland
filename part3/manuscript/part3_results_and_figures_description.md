@@ -147,3 +147,98 @@ Figure 1A. Panel D provides the intensity reference.
 > coinciding with the ITS transition dates are visible for either mixing metric,
 > reinforcing the conclusion that demographic mixing within clusters was not
 > acutely responsive to policy-level changes in the restriction environment.
+
+---
+
+## Supplementary Tables (from `part3/supplementary_questions.py`)
+
+---
+
+### Supplementary Table 1: Lagged intensity correlations
+**File:** `part3/tables/supp_lagged_intensity_correlations.csv`
+
+**What it shows.** Spearman ρ between weekly policy intensity (lagged 0–4
+weeks relative to each outcome) and five cluster outcomes: median log cluster
+size, median log datazones, singleton fraction, mean SIMD excess discordance,
+and mean age excess discordance.
+
+**Key findings.** Correlations with cluster size, datazones, and singleton
+fraction strengthen moderately as intensity is lagged (e.g. cluster size ρ
+rises from 0.74 at lag 0 to 0.78 at lag 4), consistent with a 2–4 week delay
+between restriction changes and changes in observed genomic cluster structure.
+SIMD excess discordance remains near zero at all lags (0.02 at lag 0 to −0.12
+at lag 4), confirming that socioeconomic mixing within clusters is not captured
+by the policy intensity signal at any lag tested. Age excess discordance peaks
+at lag 0 (ρ = 0.59) and weakens slightly at longer lags.
+
+**Suggested results paragraph.**
+> We tested whether intensity–outcome correlations strengthened when intensity
+> was lagged by 1–4 weeks to account for the delay between policy changes and
+> observable changes in genomic cluster structure (Supplementary Table 1).
+> Spearman ρ for median log cluster size increased from 0.74 (lag 0) to 0.78
+> (lag 4), and the singleton fraction correlation strengthened from −0.62 to
+> −0.70, consistent with a short epidemiological delay between restriction
+> intensity and detectable cluster changes. SIMD excess discordance remained
+> near zero at all lags (range: 0.02 to −0.12), providing no evidence that
+> socioeconomic mixing within clusters is associated with policy intensity even
+> with lagged timing.
+
+---
+
+### Supplementary Table 2: ITS window sensitivity
+**File:** `part3/tables/supp_its_window_sensitivity.csv`
+
+**What it shows.** ITS level-change estimates (β_post) and p-values for all
+three transitions and four outcomes, repeated at ±6, ±8, ±10, and ±12-week
+windows around each transition date.
+
+**Key findings.** The null result at T1-onset is robust: no window produces a
+significant level change for any outcome. The datazones reduction at L2→SL is
+significant across all four windows (p ≤ 0.020); the cluster-size reduction
+is significant only at ±8 weeks and marginal at ±10, suggesting the size
+effect at that transition is sensitive to window choice. The datazones increase
+at NN-onset is significant at all windows (p ≤ 0.038) and strengthens with
+wider windows (p = 0.001 at ±12), indicating a robust and growing geographic
+dispersal effect.
+
+**Suggested results paragraph.**
+> To assess whether the primary ITS results were sensitive to the choice of
+> ±8-week analysis window, we repeated all fits using windows of ±6, ±10, and
+> ±12 weeks (Supplementary Table 2). The null result at T1-onset was consistent
+> across all window widths. The geographic dispersal increase at NN-onset
+> (log datazones) was significant at all windows tested and strengthened at
+> wider windows (β range: +0.27 to +0.38; p = 0.001 at ±12 weeks), supporting
+> a robust effect. The datazones reduction at L2→SL was similarly robust across
+> windows (all p ≤ 0.020), whereas the cluster-size reduction at L2→SL was
+> significant only at the primary ±8-week window, indicating greater sensitivity
+> to window choice for that estimate.
+
+---
+
+### Supplementary Table 3: Policy-period lineage context
+**File:** `part3/tables/supp_policy_lineage_context.csv`
+
+**What it shows.** For each observed policy period, the dominant lineage group
+at the period start date, its frequency in the surveillance data, and the
+timing of the nearest previous and next variant overtake event.
+
+**Key findings.** The three ITS transitions were selected to minimise variant
+confounding and this table confirms that selection: T1-onset falls 101 days
+before Alpha's dominance; NN-onset falls 133 days before BA.1's overtake.
+The most confounded policy moments in the dataset are the L2 onset (Alpha
+overtake just 6 days later) and OM onset (BA.1 overtake 21 days later) —
+neither of which was selected as an ITS transition point.
+
+**Suggested results paragraph.**
+> To contextualise the ITS transition selection, we annotated each policy
+> period start date with the dominant lineage at that moment and the timing of
+> the nearest variant overtake event (Supplementary Table 3). The three
+> selected transitions were among the least confounded by simultaneous variant
+> change: T1-onset occurred 101 days before Alpha's establishment, L2→SL
+> occurred within the stable Alpha-dominant phase (52 days before the Alpha-to-
+> Delta overtake), and NN-onset occurred within the stable Delta-dominant phase
+> (133 days before BA.1's emergence). By contrast, the start of the second
+> lockdown (L2) coincides with the Alpha wave onset (overtake within 6 days),
+> and the Omicron-wave restriction period (OM) begins 21 days before BA.1
+> dominated — both cases where ITS analysis would be maximally confounded by
+> concurrent variant change.

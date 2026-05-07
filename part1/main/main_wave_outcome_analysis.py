@@ -19,6 +19,7 @@ import warnings
 import numpy as np
 import pandas as pd
 from scipy.linalg import pinvh
+from scipy.special import expit
 from scipy.stats import norm
 import statsmodels.api as sm
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
@@ -188,7 +189,8 @@ def clustered_logit_inference(
     """
     x_array = np.asarray(x, dtype=float)
     y_array = np.asarray(y, dtype=float)
-    mu = np.asarray(result.fittedvalues, dtype=float)
+    params = np.asarray(result.params, dtype=float)
+    mu = expit(x_array @ params)
     mu = np.clip(mu, 1e-9, 1.0 - 1e-9)
 
     weights = mu * (1.0 - mu)
@@ -209,10 +211,28 @@ def clustered_logit_inference(
         cov *= correction
 
     bse = np.sqrt(np.clip(np.diag(cov), 0, np.inf))
-    params = np.asarray(result.params, dtype=float)
     z_values = np.divide(params, bse, out=np.full_like(params, np.nan), where=bse > 0)
     pvalues = 2 * norm.sf(np.abs(z_values))
     return bse, pvalues
+
+
+def stable_binomial_fit_stats(result, y: pd.Series, x: pd.DataFrame) -> tuple[float, float]:
+    """Return binomial log-likelihood and AIC with clipped fitted probabilities.
+
+    In some wave-stratified hurdle models, fitted probabilities can saturate at
+    exactly 0 or 1 for a small number of rows. Calling ``result.llf`` then asks
+    statsmodels to evaluate terms such as ``log(0)``, producing noisy runtime
+    warnings and NaN diagnostics even though the fitted coefficients and robust
+    inference are usable.
+    """
+    x_array = np.asarray(x, dtype=float)
+    y_array = np.asarray(y, dtype=float)
+    params = np.asarray(result.params, dtype=float)
+    mu = expit(x_array @ params)
+    mu = np.clip(mu, 1e-12, 1.0 - 1e-12)
+    llf = float(np.sum(y_array * np.log(mu) + (1.0 - y_array) * np.log1p(-mu)))
+    aic = float(-2.0 * llf + 2.0 * len(params))
+    return llf, aic
 
 
 def fit_wave_binary_component(
@@ -262,6 +282,7 @@ def fit_wave_binary_component(
             )
 
     bse, pvalues = clustered_logit_inference(result, y, x, groups)
+    log_likelihood, aic = stable_binomial_fit_stats(result, y, x)
 
     rows = extract_ratio_rows(
         params=np.asarray(result.params, dtype=float),
@@ -297,8 +318,8 @@ def fit_wave_binary_component(
         "n_windows": n_windows,
         "covariance_method": "window-clustered sandwich with pseudo-inverse bread",
         "converged": bool(getattr(result, "converged", False)),
-        "log_likelihood": float(result.llf),
-        "aic": float(result.aic),
+        "log_likelihood": log_likelihood,
+        "aic": aic,
         "warnings": "; ".join(str(w.message) for w in caught),
     }
     return rows, diag

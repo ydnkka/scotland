@@ -336,13 +336,20 @@ def build_cluster_table(
             clusters[f"{prefix}_discordance"] - clusters[f"{prefix}_expected_discordance"]
         )
 
-    clusters["local_incidence_log"] = np.log1p(
-        clusters["mean_local_incidence_per_capita"].clip(lower=0) * 1000
+    derived_cols = pd.DataFrame(
+        {
+            "local_incidence_log": np.log1p(
+                clusters["mean_local_incidence_per_capita"].clip(lower=0) * 1000
+            ),
+            "local_seq_fraction_logit": logit_clipped(clusters["mean_local_seq_fraction"]),
+            "window_seq_fraction_logit": logit_clipped(clusters["mean_window_seq_fraction"]),
+            "test_positivity_logit": logit_clipped(
+                clusters["mean_test_positivity"].fillna(0)
+            ),
+            "log_cluster_size": np.log(clusters["cluster_size"]),
+        },
+        index=clusters.index,
     )
-    clusters["local_seq_fraction_logit"] = logit_clipped(clusters["mean_local_seq_fraction"])
-    clusters["window_seq_fraction_logit"] = logit_clipped(clusters["mean_window_seq_fraction"])
-    clusters["test_positivity_logit"] = logit_clipped(clusters["mean_test_positivity"].fillna(0))
-    clusters["log_cluster_size"] = np.log(clusters["cluster_size"])
 
     scaling_rows = []
     transforms = {
@@ -364,8 +371,11 @@ def build_cluster_table(
             for prefix in DEMOGRAPHIC_MIXING
         }
     )
+
+    standardised_cols: dict[str, pd.Series] = {}
     for z_col, raw_col in transforms.items():
-        clusters[z_col], mean, sd = zscore(clusters[raw_col])
+        source = derived_cols[raw_col] if raw_col in derived_cols else clusters[raw_col]
+        standardised_cols[z_col], mean, sd = zscore(source)
         scaling_rows.append(
             {
                 "standardised_column": z_col,
@@ -378,8 +388,9 @@ def build_cluster_table(
     for domain in DOMAINS:
         raw_col = f"{domain}_deprivation_raw"
         z_col = f"{domain}_deprivation_z"
-        clusters[raw_col] = -clusters[f"{domain}_mean_rank"]
-        clusters[z_col], mean, sd = zscore(clusters[raw_col])
+        raw_values = -clusters[f"{domain}_mean_rank"]
+        derived_cols[raw_col] = raw_values
+        standardised_cols[z_col], mean, sd = zscore(raw_values)
         scaling_rows.append(
             {
                 "standardised_column": z_col,
@@ -391,11 +402,21 @@ def build_cluster_table(
 
     lineage_counts = clusters["pango_lineage"].astype(str).value_counts()
     common_lineages = set(lineage_counts[lineage_counts >= lineage_min_clusters].index)
-    clusters["lineage_model"] = np.where(
-        clusters["pango_lineage"].astype(str).isin(common_lineages),
-        clusters["pango_lineage"].astype(str),
+    lineage = clusters["pango_lineage"].astype(str)
+    derived_cols["lineage_model"] = np.where(
+        lineage.isin(common_lineages),
+        lineage,
         "Other rare lineages",
     )
+
+    clusters = pd.concat(
+        [
+            clusters.reset_index(drop=True),
+            derived_cols.reset_index(drop=True),
+            pd.DataFrame(standardised_cols).reset_index(drop=True),
+        ],
+        axis=1,
+    ).copy()
 
     calendar = dmatrix(
         f"bs(window_idx, df={calendar_spline_df}, degree=3, include_intercept=False) - 1",
@@ -711,9 +732,16 @@ def fit_linear_model(
 
     names = list(result.model.exog_names)
     params = np.asarray(result.params, dtype=float)
-    bse = np.asarray(result.bse, dtype=float)
-    pvalues = np.asarray(result.pvalues, dtype=float)
+    cov = np.asarray(result.cov_params(), dtype=float)
+    variances = np.diag(cov)
+    negative_variance = variances < -1e-12
+    bse = np.full_like(variances, np.nan, dtype=float)
+    valid_variance = ~negative_variance & np.isfinite(variances)
+    bse[valid_variance] = np.sqrt(np.clip(variances[valid_variance], 0, None))
     idx = {name: i for i, name in enumerate(names)}
+    negative_variance_terms = [
+        name for name, invalid in zip(names, negative_variance) if invalid
+    ]
 
     rows = []
     for term in terms:
@@ -722,6 +750,8 @@ def fit_linear_model(
         i = idx[term]
         coef = float(params[i])
         stderr = float(bse[i])
+        z_value = coef / stderr if np.isfinite(stderr) and stderr > 0 else np.nan
+        p_value = float(2 * norm.sf(abs(z_value))) if np.isfinite(z_value) else np.nan
         row = {
             "domain": domain,
             "domain_label": DOMAINS[domain]["label"],
@@ -733,8 +763,13 @@ def fit_linear_model(
             "coefficient_excess_discordance": coef,
             "coefficient_percentage_points": coef * 100,
             "std_error_clustered_by_window": stderr,
-            "z": coef / stderr if stderr > 0 else np.nan,
-            "p_value": float(pvalues[i]),
+            "std_error_note": (
+                "negative clustered covariance diagonal"
+                if term in negative_variance_terms
+                else ""
+            ),
+            "z": z_value,
+            "p_value": p_value,
             "ci_low": coef - 1.96 * stderr,
             "ci_high": coef + 1.96 * stderr,
             "ci_low_percentage_points": (coef - 1.96 * stderr) * 100,
@@ -762,6 +797,8 @@ def fit_linear_model(
         "r2": float(result.rsquared),
         "log_likelihood": float(result.llf),
         "aic": float(result.aic),
+        "n_negative_cluster_variance_terms": int(negative_variance.sum()),
+        "negative_cluster_variance_terms": ";".join(negative_variance_terms),
     }
     if extra_diag_fields:
         diag.update(extra_diag_fields)

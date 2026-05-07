@@ -199,6 +199,18 @@ to `part3/tables/its_weekly_{label}.csv`.
 
 *Starred (bold) entries: p < 0.05.*
 
+### 3.5 Supplementary question tables
+
+`part3/supplementary_questions.py` generates secondary descriptive checks that
+support interpretation but do not replace the main Part 3 analysis:
+
+| Question | Output |
+|---|---|
+| Do policy-intensity correlations change when restriction intensity is lagged by 1-4 weeks? | `part3/tables/supp_lagged_intensity_correlations.csv` |
+| Is singleton fraction also associated with policy intensity? | `part3/tables/supp_lagged_intensity_correlations.csv` |
+| Are ITS level-change estimates sensitive to the pre/post window width? | `part3/tables/supp_its_window_sensitivity.csv` |
+| How close are policy-period starts to lineage dominance/overtake events? | `part3/tables/supp_policy_lineage_context.csv` |
+
 ## 4. Interpretation Notes
 
 ### 4.1 T1-onset (Oct 2020): null signal
@@ -280,5 +292,8 @@ structural and surveillance factors than with the acute policy context.
 | `part3/tables/intensity_correlations.csv` | Spearman ρ: intensity vs outcomes |
 | `part3/tables/its_coefficients.csv` | ITS OLS coefficients, CIs, p-values |
 | `part3/tables/its_weekly_{label}.csv` | Per-transition weekly ITS data (3 files) |
+| `part3/tables/supp_lagged_intensity_correlations.csv` | Supplementary lagged intensity correlations, including singleton fraction |
+| `part3/tables/supp_its_window_sensitivity.csv` | Supplementary ITS window-width sensitivity checks |
+| `part3/tables/supp_policy_lineage_context.csv` | Supplementary policy-period lineage/overtake context |
 | `part3/manuscript/figures/` | PDF, PNG, TIFF figure outputs |
 | `utils/policy.py` | Policy period definitions + pandas helpers |
