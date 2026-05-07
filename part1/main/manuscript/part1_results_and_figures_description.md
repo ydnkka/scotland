@@ -80,313 +80,414 @@ but BA.4 has a much smaller sample and should be treated cautiously. XBB is
 included in descriptives but not in wave-specific regression models because it
 falls below the minimum cluster count.
 
+---
+
 ## Main Figure 1: Main Cluster Outcome Models
 
-File stem: `fig1_main_cluster_outcomes`
+**File:** `fig1_main_cluster_outcomes`
 
-This figure shows the main hurdle and zero-truncated negative-binomial results
-for cluster size and geographic spread. Each point is an adjusted ratio per
-1 SD higher covariate. For hurdle panels, the ratio is an odds ratio. For
-positive-count panels, the ratio is a ZTNB count ratio.
+**What it shows.** A coefficient plot of adjusted ratios from the pooled hurdle
+and zero-truncated negative-binomial (ZTNB) models for cluster size and
+geographic spread. The four panels correspond to the cluster size hurdle (odds
+ratio), positive cluster size (ZTNB count ratio), geographic spread hurdle (odds
+ratio), and positive geographic spread (ZTNB count ratio). Each point is an
+adjusted ratio per 1 SD higher covariate, with 95% confidence intervals. The
+main exposure (SIMD deprivation) and surveillance and incidence covariates
+(local incidence, local sequencing fraction, window sequencing proportion, test
+positivity) are all shown alongside lineage and calendar time adjustments.
 
-### SIMD Deprivation
+**Key visual patterns.** The SIMD deprivation point falls clearly below 1.0 for
+positive cluster size (count ratio 0.926) and positive geographic spread (count
+ratio 0.851), and modestly below 1.0 for the cluster size hurdle (OR 0.971),
+while the geographic spread hurdle estimate sits close to 1.0. Surveillance
+covariates far dominate the SIMD signal: test positivity shows count ratios of
+2.65 for positive cluster size and 3.00 for positive geographic spread; local
+sequencing fraction shows count ratios of 3.24 and 2.27 respectively. Higher
+local incidence and window sequencing proportion are also consistently and
+visibly associated with larger and more dispersed clusters.
 
-In the pooled main model:
+**Suggested results paragraph.**
+> In the pooled hurdle/ZTNB models, higher cluster-level SIMD deprivation was
+> associated with slightly lower odds of being non-singleton (OR 0.971, 95% CI
+> 0.960–0.983, p < 0.001) and smaller positive cluster size (count ratio 0.926,
+> 95% CI 0.869–0.987, p = 0.018), but was not associated with geographic spread
+> at the hurdle stage (OR 1.004, 95% CI 0.992–1.016, p = 0.522). Among clusters
+> exceeding the structural minimum, positive geographic spread was substantially
+> lower with higher deprivation (count ratio 0.851, 95% CI 0.792–0.915,
+> p < 0.001). By contrast, local sequencing fraction (count ratio 3.24 for
+> positive cluster size; 2.27 for positive geographic spread), test positivity
+> (2.65 and 3.00 respectively), and window-level sequencing proportion showed far
+> larger positive associations with cluster scale, consistent with surveillance
+> and epidemic intensity being the dominant structural determinants of observed
+> cluster size and geographic spread.
 
-- Cluster size hurdle: OR 0.971, 95% CI 0.960 to 0.983, p = 1.43e-06.
-- Positive cluster size: ZTNB count ratio 0.926, 95% CI 0.869 to 0.987,
-  p = 0.018.
-- Geographic spread hurdle: OR 1.004, 95% CI 0.992 to 1.016, p = 0.522.
-- Positive geographic spread: ZTNB count ratio 0.851, 95% CI 0.792 to 0.915,
-  p = 1.24e-05.
-
-The strongest SIMD deprivation result is therefore not larger clusters, but
-smaller positive cluster size and lower positive geographic spread after
-adjustment.
-
-### Incidence And Surveillance Conditions
-
-Local incidence, local sequencing fraction, window sequencing proportion, and
-test positivity are much more consistently associated with larger apparent
-clusters:
-
-- Higher local incidence is associated with higher odds of exceeding the
-  structural minimum for both modelled count outcomes and with larger positive
-  cluster size and geographic spread.
-- Higher local sequencing fraction is strongly associated with positive cluster
-  size, count ratio 3.24, and positive geographic spread, count ratio 2.27.
-- Higher window sequencing proportion is positively associated with every count
-  component.
-- Higher test positivity has the largest and most consistent positive
-  associations, including positive cluster size count ratio 2.65 and positive
-  geographic spread count ratio 3.00.
-
-Interpretation: local epidemic intensity and sampling conditions have a major
-relationship with reconstructed cluster scale. These covariates are not merely
-technical nuisances; they shape what a genomic cluster looks like in the data.
+---
 
 ## Main Figure 2: Main Cluster Mixing Models
 
-File stem: `fig2_main_cluster_mixing`
+**File:** `fig2_main_cluster_mixing`
 
-This figure shows adjusted changes in excess mixing, in percentage points per
-1 SD higher covariate. The outcomes are SIMD-quintile mixing, age-band mixing,
-sex mixing, and joint SIMD-age-sex profile mixing.
+**What it shows.** A coefficient plot of adjusted changes in excess mixing, in
+percentage points per 1 SD higher covariate. The four panels show results for
+SIMD-quintile excess mixing, age-band excess mixing, sex excess mixing, and
+joint SIMD-age-sex profile excess mixing, all modelled among non-singleton
+clusters. Each point is an adjusted change in excess discordance (observed minus
+expected within lineage-calendar stratum) per 1 SD covariate increase, with
+95% confidence intervals.
 
-### SIMD Deprivation
+**Key visual patterns.** The SIMD deprivation estimate for age excess mixing
+(+1.66 pp) is the largest and most precisely estimated positive estimate across
+the figure. Sex excess mixing shows a clear negative SIMD estimate (−0.78 pp).
+The SIMD-quintile mixing estimate straddles zero (+0.31 pp), while joint profile
+mixing is positive but smaller (+0.48 pp). Cluster size is a visible driver of
+mixing: larger clusters show consistently higher SIMD, age, and joint-profile
+mixing but lower sex mixing. Local incidence is positively associated with SIMD,
+age, and joint-profile mixing. Sequencing and test-positivity covariates
+generally push mixing estimates downward.
 
-Overall SIMD deprivation has outcome-specific mixing associations:
+**Suggested results paragraph.**
+> Higher cluster-level SIMD deprivation was not significantly associated with
+> SIMD-quintile excess mixing (+0.31 pp, 95% CI −0.18 to +0.80, p = 0.208), but
+> was positively associated with age excess mixing (+1.66 pp, 95% CI +1.29 to
+> +2.03, p < 0.001) and joint SIMD-age-sex profile mixing (+0.48 pp, 95% CI
+> +0.29 to +0.67, p < 0.001), and negatively associated with sex mixing (−0.78
+> pp, 95% CI −1.16 to −0.39, p < 0.001). Cluster size was the strongest
+> cross-outcome driver of excess mixing: larger clusters showed higher SIMD, age,
+> and joint-profile mixing but lower sex mixing. Surveillance covariates
+> (sequencing proportion, test positivity) generally reduced mixing estimates,
+> consistent with sampling conditions influencing the observed within-cluster
+> demographic composition.
 
-- SIMD-quintile excess mixing: +0.31 pp, 95% CI -0.18 to 0.80, p = 0.208.
-- Age excess mixing: +1.66 pp, 95% CI 1.29 to 2.03, p = 2.57e-18.
-- Sex excess mixing: -0.78 pp, 95% CI -1.16 to -0.39, p = 8.57e-05.
-- Joint SIMD-age-sex profile excess mixing: +0.48 pp, 95% CI 0.29 to 0.67,
-  p = 8.27e-07.
-
-Thus, deprivation is not clearly associated with more mixing across SIMD
-quintiles themselves, but it is associated with more age mixing and more joint
-socio-demographic profile mixing.
-
-### Other Covariates
-
-Cluster size is a strong driver of mixing estimates. Larger clusters have more
-SIMD, age, and joint-profile excess mixing, but lower sex excess mixing. Local
-incidence is positively associated with SIMD, age, and joint-profile mixing.
-Sequencing and test-positivity covariates generally move SIMD and joint-profile
-mixing downward, which is consistent with surveillance conditions influencing
-the observed composition of genomic clusters.
+---
 
 ## Main Figure 3: SIMD-Domain Mixing
 
-File stem: `fig3_simd_domain_mixing`
+**File:** `fig3_simd_domain_mixing`
 
-This figure compares the overall SIMD deprivation measure with individual SIMD
-domains. It has four panels: domain-quintile mixing, age mixing, sex mixing, and
-joint age-sex mixing.
+**What it shows.** A four-panel coefficient plot comparing the overall SIMD
+deprivation measure with each individual SIMD domain (income, employment,
+education, health, crime, access, housing) for domain-quintile mixing (A), age
+mixing (B), sex mixing (C), and joint age-sex profile mixing (D). Each point is
+an adjusted change in excess discordance per 1 SD domain-deprivation increase
+among non-singleton clusters, with 95% confidence intervals.
 
-### Domain-Quintile Mixing
+**Key visual patterns.** In panel A, two domains (access, −2.08 pp; housing,
+−1.19 pp) are clearly left of zero, while education (+1.17 pp) and crime
+(+1.09 pp) are clearly right of zero — a contrast that spans roughly 3 pp and
+is the dominant visual feature of the panel. The overall SIMD estimate sits
+between them, close to zero. In panel B (age mixing), most domain estimates
+including overall SIMD are positive, with access deprivation as an outlier in
+the negative direction. Panel C (sex mixing) shows predominantly negative
+estimates across domains, broadly in line with the main SIMD result. Panel D
+(joint age-sex mixing) is mostly positive with more variable magnitudes.
 
-The domain-specific effects are not interchangeable:
+**Suggested results paragraph.**
+> SIMD-domain models revealed heterogeneity in domain-quintile mixing that the
+> overall SIMD measure conceals. Education deprivation (+1.17 pp, 95% CI +0.64
+> to +1.69) and crime deprivation (+1.09 pp, 95% CI +0.55 to +1.64) were
+> associated with greater within-cluster mixing across domain quintiles, whereas
+> access deprivation (−2.08 pp, 95% CI −2.50 to −1.66) and housing deprivation
+> (−1.19 pp, 95% CI −1.77 to −0.62) were associated with less mixing — a
+> direction opposite to education and crime. Demographic mixing patterns (panels
+> B–D) were broadly consistent with the main SIMD estimates: most domains showed
+> positive age mixing and negative sex mixing, with access deprivation again
+> behaving as an outlier, showing lower age mixing in contrast to all other
+> domains.
 
-- Education deprivation is associated with higher domain-quintile excess mixing:
-  +1.17 pp, 95% CI 0.64 to 1.69.
-- Crime deprivation is also associated with higher domain-quintile excess
-  mixing: +1.09 pp, 95% CI 0.55 to 1.64.
-- Access deprivation is associated with lower domain-quintile excess mixing:
-  -2.08 pp, 95% CI -2.50 to -1.66.
-- Housing deprivation is also associated with lower domain-quintile excess
-  mixing: -1.19 pp, 95% CI -1.77 to -0.62.
-- Overall, income, employment, and health deprivation have smaller or less
-  certain domain-quintile mixing estimates.
-
-This suggests that the "SIMD effect" depends on the social process represented
-by the domain. Education and crime domains behave differently from access and
-housing domains.
-
-### Domain-Demographic Mixing
-
-Age mixing is higher for most deprivation domains, including overall SIMD,
-income, employment, education, health, crime, and housing. Access deprivation is
-the exception and is associated with lower age mixing.
-
-Sex mixing tends to be lower with higher deprivation for overall SIMD and most
-domains. Joint age-sex mixing is generally higher for overall, income,
-employment, education, health, and housing deprivation, but weaker for access
-and crime.
+---
 
 ## Main Figure 4: Wave-Specific SIMD Effects On Cluster Outcomes
 
-File stem: `fig4_wave_specific_cluster_outcomes`
+**File:** `fig4_wave_specific_cluster_outcomes`
 
-This figure shows the per-wave overall SIMD deprivation effect on cluster size
-and geographic spread. It uses the same hurdle/ZTNB framing as the main count
-analysis, but models are fitted separately by wave.
+**What it shows.** A multi-wave coefficient plot showing the per-wave overall
+SIMD deprivation effect on cluster size and geographic spread. Each wave
+contributes four estimates — cluster size hurdle (OR), positive cluster size
+(count ratio), geographic spread hurdle (OR), and positive geographic spread
+(count ratio) — fitted using the same hurdle/ZTNB framing as the pooled main
+analysis. Wave-specific models adjust for the same covariates as the main model;
+within-wave lineage dummies are included where estimable.
 
-The wave-specific outcome models adjust for the same main covariates: calendar
-time spline, local incidence, local sequencing fraction, window sequencing
-proportion, test positivity, and SIMD deprivation. Within-wave lineage dummies
-are included where estimable, with rank-redundant columns dropped after the
-substantive covariates and calendar spline terms are kept.
+**Key visual patterns.** Delta stands out visually with all four estimates
+clearly below their null values: cluster size hurdle OR ~0.93, positive cluster
+size count ratio ~0.80, geographic spread hurdle OR ~0.96, positive geographic
+spread count ratio ~0.78. BA.2 and BA.4 show positive positive-count estimates
+(BA.2 positive cluster size count ratio 1.19; BA.4 1.68), in contrast to Delta.
+Earlier waves (B.1.177, Alpha) show estimates closer to the null with wider
+confidence intervals. BA.4 has the widest intervals, reflecting its small sample
+(2,669 clusters). B.1.177, Alpha, BA.5, and BQ.1 show more mixed or
+outcome-specific patterns.
 
-### Main Patterns
+**Suggested results paragraph.**
+> Per-wave SIMD models showed that the pooled negative association with cluster
+> size and geographic spread was not stable across the epidemic. During the Delta
+> wave, deprivation was consistently associated with lower odds of non-singleton
+> clusters (OR 0.934, 95% CI 0.921–0.947), smaller positive cluster size (count
+> ratio 0.797, 95% CI 0.725–0.876), lower odds of multi-datazone clusters (OR
+> 0.958, 95% CI 0.945–0.971), and lower positive geographic spread (count ratio
+> 0.781, 95% CI 0.703–0.867). BA.2 showed a contrasting pattern, with higher
+> positive cluster size (count ratio 1.19, 95% CI 1.07–1.32) and weakly higher
+> positive geographic spread (count ratio 1.10, 95% CI 0.97–1.24). BA.4 also
+> showed positive positive-count associations, but with wide confidence intervals
+> reflecting the small wave sample (n = 2,669). B.1.177 and Alpha showed weaker
+> or outcome-specific associations. These wave-specific patterns argue against a
+> single stable deprivation effect and suggest that epidemic and lineage context
+> substantially modifies how deprivation relates to genomic cluster structure.
 
-Delta shows the clearest negative deprivation association:
-
-- Cluster size hurdle: OR 0.934, 95% CI 0.921 to 0.947.
-- Positive cluster size: count ratio 0.797, 95% CI 0.725 to 0.876.
-- Geographic spread hurdle: OR 0.958, 95% CI 0.945 to 0.971.
-- Positive geographic spread: count ratio 0.781, 95% CI 0.703 to 0.867.
-
-BA.2 shows a different pattern among clusters exceeding the structural minimum:
-
-- Positive cluster size: count ratio 1.19, 95% CI 1.07 to 1.32.
-- Positive geographic spread: count ratio 1.10, 95% CI 0.97 to 1.24.
-
-BA.4 also shows positive positive-count effects:
-
-- Positive cluster size: count ratio 1.68, 95% CI 0.27 to 10.28.
-- Positive geographic spread: count ratio 1.80, 95% CI 1.26 to 2.58.
-
-However, BA.4 has only 2,669 clusters, so these estimates should be interpreted
-as exploratory and more sensitive to sparse-wave structure.
-
-BA.5 has lower odds of non-singleton clusters and lower positive geographic
-spread with higher deprivation. BQ.1 has lower odds of non-singleton clusters
-but higher positive cluster size and higher positive geographic spread among
-clusters exceeding the structural minimum.
-B.1.177 and Alpha show weaker or outcome-specific associations.
-
-### Interpretation
-
-The per-wave figure argues against a single stable deprivation effect across
-the pandemic. Instead, deprivation effects depend on the lineage and epidemic
-context. The pooled negative association with cluster size and geographic
-spread is heavily compatible with the Delta pattern, whereas later Omicron
-subwaves show more heterogeneous associations.
+---
 
 ## Supplementary Figure 1: Outcome Distributions
 
-File stem: `supp_fig1_outcome_distributions`
+**File:** `supp_fig1_outcome_distributions`
 
-This figure now summarises the model outcomes among non-singleton clusters
-(`cluster_size > 1`). The first row shows the distributions of cluster size,
-duration, and distinct datazones in this non-singleton population. The second
-row shows observed-minus-expected excess mixing for age, sex, and SIMD
-deprivation quintile composition.
+**What it shows.** A two-row distributional summary for the non-singleton cluster
+population. The first row shows the distributions of cluster size, duration, and
+distinct datazones among the 84,067 non-singleton clusters. The second row shows
+the distributions of observed-minus-expected excess mixing for age, sex, and
+SIMD deprivation quintile composition. All panels use the same non-singleton
+population.
 
-In the main cluster table, 84,067 clusters are non-singletons (43.5% of all
-clusters). Among these non-singleton clusters:
+**Key visual patterns.** All three count outcomes (size, duration, datazones)
+show long right tails even after restricting to non-singletons, with modal peaks
+at the minimum (size 2, duration 0 days, datazones 1) and medians at 3, 4 days,
+and 3 respectively. Maximum values (2,792 sequences, 19 days, 2,100 datazones)
+are far above the median. In the mixing row, age and sex excess mixing are
+centred slightly above zero, while SIMD deprivation mixing is centred slightly
+below zero — visually establishing that same-quintile SIMD pairs are
+over-represented within clusters before any regression adjustment.
 
-- The median cluster size is 3 sequences, and 38.8% have size 2.
-- The median duration is 4 days; 15.3% still have duration zero days.
-- The median geographic spread is 3 distinct datazones; 12.0% remain within a
-  single datazone.
-- The maximum observed values are 2,792 sequences, 19 days, and 2,100
-  datazones.
+**Suggested results paragraph.**
+> Among 84,067 non-singleton clusters, the distributions of cluster size,
+> duration, and geographic spread were highly right-skewed. Median cluster size
+> was 3 sequences, with 38.8% of non-singleton clusters having size 2; median
+> duration was 4 days, with 15.3% still at duration zero; and median distinct
+> datazones was 3, with 12.0% confined to a single datazone. Maximum observed
+> values reached 2,792 sequences, 19 days, and 2,100 datazones. Observed-minus-
+> expected excess mixing was centred slightly above zero for age and sex and
+> slightly below zero for SIMD deprivation quintile, indicating that same-quintile
+> SIMD pairs are modestly over-represented within clusters relative to the
+> lineage-window expectation, motivating the regression mixing analyses.
 
-The count outcomes retain long right tails even after removing singletons. The
-mixing panels show that the excess-mixing outcomes are also heterogeneous, with
-age and sex mixing centred slightly above zero and SIMD deprivation mixing
-centred slightly below zero.
+---
 
 ## Supplementary Figure 2: Size-Adjusted Positive Counts
 
-File stem: `supp_fig2_size_adjusted_positive_counts`
+**File:** `supp_fig2_size_adjusted_positive_counts`
 
-This sensitivity analysis asks whether the geographic spread effect remains
-after additionally adjusting the positive-count model for cluster size.
+**What it shows.** A coefficient plot comparing the primary positive-count model
+for geographic spread with a size-adjusted version that additionally includes
+log(cluster size) as a covariate. The SIMD deprivation estimate is highlighted
+in both versions to show how the association changes after conditioning on
+cluster size.
 
-After size adjustment, overall SIMD deprivation is weakly positively associated
-with:
+**Key visual patterns.** The SIMD deprivation estimate for positive geographic
+spread visibly flips sign between the primary model (count ratio ~0.85, clearly
+left of 1.0) and the size-adjusted model (count ratio ~1.03, right of 1.0). This
+sign reversal is the central visual message of the figure: the unadjusted
+negative geographic-spread result is explained by deprivation's association with
+cluster size, not by reduced geographic diffusion at comparable cluster sizes.
 
-- positive geographic spread: count ratio 1.03, 95% CI 1.01 to 1.04,
-  p = 4.67e-11
+**Suggested results paragraph.**
+> After additionally adjusting the positive-count geographic spread model for
+> cluster size, the overall SIMD deprivation estimate changed direction from the
+> primary model (count ratio 0.851, 95% CI 0.792–0.915) to a weakly positive
+> association (count ratio 1.027, 95% CI 1.010–1.044, p < 0.001). This sign
+> reversal indicates that more deprived clusters are generally smaller, and that
+> the unadjusted negative geographic-spread result is driven primarily by
+> cluster-size differences. Among clusters of comparable size, there is a
+> marginally wider geographic spread with higher deprivation, suggesting that
+> deprivation influences cluster scale rather than geographic diffusion per se.
 
-This is important because the unadjusted positive geographic-spread model shows
-a negative deprivation association. The size-adjusted sensitivity suggests that
-more deprived clusters are generally smaller, but among clusters of comparable
-size there may be slightly wider geographic spread.
+---
 
 ## Supplementary Figure 3: Log-Linear Versus Hurdle/ZTNB
 
-File stem: `supp_fig3_loglinear_vs_hurdle_ztnb`
+**File:** `supp_fig3_loglinear_vs_hurdle_ztnb`
 
-This figure compares the previous log-linear framing with the main hurdle/ZTNB
-formulation.
+**What it shows.** A side-by-side coefficient comparison for the SIMD deprivation
+association with cluster size and geographic spread, contrasting the log-linear
+geometric mean ratio model with the hurdle (odds ratio) and ZTNB (count ratio)
+components of the two-part main model. All estimates are on a log-ratio scale
+and adjusted for the same set of covariates.
 
-For SIMD deprivation, the log-linear estimates are:
+**Key visual patterns.** The log-linear estimates for SIMD deprivation are both
+close to 1.0 (cluster size geometric mean ratio 0.992; geographic spread
+geometric mean ratio 1.001), with narrow intervals straddling the null. In
+contrast, the hurdle and positive-count components show clearly differentiated
+estimates in both directions. The figure makes visually explicit that the
+log-linear model averages over the structural mass at the minimum and thereby
+masks the within-component patterns that the two-part model separates.
 
-- cluster size geometric mean ratio 0.992, 95% CI 0.987 to 0.997
-- geographic spread geometric mean ratio 1.001, 95% CI 0.996 to 1.006
+**Suggested results paragraph.**
+> Log-linear models fitted for comparison produced SIMD deprivation estimates
+> substantially attenuated relative to the hurdle/ZTNB main models: geometric
+> mean ratios of 0.992 (95% CI 0.987–0.997) for cluster size and 1.001 (95% CI
+> 0.996–1.006) for geographic spread. These near-null log-linear estimates
+> reflect the averaging of hurdle and positive-count components across the
+> structural mass at the count minimum, masking the negative positive-count
+> associations visible in the two-part models. This comparison supports the
+> decision to use hurdle/ZTNB models as the primary count analytical framework.
 
-The log-linear model substantially attenuates the positive-count patterns seen
-in the ZTNB models, especially for cluster size and geographic spread. This
-supports the decision to use hurdle/ZTNB models for the main count outcomes.
+---
 
 ## Supplementary Figure 4: SIMD-Domain Cluster Outcomes
 
-File stem: `supp_fig4_simd_domain_cluster_outcomes`
+**File:** `supp_fig4_simd_domain_cluster_outcomes`
 
-This figure extends the main count models to each SIMD domain. It uses the same
-two-part count structure as Figure 1.
+**What it shows.** A multi-domain extension of Main Figure 1, showing each SIMD
+domain's (income, employment, education, health, crime, access, housing) adjusted
+effect on all four count model components: cluster size hurdle, positive cluster
+size, geographic spread hurdle, and positive geographic spread. The two-part
+count structure is the same as in the main analysis.
 
-The strongest negative domain effects are for housing and crime deprivation.
-Housing deprivation is associated with lower odds of non-singleton clusters,
-lower odds of multi-datazone clusters, and lower positive geographic spread.
-Crime deprivation is associated with smaller positive cluster size and lower
-positive geographic spread.
+**Key visual patterns.** Housing and crime deprivation stand out with the
+clearest negative count-component associations: housing is associated with lower
+odds of non-singleton clusters, lower odds of multi-datazone clusters, and lower
+positive geographic spread; crime with smaller positive cluster size and lower
+positive geographic spread. Access deprivation behaves distinctly from all other
+domains — it is positively associated with the geographic spread hurdle and with
+positive geographic spread — making it visually separable from the leftward
+cluster of other domains. Overall SIMD and income/employment estimates are
+intermediate in magnitude.
 
-Access deprivation behaves differently. It is associated with slightly higher
-odds of non-singleton clusters and higher positive geographic spread, while
-several other domains show negative positive-count associations. This supports
-reporting SIMD domains rather than treating overall SIMD as a single mechanism.
+**Suggested results paragraph.**
+> SIMD-domain count models showed that housing and crime deprivation had the
+> strongest negative associations with positive cluster size and positive
+> geographic spread, while access deprivation was associated with higher odds of
+> multi-datazone clusters and higher positive geographic spread, in the opposite
+> direction to most other domains. These domain-specific differences reinforce the
+> conclusion that overall SIMD deprivation conflates distinct social mechanisms
+> with different implications for genomic cluster structure, and that the access
+> domain captures a different geography of deprivation from housing or crime.
+
+---
 
 ## Supplementary Figure 5: SIMD-Domain Quintile Mixing
 
-File stem: `supp_fig5_simd_domain_quintile_mixing`
+**File:** `supp_fig5_simd_domain_quintile_mixing`
 
-This one-panel figure isolates the domain-quintile mixing result from Figure 3.
-It is useful as a cleaner visual if the manuscript needs to focus specifically
-on socioeconomic mixing rather than demographic mixing.
+**What it shows.** A single-panel coefficient plot isolating the domain-quintile
+mixing estimates for each SIMD domain, analogous to panel A of Main Figure 3
+but without the demographic mixing panels. The SIMD domains (income, employment,
+education, health, crime, access, housing) are displayed alongside the overall
+SIMD estimate for reference.
 
-The key contrast remains education/crime versus access/housing:
+**Key visual patterns.** The education/crime versus access/housing contrast is
+the dominant visual feature: education (+1.17 pp) and crime (+1.09 pp) are
+clearly right of zero, access (−2.08 pp) and housing (−1.19 pp) clearly left,
+spanning the widest range of any figure in the mixing series. Overall SIMD sits
+near zero between these extremes. Income, employment, and health estimates are
+closer to the null.
 
-- education and crime deprivation are associated with more domain-quintile
-  excess mixing
-- access and housing deprivation are associated with less domain-quintile
-  excess mixing
+**Suggested results paragraph.**
+> The domain-quintile mixing figure (Supplementary Figure 5) isolates the
+> socioeconomic mixing contrast found in Main Figure 3. Education and crime
+> deprivation were associated with greater within-cluster mixing across domain
+> quintiles (education +1.17 pp, 95% CI +0.64 to +1.69; crime +1.09 pp, 95% CI
+> +0.55 to +1.64), while access deprivation (−2.08 pp, 95% CI −2.50 to −1.66)
+> and housing deprivation (−1.19 pp, 95% CI −1.77 to −0.62) showed the opposite
+> pattern. This contrast supports interpreting domain-specific deprivation as
+> capturing qualitatively different social geographies rather than a single
+> deprivation mechanism.
+
+---
 
 ## Supplementary Figure 6: SIMD-Domain Demographic Mixing
 
-File stem: `supp_fig6_simd_domain_demographic_mixing`
+**File:** `supp_fig6_simd_domain_demographic_mixing`
 
-This figure separates age, sex, and joint age-sex mixing for each SIMD domain.
-It shows that most domains have positive age-mixing associations, most have
-negative sex-mixing associations, and several have positive joint age-sex
-associations.
+**What it shows.** A three-panel coefficient plot showing age excess mixing (A),
+sex excess mixing (B), and joint age-sex profile excess mixing (C) for each SIMD
+domain and for overall SIMD. Each estimate is the adjusted change in excess
+discordance per 1 SD domain-deprivation increase among non-singleton clusters,
+with 95% confidence intervals.
 
-Access deprivation again behaves differently, with negative age mixing and no
-clear sex or joint age-sex association in the pooled domain model.
+**Key visual patterns.** Age mixing (panel A) is positive for most domains,
+forming a cluster of estimates above zero; access deprivation is a clear visual
+outlier below zero. Sex mixing (panel B) is predominantly negative across
+domains, mirroring the main SIMD result. Joint age-sex profile mixing (panel C)
+is broadly positive but more variable in magnitude than age mixing alone. Access
+deprivation consistently behaves differently from other domains across all three
+panels.
+
+**Suggested results paragraph.**
+> Across SIMD domains, age excess mixing was positively associated with
+> deprivation for most domains (income, employment, education, health, crime,
+> housing), with access deprivation as the exception showing lower age mixing.
+> Sex mixing showed the reverse pattern, with most domains showing negative
+> associations. Joint age-sex profile mixing was broadly positive for most
+> domains but more variable across them. The consistent behavioural exception of
+> the access domain across all three demographic mixing outcomes is notable and
+> may reflect the distinct geographic and social processes captured by the
+> access-to-services dimension of deprivation.
+
+---
 
 ## Supplementary Figure 7: Wave-Specific Domain-Demographic Mixing
 
-File stem: `supp_fig7_wave_specific_domain_demographic_mixing`
+**File:** `supp_fig7_wave_specific_domain_demographic_mixing`
 
-This heatmap shows whether the domain-demographic mixing associations are stable
-across waves. They are not fully stable.
+**What it shows.** A heatmap showing domain-specific adjusted changes in age
+mixing, sex mixing, and joint age-sex profile mixing for each SIMD domain across
+epidemic waves. Each cell represents the adjusted excess-mixing estimate for one
+domain × wave combination, coloured by direction and magnitude. This is an
+exploratory heterogeneity analysis.
 
-Age mixing shows the most consistent positive domain-deprivation pattern across
-B.1.177, Alpha, Delta, BA.1, and BA.5 for many domains. Access is often an
-exception and can be negative. Sex mixing is more variable across waves; BA.5
-shows several negative sex-mixing estimates, whereas access in BA.5 is positive.
-Joint age-sex mixing is generally positive in earlier waves and Delta for
-several domains, but again varies by domain and wave.
+**Key visual patterns.** Age mixing shows the most consistent positive domain-
+deprivation pattern across waves, with positive values visible in most domain ×
+wave cells for B.1.177, Alpha, and Delta. Access deprivation is predominantly
+negative for age mixing across all waves, making it a consistent exception.
+Sex mixing is more variable: BA.5 shows several negative estimates across
+domains, whereas access in BA.5 is positive. Joint age-sex mixing is generally
+positive in earlier waves and Delta for most domains, but varies more in Omicron
+subwaves. Cells for smaller waves (BA.4, BQ.1, XBB) are visibly noisier.
 
-This figure should be interpreted as an exploratory heterogeneity analysis,
-especially for smaller waves.
+**Suggested results paragraph.**
+> Wave-specific domain-demographic mixing patterns were broadly consistent with
+> the pooled estimates but showed heterogeneity across waves. Positive age mixing
+> associations were visible in most domain × wave cells, particularly for
+> B.1.177, Alpha, and Delta, with access deprivation as a consistent exception
+> across all waves. Sex mixing was more variable: BA.5 showed negative estimates
+> for several domains. The results for smaller waves (BA.4, BQ.1, XBB) should be
+> interpreted cautiously given reduced cluster counts, and the wave-specific
+> heatmap is best read as an exploratory check on pooled-estimate stability
+> rather than a definitive wave-stratified analysis.
+
+---
 
 ## Supplementary Figure 8: Observed-Versus-Expected Mixing Matrices
 
-File stem: `supp_fig8_observed_expected_mixing_matrices`
+**File:** `supp_fig8_observed_expected_mixing_matrices`
 
-This figure shows the observed-minus-expected pair probability matrices for
-SIMD quintile and age band. It gives a descriptive view of which pairs drive the
-excess-mixing summaries.
+**What it shows.** Two heatmaps of observed-minus-expected pairwise probability
+matrices: one for SIMD quintile pairs (left) and one for age-band pairs (right).
+Each cell shows the mean excess probability for a given pair type across all
+non-singleton clusters, expressed in percentage points above or below expectation
+within the same lineage and calendar window. The matrices give a descriptive view
+of which pairings drive the aggregate discordance metrics.
 
-For SIMD quintiles, the largest overall excess is same-quintile 1 pairs, about
-+0.28 percentage points above expected. Some cross-quintile pairs, especially
-quintile 4 with 5 and quintile 1 with 5, are slightly below expected. The
-absolute pair-probability differences are small because they are measured over
-the full pair matrix.
+**Key visual patterns.** For SIMD quintiles, the diagonal (same-quintile pairs)
+is positive throughout, with the strongest excess at quintile 1 × quintile 1
+(most deprived, +0.28 pp). Off-diagonal cells are close to zero or slightly
+negative, particularly for quintile 4 × 5 and quintile 1 × 5 pairings. For age,
+the within-band diagonal is positive across bands, peaking at 20–24 × 20–24
+(+0.21 pp); adjacent young-adult pairs (20–24 × 25–29) are also positive. Some
+child-to-adult pairings (0–4, 5–12 with adult bands) fall slightly below zero.
 
-For age, the largest overall excess is within age band 20-24, about +0.21
-percentage points above expected. Adjacent young-adult pairs, such as 20-24
-with 25-29, also show positive excess. Several child-to-adult pairings are
-slightly below expected.
+**Suggested results paragraph.**
+> The observed-minus-expected mixing matrices (Supplementary Figure 8) illustrate
+> the pairwise structure underlying the aggregate excess-discordance metrics. For
+> SIMD quintiles, same-quintile pairs showed positive excess in all quintiles,
+> with the most-deprived quintile 1 pairs showing the largest excess (+0.28 pp),
+> consistent with spatially concentrated transmission within deprived areas. For
+> age, within-band pairs showed the strongest positive excess in young adults
+> (20–24: +0.21 pp), with adjacent young-adult pairs also above expectation.
+> Some child-to-adult pairings were slightly below expectation. These patterns
+> are consistent with genomic clusters preferentially capturing transmission
+> chains within socioeconomically and age-similar groups, even after accounting
+> for lineage and calendar-window composition.
 
-The matrices are descriptive rather than inferential. They help make the
-regression mixing outcomes more interpretable by showing the pairwise structure
-behind the aggregate discordance metrics.
+---
 
 ## Sensitivity Analysis Results
 
@@ -552,7 +653,7 @@ The sensitivity analyses support a cautious version of the main findings:
   remains near null, and joint-profile mixing is directionally positive but
   less robust to health-board clustering.
 
-## Suggested Results Paragraph
+## Overall Suggested Results Paragraph
 
 In the main hurdle/ZTNB models, higher cluster-level SIMD deprivation was not
 associated with larger or more geographically dispersed genomic clusters after

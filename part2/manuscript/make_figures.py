@@ -247,7 +247,6 @@ def plot_vaccinated_cases_over_time(
         fontsize=5.6,
         title_fontsize=6,
         loc="upper left",
-        ncol=2,
         frameon=False,
         handlelength=1.0,
         handletextpad=0.4,
@@ -275,11 +274,6 @@ def plot_vaccinated_cases_over_time(
             .rolling(SMOOTH_WINDOW, center=True, min_periods=2)
             .mean()
         )
-        # leg_label = (
-        #     f"Q{q} (most deprived)" if q == 1
-        #     else f"Q{q} (least deprived)" if q == 5
-        #     else f"Q{q}"
-        # )
         ax.plot(
             sub["case_week"], smooth * 100,
             color=style.SIMD_QUINTILE_PALETTE[q],
