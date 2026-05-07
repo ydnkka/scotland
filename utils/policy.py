@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+import numpy as np
+import pandas as pd
 import polars as pl
+
+if TYPE_CHECKING:
+    pass
 
 _PERIOD_CODES = [
     "E0", "L1", "P1", "P2", "P3", "T1", "F5", "L2",
@@ -73,3 +80,78 @@ def attach_period(df: pl.DataFrame, date_col: str) -> pl.DataFrame:
         .with_columns(assign_period(df[date_col]).alias("policy_period"))
         .join(period_lookup, on="policy_period", how="left")
     )
+
+
+# ---------------------------------------------------------------------------
+# Pandas-compatible helpers
+# ---------------------------------------------------------------------------
+
+# Ordered list of policy periods as a pandas DataFrame, sorted by start_date.
+POLICY_PERIODS_PD: pd.DataFrame = pd.DataFrame({
+    "period_code": _PERIOD_CODES,
+    "period_label": [
+        "Emergence", "First lockdown", "Route map phase 1", "Route map phase 2",
+        "Route map phase 3", "Pre-tier tightening", "Five-tier framework",
+        "Second lockdown", "Stay local — Level 3", "Level 3", "Level 2 / Level 1",
+        "Level 0", "Near-normal", "Omicron wave", "Final easing", "Post-restriction",
+    ],
+    "start_date": pd.to_datetime([
+        "2020-03-01", "2020-03-24", "2020-05-29", "2020-06-19", "2020-07-10",
+        "2020-10-02", "2020-11-02", "2021-01-05", "2021-04-02", "2021-04-26",
+        "2021-05-17", "2021-07-19", "2021-08-09", "2021-11-29", "2022-01-24", "2022-04-18",
+    ]).normalize(),
+    "end_date": pd.to_datetime([
+        "2020-03-23", "2020-05-28", "2020-06-18", "2020-07-09", "2020-10-01",
+        "2020-11-01", "2021-01-04", "2021-04-01", "2021-04-25", "2021-05-16",
+        "2021-07-18", "2021-08-08", "2021-11-28", "2022-01-23", "2022-04-17", "2023-05-05",
+    ]).normalize(),
+    "intensity": [15, 100, 72, 52, 30, 55, 65, 95, 65, 55, 38, 20, 10, 42, 15, 3],
+})
+
+# Ordered period codes and labels for use in figures.
+PERIOD_ORDER: list[str] = _PERIOD_CODES
+
+PERIOD_LABELS: dict[str, str] = dict(
+    zip(POLICY_PERIODS_PD["period_code"], POLICY_PERIODS_PD["period_label"])
+)
+
+PERIOD_INTENSITY: dict[str, int] = dict(
+    zip(POLICY_PERIODS_PD["period_code"], POLICY_PERIODS_PD["intensity"])
+)
+
+
+def attach_period_pandas(df: pd.DataFrame, date_col: str) -> pd.DataFrame:
+    """Attach policy period code, label, and intensity to a pandas DataFrame.
+
+    Parameters
+    ----------
+    df:
+        Input DataFrame containing a date or datetime column.
+    date_col:
+        Name of the column to use for period assignment.  May be either a
+        date or datetime column; only the date component is used.
+
+    Returns
+    -------
+    A copy of *df* with three new columns:
+    ``policy_period``, ``policy_period_label``, and ``policy_intensity``.
+    Rows whose date falls outside all defined periods receive ``None``/``NaN``.
+    """
+    dates = pd.to_datetime(df[date_col]).dt.normalize()
+
+    codes = np.full(len(df), None, dtype=object)
+    labels = np.full(len(df), None, dtype=object)
+    intensities = np.full(len(df), np.nan, dtype=float)
+
+    for _, row in POLICY_PERIODS_PD.iterrows():
+        mask = (dates >= row["start_date"]) & (dates <= row["end_date"])
+        idx = mask.to_numpy()
+        codes[idx] = row["period_code"]
+        labels[idx] = row["period_label"]
+        intensities[idx] = float(row["intensity"])
+
+    result = df.copy()
+    result["policy_period"] = codes
+    result["policy_period_label"] = labels
+    result["policy_intensity"] = intensities
+    return result
