@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>scottish_analysis_summary_report</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <style>body { font-size: 14px; } h1, h2, h3 { margin-top: 10px; font-size: 1.2em; }</style>
+</head>
+<body>
+<h1
+id="summary-report-scottish-sars-cov-2-genomic-cluster-analyses">Summary
+Report: Scottish SARS-CoV-2 Genomic Cluster Analyses</h1>
+<p>7 May 2026</p>
+<h2 id="purpose">1. Purpose</h2>
+<p>This report summarises the Scottish SARS-CoV-2 genomic cluster
+analyses intended for three distinct thesis chapters. It outlines the
+focus of each chapter, the main results, key figures and tables, and a
+short request for advice on how best to shape the work into a
+manuscript.</p>
+<h2 id="summary">2. Summary</h2>
+<p>The three analyses form a coherent thesis arc. Part 1 is the
+strongest analytical chapter and examines deprivation, surveillance, and
+genomic cluster structure. Part 2 is a descriptive vaccination chapter,
+showing how cluster vaccination profiles changed through the rollout and
+across variant waves. Part 3 is a policy-context chapter, describing how
+cluster structure aligned with Scottish restriction periods while
+carefully avoiding causal claims because of strong wave and
+calendar-time confounding.</p>
+<p>Across all three parts, the main insight is that genomic clusters
+reflect a mixture of transmission, local social structure, variant wave,
+vaccination rollout, surveillance intensity, and policy context.
+Deprivation matters, but not as a simple pattern of larger or more
+geographically dispersed clusters in more deprived areas. The clearest
+deprivation-related signals are in cluster composition and demographic
+mixing.</p>
+<h2 id="chapter-overview">3. Chapter Overview</h2>
+<table>
+<colgroup>
+<col style="width: 4%" />
+<col style="width: 16%" />
+<col style="width: 54%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>Thesis part</th>
+<th>Main focus</th>
+<th>Core contribution</th>
+<th>Manuscript potential</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Part 1</td>
+<td>Deprivation, surveillance, and cluster structure</td>
+<td>Shows that apparent cluster size and spread are strongly shaped by
+surveillance and epidemic context, while deprivation signals are
+clearest in demographic mixing.</td>
+<td>Strongest standalone manuscript candidate.</td>
+</tr>
+<tr>
+<td>Part 2</td>
+<td>Vaccination profiles within clusters</td>
+<td>Describes how clusters shifted from unvaccinated to mixed to
+predominantly vaccinated across rollout and variant waves.</td>
+<td>Useful as a descriptive chapter or supporting context.</td>
+</tr>
+<tr>
+<td>Part 3</td>
+<td>Policy periods and cluster structure</td>
+<td>Places cluster dynamics on the Scottish policy timeline and uses
+targeted ITS analyses at selected transitions.</td>
+<td>Best framed as contextual or secondary unless paired carefully with
+Part 1.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="analysis-population">4. Analysis Population</h2>
+<table>
+<colgroup>
+<col style="width: 47%" />
+<col style="width: 52%" />
+</colgroup>
+<thead>
+<tr>
+<th>Measure</th>
+<th style="text-align: right;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>QC filter</td>
+<td style="text-align: right;"><code>nextclade_qc == "good"</code></td>
+</tr>
+<tr>
+<td>Primary clustering resolution</td>
+<td style="text-align: right;">Leiden 0.3</td>
+</tr>
+<tr>
+<td>Unique sequences</td>
+<td style="text-align: right;">281,320</td>
+</tr>
+<tr>
+<td>Sequence rows used</td>
+<td style="text-align: right;">789,347</td>
+</tr>
+<tr>
+<td>Total inferred clusters</td>
+<td style="text-align: right;">193,160</td>
+</tr>
+<tr>
+<td>Cluster rows used in main Part 1/3 models</td>
+<td style="text-align: right;">193,112</td>
+</tr>
+<tr>
+<td>Non-singleton clusters</td>
+<td style="text-align: right;">84,067 in Part 1/3; 84,080 in Part 2
+summaries</td>
+</tr>
+<tr>
+<td>Sliding time windows</td>
+<td style="text-align: right;">134</td>
+</tr>
+<tr>
+<td>Raw Pango lineages</td>
+<td style="text-align: right;">788</td>
+</tr>
+<tr>
+<td>Modelled lineage levels after pooling</td>
+<td style="text-align: right;">183</td>
+</tr>
+</tbody>
+</table>
+<h2
+id="part-1-socioeconomic-deprivation-surveillance-and-cluster-structure">5.
+Part 1: Socioeconomic Deprivation, Surveillance, and Cluster
+Structure</h2>
+<h3 id="focus">5.1. Focus</h3>
+<p>Part 1 asks whether clusters linked to more deprived areas were
+larger, more geographically dispersed, or more socially and
+demographically mixed. Outcomes include cluster size, number of distinct
+datazones, and observed-minus-expected mixing by SIMD, age, sex, and
+joint SIMD-age-sex profile.</p>
+<h3 id="key-results">5.2. Key Results</h3>
+<table>
+<colgroup>
+<col style="width: 23%" />
+<col style="width: 22%" />
+<col style="width: 54%" />
+</colgroup>
+<thead>
+<tr>
+<th>Result</th>
+<th style="text-align: right;">Estimate</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SIMD deprivation and non-singleton cluster odds</td>
+<td style="text-align: right;">OR 0.971, 95% CI 0.960 to 0.983</td>
+<td>More deprived clusters were slightly less likely to exceed singleton
+size.</td>
+</tr>
+<tr>
+<td>SIMD deprivation and positive cluster size</td>
+<td style="text-align: right;">Count ratio 0.926, 95% CI 0.869 to
+0.987</td>
+<td>Among non-singleton clusters, higher deprivation was associated with
+smaller clusters.</td>
+</tr>
+<tr>
+<td>SIMD deprivation and multi-datazone spread</td>
+<td style="text-align: right;">OR 1.004, 95% CI 0.992 to 1.016</td>
+<td>No clear association with crossing the one-datazone threshold.</td>
+</tr>
+<tr>
+<td>SIMD deprivation and positive geographic spread</td>
+<td style="text-align: right;">Count ratio 0.851, 95% CI 0.792 to
+0.915</td>
+<td>Higher deprivation was associated with lower geographic spread among
+clusters already spanning multiple datazones.</td>
+</tr>
+<tr>
+<td>SIMD-quintile excess mixing</td>
+<td style="text-align: right;">+0.31 percentage points, 95% CI -0.18 to
+0.80</td>
+<td>No clear evidence of increased SIMD-quintile mixing.</td>
+</tr>
+<tr>
+<td>Age excess mixing</td>
+<td style="text-align: right;">+1.66 percentage points, 95% CI 1.29 to
+2.03</td>
+<td>More deprived clusters showed greater age mixing.</td>
+</tr>
+<tr>
+<td>Sex excess mixing</td>
+<td style="text-align: right;">-0.78 percentage points, 95% CI -1.16 to
+-0.39</td>
+<td>More deprived clusters showed lower sex mixing.</td>
+</tr>
+<tr>
+<td>Joint SIMD-age-sex excess mixing</td>
+<td style="text-align: right;">+0.48 percentage points, 95% CI 0.29 to
+0.67</td>
+<td>More deprived clusters showed greater joint demographic-profile
+mixing.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="main-insight">5.3. Main Insight</h3>
+<p>The main models do not support a simple hypothesis that deprivation
+produces larger or more geographically dispersed genomic clusters.
+Surveillance and epidemic context, including local incidence, sequencing
+intensity, window-level sequencing proportion, and test positivity, were
+more consistent predictors of apparent cluster scale.
+Deprivation-related signals were clearest in demographic mixing and
+varied across SIMD domains.</p>
+<h3 id="key-figures">5.4. Key Figures</h3>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 85%" />
+</colgroup>
+<thead>
+<tr>
+<th>Figure</th>
+<th>What it shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Part 1 Figure 1</td>
+<td>Main hurdle and zero-truncated negative-binomial results for cluster
+size and geographic spread.</td>
+</tr>
+<tr>
+<td>Part 1 Figure 2</td>
+<td>Adjusted associations with SIMD, age, sex, and joint demographic
+excess mixing.</td>
+</tr>
+<tr>
+<td>Part 1 Figure 3</td>
+<td>How different SIMD domains relate to deprivation-domain and
+demographic mixing.</td>
+</tr>
+<tr>
+<td>Part 1 Figure 4</td>
+<td>Wave-specific deprivation associations for cluster size and
+geographic spread.</td>
+</tr>
+</tbody>
+</table>
+<figure>
+<img src="part1/main/manuscript/figures/fig1_main_cluster_outcomes.png"
+alt="Part 1 Figure 1: Main cluster outcomes" />
+<figcaption aria-hidden="true">Part 1 Figure 1: Main cluster
+outcomes</figcaption>
+</figure>
+<figure>
+<img src="part1/main/manuscript/figures/fig2_main_cluster_mixing.png"
+alt="Part 1 Figure 2: Main cluster mixing" />
+<figcaption aria-hidden="true">Part 1 Figure 2: Main cluster
+mixing</figcaption>
+</figure>
+<figure>
+<img src="part1/main/manuscript/figures/fig3_simd_domain_mixing.png"
+alt="Part 1 Figure 3: SIMD-domain mixing" />
+<figcaption aria-hidden="true">Part 1 Figure 3: SIMD-domain
+mixing</figcaption>
+</figure>
+<figure>
+<img
+src="part1/main/manuscript/figures/fig4_wave_specific_cluster_outcomes.png"
+alt="Part 1 Figure 4: Wave-specific cluster outcomes" />
+<figcaption aria-hidden="true">Part 1 Figure 4: Wave-specific cluster
+outcomes</figcaption>
+</figure>
+<h3 id="key-tables">5.5. Key Tables</h3>
+<table>
+<colgroup>
+<col style="width: 23%" />
+<col style="width: 76%" />
+</colgroup>
+<thead>
+<tr>
+<th>Table</th>
+<th>File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dataset descriptives</td>
+<td><a
+href="part1/main/tables/main_dataset_descriptives.csv">main_dataset_descriptives.csv</a></td>
+</tr>
+<tr>
+<td>Main hurdle count model results</td>
+<td><a
+href="part1/main/tables/main_hurdle_count_model_results.csv">main_hurdle_count_model_results.csv</a></td>
+</tr>
+<tr>
+<td>Main mixing model results</td>
+<td><a
+href="part1/main/tables/main_mixing_model_results.csv">main_mixing_model_results.csv</a></td>
+</tr>
+<tr>
+<td>SIMD-domain demographic mixing results</td>
+<td><a
+href="part1/main/tables/main_simd_domain_demographic_mixing_model_results.csv">main_simd_domain_demographic_mixing_model_results.csv</a></td>
+</tr>
+<tr>
+<td>Wave-specific hurdle count results</td>
+<td><a
+href="part1/main/tables/main_wave_specific_hurdle_count_model_results.csv">main_wave_specific_hurdle_count_model_results.csv</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="part-2-vaccination-profiles-within-genomic-clusters">6. Part 2:
+Vaccination Profiles Within Genomic Clusters</h2>
+<h3 id="focus-1">6.1. Focus</h3>
+<p>Part 2 characterises vaccination status within non-singleton genomic
+clusters across epidemic waves, cluster size, geographic-dispersion
+categories, and SIMD quintiles. This is descriptive rather than causal
+and should not be interpreted as vaccine-effectiveness analysis.</p>
+<h3 id="key-results-1">6.2. Key Results</h3>
+<table>
+<thead>
+<tr>
+<th>Wave</th>
+<th style="text-align: right;">None vaccinated</th>
+<th style="text-align: right;">Mixed vaccination</th>
+<th style="text-align: right;">All vaccinated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B.1.177</td>
+<td style="text-align: right;">89.5%</td>
+<td style="text-align: right;">10.0%</td>
+<td style="text-align: right;">0.5%</td>
+</tr>
+<tr>
+<td>Alpha</td>
+<td style="text-align: right;">41.5%</td>
+<td style="text-align: right;">56.2%</td>
+<td style="text-align: right;">2.3%</td>
+</tr>
+<tr>
+<td>Delta</td>
+<td style="text-align: right;">10.3%</td>
+<td style="text-align: right;">65.3%</td>
+<td style="text-align: right;">24.4%</td>
+</tr>
+<tr>
+<td>BA.1</td>
+<td style="text-align: right;">4.4%</td>
+<td style="text-align: right;">49.9%</td>
+<td style="text-align: right;">45.7%</td>
+</tr>
+<tr>
+<td>BA.2</td>
+<td style="text-align: right;">2.6%</td>
+<td style="text-align: right;">41.0%</td>
+<td style="text-align: right;">56.4%</td>
+</tr>
+<tr>
+<td>BA.5</td>
+<td style="text-align: right;">1.8%</td>
+<td style="text-align: right;">27.1%</td>
+<td style="text-align: right;">71.0%</td>
+</tr>
+<tr>
+<td>BQ.1</td>
+<td style="text-align: right;">0.6%</td>
+<td style="text-align: right;">20.5%</td>
+<td style="text-align: right;">78.9%</td>
+</tr>
+<tr>
+<td>XBB</td>
+<td style="text-align: right;">0.0%</td>
+<td style="text-align: right;">19.4%</td>
+<td style="text-align: right;">80.6%</td>
+</tr>
+</tbody>
+</table>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 74%" />
+</colgroup>
+<thead>
+<tr>
+<th>Vaccination-status mixing result</th>
+<th>Pattern</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mixed vaccination-status clusters</td>
+<td>Peaked in Delta, when 49.1% of non-singleton clusters were more
+mixed than expected.</td>
+</tr>
+<tr>
+<td>Homogeneous vaccination-status clusters</td>
+<td>Became dominant from BA.1 onwards, reaching 66.3% in BA.5.</td>
+</tr>
+<tr>
+<td>Booster coverage by SIMD</td>
+<td>Modest positive Q5-Q1 gradients in most post-Delta waves, indicating
+higher booster coverage in less deprived clusters.</td>
+</tr>
+<tr>
+<td>Dose recency</td>
+<td>Median days since vaccination increased from 13 days in B.1.177 to
+218 days in XBB.</td>
+</tr>
+<tr>
+<td>Large clusters</td>
+<td>More likely to be homogeneous by SIMD, consistent with geographic
+concentration of large transmission events.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="main-insight-1">6.3. Main Insight</h3>
+<p>Cluster vaccination profiles largely tracked the national rollout.
+Mixed vaccination-status clusters were most common when vaccine coverage
+was changing rapidly across the population. Later clusters were
+predominantly all-vaccinated because vaccination had become the
+background condition among sequenced cases, not because vaccinated cases
+formed exceptional clusters.</p>
+<h3 id="key-figures-1">6.4. Key Figures</h3>
+<table>
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 85%" />
+</colgroup>
+<thead>
+<tr>
+<th>Figure</th>
+<th>What it shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Part 2 Figure 1</td>
+<td>Weekly proportion of sequenced cases who were vaccinated, by rollout
+age group and SIMD quintile.</td>
+</tr>
+<tr>
+<td>Part 2 Figure 2</td>
+<td>Shift from unvaccinated to mixed and all-vaccinated clusters across
+waves and size categories.</td>
+</tr>
+<tr>
+<td>Part 2 Figure 3</td>
+<td>Vaccination-status mixing categories by wave, relative to
+same-lineage/window expectations.</td>
+</tr>
+<tr>
+<td>Part 2 Figure 6</td>
+<td>Booster coverage and days since last vaccination by wave and SIMD
+quintile.</td>
+</tr>
+</tbody>
+</table>
+<figure>
+<img src="part2/manuscript/figures/fig1_vaccinated_cases_over_time.png"
+alt="Part 2 Figure 1: Vaccinated cases over time" />
+<figcaption aria-hidden="true">Part 2 Figure 1: Vaccinated cases over
+time</figcaption>
+</figure>
+<figure>
+<img
+src="part2/manuscript/figures/fig2_cluster_vaccination_by_wave_and_category.png"
+alt="Part 2 Figure 2: Cluster vaccination by wave and category" />
+<figcaption aria-hidden="true">Part 2 Figure 2: Cluster vaccination by
+wave and category</figcaption>
+</figure>
+<figure>
+<img src="part2/manuscript/figures/fig3_vaccination_mixing_by_wave.png"
+alt="Part 2 Figure 3: Vaccination-status mixing by wave" />
+<figcaption aria-hidden="true">Part 2 Figure 3: Vaccination-status
+mixing by wave</figcaption>
+</figure>
+<figure>
+<img src="part2/manuscript/figures/fig6_dose_recency_by_simd.png"
+alt="Part 2 Figure 6: Booster coverage and dose recency by SIMD" />
+<figcaption aria-hidden="true">Part 2 Figure 6: Booster coverage and
+dose recency by SIMD</figcaption>
+</figure>
+<h3 id="key-tables-1">6.5. Key Tables</h3>
+<table>
+<colgroup>
+<col style="width: 28%" />
+<col style="width: 71%" />
+</colgroup>
+<thead>
+<tr>
+<th>Table</th>
+<th>File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Vaccination descriptives</td>
+<td><a
+href="part2/tables/vaccination_descriptives.csv">vaccination_descriptives.csv</a></td>
+</tr>
+<tr>
+<td>Vaccination cluster table</td>
+<td><a
+href="part2/tables/vaccination_cluster_table.csv">vaccination_cluster_table.csv</a></td>
+</tr>
+<tr>
+<td>Cluster category summary</td>
+<td><a
+href="part2/tables/cluster_category_summary.csv">cluster_category_summary.csv</a></td>
+</tr>
+<tr>
+<td>Vaccination cluster wave/category summary</td>
+<td><a
+href="part2/tables/vaccination_cluster_wave_category_summary.csv">vaccination_cluster_wave_category_summary.csv</a></td>
+</tr>
+<tr>
+<td>SIMD-domain vaccination gradients</td>
+<td><a
+href="part2/tables/supp_simd_domain_vaccination_gradients.csv">supp_simd_domain_vaccination_gradients.csv</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="part-3-policy-restrictions-and-cluster-structure">7. Part 3:
+Policy Restrictions and Cluster Structure</h2>
+<h3 id="focus-2">7.1. Focus</h3>
+<p>Part 3 examines how Scottish COVID-19 restriction periods align with
+genomic cluster size, geographic dispersion, and demographic mixing.
+Because restriction periods are strongly confounded with calendar time,
+variant waves, immunity, and surveillance changes, the analysis is
+descriptive and associational.</p>
+<h3 id="policy-period-codes">7.2. Policy Period Codes</h3>
+<p>Policy intensity is an ordinal restriction score where higher values
+indicate more restrictive conditions. The genomic cluster analysis
+begins in P3, so E0, L1, P1, and P2 are included below for code
+completeness but are not observed in the Part 3 cluster models.</p>
+<table>
+<colgroup>
+<col style="width: 6%" />
+<col style="width: 25%" />
+<col style="width: 30%" />
+<col style="width: 12%" />
+<col style="width: 24%" />
+</colgroup>
+<thead>
+<tr>
+<th>Code</th>
+<th>Policy period label</th>
+<th>Dates</th>
+<th style="text-align: right;">Intensity</th>
+<th>In cluster analysis</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>E0</td>
+<td>Emergence</td>
+<td>2020-03-01 to 2020-03-23</td>
+<td style="text-align: right;">15</td>
+<td>No</td>
+</tr>
+<tr>
+<td>L1</td>
+<td>First lockdown</td>
+<td>2020-03-24 to 2020-05-28</td>
+<td style="text-align: right;">100</td>
+<td>No</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>Route map phase 1</td>
+<td>2020-05-29 to 2020-06-18</td>
+<td style="text-align: right;">72</td>
+<td>No</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>Route map phase 2</td>
+<td>2020-06-19 to 2020-07-09</td>
+<td style="text-align: right;">52</td>
+<td>No</td>
+</tr>
+<tr>
+<td>P3</td>
+<td>Route map phase 3</td>
+<td>2020-07-10 to 2020-10-01</td>
+<td style="text-align: right;">30</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>T1</td>
+<td>Pre-tier tightening</td>
+<td>2020-10-02 to 2020-11-01</td>
+<td style="text-align: right;">55</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>F5</td>
+<td>Five-tier framework</td>
+<td>2020-11-02 to 2021-01-04</td>
+<td style="text-align: right;">65</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>L2</td>
+<td>Second lockdown</td>
+<td>2021-01-05 to 2021-04-01</td>
+<td style="text-align: right;">95</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>SL</td>
+<td>Stay local - Level 3</td>
+<td>2021-04-02 to 2021-04-25</td>
+<td style="text-align: right;">65</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>L3</td>
+<td>Level 3</td>
+<td>2021-04-26 to 2021-05-16</td>
+<td style="text-align: right;">55</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>L21</td>
+<td>Level 2 / Level 1</td>
+<td>2021-05-17 to 2021-07-18</td>
+<td style="text-align: right;">38</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>L0</td>
+<td>Level 0</td>
+<td>2021-07-19 to 2021-08-08</td>
+<td style="text-align: right;">20</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>NN</td>
+<td>Near-normal</td>
+<td>2021-08-09 to 2021-11-28</td>
+<td style="text-align: right;">10</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>OM</td>
+<td>Omicron wave</td>
+<td>2021-11-29 to 2022-01-23</td>
+<td style="text-align: right;">42</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>FE</td>
+<td>Final easing</td>
+<td>2022-01-24 to 2022-04-17</td>
+<td style="text-align: right;">15</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>PR</td>
+<td>Post-restriction</td>
+<td>2022-04-18 to 2023-05-05</td>
+<td style="text-align: right;">3</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="key-results-2">7.3. Key Results</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 13%" />
+<col style="width: 52%" />
+</colgroup>
+<thead>
+<tr>
+<th>Analysis</th>
+<th style="text-align: right;">Result</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Policy intensity and weekly median log cluster size</td>
+<td style="text-align: right;">Spearman rho = 0.74</td>
+<td>Strong positive correlation, likely driven by wave confounding.</td>
+</tr>
+<tr>
+<td>Policy intensity and weekly log datazones</td>
+<td style="text-align: right;">Spearman rho = 0.58</td>
+<td>Moderate positive correlation, also confounded by wave and
+surveillance context.</td>
+</tr>
+<tr>
+<td>Policy intensity and mean SIMD excess discordance</td>
+<td style="text-align: right;">Spearman rho = 0.02</td>
+<td>No meaningful correlation with SIMD mixing.</td>
+</tr>
+<tr>
+<td>Policy intensity and mean age excess discordance</td>
+<td style="text-align: right;">Spearman rho = 0.59</td>
+<td>Positive correlation, but not interpretable causally.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<colgroup>
+<col style="width: 11%" />
+<col style="width: 12%" />
+<col style="width: 12%" />
+<col style="width: 11%" />
+<col style="width: 51%" />
+</colgroup>
+<thead>
+<tr>
+<th>ITS transition</th>
+<th style="text-align: right;">Cluster size</th>
+<th style="text-align: right;">Geographic spread</th>
+<th>Mixing metrics</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>T1 onset, October 2020</td>
+<td style="text-align: right;">beta = -0.13, p = 0.22</td>
+<td style="text-align: right;">beta = -0.07, p = 0.59</td>
+<td>No significant changes</td>
+<td>No detectable structural change at the tier introduction.</td>
+</tr>
+<tr>
+<td>L2 to SL, April 2021</td>
+<td style="text-align: right;">beta = -0.21, p = 0.034</td>
+<td style="text-align: right;">beta = -0.36, p = 0.006</td>
+<td>No significant changes</td>
+<td>Decline likely reflects Alpha-wave tail dynamics rather than easing
+itself.</td>
+</tr>
+<tr>
+<td>NN onset, August 2021</td>
+<td style="text-align: right;">beta = +0.12, p = 0.068</td>
+<td style="text-align: right;">beta = +0.32, p = 0.015</td>
+<td>No significant changes</td>
+<td>Geographic spread increased after legal distancing requirements
+ended, within strong Delta-wave context.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="main-insight-2">7.4. Main Insight</h3>
+<p>Restriction intensity was correlated with cluster size and spread
+across the whole epidemic, but these correlations are mainly contextual
+rather than causal. The strongest transition-level signal was increased
+geographic spread after the August 2021 move to near-normal
+restrictions. Demographic mixing did not change significantly across the
+selected policy transitions, supporting the Part 1 interpretation that
+cluster composition reflects local social structure more than broad
+policy intensity.</p>
+<h3 id="key-figures-2">7.5. Key Figures</h3>
+<table>
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 83%" />
+</colgroup>
+<thead>
+<tr>
+<th>Figure</th>
+<th>What it shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Part 3 Figure 1</td>
+<td>Weekly cluster outcomes shown against policy-period shading and
+restriction intensity.</td>
+</tr>
+<tr>
+<td>Part 3 Figure 2</td>
+<td>Interrupted time-series plots for the T1 onset, L2 to SL, and NN
+onset transitions.</td>
+</tr>
+<tr>
+<td>Part 3 Figure 3</td>
+<td>Median cluster size and geographic spread compared across observed
+policy periods.</td>
+</tr>
+</tbody>
+</table>
+<figure>
+<img src="part3/manuscript/figures/fig1_weekly_time_series.png"
+alt="Part 3 Figure 1: Weekly time series and policy context" />
+<figcaption aria-hidden="true">Part 3 Figure 1: Weekly time series and
+policy context</figcaption>
+</figure>
+<figure>
+<img src="part3/manuscript/figures/fig2_its_transitions.png"
+alt="Part 3 Figure 2: Interrupted time-series transitions" />
+<figcaption aria-hidden="true">Part 3 Figure 2: Interrupted time-series
+transitions</figcaption>
+</figure>
+<figure>
+<img src="part3/manuscript/figures/fig3_period_outcomes.png"
+alt="Part 3 Figure 3: Policy-period outcomes" />
+<figcaption aria-hidden="true">Part 3 Figure 3: Policy-period
+outcomes</figcaption>
+</figure>
+<h3 id="key-tables-2">7.6. Key Tables</h3>
+<table>
+<colgroup>
+<col style="width: 24%" />
+<col style="width: 75%" />
+</colgroup>
+<thead>
+<tr>
+<th>Table</th>
+<th>File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Policy-period descriptives</td>
+<td><a
+href="part3/tables/period_descriptives.csv">period_descriptives.csv</a></td>
+</tr>
+<tr>
+<td>Intensity correlations</td>
+<td><a
+href="part3/tables/intensity_correlations.csv">intensity_correlations.csv</a></td>
+</tr>
+<tr>
+<td>ITS coefficients</td>
+<td><a
+href="part3/tables/its_coefficients.csv">its_coefficients.csv</a></td>
+</tr>
+<tr>
+<td>Lagged intensity correlations</td>
+<td><a
+href="part3/tables/supp_lagged_intensity_correlations.csv">supp_lagged_intensity_correlations.csv</a></td>
+</tr>
+<tr>
+<td>ITS window sensitivity</td>
+<td><a
+href="part3/tables/supp_its_window_sensitivity.csv">supp_its_window_sensitivity.csv</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="overall-interpretation">8. Overall Interpretation</h2>
+<p>The strongest recurring conclusion is that genomic clusters cannot be
+interpreted as direct measures of transmission scale without accounting
+for surveillance and epidemic context. Deprivation, vaccination, and
+policy context all matter, but they operate through different parts of
+the system:</p>
+<ul>
+<li>Deprivation is most visible in cluster composition and demographic
+mixing.</li>
+<li>Vaccination status mainly reflects rollout timing and background
+population coverage among sequenced cases.</li>
+<li>Policy periods help contextualise the epidemic timeline, but policy
+effects cannot be separated cleanly from variant waves and calendar time
+in these data.</li>
+</ul>
+<h2 id="manuscript-advice-request">9. Manuscript Advice Request</h2>
+<p>I would appreciate advice on the best manuscript strategy. My current
+view is that Part 1 is the strongest standalone paper because it has the
+clearest inferential structure and central argument: socioeconomic
+deprivation does not map simply onto larger or more geographically
+dispersed genomic clusters once surveillance and epidemic context are
+accounted for, but it is associated with demographic mixing and cluster
+composition.</p>
+<p>One option is therefore to develop Part 1 as the main manuscript and
+use Parts 2 and 3 as thesis chapters or as contextual supporting
+material. Another option is to draw selectively across all three parts
+to write a broader paper on the social, vaccination, and policy context
+of SARS-CoV-2 genomic clusters in Scotland. My concern is that combining
+all three parts may make the manuscript too broad, while focusing only
+on Part 1 may underuse the richer vaccination and policy analyses. I
+would be grateful for advice on which framing is most publishable and
+whether Parts 2 and 3 should be kept separate, used as supplementary
+context, or developed into future papers.</p>
+</body>
+</html>
