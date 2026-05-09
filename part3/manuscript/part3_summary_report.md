@@ -39,6 +39,39 @@ around 2021-01-09; switching on 2020-12-02 projects around 2021-01-11; switching
 from the F5 start projects around 2021-01-23.  These are descriptive fitted
 scenarios, not causal policy estimates.
 
+The supplementary pre-L2 meta-cluster analysis decomposes this rise into
+connected components of Alpha-containing rolling-window cluster calls.  Among
+442 unique pre-L2 Alpha sequences, the graph contains 78 meta-clusters, but the
+distribution is highly skewed.  Six components contain at least 10 sequences
+and together account for 312/442 pre-L2 Alpha sequences (70.6%).  AM001 alone
+contains 234/442 sequences (52.9%).
+
+AM001 is a high-amplification, Greater Glasgow and Clyde-dominated component
+that is strongly enriched for `ORF1a:L730F` (199/234 AM001 sequences, compared
+with 38/208 non-AM001 pre-L2 Alpha sequences).  The marker is not private to
+AM001, so it should be treated as an enriched signature rather than a unique
+lineage definition.  The AM001 signature remains common through the later Alpha
+wave, supporting the interpretation that one large pre-L2 component made a
+substantial contribution to Alpha establishment.
+
+The top-six contextual analysis uses one row per unique sequence, avoiding
+overlapping-window inflation.  AM001 is older and more deprived-skewed than
+several smaller components: 85/234 sequences are aged 40-64, 79/234 are aged
+65+, and 86/234 are in SIMD Q1.  AM003 is mainly Grampian and weighted toward
+less-deprived quintiles; AM035 is mainly Highland; AM024 is Borders.  Recorded
+test reasons are dominated by symptomatic testing where present, but missing
+test-reason data are common, especially in AM001 and AM024.
+
+These findings refine the F5/L2 interpretation.  Alpha establishment before L2
+was not just a smooth population-level curve; it was disproportionately built
+from a small number of high-amplification genomic components.  This is
+consistent with superspreading-like amplification and regional seeding before
+L2, but it does not identify a specific event from sequence data alone.  It
+also supports the counterfactual conclusion that earlier L2-level restrictions
+may plausibly have delayed dominance and reduced burden, while complete
+prevention of Alpha establishment was unlikely once these components were
+already expanding.
+
 ### Spring 2021, L2 -> SL
 
 After the move from L2 to stay-local/Level 3, median log cluster size continues
@@ -68,4 +101,6 @@ near-null in the whole-epidemic correlation table (rho = 0.02).
 This analysis does not identify causal policy effects.  It does not identify
 specific superspreading events from sequence data alone.  The Alpha
 counterfactuals should be described as timing projections under fitted marker
-growth rates, not estimates of what restrictions would have caused.
+growth rates, not estimates of what restrictions would have caused.  The
+pre-L2 Alpha meta-clusters should similarly be described as inferred
+high-amplification components, not confirmed introductions or events.
