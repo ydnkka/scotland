@@ -6,10 +6,19 @@ import sys
 from pathlib import Path
 from typing import Callable
 
+import os
+
+os.environ.setdefault("MPLCONFIGDIR", "/private/tmp/scotland-mplconfig")
+os.environ.setdefault("XDG_CACHE_HOME", "/private/tmp/scotland-xdg-cache")
+Path(os.environ["MPLCONFIGDIR"]).mkdir(parents=True, exist_ok=True)
+Path(os.environ["XDG_CACHE_HOME"]).mkdir(parents=True, exist_ok=True)
+
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+from matplotlib import colors
 from matplotlib.lines import Line2D
 from matplotlib.ticker import PercentFormatter
+import matplotlib.patheffects as pe
 import pandas as pd
 import polars as pl
 
@@ -54,6 +63,12 @@ WAVE_GROUP_PALETTE: dict[str, str] = {
     "BQ.1": "#ff9da7",
     "XBB": "#9c755f",
 }
+
+POLICY_INTENSITY_CMAP = plt.get_cmap("RdYlGn_r")
+POLICY_INTENSITY_NORM = colors.Normalize(
+    vmin=policy.POLICY_PERIODS_PD["intensity"].min(),
+    vmax=policy.POLICY_PERIODS_PD["intensity"].max(),
+)
 
 
 def assign_wave_group(lineage: str | None) -> str | None:
@@ -131,7 +146,7 @@ def attach_policy_timeline(df_full: pl.DataFrame) -> pl.DataFrame:
 
 
 def configure_date_axis(ax: plt.Axes, dates: object) -> None:
-    """Use denser half-year ticks for shorter date ranges."""
+    """Use quarterly date ticks with month above year."""
     date_index = pd.to_datetime(pd.Index(dates)).dropna()
     if date_index.empty:
         return
@@ -146,8 +161,8 @@ def configure_date_axis(ax: plt.Axes, dates: object) -> None:
     )
 
     if span_days <= 365 * 4:
-        ax.xaxis.set_major_locator(mdates.MonthLocator(bymonth=[1, 7]))
-        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
+        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b\n%Y"))
         ax.xaxis.set_minor_locator(mdates.MonthLocator())
         ax.tick_params(axis="x")
         for label in ax.get_xticklabels():
@@ -158,13 +173,19 @@ def configure_date_axis(ax: plt.Axes, dates: object) -> None:
         ax.xaxis.set_minor_locator(mdates.MonthLocator(interval=3))
 
 
+def policy_intensity_color(intensity: float) -> tuple[float, float, float, float]:
+    """Map policy intensity to the shared policy strip colour scale."""
+    return POLICY_INTENSITY_CMAP(POLICY_INTENSITY_NORM(float(intensity)))
+
+
 def add_policy_background(
     ax: plt.Axes,
     dates: object,
     *,
     show_labels: bool = False,
+    color_by_intensity: bool = False,
 ) -> None:
-    """Shade alternating policy periods behind the plotted data."""
+    """Shade policy periods behind plotted data."""
     date_index = pd.to_datetime(pd.Index(dates)).dropna()
     if date_index.empty:
         return
@@ -179,23 +200,24 @@ def add_policy_background(
         if start > end:
             continue
 
-        if idx % 2 == 0:
+        if color_by_intensity:
+            shade_color = policy_intensity_color(row["intensity"])
+            shade_alpha = 0.1
+        else:
+            shade_color = "#000000"
+            shade_alpha = 0.035 if idx % 2 == 0 else 0
+
+        if shade_alpha > 0:
             ax.axvspan(
                 start,
                 end + pd.Timedelta(days=1),
-                color="#000000",
-                alpha=0.035,
+                color=shade_color,
+                alpha=shade_alpha,
                 lw=0,
-                zorder=0,
+                zorder=-20,
             )
 
-        ax.axvline(
-            start,
-            color="#b3b3b3",
-            lw=0.45,
-            alpha=0.35,
-            zorder=1,
-        )
+        ax.axvline(start, color="#b3b3b3", lw=0.45, alpha=0.3, zorder=-10)
 
         if show_labels:
             midpoint = start + (end - start) / 2
@@ -213,6 +235,61 @@ def add_policy_background(
             )
 
 
+def add_policy_strip(ax: plt.Axes, dates: object) -> None:
+    """Draw a horizontal policy-period strip with intensity-coloured segments."""
+    date_index = pd.to_datetime(pd.Index(dates)).dropna()
+    if date_index.empty:
+        return
+
+    plot_start = date_index.min().normalize()
+    plot_end = date_index.max().normalize()
+    policy_periods = policy.POLICY_PERIODS.sort("start_date").to_pandas()
+
+    ax.set_ylim(0, 1)
+    ax.set_yticks([])
+    ax.set_facecolor("white")
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    for _, row in policy_periods.iterrows():
+        start = max(pd.Timestamp(row["start_date"]), plot_start)
+        end = min(pd.Timestamp(row["end_date"]), plot_end)
+        if start > end:
+            continue
+
+        width_days = (end - start).days + 1
+        ax.broken_barh(
+            [(mdates.date2num(start), width_days)],
+            (0.08, 0.84),
+            facecolors=[policy_intensity_color(row["intensity"])],
+            edgecolors="white",
+            linewidth=0.45,
+        )
+
+        if width_days >= 18:
+            midpoint = start + (end - start) / 2
+            ax.text(
+                midpoint,
+                0.5,
+                str(row["period_code"]),
+                ha="center",
+                va="center",
+                color="white",
+                fontsize=5.5,
+                fontweight="bold",
+                clip_on=True,
+                path_effects=[
+                    pe.withStroke(linewidth=0.9, foreground="#333333")
+                ]
+            )
+
+    ax.set_xlim(
+        (plot_start - pd.Timedelta(days=7)).to_pydatetime(),
+        (plot_end + pd.Timedelta(days=7)).to_pydatetime(),
+    )
+    ax.tick_params(axis="x", which="both", bottom=False, labelbottom=False)
+
+
 def plot_sequences_with_policy(
     timeline: pl.DataFrame,
     *,
@@ -225,7 +302,7 @@ def plot_sequences_with_policy(
     dates = timeline["collection_date"].to_list()
     counts = timeline["count"].to_list()
     smoothed = timeline["smoothed_count"].to_list()
-    add_policy_background(ax, dates, show_labels=True)
+    add_policy_background(ax, dates, color_by_intensity=True)
 
     ax.bar(
         dates,
@@ -235,7 +312,7 @@ def plot_sequences_with_policy(
         edgecolor="none",
         alpha=0.95,
         label="Daily sequences",
-        zorder=2,
+        zorder=5,
     )
     ax.plot(
         dates,
@@ -243,12 +320,13 @@ def plot_sequences_with_policy(
         color="#0b1f3b",
         lw=1.8,
         label="7-day smoothed count",
-        zorder=3,
+        zorder=6,
     )
     ax.set_ylabel("Number of sequences")
     if show_xlabel:
         ax.set_xlabel("Collection date")
     ax.set_facecolor("white")
+    ax.set_axisbelow(True)
     ax.grid(axis="y", color="#d9d9d9", linewidth=0.6, alpha=0.5)
     ax.margins(x=0.01)
 
@@ -371,7 +449,6 @@ def plot_lineage_frequency_and_overtakes(
     ].dropna(subset=["previous_dominant_lineage_group"]).copy()
 
     ax.set_facecolor("white")
-    add_policy_background(ax, plot_freq.index)
     stack_colors = [WAVE_GROUP_PALETTE.get(group, "#999999") for group in lineage_order]
     stack_handles = ax.stackplot(
         plot_freq.index,
@@ -392,7 +469,7 @@ def plot_lineage_frequency_and_overtakes(
         linewidth=1.6,
         alpha=0.85,
         color="#303030",
-        label="Cases sequenced",
+        label="Sequenced",
     )
     ax2.set_ylabel("Proportion of cases sequenced")
     ax2.set_ylim(0, 1)
@@ -414,14 +491,14 @@ def plot_lineage_frequency_and_overtakes(
         color="#303030",
         linestyle=":",
         linewidth=1.6,
-        label="Cases sequenced",
+        label="Sequenced",
     )
     ax.legend(
         [*stack_handles, coverage_handle],
-        [*lineage_order, "Cases sequenced"],
+        [*lineage_order, "Sequenced"],
         ncol=5,
         loc="upper center",
-        bbox_to_anchor=(0.5, -0.18),
+        bbox_to_anchor=(0.5, -0.2),
         frameon=False,
         columnspacing=1.1,
         handlelength=1.5,
@@ -464,16 +541,19 @@ def main() -> None:
 
     fig, axes = style.new_figure(
         width="double",
-        height_in=6.4,
-        nrows=2, ncols=1,
+        height_in=6.7,
+        nrows=3, ncols=1,
+        gridspec_kw={"height_ratios": [0.18, 2.35, 2.6]},
     )
-    fig.subplots_adjust(hspace=0.08)
+    fig.subplots_adjust(hspace=0.06)
 
     axes = list(axes)
 
-    ax_top =axes[0]
-    ax_bottom = axes[1]
+    ax_policy = axes[0]
+    ax_top = axes[1]
+    ax_bottom = axes[2]
 
+    add_policy_strip(ax_policy, timeline["collection_date"].to_list())
     fig, _ = plot_sequences_with_policy(timeline, ax=ax_top, show_xlabel=False)
     ax_top.tick_params(axis="x", labelbottom=False)
 
