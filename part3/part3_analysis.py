@@ -121,24 +121,9 @@ def read_config() -> dict:
 
 
 def nextclade_tsv_path() -> Path:
-    """Return the Nextclade TSV path, allowing for the current local layout."""
+    """Return the Nextclade TSV path from the config."""
     cfg = read_config()
-    configured = ROOT / cfg["data"]["raw"]["nextclade_tsv"]
-    if configured.exists():
-        return configured
-
-    fallbacks = [
-        ROOT / "data" / "raw" / "cog_all_scotland_nextclade.tsv",
-        ROOT / "data" / "raw" / "cog-uk" / "cog_all_scotland_nextclade.tsv",
-    ]
-    for candidate in fallbacks:
-        if candidate.exists():
-            return candidate
-
-    raise FileNotFoundError(
-        "Could not find the raw Nextclade TSV. Checked config path and "
-        f"fallbacks: {', '.join(str(p) for p in fallbacks)}"
-    )
+    return ROOT / cfg["data"]["raw"]["nextclade_tsv"]
 
 
 def safe_log(values: pd.Series) -> pd.Series:
