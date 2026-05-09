@@ -290,6 +290,57 @@ def add_policy_strip(ax: plt.Axes, dates: object) -> None:
     ax.tick_params(axis="x", which="both", bottom=False, labelbottom=False)
 
 
+def add_policy_intensity_colorbar(
+    fig: plt.Figure,
+    ax_policy: plt.Axes,
+    ax_top: plt.Axes,
+) -> plt.Axes:
+    """Add a slim intensity colour bar spanning the policy strip and panel A."""
+    policy_box = ax_policy.get_position()
+    top_box = ax_top.get_position()
+    full_height = policy_box.y1 - top_box.y0
+    bar_height = full_height * 0.95
+    bar_bottom = top_box.y0 + (full_height - bar_height) / 2
+    cax = fig.add_axes([
+        policy_box.x1 + 0.006,
+        bar_bottom,
+        0.010,
+        bar_height,
+    ])
+
+    scalar = plt.cm.ScalarMappable(
+        norm=POLICY_INTENSITY_NORM,
+        cmap=POLICY_INTENSITY_CMAP,
+    )
+    scalar.set_array([])
+    cbar = fig.colorbar(scalar, cax=cax, orientation="vertical")
+    cbar.set_label("Restriction intensity", fontsize=7, labelpad=5)
+    cbar.set_ticks([10, 30, 55, 75, 95])
+    cbar.ax.tick_params(labelsize=6.5, length=2.2, width=0.6, pad=1.5)
+    cbar.outline.set_linewidth(0.4)
+    return cax
+
+
+def place_policy_strip_flush(
+    ax_policy: plt.Axes,
+    ax_top: plt.Axes,
+) -> None:
+    """Make the policy strip nearly flush with panel A."""
+    policy_box = ax_policy.get_position()
+    top_box = ax_top.get_position()
+
+    policy_gap = 0.006
+
+    new_policy = [
+        top_box.x0,
+        top_box.y1 + policy_gap,
+        top_box.width,
+        policy_box.height,
+    ]
+
+    ax_policy.set_position(new_policy)
+
+
 def plot_sequences_with_policy(
     timeline: pl.DataFrame,
     *,
@@ -346,6 +397,7 @@ def plot_lineage_frequency_and_overtakes(
     smooth_window: int | None = 3,
     min_sequences_per_period: int = 1,
     ax: plt.Axes,
+    legend_ax: plt.Axes | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, plt.Axes]:
     """Plot selected lineage-group frequency and sequencing coverage over time.
 
@@ -477,7 +529,7 @@ def plot_lineage_frequency_and_overtakes(
     ax2.tick_params(axis="y", colors="#4d4d4d")
     ax2.grid(False)
 
-    ax.set_xlabel("Collection date")
+    ax.set_xlabel("Collection date", labelpad=3)
     ax.set_ylabel("Lineage-group frequency")
     ax.set_ylim(0, 1)
     ax.yaxis.set_major_formatter(PercentFormatter(xmax=1, decimals=0))
@@ -493,16 +545,32 @@ def plot_lineage_frequency_and_overtakes(
         linewidth=1.6,
         label="Sequenced",
     )
-    ax.legend(
-        [*stack_handles, coverage_handle],
-        [*lineage_order, "Sequenced"],
-        ncol=5,
-        loc="upper center",
-        bbox_to_anchor=(0.5, -0.2),
-        frameon=False,
-        columnspacing=1.1,
-        handlelength=1.5,
-    )
+    legend_handles = [*stack_handles, coverage_handle]
+    legend_labels = [*lineage_order, "Sequenced"]
+    if legend_ax is not None:
+        legend_ax.axis("off")
+        legend_ax.legend(
+            legend_handles,
+            legend_labels,
+            ncol=5,
+            loc="center",
+            frameon=False,
+            columnspacing=1.1,
+            handlelength=1.5,
+            borderaxespad=0.0,
+        )
+    else:
+        ax.legend(
+            legend_handles,
+            legend_labels,
+            ncol=5,
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.2),
+            frameon=False,
+            columnspacing=1.1,
+            handlelength=1.5,
+            borderaxespad=0.0,
+        )
 
     return lineage_freq, plot_freq, dominance_df, overtakes, sampling_df, ax2
 
@@ -541,24 +609,33 @@ def main() -> None:
 
     fig, axes = style.new_figure(
         width="double",
-        height_in=6.7,
-        nrows=3, ncols=1,
-        gridspec_kw={"height_ratios": [0.18, 2.35, 2.6]},
+        height_in=6.9,
+        nrows=4, ncols=1,
+        gridspec_kw={"height_ratios": [0.16, 2.35, 0.42, 2.55]},
     )
-    fig.subplots_adjust(hspace=0.06)
+
+    fig.subplots_adjust(hspace=0.04)
 
     axes = list(axes)
 
     ax_policy = axes[0]
     ax_top = axes[1]
-    ax_bottom = axes[2]
+    ax_legend = axes[2]
+    ax_bottom = axes[3]
 
     add_policy_strip(ax_policy, timeline["collection_date"].to_list())
     fig, _ = plot_sequences_with_policy(timeline, ax=ax_top, show_xlabel=False)
     ax_top.tick_params(axis="x", labelbottom=False)
+    # place_policy_strip_flush(ax_legend, ax_bottom)
+    place_policy_strip_flush(ax_policy, ax_top)
+    add_policy_intensity_colorbar(fig, ax_policy, ax_top)
 
     lineage_freq, plot_freq, dominance_df, overtakes, sampling_df, _ = (
-        plot_lineage_frequency_and_overtakes(sequences, ax=ax_bottom)
+        plot_lineage_frequency_and_overtakes(
+            sequences,
+            ax=ax_bottom,
+            legend_ax=ax_legend,
+        )
     )
 
     lineage_freq.to_csv(table_dir / "lineage_frequency_by_period.csv")
@@ -568,14 +645,16 @@ def main() -> None:
     sampling_df.to_csv(table_dir / "sequencing_proportion_by_period.csv")
 
     fig.align_ylabels([ax_top, ax_bottom])
-    style.add_panel_labels([ax_top, ax_bottom], x=-0.1, y=1)
+    style.add_panel_labels([ax_top, ax_bottom], x=-0.1, y=1.1)
 
     _ = style.save_figure(
         fig,
         out_dir / "policy_sequences_over_time",
         width="double",
+        height_in=6.9,
         save_png=True,
         save_pdf=True,
+        save_tiff=True,
     )
 
 

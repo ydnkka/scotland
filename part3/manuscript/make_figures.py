@@ -20,6 +20,9 @@ Path(os.environ["XDG_CACHE_HOME"]).mkdir(parents=True, exist_ok=True)
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+from matplotlib import colors as mpl_colors
+from matplotlib import patheffects
+from matplotlib.lines import Line2D
 import numpy as np
 import pandas as pd
 
@@ -40,19 +43,17 @@ TRANSITIONS = {
     "l2_to_sl": ("SL", pd.Timestamp("2021-04-02")),
     "nn_onset": ("NN", pd.Timestamp("2021-08-09")),
 }
-
-POLICY_COLORS = {
-    "P3": "#8fbf88",
-    "T1": "#d6a03a",
-    "F5": "#c97a32",
-    "L2": "#9d3c32",
-    "SL": "#d6a03a",
-    "L0": "#71a9c9",
-    "NN": "#8fbf88",
-    "OM": "#b7a4d8",
-    "FE": "#a7c6a1",
-    "PR": "#d0d0d0",
+TRANSITION_ROW_LABELS = {
+    "t1_onset": "P3 -> T1",
+    "l2_to_sl": "L2 -> SL",
+    "nn_onset": "L0 -> NN",
 }
+
+POLICY_INTENSITY_CMAP = plt.get_cmap("RdYlGn_r")
+POLICY_INTENSITY_NORM = mpl_colors.Normalize(
+    vmin=policy.POLICY_PERIODS_PD["intensity"].min(),
+    vmax=policy.POLICY_PERIODS_PD["intensity"].max(),
+)
 
 OUTCOME_LABELS = {
     "median_log_cluster_size": "Median log cluster size",
@@ -96,6 +97,10 @@ def read_csv(name: str, date_cols: list[str] | None = None) -> pd.DataFrame:
     return df
 
 
+def policy_intensity_color(intensity: float) -> tuple[float, float, float, float]:
+    return POLICY_INTENSITY_CMAP(POLICY_INTENSITY_NORM(float(intensity)))
+
+
 def add_policy_spans(
     ax: plt.Axes,
     start: pd.Timestamp,
@@ -103,6 +108,7 @@ def add_policy_spans(
     *,
     label_codes: bool = False,
     y_text: float = 0.98,
+    alpha: float = 0.075,
 ) -> None:
     periods = policy.POLICY_PERIODS_PD.copy()
     for _, row in periods.iterrows():
@@ -111,9 +117,15 @@ def add_policy_spans(
         if right < left:
             continue
         code = row["period_code"]
-        color = POLICY_COLORS.get(code, "#d5d5d5")
-        alpha = 0.12 if code in FOCUS_PERIODS else 0.055
-        ax.axvspan(left, right, color=color, alpha=alpha, lw=0, zorder=0)
+        ax.axvspan(
+            left,
+            right + pd.Timedelta(days=1),
+            color=policy_intensity_color(row["intensity"]),
+            alpha=alpha if code in FOCUS_PERIODS else alpha * 0.65,
+            lw=0,
+            zorder=-20,
+        )
+        ax.axvline(left, color="#b8b8b8", lw=0.45, alpha=0.30, zorder=-10)
         if label_codes and code in FOCUS_PERIODS:
             ax.text(
                 left + (right - left) / 2,
@@ -122,13 +134,111 @@ def add_policy_spans(
                 transform=ax.get_xaxis_transform(),
                 ha="center",
                 va="top",
-                fontsize=6.5,
-                color="#333333",
+                fontsize=6,
+                fontweight="bold",
+                color="#222222",
+                path_effects=[patheffects.withStroke(linewidth=1.5, foreground="white")],
             )
+    ax.set_axisbelow(True)
+
+
+def add_policy_strip(
+    ax: plt.Axes,
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+    *,
+    label_codes: bool = True,
+) -> None:
+    """Draw an intensity-coloured policy strip, matching surveillance figures."""
+    ax.set_ylim(0, 1)
+    ax.set_yticks([])
+    ax.set_facecolor("white")
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    periods = policy.POLICY_PERIODS_PD.copy()
+    for _, row in periods.iterrows():
+        left = max(pd.Timestamp(row["start_date"]), start.normalize())
+        right = min(pd.Timestamp(row["end_date"]), end.normalize())
+        if right < left:
+            continue
+
+        width_days = (right - left).days + 1
+        ax.broken_barh(
+            [(mdates.date2num(left), width_days)],
+            (0.10, 0.80),
+            facecolors=[policy_intensity_color(row["intensity"])],
+            edgecolors="white",
+            linewidth=0.45,
+        )
+
+        if label_codes and width_days >= 18:
+            midpoint = left + (right - left) / 2
+            ax.text(
+                midpoint,
+                0.50,
+                str(row["period_code"]),
+                ha="center",
+                va="center",
+                fontsize=6.5,
+                fontweight="bold",
+                color="white",
+                clip_on=True,
+                path_effects=[patheffects.withStroke(linewidth=0.9, foreground="#333333")],
+            )
+
+    ax.set_xlim(start, end)
+    ax.tick_params(axis="x", which="both", bottom=False, labelbottom=False)
+
+
+def add_policy_intensity_colorbar(
+    fig: plt.Figure,
+    ax_top: plt.Axes,
+    ax_bottom: plt.Axes,
+    *,
+    label: str = "Restriction intensity",
+) -> plt.Axes:
+    """Add a slim shared policy intensity colour bar beside a set of axes."""
+    top_box = ax_top.get_position()
+    bottom_box = ax_bottom.get_position()
+
+    full_height = top_box.y1 - bottom_box.y0
+    bar_height = full_height * 0.85
+    bar_bottom = bottom_box.y0 + (full_height - bar_height) / 2
+    cax = fig.add_axes([
+        top_box.x1 + 0.006,
+        bar_bottom,
+        0.010,
+        bar_height,
+    ])
+
+    scalar = plt.cm.ScalarMappable(
+        norm=POLICY_INTENSITY_NORM,
+        cmap=POLICY_INTENSITY_CMAP,
+    )
+    scalar.set_array([])
+    cbar = fig.colorbar(scalar, cax=cax, orientation="vertical")
+    cbar.set_label(label, fontsize=7, labelpad=5)
+    cbar.set_ticks([10, 30, 55, 75, 95])
+    cbar.ax.tick_params(labelsize=6.5, length=2.2, width=0.6, pad=1.5)
+    cbar.outline.set_linewidth(0.4)
+    return cax
+
+
+def place_policy_strip_flush(ax_policy: plt.Axes, ax_top: plt.Axes, *, gap: float = 0.004) -> None:
+    """Position a policy strip directly above its primary axis."""
+    policy_box = ax_policy.get_position()
+    top_box = ax_top.get_position()
+    ax_policy.set_position([
+        top_box.x0,
+        top_box.y1 + gap,
+        top_box.width,
+        policy_box.height,
+    ])
 
 
 def format_date_axis(ax: plt.Axes, *, monthly: bool = False) -> None:
-    locator = mdates.MonthLocator(interval=1 if monthly else 2)
+    locator = mdates.MonthLocator(interval=1 if monthly else 3)
     ax.xaxis.set_major_locator(locator)
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%b\n%Y"))
     ax.tick_params(axis="x", labelrotation=0)
@@ -139,10 +249,21 @@ def plot_policy_timeline() -> None:
     start = weekly["wn_mid_date"].min() - pd.Timedelta(days=7)
     end = weekly["wn_mid_date"].max() + pd.Timedelta(days=7)
 
-    fig, ax = style.new_figure(width="double", height_in=3.25, font_scale=0.9)
-    add_policy_spans(ax, start, end, label_codes=True)
+    fig, axes = style.new_figure(
+        width="double",
+        height_in=3.55,
+        nrows=2,
+        ncols=1,
+        font_scale=0.9,
+        sharex=False,
+        gridspec_kw={"height_ratios": [0.12, 1.0]},
+    )
+    fig.subplots_adjust(hspace=0.02, right=0.90)
+    ax_policy, ax = axes
+    add_policy_strip(ax_policy, start, end)
+    add_policy_spans(ax, start, end, label_codes=False, alpha=0.055)
 
-    ax.plot(
+    (line_cluster,) = ax.plot(
         weekly["wn_mid_date"],
         weekly["median_log_cluster_size"],
         color="#1f4e79",
@@ -157,51 +278,41 @@ def plot_policy_timeline() -> None:
     ax.set_xlim(start, end)
     format_date_axis(ax)
 
-    ax2 = ax.twinx()
-    ax2.step(
-        weekly["wn_mid_date"],
-        weekly["policy_intensity"],
-        where="mid",
-        color="#333333",
-        alpha=0.45,
-        lw=1.0,
-        label="Policy intensity",
-    )
-    ax2.set_ylim(0, 105)
-    ax2.set_ylabel("Policy intensity")
-    ax2.spines["right"].set_visible(True)
-
     for label, date in [
         ("T1", pd.Timestamp("2020-10-02")),
         ("L2", pd.Timestamp("2021-01-05")),
         ("SL", pd.Timestamp("2021-04-02")),
         ("NN", pd.Timestamp("2021-08-09")),
     ]:
-        ax.axvline(date, color="#333333", lw=0.7, ls="--", alpha=0.65)
+        ax.axvline(date, color="#333333", lw=0.7, ls="--", alpha=0.70, zorder=6)
         ax.text(
             date,
-            1.04,
+            0.98,
             label,
             transform=ax.get_xaxis_transform(),
             ha="center",
-            va="bottom",
-            fontsize=7,
+            va="top",
+            fontsize=6.7,
+            color="#222222",
+            path_effects=[patheffects.withStroke(linewidth=1.4, foreground="white")],
         )
 
-    lines = ax.get_lines() + ax2.get_lines()
-    ax.legend(lines, [line.get_label() for line in lines], loc="upper left", ncol=2)
-    save_all(fig, FIGURE_DIR / "fig1_policy_timeline_cluster_structure", height_in=3.25)
+    ax.legend(handles=[line_cluster], loc="upper right")
+    place_policy_strip_flush(ax_policy, ax)
+    add_policy_intensity_colorbar(fig, ax_policy, ax)
+    save_all(fig, FIGURE_DIR / "fig1_policy_timeline_cluster_structure", height_in=3.55)
 
 
 def plot_selected_its() -> None:
     fig, axes = style.new_figure(
         width="double",
-        height_in=6.4,
+        height_in=6.65,
         nrows=3,
         ncols=2,
         font_scale=0.82,
         sharex=False,
     )
+    fig.subplots_adjust(top=0.91, hspace=0.44, wspace=0.24)
     outcomes = ["median_log_cluster_size", "median_log_datazones"]
 
     for r, (slug, (short_label, date)) in enumerate(TRANSITIONS.items()):
@@ -210,14 +321,14 @@ def plot_selected_its() -> None:
         end = its["wn_mid_date"].max() + pd.Timedelta(days=3)
         for c, outcome in enumerate(outcomes):
             ax = axes[r, c]
-            add_policy_spans(ax, start, end, label_codes=False)
+            add_policy_spans(ax, start, end, label_codes=False, alpha=0.060)
             ax.scatter(
                 its["wn_mid_date"],
                 its[outcome],
                 s=16,
                 color="#1f4e79",
                 alpha=0.85,
-                zorder=3,
+                zorder=5,
             )
             fitted = f"fitted_{outcome}"
             ax.plot(
@@ -225,20 +336,48 @@ def plot_selected_its() -> None:
                 its[fitted],
                 color="#b23a2e",
                 lw=1.7,
-                zorder=4,
+                zorder=6,
             )
-            ax.axvline(date, color="#333333", lw=0.8, ls="--")
+            ax.axvline(date, color="#333333", lw=0.8, ls="--", zorder=7)
             if c == 0:
-                ax.set_ylabel(f"{short_label}\n{OUTCOME_LABELS[outcome]}")
+                ax.set_ylabel(OUTCOME_LABELS[outcome])
+                ax.text(
+                    0.015,
+                    0.96,
+                    TRANSITION_ROW_LABELS.get(slug, short_label),
+                    transform=ax.transAxes,
+                    ha="left",
+                    va="top",
+                    fontsize=6.8,
+                    fontweight="bold",
+                    color="#222222",
+                    bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.78, "pad": 1.6},
+                    zorder=8,
+                )
             else:
                 ax.set_ylabel(OUTCOME_LABELS[outcome])
             ax.set_xlim(start, end)
             format_date_axis(ax, monthly=True)
+            if r == len(TRANSITIONS) - 1:
+                ax.set_xlabel("Week midpoint")
             if r == 0:
                 ax.set_title(OUTCOME_LABELS[outcome])
 
-    style.add_panel_labels(axes.ravel(), x=-0.08, y=1.08, size=9)
-    save_all(fig, FIGURE_DIR / "fig2_selected_policy_transitions", height_in=6.4)
+    legend_handles = [
+        Line2D([0], [0], marker="o", color="none", markerfacecolor="#1f4e79",
+               markeredgecolor="#1f4e79", markersize=4.2, label="Weekly outcome"),
+        Line2D([0], [0], color="#b23a2e", lw=1.7, label="Segmented fit"),
+        Line2D([0], [0], color="#333333", lw=0.8, ls="--", label="Transition date"),
+    ]
+    fig.legend(
+        handles=legend_handles,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0.985),
+        ncol=3,
+        frameon=False,
+    )
+    style.add_panel_labels(axes.ravel(), x=-0.14, y=1.08, size=9)
+    save_all(fig, FIGURE_DIR / "fig2_selected_policy_transitions", height_in=6.65)
 
 
 def plot_alpha_emergence() -> None:
@@ -252,15 +391,18 @@ def plot_alpha_emergence() -> None:
 
     fig, axes = style.new_figure(
         width="double",
-        height_in=4.9,
-        nrows=2,
+        height_in=5.15,
+        nrows=3,
         ncols=1,
         font_scale=0.85,
         sharex=False,
-        gridspec_kw={"height_ratios": [1.0, 1.15]},
+        gridspec_kw={"height_ratios": [0.15, 1.0, 1.15]},
     )
-    ax = axes[0]
-    add_policy_spans(ax, start, end, label_codes=True)
+    fig.subplots_adjust(hspace=0.13, right=0.91)
+    ax_policy = axes[0]
+    ax = axes[1]
+    add_policy_strip(ax_policy, start, end)
+    add_policy_spans(ax, start, end, label_codes=False, alpha=0.060)
     ax.plot(
         traj["wn_mid_date"],
         traj["freq_s_n501y"],
@@ -279,12 +421,48 @@ def plot_alpha_emergence() -> None:
         lw=1.8,
         label="S:A222V",
     )
-    ax.axvline(pd.Timestamp("2021-01-05"), color="#333333", lw=0.8, ls="--")
+    l2_start = pd.Timestamp("2021-01-05")
+    ax.axvline(l2_start, color="#333333", lw=0.8, ls="--", zorder=7)
+    ax.text(
+        l2_start,
+        0.98,
+        "L2",
+        transform=ax.get_xaxis_transform(),
+        ha="center",
+        va="top",
+        fontsize=6.7,
+        color="#222222",
+        path_effects=[patheffects.withStroke(linewidth=1.4, foreground="white")],
+    )
     ax.set_ylabel("Mutation frequency")
     ax.set_ylim(-0.03, 1.03)
     ax.set_xlim(start, end)
     format_date_axis(ax, monthly=True)
-    ax.legend(loc="upper left", ncol=2)
+    ax.tick_params(axis="x", labelbottom=False)
+    ax.text(
+        0.985,
+        0.88,
+        "S:N501Y",
+        transform=ax.transAxes,
+        ha="right",
+        va="center",
+        color="#4e79a7",
+        fontsize=6.8,
+        fontweight="bold",
+        path_effects=[patheffects.withStroke(linewidth=1.4, foreground="white")],
+    )
+    ax.text(
+        0.985,
+        0.12,
+        "S:A222V",
+        transform=ax.transAxes,
+        ha="right",
+        va="center",
+        color="#d55e00",
+        fontsize=6.8,
+        fontweight="bold",
+        path_effects=[patheffects.withStroke(linewidth=1.4, foreground="white")],
+    )
 
     ax_occ = ax.twinx()
     if "hb_hospital_occupancy_total" in traj:
@@ -299,7 +477,8 @@ def plot_alpha_emergence() -> None:
         ax_occ.set_ylabel("Hospital occupancy")
         ax_occ.spines["right"].set_visible(True)
 
-    ax = axes[1]
+    ax = axes[2]
+    add_policy_spans(ax, start, end, label_codes=False, alpha=0.060)
     if not hb.empty:
         totals = hb.groupby("health_board")["n_alpha_sequences"].sum().sort_values(ascending=False)
         top = list(totals.head(7).index)
@@ -322,15 +501,28 @@ def plot_alpha_emergence() -> None:
             colors=palette[: len(pivot.columns)],
             alpha=0.86,
         )
-        ax.legend(loc="upper left", ncol=3, fontsize=6.2)
-    ax.axvline(pd.Timestamp("2021-01-05"), color="#333333", lw=0.8, ls="--")
-    add_policy_spans(ax, start, end, label_codes=False)
+        ax.legend(
+            loc="upper left",
+            bbox_to_anchor=(0.008, 0.985),
+            ncol=4,
+            fontsize=5.8,
+            frameon=True,
+            facecolor="white",
+            edgecolor="none",
+            framealpha=0.78,
+            borderpad=0.25,
+            handlelength=1.4,
+            columnspacing=0.8,
+        )
+    ax.axvline(l2_start, color="#333333", lw=0.8, ls="--", zorder=7)
     ax.set_ylabel("Alpha sequences")
     ax.set_xlim(start, end)
     format_date_axis(ax, monthly=True)
+    ax.set_xlabel("Week midpoint")
 
-    style.add_panel_labels(axes.ravel(), x=-0.08, y=1.08, size=9)
-    save_all(fig, FIGURE_DIR / "fig3_alpha_emergence_f5_l2", height_in=4.9)
+    place_policy_strip_flush(ax_policy, axes[1])
+    style.add_panel_labels([axes[1], axes[2]], x=-0.08, y=1.04, size=9)
+    save_all(fig, FIGURE_DIR / "fig3_alpha_emergence_f5_l2", height_in=5.15)
 
 
 def plot_counterfactuals() -> None:
@@ -345,15 +537,16 @@ def plot_counterfactuals() -> None:
 
     fig, axes = style.new_figure(
         width="double",
-        height_in=3.7,
+        height_in=3.85,
         nrows=1,
         ncols=2,
         font_scale=0.85,
         gridspec_kw={"width_ratios": [1.35, 1.0]},
     )
+    fig.subplots_adjust(wspace=0.28, top=0.90, bottom=0.18)
 
     ax = axes[0]
-    add_policy_spans(ax, start, end, label_codes=True)
+    add_policy_spans(ax, start, end, label_codes=False, alpha=0.060)
     ax.scatter(
         traj["wn_mid_date"],
         traj["freq_s_n501y"],
@@ -385,12 +578,46 @@ def plot_counterfactuals() -> None:
             lw=1.5,
             label=dat["scenario_label"].iloc[0],
         )
-    ax.axhline(0.5, color="#333333", lw=0.8, ls=":")
+    l2_start = pd.Timestamp("2021-01-05")
+    ax.axhline(0.5, color="#333333", lw=0.8, ls=":", zorder=2)
+    ax.axvline(l2_start, color="#333333", lw=0.8, ls="--", alpha=0.75, zorder=3)
+    ax.text(
+        l2_start,
+        0.98,
+        "L2",
+        transform=ax.get_xaxis_transform(),
+        ha="center",
+        va="top",
+        fontsize=6.7,
+        color="#222222",
+        path_effects=[patheffects.withStroke(linewidth=1.4, foreground="white")],
+    )
+    ax.text(
+        0.985,
+        0.505,
+        "50%",
+        transform=ax.get_yaxis_transform(),
+        ha="right",
+        va="bottom",
+        fontsize=6.4,
+        color="#333333",
+        path_effects=[patheffects.withStroke(linewidth=1.4, foreground="white")],
+    )
+    ax.set_title("Counterfactual S:N501Y timing")
     ax.set_ylabel("S:N501Y frequency")
     ax.set_ylim(-0.03, 1.03)
     ax.set_xlim(start, end)
     format_date_axis(ax, monthly=True)
-    ax.legend(loc="upper left", fontsize=6.1)
+    ax.legend(
+        loc="lower right",
+        fontsize=5.8,
+        frameon=True,
+        facecolor="white",
+        edgecolor="none",
+        framealpha=0.80,
+        borderpad=0.25,
+        handlelength=1.5,
+    )
 
     ax = axes[1]
     order = ["alpha_f5_n501y", "alpha_l2_n501y", "b1177_l2_a222v"]
@@ -419,22 +646,24 @@ def plot_counterfactuals() -> None:
     )
     ax.set_xticks(x)
     ax.set_xticklabels(labels[: len(sub)])
+    ax.set_title("Growth-rate comparison")
     ax.set_ylabel("Log-odds slope per week")
     ax.set_xlim(-0.5, max(2.5, len(sub) - 0.5))
 
-    style.add_panel_labels(axes.ravel(), x=-0.12, y=1.08, size=9)
-    save_all(fig, FIGURE_DIR / "fig4_alpha_counterfactual_timing", height_in=3.7)
+    style.add_panel_labels(axes.ravel(), x=-0.12, y=1.06, size=9)
+    save_all(fig, FIGURE_DIR / "fig4_alpha_counterfactual_timing", height_in=3.85)
 
 
 def plot_supplementary_its_mixing() -> None:
     fig, axes = style.new_figure(
         width="double",
-        height_in=6.4,
+        height_in=6.65,
         nrows=3,
         ncols=2,
         font_scale=0.82,
         sharex=False,
     )
+    fig.subplots_adjust(top=0.91, hspace=0.44, wspace=0.24)
     outcomes = ["mean_simd_excess_discordance", "mean_age_excess_discordance"]
     for r, (slug, (short_label, date)) in enumerate(TRANSITIONS.items()):
         its = read_csv(f"its_weekly_{slug}.csv", ["wn_mid_date"])
@@ -442,20 +671,49 @@ def plot_supplementary_its_mixing() -> None:
         end = its["wn_mid_date"].max() + pd.Timedelta(days=3)
         for c, outcome in enumerate(outcomes):
             ax = axes[r, c]
-            add_policy_spans(ax, start, end, label_codes=False)
-            ax.scatter(its["wn_mid_date"], its[outcome], s=16, color="#1f4e79", alpha=0.85)
-            ax.plot(its["wn_mid_date"], its[f"fitted_{outcome}"], color="#b23a2e", lw=1.7)
-            ax.axvline(date, color="#333333", lw=0.8, ls="--")
+            add_policy_spans(ax, start, end, label_codes=False, alpha=0.060)
+            ax.scatter(its["wn_mid_date"], its[outcome], s=16, color="#1f4e79", alpha=0.85, zorder=5)
+            ax.plot(its["wn_mid_date"], its[f"fitted_{outcome}"], color="#b23a2e", lw=1.7, zorder=6)
+            ax.axvline(date, color="#333333", lw=0.8, ls="--", zorder=7)
             if c == 0:
-                ax.set_ylabel(f"{short_label}\n{OUTCOME_LABELS[outcome]}")
+                ax.set_ylabel(OUTCOME_LABELS[outcome])
+                ax.text(
+                    0.015,
+                    0.96,
+                    TRANSITION_ROW_LABELS.get(slug, short_label),
+                    transform=ax.transAxes,
+                    ha="left",
+                    va="top",
+                    fontsize=6.8,
+                    fontweight="bold",
+                    color="#222222",
+                    bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.78, "pad": 1.6},
+                    zorder=8,
+                )
             else:
                 ax.set_ylabel(OUTCOME_LABELS[outcome])
             ax.set_xlim(start, end)
             format_date_axis(ax, monthly=True)
+            if r == len(TRANSITIONS) - 1:
+                ax.set_xlabel("Week midpoint")
             if r == 0:
                 ax.set_title(OUTCOME_LABELS[outcome])
-    style.add_panel_labels(axes.ravel(), x=-0.08, y=1.08, size=9)
-    save_all(fig, FIGURE_DIR / "supp_fig1_its_mixing_outcomes", height_in=6.4)
+
+    legend_handles = [
+        Line2D([0], [0], marker="o", color="none", markerfacecolor="#1f4e79",
+               markeredgecolor="#1f4e79", markersize=4.2, label="Weekly outcome"),
+        Line2D([0], [0], color="#b23a2e", lw=1.7, label="Segmented fit"),
+        Line2D([0], [0], color="#333333", lw=0.8, ls="--", label="Transition date"),
+    ]
+    fig.legend(
+        handles=legend_handles,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0.985),
+        ncol=3,
+        frameon=False,
+    )
+    style.add_panel_labels(axes.ravel(), x=-0.14, y=1.08, size=9)
+    save_all(fig, FIGURE_DIR / "supp_fig1_its_mixing_outcomes", height_in=6.65)
 
 
 def main() -> None:
