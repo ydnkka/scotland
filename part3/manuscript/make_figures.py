@@ -263,14 +263,13 @@ def plot_policy_timeline() -> None:
     add_policy_strip(ax_policy, start, end)
     add_policy_spans(ax, start, end, label_codes=False, alpha=0.055)
 
-    (line_cluster,) = ax.plot(
+    ax.plot(
         weekly["wn_mid_date"],
         weekly["median_log_cluster_size"],
         color="#1f4e79",
         lw=1.8,
         marker="o",
         ms=2.4,
-        label="Median log cluster size",
         zorder=3,
     )
     ax.set_ylabel("Median log cluster size")
@@ -297,7 +296,6 @@ def plot_policy_timeline() -> None:
             path_effects=[patheffects.withStroke(linewidth=1.4, foreground="white")],
         )
 
-    ax.legend(handles=[line_cluster], loc="upper right")
     place_policy_strip_flush(ax_policy, ax)
     add_policy_intensity_colorbar(fig, ax_policy, ax)
     save_all(fig, FIGURE_DIR / "fig1_policy_timeline_cluster_structure", height_in=3.55)
