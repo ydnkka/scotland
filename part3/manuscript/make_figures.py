@@ -1,26 +1,6 @@
-"""Publication-ready figures for the Part 3 policy period analysis.
+"""Create publication-ready figures for Part 3 policy-period analyses.
 
-Outputs are written to ``part3/manuscript/figures/`` as PDF, PNG, and TIFF.
-The script uses the shared project style module at ``utils/style.py`` and reads
-pre-computed tables from ``part3/tables/``.
-
-Main figures
-------------
-fig1  Weekly cluster outcomes and policy context — two-panel time series
-      Panel A: median log cluster size (non-singletons), with policy-period
-               background shading colour-coded by intensity.
-      Panel B: policy intensity as a stepped line with period code labels.
-fig2  Interrupted-time-series plots at three policy transitions — 3×2 panel
-      showing pre/post trends in log cluster size (left) and log datazones
-      (right) with fitted ITS regression lines.
-fig3  Policy-period cluster outcome comparison — dot plot of median log cluster
-      size and median log datazones per policy period, annotated with intensity.
-
-Supplementary figures
----------------------
-supp_fig1  Weekly mixing metric evolution with policy overlay — 2×2 panel for
-           SIMD excess discordance, age excess discordance, mean log datazones,
-           and policy intensity.
+Outputs are written to ``part3/manuscript/figures`` as PDF, PNG, and TIFF.
 
 Run from the repository root:
 
@@ -29,470 +9,464 @@ Run from the repository root:
 
 from __future__ import annotations
 
-import sys
 import os
+import sys
 from pathlib import Path
 
+os.environ.setdefault("MPLCONFIGDIR", "/private/tmp/scotland-mplconfig")
+os.environ.setdefault("XDG_CACHE_HOME", "/private/tmp/scotland-xdg-cache")
+Path(os.environ["MPLCONFIGDIR"]).mkdir(parents=True, exist_ok=True)
+Path(os.environ["XDG_CACHE_HOME"]).mkdir(parents=True, exist_ok=True)
+
 import matplotlib.dates as mdates
-import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 
-# ---------------------------------------------------------------------------
-# Bootstrap repo root
-# ---------------------------------------------------------------------------
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-def _bootstrap_root() -> Path:
-    here = Path(__file__).resolve()
-    for cand in [here, *here.parents]:
-        if (cand / "config.yaml").exists():
-            root = str(cand)
-            if root not in sys.path:
-                sys.path.insert(0, root)
-            return cand
-    raise FileNotFoundError("Cannot locate config.yaml.")
+from utils import policy, style
 
 
-ROOT = _bootstrap_root()
 TABLE_DIR = ROOT / "part3" / "tables"
-OUT_DIR   = ROOT / "part3" / "manuscript" / "figures"
+FIGURE_DIR = ROOT / "part3" / "manuscript" / "figures"
 
-import utils.style as style  # noqa: E402
+FOCUS_PERIODS = {"P3", "T1", "F5", "L2", "SL", "L0", "NN"}
+TRANSITIONS = {
+    "t1_onset": ("T1", pd.Timestamp("2020-10-02")),
+    "l2_to_sl": ("SL", pd.Timestamp("2021-04-02")),
+    "nn_onset": ("NN", pd.Timestamp("2021-08-09")),
+}
 
-from utils.policy import (  # noqa: E402
-    POLICY_PERIODS_PD,
-    PERIOD_ORDER,
-    PERIOD_LABELS,
-    PERIOD_INTENSITY,
-)
+POLICY_COLORS = {
+    "P3": "#8fbf88",
+    "T1": "#d6a03a",
+    "F5": "#c97a32",
+    "L2": "#9d3c32",
+    "SL": "#d6a03a",
+    "L0": "#71a9c9",
+    "NN": "#8fbf88",
+    "OM": "#b7a4d8",
+    "FE": "#a7c6a1",
+    "PR": "#d0d0d0",
+}
 
-
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
-# ITS transitions (must match part3_analysis.py)
-ITS_TRANSITIONS = [
-    ("T1_onset",  pd.Timestamp("2020-10-02"), "P3", "T1",
-     "Phase 3 → Pre-tier\n(2020-10-02)"),
-    ("L2_to_SL",  pd.Timestamp("2021-04-02"), "L2", "SL",
-     "2nd Lockdown → Stay-local\n(2021-04-02)"),
-    ("NN_onset",  pd.Timestamp("2021-08-09"), "L0", "NN",
-     "Level 0 → Near-normal\n(2021-08-09)"),
-]
-
-ITS_OUTCOMES_LEFT  = "log_cluster_size"
-ITS_OUTCOMES_RIGHT = "log_datazones"
-
-# Colour map for policy intensity (0–100): dark blue (low) to dark red (high).
-_INTENSITY_CMAP = plt.cm.RdYlBu_r
-
-def intensity_colour(v: float) -> tuple:
-    """Map a 0–100 intensity value to a colour."""
-    return _INTENSITY_CMAP(v / 100.0)
-
-# Background shading alpha for period bands.
-PERIOD_ALPHA = 0.18
-
-# Periods present in the study data (excludes pre-July 2020 periods).
-STUDY_PERIODS = ["P3", "T1", "F5", "L2", "SL", "L3", "L21", "L0",
-                 "NN", "OM", "FE", "PR"]
+OUTCOME_LABELS = {
+    "median_log_cluster_size": "Median log cluster size",
+    "median_log_datazones": "Median log datazones",
+    "mean_simd_excess_discordance": "Mean SIMD excess discordance",
+    "mean_age_excess_discordance": "Mean age excess discordance",
+}
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+def setup_environment() -> None:
+    os.environ.setdefault("MPLCONFIGDIR", "/private/tmp/scotland-mplconfig")
+    os.environ.setdefault("XDG_CACHE_HOME", "/private/tmp/scotland-xdg-cache")
+    Path(os.environ["MPLCONFIGDIR"]).mkdir(parents=True, exist_ok=True)
+    Path(os.environ["XDG_CACHE_HOME"]).mkdir(parents=True, exist_ok=True)
+    FIGURE_DIR.mkdir(parents=True, exist_ok=True)
 
-def save_all(fig: plt.Figure, stem: Path, width: str = "double",
-             height_in: float = 4.0) -> None:
-    """Save as PDF + PNG + TIFF using the shared save_figure helper."""
+
+def save_all(fig: plt.Figure, out_base: Path, *, width: str = "double", height_in: float = 3.8) -> None:
     style.save_figure(
-        fig, stem, width,
+        fig,
+        out_base,
+        width=width,
         height_in=height_in,
-        save_pdf=True, save_png=True, save_tiff=True,
+        dpi=600,
+        save_pdf=True,
+        save_png=True,
+        save_tiff=True,
     )
 
 
-def _add_period_bands(
+def read_csv(name: str, date_cols: list[str] | None = None) -> pd.DataFrame:
+    path = TABLE_DIR / name
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Missing {path}. Run conda run -n PhD python part3/part3_analysis.py first."
+        )
+    df = pd.read_csv(path)
+    for col in date_cols or []:
+        if col in df:
+            df[col] = pd.to_datetime(df[col])
+    return df
+
+
+def add_policy_spans(
     ax: plt.Axes,
-    ymin: float,
-    ymax: float,
-    periods: list[str] | None = None,
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+    *,
+    label_codes: bool = False,
+    y_text: float = 0.98,
 ) -> None:
-    """Add colour-coded vertical shading bands for each policy period."""
-    if periods is None:
-        periods = STUDY_PERIODS
-    for code in periods:
-        row = POLICY_PERIODS_PD[POLICY_PERIODS_PD["period_code"] == code]
-        if row.empty:
+    periods = policy.POLICY_PERIODS_PD.copy()
+    for _, row in periods.iterrows():
+        left = max(pd.Timestamp(row["start_date"]), start)
+        right = min(pd.Timestamp(row["end_date"]), end)
+        if right < left:
             continue
-        row = row.iloc[0]
-        col = intensity_colour(row["intensity"])
-        ax.axvspan(
-            row["start_date"], row["end_date"],
-            ymin=0, ymax=1,
-            color=col, alpha=PERIOD_ALPHA, linewidth=0,
-        )
-
-
-def _period_legend_handles() -> list[mpatches.Patch]:
-    """Return legend patches for the intensity scale reference."""
-    levels = [(0, "Low restriction (0–25)"),
-              (40, "Moderate (25–60)"),
-              (80, "High restriction (60–100)")]
-    return [
-        mpatches.Patch(
-            color=intensity_colour(v), alpha=0.5, label=lbl
-        )
-        for v, lbl in levels
-    ]
-
-
-# ---------------------------------------------------------------------------
-# Figure 1 — Weekly time series with policy context
-# ---------------------------------------------------------------------------
-
-def plot_weekly_time_series(weekly: pd.DataFrame, out_dir: Path) -> None:
-    """Two-panel weekly time series: cluster size and policy intensity."""
-    fig, axes = style.new_figure(
-        width="double", height_in=5.0, nrows=2, ncols=1,
-        font_scale=0.9, gridspec_kw={"height_ratios": [2, 1], "hspace": 0.12},
-    )
-    ax_top, ax_bot = axes.ravel()
-
-    dates = pd.to_datetime(weekly["week_start"])
-
-    # Panel A: median log cluster size with period shading
-    _add_period_bands(ax_top, 0, 1)
-    ax_top.plot(
-        dates, weekly["median_log_cluster_size"],
-        color="#333333", linewidth=1.2, zorder=3, label="Median log cluster size",
-    )
-    ax_top.set_ylabel("Median log cluster size\n(non-singletons)", fontsize=8)
-    ax_top.set_xlim(dates.min(), dates.max())
-    ax_top.xaxis.set_major_formatter(mdates.DateFormatter("%b\n%Y"))
-    ax_top.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
-    ax_top.tick_params(labelbottom=False)
-
-    # Add ITS transition vlines
-    for _, tdate, _, _, desc in ITS_TRANSITIONS:
-        ax_top.axvline(tdate, color="#c44e52", linestyle="--", linewidth=0.9,
-                       alpha=0.8, zorder=4)
-        # short label at top
-        ax_top.text(
-            tdate, 1.05,
-            " " + tdate.strftime("%d %b %Y"),
-            fontsize=5.5, color="#c44e52", va="top", rotation=0, ha="center",
-            transform=ax_top.get_xaxis_transform(),
-        )
-
-    # Legend for period bands
-    handles = _period_legend_handles()
-    ax_top.legend(handles=handles, loc="upper right", fontsize=6,
-                  title="Policy intensity", title_fontsize=6)
-
-    # Panel B: stepped policy intensity line
-    _add_period_bands(ax_bot, 0, 1)
-    ax_bot.step(
-        dates, weekly["dominant_intensity"],
-        where="mid", color="#2b2b2b", linewidth=1.3, zorder=3,
-    )
-    ax_bot.set_ylabel("Policy\nintensity", fontsize=8)
-    ax_bot.set_ylim(0, 105)
-    ax_bot.set_yticks([0, 25, 50, 75, 100])
-    ax_bot.set_xlim(dates.min(), dates.max())
-    ax_bot.xaxis.set_major_formatter(mdates.DateFormatter("%b\n%Y"))
-    ax_bot.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
-
-    # Period code labels on intensity panel
-    for code in STUDY_PERIODS:
-        row = POLICY_PERIODS_PD[POLICY_PERIODS_PD["period_code"] == code]
-        if row.empty:
-            continue
-        row = row.iloc[0]
-        mid = row["start_date"] + (row["end_date"] - row["start_date"]) / 2
-        ax_bot.text(
-            mid, row["intensity"] + 3, code,
-            ha="center", va="bottom", fontsize=5, color="#333333",
-        )
-
-    style.add_panel_labels([ax_top, ax_bot], x=-0.07, y=1.05)
-
-    fig.subplots_adjust(left=0.10, right=0.97, top=0.93, bottom=0.09)
-
-    save_all(fig, out_dir / "fig1_weekly_time_series", "double", 5.0)
-    print("  fig1 saved.")
-
-
-# ---------------------------------------------------------------------------
-# Figure 2 — ITS transition plots
-# ---------------------------------------------------------------------------
-
-def plot_its_transitions(
-    its_data: dict[str, pd.DataFrame],
-    coef_table: pd.DataFrame,
-    out_dir: Path,
-) -> None:
-    """3×2 ITS panel: log cluster size (left) and log datazones (right)."""
-
-    outcomes = [
-        (ITS_OUTCOMES_LEFT,  "Median log\ncluster size"),
-        (ITS_OUTCOMES_RIGHT, "Median log\ndatazones"),
-    ]
-
-    fig, axes = style.new_figure(
-        width="double", height_in=7.0, nrows=3, ncols=2,
-        font_scale=0.85,
-        # gridspec_kw={"hspace": 0.46, "wspace": 0.30},
-        layout="constrained",
-        sharex=True,
-    )
-
-    for row_idx, (label, tdate, pre_code, post_code, desc) in enumerate(ITS_TRANSITIONS):
-        its_df = its_data[label]
-
-        for col_idx, (outcome_col, outcome_label) in enumerate(outcomes):
-            ax = axes[row_idx, col_idx]
-            valid = its_df[["t", "post", "t_post", outcome_col]].dropna()
-
-            # Observed weekly points
-            pre  = valid[valid["post"] == 0]
-            post = valid[valid["post"] == 1]
-            ax.scatter(pre[outcome_col].index.map(lambda i: valid.loc[i, "t"])
-                       if False else pre["t"],
-                       pre[outcome_col],
-                       s=14, color="#4e79a7", zorder=3, label="Pre-transition")
-            ax.scatter(post["t"], post[outcome_col],
-                       s=14, color="#e15759", zorder=3, label="Post-transition")
-
-            # Fitted ITS regression lines
-            row_coef = coef_table[
-                (coef_table["transition"] == label) &
-                (coef_table["outcome"] == outcome_col)
-            ]
-            if not row_coef.empty and "coef_const" in row_coef.columns:
-                rc = row_coef.iloc[0]
-                t_pre  = np.linspace(valid["t"].min(), -0.5, 30)
-                t_post = np.linspace(0, valid["t"].max(), 30)
-                y_pre  = rc["coef_const"] + rc["coef_t"] * t_pre
-                y_post = (rc["coef_const"]
-                          + rc["coef_t"] * t_post
-                          + rc["coef_post"]
-                          + rc["coef_t_post"] * t_post)
-                ax.plot(t_pre,  y_pre,  color="#4e79a7", linewidth=1.4, zorder=4)
-                ax.plot(t_post, y_post, color="#e15759", linewidth=1.4, zorder=4)
-
-                # Annotate with level change β_post
-                p  = rc.get("pval_post", np.nan)
-                β  = rc.get("coef_post", np.nan)
-                ci_lo = rc.get("ci_lo_post", np.nan)
-                ci_hi = rc.get("ci_hi_post", np.nan)
-                if not np.isnan(β):
-                    sig = ("*" if p < 0.05 else "")
-                    ann = f"Δ={β:+.2f} [{ci_lo:+.2f},{ci_hi:+.2f}]{sig}"
-                    ax.text(0.03, 0.97, ann, transform=ax.transAxes,
-                            fontsize=6, va="top", ha="left",
-                            bbox=dict(boxstyle="round,pad=0.2",
-                                      fc="white", ec="none", alpha=0.8))
-
-            # Transition line
-            ax.axvline(x=-0.5, color="#999999", linestyle="--",
-                       linewidth=0.8, zorder=2)
-
-            ax.set_ylabel(outcome_label, fontsize=7)
-
-            # Title only on top row
-            if row_idx == 0:
-                ax.set_title(outcome_label.replace("\n", " "), fontsize=8, pad=4)
-
-            # Transition descriptor on left column
-            if col_idx == 0:
-                short = {
-                    "T1_onset":  "T1-onset\n(Oct 2020)",
-                    "L2_to_SL":  "L2→SL\n(Apr 2021)",
-                    "NN_onset":  "NN-onset\n(Aug 2021)",
-                }[label]
-                ax.set_ylabel(f"{short}\n\n{outcome_label}", fontsize=6.5)
-
-    style.add_panel_labels(axes.ravel(), x=-0.18, y=1.07)
-
-    # Figure-level legend at the top of the figure
-    handles, labels = axes[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper center", ncol=2, fontsize=6,
-               framealpha=0.7, bbox_to_anchor=(0.5, 1.05),
-               bbox_transform=fig.transFigure)
-
-    axes[2, 0].set_xlabel("Week from transition", fontsize=7)
-    axes[2, 1].set_xlabel("Week from transition", fontsize=7)
-
-
-    # fig.subplots_adjust(left=0.15, right=0.97, top=0.93, bottom=0.07)
-    save_all(fig, out_dir / "fig2_its_transitions", "double", 7.0)
-    print("  fig2 saved.")
-
-
-# ---------------------------------------------------------------------------
-# Figure 3 — Period-level cluster outcome dot plot
-# ---------------------------------------------------------------------------
-
-def plot_period_dot_chart(period_desc: pd.DataFrame, out_dir: Path) -> None:
-    """Dot chart of median log cluster size and log datazones by policy period."""
-    # Compute log-scale medians for plotting
-    pd_ = period_desc.copy()
-    pd_["log_med_size"]     = np.log(pd_["median_cluster_size"].clip(lower=1))
-    pd_["log_med_datazones"] = np.log(pd_["median_datazones"].clip(lower=1))
-
-    # Order by appearance (chronological = PERIOD_ORDER intersection)
-    order = [c for c in PERIOD_ORDER if c in pd_["period_code"].values]
-    pd_ = pd_.set_index("period_code").loc[order].reset_index()
-
-    fig, axes = style.new_figure(
-        width="double", height_in=4.8, nrows=1, ncols=2,
-        font_scale=0.9, layout="constrained", sharey=True,
-    )
-    ax_size, ax_dz = axes.ravel()
-
-    yticks = range(len(pd_))
-    ylabels = [f"{row['period_code']}\n{PERIOD_LABELS[row['period_code']]}"
-               for _, row in pd_.iterrows()]
-
-    # Colour points by intensity
-    colours = [intensity_colour(row["policy_intensity"]) for _, row in pd_.iterrows()]
-
-    for ax, col, xlabel in [
-        (ax_size, "log_med_size",     "Log median cluster size (non-singletons)"),
-        (ax_dz,   "log_med_datazones", "Log median datazones (non-singletons)"),
-    ]:
-        for i, (y, val, col_, row) in enumerate(
-            zip(yticks, pd_[col], colours, pd_.itertuples())
-        ):
-            ax.scatter(val, y, color=col_, s=60, zorder=3)
-            ax.annotate(
-                f"n={row.n_clusters_nonsingleton:,}",
-                (val, y), textcoords="offset points",
-                xytext=(6, 0), fontsize=5, va="center", color="#666666",
+        code = row["period_code"]
+        color = POLICY_COLORS.get(code, "#d5d5d5")
+        alpha = 0.12 if code in FOCUS_PERIODS else 0.055
+        ax.axvspan(left, right, color=color, alpha=alpha, lw=0, zorder=0)
+        if label_codes and code in FOCUS_PERIODS:
+            ax.text(
+                left + (right - left) / 2,
+                y_text,
+                code,
+                transform=ax.get_xaxis_transform(),
+                ha="center",
+                va="top",
+                fontsize=6.5,
+                color="#333333",
             )
 
-        ax.set_yticks(list(yticks))
-        ax.set_yticklabels(ylabels, fontsize=6)
-        ax.set_xlabel(xlabel, fontsize=7.5)
-        ax.invert_yaxis()
-        ax.axvline(0, color="#cccccc", linewidth=0.7, zorder=1)
 
-    # Intensity colourbar
-    sm = plt.cm.ScalarMappable(
-        cmap=_INTENSITY_CMAP,
-        norm=plt.Normalize(vmin=0, vmax=100),
+def format_date_axis(ax: plt.Axes, *, monthly: bool = False) -> None:
+    locator = mdates.MonthLocator(interval=1 if monthly else 2)
+    ax.xaxis.set_major_locator(locator)
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b\n%Y"))
+    ax.tick_params(axis="x", labelrotation=0)
+
+
+def plot_policy_timeline() -> None:
+    weekly = read_csv("weekly_summaries.csv", ["wn_mid_date"])
+    start = weekly["wn_mid_date"].min() - pd.Timedelta(days=7)
+    end = weekly["wn_mid_date"].max() + pd.Timedelta(days=7)
+
+    fig, ax = style.new_figure(width="double", height_in=3.25, font_scale=0.9)
+    add_policy_spans(ax, start, end, label_codes=True)
+
+    ax.plot(
+        weekly["wn_mid_date"],
+        weekly["median_log_cluster_size"],
+        color="#1f4e79",
+        lw=1.8,
+        marker="o",
+        ms=2.4,
+        label="Median log cluster size",
+        zorder=3,
     )
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=axes.ravel().tolist(), shrink=0.6, pad=0.03)
-    cbar.set_label("Policy intensity", fontsize=7)
-    cbar.ax.tick_params(labelsize=6)
+    ax.set_ylabel("Median log cluster size")
+    ax.set_xlabel("")
+    ax.set_xlim(start, end)
+    format_date_axis(ax)
 
-    style.add_panel_labels(axes.ravel(), x=-0.15, y=1.04)
-    # fig.subplots_adjust(left=0.22, right=0.88, top=0.95, bottom=0.10)
+    ax2 = ax.twinx()
+    ax2.step(
+        weekly["wn_mid_date"],
+        weekly["policy_intensity"],
+        where="mid",
+        color="#333333",
+        alpha=0.45,
+        lw=1.0,
+        label="Policy intensity",
+    )
+    ax2.set_ylim(0, 105)
+    ax2.set_ylabel("Policy intensity")
+    ax2.spines["right"].set_visible(True)
 
-    save_all(fig, out_dir / "fig3_period_outcomes", "double", 4.8)
-    print("  fig3 saved.")
+    for label, date in [
+        ("T1", pd.Timestamp("2020-10-02")),
+        ("L2", pd.Timestamp("2021-01-05")),
+        ("SL", pd.Timestamp("2021-04-02")),
+        ("NN", pd.Timestamp("2021-08-09")),
+    ]:
+        ax.axvline(date, color="#333333", lw=0.7, ls="--", alpha=0.65)
+        ax.text(
+            date,
+            1.04,
+            label,
+            transform=ax.get_xaxis_transform(),
+            ha="center",
+            va="bottom",
+            fontsize=7,
+        )
+
+    lines = ax.get_lines() + ax2.get_lines()
+    ax.legend(lines, [line.get_label() for line in lines], loc="upper left", ncol=2)
+    save_all(fig, FIGURE_DIR / "fig1_policy_timeline_cluster_structure", height_in=3.25)
 
 
-# ---------------------------------------------------------------------------
-# Supplementary figure 1 — Weekly mixing metrics with policy overlay
-# ---------------------------------------------------------------------------
+def plot_selected_its() -> None:
+    fig, axes = style.new_figure(
+        width="double",
+        height_in=6.4,
+        nrows=3,
+        ncols=2,
+        font_scale=0.82,
+        sharex=False,
+    )
+    outcomes = ["median_log_cluster_size", "median_log_datazones"]
 
-def plot_supp_weekly_mixing(weekly: pd.DataFrame, out_dir: Path) -> None:
-    """2×2 weekly series: SIMD mixing, age mixing, log datazones, intensity."""
-    dates = pd.to_datetime(weekly["week_start"])
+    for r, (slug, (short_label, date)) in enumerate(TRANSITIONS.items()):
+        its = read_csv(f"its_weekly_{slug}.csv", ["wn_mid_date"])
+        start = its["wn_mid_date"].min() - pd.Timedelta(days=3)
+        end = its["wn_mid_date"].max() + pd.Timedelta(days=3)
+        for c, outcome in enumerate(outcomes):
+            ax = axes[r, c]
+            add_policy_spans(ax, start, end, label_codes=False)
+            ax.scatter(
+                its["wn_mid_date"],
+                its[outcome],
+                s=16,
+                color="#1f4e79",
+                alpha=0.85,
+                zorder=3,
+            )
+            fitted = f"fitted_{outcome}"
+            ax.plot(
+                its["wn_mid_date"],
+                its[fitted],
+                color="#b23a2e",
+                lw=1.7,
+                zorder=4,
+            )
+            ax.axvline(date, color="#333333", lw=0.8, ls="--")
+            if c == 0:
+                ax.set_ylabel(f"{short_label}\n{OUTCOME_LABELS[outcome]}")
+            else:
+                ax.set_ylabel(OUTCOME_LABELS[outcome])
+            ax.set_xlim(start, end)
+            format_date_axis(ax, monthly=True)
+            if r == 0:
+                ax.set_title(OUTCOME_LABELS[outcome])
 
-    panels = [
-        ("mean_simd_excess",         "Mean SIMD excess\ndiscordance",   "#4e79a7"),
-        ("mean_age_excess",          "Mean age excess\ndiscordance",    "#59a14f"),
-        ("median_log_datazones",     "Median log\ndatazones",           "#e15759"),
-        ("dominant_intensity",       "Policy intensity",                "#2b2b2b"),
-    ]
+    style.add_panel_labels(axes.ravel(), x=-0.08, y=1.08, size=9)
+    save_all(fig, FIGURE_DIR / "fig2_selected_policy_transitions", height_in=6.4)
+
+
+def plot_alpha_emergence() -> None:
+    traj = read_csv("alpha_mutation_trajectories.csv", ["wn_mid_date"])
+    hb = read_csv("alpha_health_board_weekly.csv", ["wn_mid_date"])
+
+    start = pd.Timestamp("2020-10-01")
+    end = pd.Timestamp("2021-04-20")
+    traj = traj[traj["wn_mid_date"].between(start, end)].copy()
+    hb = hb[hb["wn_mid_date"].between(start, end)].copy()
 
     fig, axes = style.new_figure(
-        width="double", height_in=5.6, nrows=2, ncols=2,
-        font_scale=0.85, layout="constrained",
-        sharex=True,
-        # gridspec_kw={"hspace": 0.40, "wspace": 0.35},
+        width="double",
+        height_in=4.9,
+        nrows=2,
+        ncols=1,
+        font_scale=0.85,
+        sharex=False,
+        gridspec_kw={"height_ratios": [1.0, 1.15]},
+    )
+    ax = axes[0]
+    add_policy_spans(ax, start, end, label_codes=True)
+    ax.plot(
+        traj["wn_mid_date"],
+        traj["freq_s_n501y"],
+        color="#4e79a7",
+        marker="o",
+        ms=3,
+        lw=1.8,
+        label="S:N501Y",
+    )
+    ax.plot(
+        traj["wn_mid_date"],
+        traj["freq_s_a222v"],
+        color="#d55e00",
+        marker="o",
+        ms=3,
+        lw=1.8,
+        label="S:A222V",
+    )
+    ax.axvline(pd.Timestamp("2021-01-05"), color="#333333", lw=0.8, ls="--")
+    ax.set_ylabel("Mutation frequency")
+    ax.set_ylim(-0.03, 1.03)
+    ax.set_xlim(start, end)
+    format_date_axis(ax, monthly=True)
+    ax.legend(loc="upper left", ncol=2)
+
+    ax_occ = ax.twinx()
+    if "hb_hospital_occupancy_total" in traj:
+        ax_occ.plot(
+            traj["wn_mid_date"],
+            traj["hb_hospital_occupancy_total"],
+            color="#555555",
+            lw=1.0,
+            alpha=0.35,
+            label="Hospital occupancy",
+        )
+        ax_occ.set_ylabel("Hospital occupancy")
+        ax_occ.spines["right"].set_visible(True)
+
+    ax = axes[1]
+    if not hb.empty:
+        totals = hb.groupby("health_board")["n_alpha_sequences"].sum().sort_values(ascending=False)
+        top = list(totals.head(7).index)
+        hb["health_board_plot"] = np.where(hb["health_board"].isin(top), hb["health_board"], "Other")
+        pivot = (
+            hb.groupby(["wn_mid_date", "health_board_plot"])["n_alpha_sequences"]
+            .sum()
+            .unstack(fill_value=0)
+            .sort_index()
+        )
+        order = [name for name in top if name in pivot.columns]
+        if "Other" in pivot.columns:
+            order.append("Other")
+        pivot = pivot.reindex(columns=order, fill_value=0)
+        palette = ["#4e79a7", "#f28e2b", "#59a14f", "#e15759", "#b07aa1", "#edc948", "#9c755f", "#bab0ac"]
+        ax.stackplot(
+            pivot.index,
+            [pivot[col].to_numpy() for col in pivot.columns],
+            labels=pivot.columns,
+            colors=palette[: len(pivot.columns)],
+            alpha=0.86,
+        )
+        ax.legend(loc="upper left", ncol=3, fontsize=6.2)
+    ax.axvline(pd.Timestamp("2021-01-05"), color="#333333", lw=0.8, ls="--")
+    add_policy_spans(ax, start, end, label_codes=False)
+    ax.set_ylabel("Alpha sequences")
+    ax.set_xlim(start, end)
+    format_date_axis(ax, monthly=True)
+
+    style.add_panel_labels(axes.ravel(), x=-0.08, y=1.08, size=9)
+    save_all(fig, FIGURE_DIR / "fig3_alpha_emergence_f5_l2", height_in=4.9)
+
+
+def plot_counterfactuals() -> None:
+    traj = read_csv("alpha_mutation_trajectories.csv", ["wn_mid_date"])
+    cf = read_csv("alpha_counterfactual_trajectories.csv", ["date", "requested_switch_date"])
+    params = read_csv("alpha_growth_params.csv")
+
+    start = pd.Timestamp("2020-11-01")
+    end = pd.Timestamp("2021-03-10")
+    traj = traj[traj["wn_mid_date"].between(start, end)].copy()
+    cf = cf[cf["date"].between(start, end)].copy()
+
+    fig, axes = style.new_figure(
+        width="double",
+        height_in=3.7,
+        nrows=1,
+        ncols=2,
+        font_scale=0.85,
+        gridspec_kw={"width_ratios": [1.35, 1.0]},
     )
 
-    for idx, (col, ylabel, colour) in enumerate(panels):
-        ax = axes.ravel()[idx]
-        _add_period_bands(ax, 0, 1)
-
-        if col == "dominant_intensity":
-            ax.step(dates, weekly[col], where="mid",
-                    color=colour, linewidth=1.2, zorder=3)
-        else:
-            ax.plot(dates, weekly[col], color=colour,
-                    linewidth=1.1, zorder=3)
-
-        for _, tdate, _, _, _ in ITS_TRANSITIONS:
-            ax.axvline(tdate, color="#c44e52", linestyle="--",
-                       linewidth=0.8, alpha=0.7, zorder=4)
-
-        ax.set_ylabel(ylabel, fontsize=7.5)
-        ax.set_xlim(dates.min(), dates.max())
-        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b\n%Y"))
-        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=4))
-
-    style.add_panel_labels(axes.ravel(), x=-0.18, y=1.05)
-    # fig.subplots_adjust(left=0.12, right=0.97, top=0.93, bottom=0.08)
-
-    save_all(fig, out_dir / "supp_fig1_weekly_mixing", "double", 5.6)
-    print("  supp_fig1 saved.")
-
-
-# ---------------------------------------------------------------------------
-# Run
-# ---------------------------------------------------------------------------
-
-def remove_stale_figures(out_dir: Path) -> None:
-    """Remove old figure files so stale outputs don't persist."""
-    expected = {
-        "fig1_weekly_time_series",
-        "fig2_its_transitions",
-        "fig3_period_outcomes",
-        "supp_fig1_weekly_mixing",
+    ax = axes[0]
+    add_policy_spans(ax, start, end, label_codes=True)
+    ax.scatter(
+        traj["wn_mid_date"],
+        traj["freq_s_n501y"],
+        color="#222222",
+        s=18,
+        zorder=5,
+        label="Observed S:N501Y",
+    )
+    scenario_order = [
+        "actual_l2_start",
+        "expansion_date_2020_12_08",
+        "nearest_w021_2020_12_02",
+        "f5_start_2020_11_02",
+    ]
+    colors = {
+        "actual_l2_start": "#4e79a7",
+        "expansion_date_2020_12_08": "#f28e2b",
+        "nearest_w021_2020_12_02": "#59a14f",
+        "f5_start_2020_11_02": "#e15759",
     }
-    for f in out_dir.glob("*"):
-        if f.stem in expected:
-            try:
-                f.unlink()
-            except OSError:
-                pass
+    for scenario in scenario_order:
+        dat = cf[cf["scenario"] == scenario]
+        if dat.empty:
+            continue
+        ax.plot(
+            dat["date"],
+            dat["projected_n501y_frequency"],
+            color=colors[scenario],
+            lw=1.5,
+            label=dat["scenario_label"].iloc[0],
+        )
+    ax.axhline(0.5, color="#333333", lw=0.8, ls=":")
+    ax.set_ylabel("S:N501Y frequency")
+    ax.set_ylim(-0.03, 1.03)
+    ax.set_xlim(start, end)
+    format_date_axis(ax, monthly=True)
+    ax.legend(loc="upper left", fontsize=6.1)
+
+    ax = axes[1]
+    order = ["alpha_f5_n501y", "alpha_l2_n501y", "b1177_l2_a222v"]
+    labels = ["Alpha\nF5", "Alpha\nL2", "S:A222V\nL2"]
+    sub = params[params["analysis"].isin(order)].copy()
+    sub["order"] = sub["analysis"].map({k: i for i, k in enumerate(order)})
+    sub = sub.sort_values("order")
+    x = np.arange(len(sub))
+    y = sub["slope_per_week"].to_numpy()
+    yerr = np.vstack(
+        [
+            y - sub["slope_ci_low_per_week"].to_numpy(),
+            sub["slope_ci_high_per_week"].to_numpy() - y,
+        ]
+    )
+    ax.axhline(0, color="#333333", lw=0.8)
+    ax.errorbar(
+        x,
+        y,
+        yerr=yerr,
+        fmt="o",
+        color="#1f4e79",
+        ecolor="#1f4e79",
+        capsize=3,
+        lw=1.4,
+    )
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels[: len(sub)])
+    ax.set_ylabel("Log-odds slope per week")
+    ax.set_xlim(-0.5, max(2.5, len(sub) - 0.5))
+
+    style.add_panel_labels(axes.ravel(), x=-0.12, y=1.08, size=9)
+    save_all(fig, FIGURE_DIR / "fig4_alpha_counterfactual_timing", height_in=3.7)
 
 
-def run() -> None:
-    print("Part 3 figures")
-    print("=" * 40)
+def plot_supplementary_its_mixing() -> None:
+    fig, axes = style.new_figure(
+        width="double",
+        height_in=6.4,
+        nrows=3,
+        ncols=2,
+        font_scale=0.82,
+        sharex=False,
+    )
+    outcomes = ["mean_simd_excess_discordance", "mean_age_excess_discordance"]
+    for r, (slug, (short_label, date)) in enumerate(TRANSITIONS.items()):
+        its = read_csv(f"its_weekly_{slug}.csv", ["wn_mid_date"])
+        start = its["wn_mid_date"].min() - pd.Timedelta(days=3)
+        end = its["wn_mid_date"].max() + pd.Timedelta(days=3)
+        for c, outcome in enumerate(outcomes):
+            ax = axes[r, c]
+            add_policy_spans(ax, start, end, label_codes=False)
+            ax.scatter(its["wn_mid_date"], its[outcome], s=16, color="#1f4e79", alpha=0.85)
+            ax.plot(its["wn_mid_date"], its[f"fitted_{outcome}"], color="#b23a2e", lw=1.7)
+            ax.axvline(date, color="#333333", lw=0.8, ls="--")
+            if c == 0:
+                ax.set_ylabel(f"{short_label}\n{OUTCOME_LABELS[outcome]}")
+            else:
+                ax.set_ylabel(OUTCOME_LABELS[outcome])
+            ax.set_xlim(start, end)
+            format_date_axis(ax, monthly=True)
+            if r == 0:
+                ax.set_title(OUTCOME_LABELS[outcome])
+    style.add_panel_labels(axes.ravel(), x=-0.08, y=1.08, size=9)
+    save_all(fig, FIGURE_DIR / "supp_fig1_its_mixing_outcomes", height_in=6.4)
 
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    remove_stale_figures(OUT_DIR)
 
-    # Load tables
-    weekly       = pd.read_csv(TABLE_DIR / "weekly_summaries.csv",
-                                parse_dates=["week_start"])
-    period_desc  = pd.read_csv(TABLE_DIR / "period_descriptives.csv")
-    coef_table   = pd.read_csv(TABLE_DIR / "its_coefficients.csv")
-
-    its_data = {}
-    for label, *_ in ITS_TRANSITIONS:
-        path = TABLE_DIR / f"its_weekly_{label}.csv"
-        its_data[label] = pd.read_csv(path, parse_dates=["week_start"])
-
-    # Generate figures
-    plot_weekly_time_series(weekly, OUT_DIR)
-    plot_its_transitions(its_data, coef_table, OUT_DIR)
-    plot_period_dot_chart(period_desc, OUT_DIR)
-    plot_supp_weekly_mixing(weekly, OUT_DIR)
-
-    print(f"\nAll figures written to {OUT_DIR.relative_to(ROOT)}/")
+def main() -> None:
+    setup_environment()
+    plot_policy_timeline()
+    plot_selected_its()
+    plot_alpha_emergence()
+    plot_counterfactuals()
+    plot_supplementary_its_mixing()
+    print(f"Wrote Part 3 manuscript figures to {FIGURE_DIR}")
 
 
 if __name__ == "__main__":
-    run()
+    main()

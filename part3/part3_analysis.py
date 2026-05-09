@@ -1,41 +1,9 @@
-"""Part 3: Policy period associations with SARS-CoV-2 genomic cluster structure.
+"""Build Part 3 policy-period analyses for the Scotland clustering project.
 
-This script characterises how Scottish government COVID-19 policy restriction
-periods were associated with genomic cluster size, geographic dispersion, and
-demographic mixing.  The analysis is explicitly descriptive; policy periods are
-strongly confounded with variant waves and calendar time, so causal inference
-is not appropriate.
-
-Analytical components
----------------------
-1. Period-level descriptive tables — median cluster size, datazones, mixing
-   indices, singleton fraction, and policy intensity for each policy period
-   observed in the study data.
-2. Weekly aggregate series — ISO-week summaries of cluster outcomes annotated
-   with the dominant policy period and its intensity for all downstream figure
-   production.
-3. Interrupted time-series (ITS) analyses — three pre/post analyses at
-   transitions that occur within a relatively stable variant context, where
-   the most acute variant-wave confounding is reduced:
-
-     T1-onset  (2020-10-02):  Route-map phase 3 → Pre-tier tightening
-                              B.1.177 era, intensity 30 → 55
-     L2→SL     (2021-04-02):  Second lockdown → Stay-local Level 3
-                              Alpha-dominant period, intensity 95 → 65
-     NN-onset  (2021-08-09):  Level 0 → Near-normal (full legal easing)
-                              Delta-dominant period, intensity 20 → 10
-
-   For each transition a ±8-week ISO-week window is used. Outcomes are weekly
-   medians of log cluster size and log datazones (non-singleton clusters), and
-   weekly means of SIMD and age excess-discordance scores (non-singletons with
-   valid mixing data). Four OLS segmented-regression (ITS) models are fit per
-   transition:
-
-     y_t = β0 + β1·t + β2·D_t + β3·(D_t·t) + ε_t
-
-   where t is the signed week offset from the transition (negative = pre),
-   D_t is a 0/1 post-transition indicator, and D_t·t captures slope change.
-   Coefficients, 95 % CIs, and p-values are saved for each outcome × transition.
+The analysis is descriptive by design.  Policy periods are used as epidemic
+context and as anchors for selected interrupted time-series summaries, not as
+causal interventions.  The Alpha case study is rebuilt directly from the
+sequence-level processed dataset and the raw Nextclade mutation table.
 
 Run from the repository root:
 
@@ -44,457 +12,1066 @@ Run from the repository root:
 
 from __future__ import annotations
 
+import os
+import re
 import sys
+import warnings
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
+import yaml
+from scipy import stats
 
 
-# ---------------------------------------------------------------------------
-# Bootstrap repo root so utils is importable when run as a script
-# ---------------------------------------------------------------------------
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-def _bootstrap_root() -> Path:
-    here = Path(__file__).resolve()
-    for cand in [here, *here.parents]:
-        if (cand / "config.yaml").exists():
-            root = str(cand)
-            if root not in sys.path:
-                sys.path.insert(0, root)
-            return cand
-    raise FileNotFoundError("Cannot locate config.yaml.")
+from utils import data as data_utils
+from utils import policy
 
 
-ROOT = _bootstrap_root()
+TABLE_DIR = ROOT / "part3" / "tables"
+CACHE_DIR = ROOT / "part3" / "cache"
 
-from utils.data import load_main_cluster_table          # noqa: E402
-from utils.policy import attach_period_pandas, POLICY_PERIODS_PD, PERIOD_ORDER  # noqa: E402
+PRIMARY_RESOLUTION = data_utils.PRIMARY_RESOLUTION
+PRIMARY_QC = "good"
 
+SELECTED_PERIODS = ["P3", "T1", "F5", "L2", "SL", "L0", "NN"]
+CONTEXT_PERIODS = ["OM", "FE", "PR"]
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
-# Study start: P3 (Route-map phase 3) onset — first policy period with data.
-STUDY_START = pd.Timestamp("2020-07-10")
-
-# ITS transition definitions: (label, transition_date, pre_period_code, post_period_code)
-ITS_TRANSITIONS = [
-    (
-        "T1_onset",
-        pd.Timestamp("2020-10-02"),
-        "P3",
-        "T1",
-        "Route-map phase 3 → Pre-tier tightening",
-    ),
-    (
-        "L2_to_SL",
-        pd.Timestamp("2021-04-02"),
-        "L2",
-        "SL",
-        "Second lockdown → Stay-local Level 3",
-    ),
-    (
-        "NN_onset",
-        pd.Timestamp("2021-08-09"),
-        "L0",
-        "NN",
-        "Level 0 → Near-normal",
-    ),
-]
-
-ITS_WINDOW_WEEKS = 8
-
-# Cluster outcomes used in the ITS
-ITS_OUTCOMES = {
-    "log_cluster_size": {
-        "label": "Median log cluster size",
-        "agg": "median",
-        "filter": "non_singleton",
+TRANSITIONS = {
+    "t1_onset": {
+        "label": "T1 onset",
+        "from_to": "P3 -> T1",
+        "date": pd.Timestamp("2020-10-02"),
     },
-    "log_datazones": {
-        "label": "Median log datazones",
-        "agg": "median",
-        "filter": "non_singleton",
+    "l2_to_sl": {
+        "label": "L2 to SL",
+        "from_to": "L2 -> SL",
+        "date": pd.Timestamp("2021-04-02"),
     },
-    "simd_excess_discordance": {
-        "label": "Mean SIMD excess discordance",
-        "agg": "mean",
-        "filter": "non_singleton_mixing",
-    },
-    "age_excess_discordance": {
-        "label": "Mean age excess discordance",
-        "agg": "mean",
-        "filter": "non_singleton_mixing",
+    "nn_onset": {
+        "label": "NN onset",
+        "from_to": "L0 -> NN",
+        "date": pd.Timestamp("2021-08-09"),
     },
 }
 
-OUT_DIR = ROOT / "part3" / "tables"
+ITS_OUTCOMES = {
+    "median_log_cluster_size": "Median log cluster size",
+    "median_log_datazones": "Median log datazones",
+    "mean_simd_excess_discordance": "Mean SIMD excess discordance",
+    "mean_age_excess_discordance": "Mean age excess discordance",
+}
+
+MUTATION_MARKERS = {
+    "S:N501Y": "s_n501y",
+    "S:A222V": "s_a222v",
+    "S:P681H": "s_p681h",
+    "S:A570D": "s_a570d",
+    "S:D1118H": "s_d1118h",
+    "N:R203K": "n_r203k",
+    "N:G204R": "n_g204r",
+}
 
 
-# ---------------------------------------------------------------------------
-# Data loading and preparation
-# ---------------------------------------------------------------------------
-
-def load_and_prepare() -> pd.DataFrame:
-    """Load the main cluster table and attach policy periods.
-
-    Returns the full cluster-level DataFrame (all clusters, all periods) with
-    ``policy_period``, ``policy_period_label``, and ``policy_intensity`` columns
-    added, filtered to the study start date.
-    """
-    df = load_main_cluster_table(root=ROOT)
-
-    # Filter to study window — data begins mid-July 2020 (P3).
-    df = df[df["wn_mid_date"] >= STUDY_START].copy()
-
-    # Attach policy periods using window midpoint date.
-    df = attach_period_pandas(df, "wn_mid_date")
-
-    # Derived columns used across analyses.
-    df["log_datazones"] = np.log(df["cluster_n_datazones"].clip(lower=1))
-    # log_cluster_size already present in the main cluster table.
-
-    df["is_non_singleton"] = df["cluster_size"] > 1
-    df["week_start"] = df["wn_mid_date"].dt.to_period("W").dt.start_time
-
-    return df
+@dataclass(frozen=True)
+class GrowthFit:
+    analysis: str
+    marker: str
+    marker_slug: str
+    period_code: str
+    period_label: str
+    weight_scheme: str
+    n_windows: int
+    n_success: int
+    n_total: int
+    start_date: pd.Timestamp
+    end_date: pd.Timestamp
+    origin_date: pd.Timestamp
+    intercept: float
+    slope_per_day: float
+    intercept_se: float
+    slope_se_per_day: float
+    intercept_pvalue: float
+    slope_pvalue: float
+    slope_ci_low_per_day: float
+    slope_ci_high_per_day: float
+    aic: float
+    pseudo_r2: float
 
 
-# ---------------------------------------------------------------------------
-# Section 1: Period-level descriptive table
-# ---------------------------------------------------------------------------
-
-def compute_period_descriptives(df: pd.DataFrame) -> pd.DataFrame:
-    """Compute per-policy-period summary statistics for all clusters.
-
-    Returns one row per observed policy period, ordered chronologically.
-    """
-    records = []
-
-    for code in PERIOD_ORDER:
-        sub = df[df["policy_period"] == code]
-        if sub.empty:
-            continue
-
-        ns = sub[sub["is_non_singleton"]]
-        n_total = len(sub)
-        n_ns = len(ns)
-        pct_singleton = 100.0 * (1 - n_ns / n_total) if n_total > 0 else np.nan
-
-        # SIMD/age mixing: non-singleton clusters with valid discordance scores
-        ns_simd = ns.dropna(subset=["simd_excess_discordance"])
-        ns_age  = ns.dropna(subset=["age_excess_discordance"])
-
-        rec = {
-            "period_code":          code,
-            "period_label":         sub["policy_period_label"].iloc[0],
-            "policy_intensity":     sub["policy_intensity"].iloc[0],
-            "n_clusters_total":     n_total,
-            "n_clusters_nonsingleton": n_ns,
-            "pct_singleton":        round(pct_singleton, 1),
-            # cluster size (non-singleton)
-            "median_cluster_size":       round(ns["cluster_size"].median(), 1) if n_ns else np.nan,
-            "iqr_cluster_size_lo":       round(ns["cluster_size"].quantile(0.25), 1) if n_ns else np.nan,
-            "iqr_cluster_size_hi":       round(ns["cluster_size"].quantile(0.75), 1) if n_ns else np.nan,
-            # datazones (non-singleton)
-            "median_datazones":          round(ns["cluster_n_datazones"].median(), 1) if n_ns else np.nan,
-            "iqr_datazones_lo":          round(ns["cluster_n_datazones"].quantile(0.25), 1) if n_ns else np.nan,
-            "iqr_datazones_hi":          round(ns["cluster_n_datazones"].quantile(0.75), 1) if n_ns else np.nan,
-            # mixing (non-singleton, valid observations)
-            "mean_simd_excess_discordance": round(ns_simd["simd_excess_discordance"].mean(), 4) if len(ns_simd) else np.nan,
-            "mean_age_excess_discordance":  round(ns_age["age_excess_discordance"].mean(), 4) if len(ns_age) else np.nan,
-            "n_simd_valid":          len(ns_simd),
-            "n_age_valid":           len(ns_age),
-        }
-        records.append(rec)
-
-    return pd.DataFrame(records)
+def setup_environment() -> None:
+    """Use writable cache paths for matplotlib and friends."""
+    os.environ.setdefault("MPLCONFIGDIR", "/private/tmp/scotland-mplconfig")
+    os.environ.setdefault("XDG_CACHE_HOME", "/private/tmp/scotland-xdg-cache")
+    Path(os.environ["MPLCONFIGDIR"]).mkdir(parents=True, exist_ok=True)
+    Path(os.environ["XDG_CACHE_HOME"]).mkdir(parents=True, exist_ok=True)
+    TABLE_DIR.mkdir(parents=True, exist_ok=True)
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
-# ---------------------------------------------------------------------------
-# Section 2: Weekly aggregate series
-# ---------------------------------------------------------------------------
+def read_config() -> dict:
+    with open(ROOT / "config.yaml") as f:
+        return yaml.safe_load(f)
 
-def compute_weekly_summaries(df: pd.DataFrame) -> pd.DataFrame:
-    """Compute ISO-week cluster summaries with policy period annotation.
 
-    Returns one row per ISO week containing the median/mean cluster outcomes
-    for that week, together with the dominant policy period and its intensity
-    (determined by the modal policy_period value in the week).
-    """
-    ns = df[df["is_non_singleton"]].copy()
+def nextclade_tsv_path() -> Path:
+    """Return the Nextclade TSV path, allowing for the current local layout."""
+    cfg = read_config()
+    configured = ROOT / cfg["data"]["raw"]["nextclade_tsv"]
+    if configured.exists():
+        return configured
 
-    # Aggregate non-singleton cluster metrics per ISO week.
-    agg_ns = (
-        ns.groupby("week_start", sort=True)
+    fallbacks = [
+        ROOT / "data" / "raw" / "cog_all_scotland_nextclade.tsv",
+        ROOT / "data" / "raw" / "cog-uk" / "cog_all_scotland_nextclade.tsv",
+    ]
+    for candidate in fallbacks:
+        if candidate.exists():
+            return candidate
+
+    raise FileNotFoundError(
+        "Could not find the raw Nextclade TSV. Checked config path and "
+        f"fallbacks: {', '.join(str(p) for p in fallbacks)}"
+    )
+
+
+def safe_log(values: pd.Series) -> pd.Series:
+    values = pd.to_numeric(values, errors="coerce")
+    return np.log(values.where(values > 0))
+
+
+def attach_policy(df: pd.DataFrame, date_col: str) -> pd.DataFrame:
+    out = df.copy()
+    out[date_col] = pd.to_datetime(out[date_col])
+    return policy.attach_period_pandas(out, date_col)
+
+
+def ordered_policy_table() -> pd.DataFrame:
+    periods = policy.POLICY_PERIODS_PD.copy()
+    periods["period_order"] = np.arange(len(periods))
+    return periods
+
+
+def load_policy_cluster_table() -> pd.DataFrame:
+    """Load the Part 1 primary cluster cache and add Part 3 policy fields."""
+    cluster = data_utils.load_main_cluster_table(root=ROOT).copy()
+    for col in ["wn_mid_date", "cluster_start_date", "cluster_end_date"]:
+        if col in cluster:
+            cluster[col] = pd.to_datetime(cluster[col])
+
+    if "log_cluster_size" not in cluster:
+        cluster["log_cluster_size"] = safe_log(cluster["cluster_size"])
+    cluster["log_datazones"] = safe_log(cluster["cluster_n_datazones"])
+    cluster["is_non_singleton"] = cluster["cluster_size"] > 1
+
+    cluster = attach_policy(cluster, "wn_mid_date")
+    cluster["is_selected_policy_phase"] = cluster["policy_period"].isin(SELECTED_PERIODS)
+    cluster["is_context_policy_phase"] = cluster["policy_period"].isin(CONTEXT_PERIODS)
+
+    out_path = CACHE_DIR / "policy_cluster_table.parquet"
+    cluster.to_parquet(out_path, index=False)
+    return cluster
+
+
+def summarise_periods(cluster: pd.DataFrame) -> pd.DataFrame:
+    """Create a full policy-period descriptive table."""
+
+    def q25(x: pd.Series) -> float:
+        return x.quantile(0.25)
+
+    def q75(x: pd.Series) -> float:
+        return x.quantile(0.75)
+
+    non_singleton = cluster[cluster["is_non_singleton"]].copy()
+    grouped_all = (
+        cluster.groupby("policy_period", dropna=False)
         .agg(
-            n_clusters_nonsingleton=("cluster_id", "count"),
+            observed_start=("wn_mid_date", "min"),
+            observed_end=("wn_mid_date", "max"),
+            total_cluster_rows=("cluster_id", "size"),
+            total_sequences_represented=("cluster_size", "sum"),
+            singleton_clusters=("is_non_singleton", lambda s: int((~s).sum())),
+            non_singleton_clusters=("is_non_singleton", "sum"),
+            mean_cluster_size=("cluster_size", "mean"),
+            median_cluster_size=("cluster_size", "median"),
+            q25_cluster_size=("cluster_size", q25),
+            q75_cluster_size=("cluster_size", q75),
+            median_log_cluster_size=("log_cluster_size", "median"),
+            mean_cluster_n_datazones=("cluster_n_datazones", "mean"),
+            median_cluster_n_datazones=("cluster_n_datazones", "median"),
+            median_log_datazones=("log_datazones", "median"),
+            n_windows=("window_id", "nunique"),
+        )
+        .reset_index()
+    )
+
+    grouped_ns = (
+        non_singleton.groupby("policy_period", dropna=False)
+        .agg(
+            non_singleton_median_cluster_size=("cluster_size", "median"),
+            non_singleton_median_log_cluster_size=("log_cluster_size", "median"),
+            non_singleton_median_datazones=("cluster_n_datazones", "median"),
+            non_singleton_median_log_datazones=("log_datazones", "median"),
+            mean_simd_excess_discordance=("simd_excess_discordance", "mean"),
+            mean_age_excess_discordance=("age_excess_discordance", "mean"),
+            mean_sex_excess_discordance=("sex_excess_discordance", "mean"),
+            mean_profile_excess_discordance=("profile_excess_discordance", "mean"),
+        )
+        .reset_index()
+    )
+
+    periods = ordered_policy_table().rename(
+        columns={
+            "period_code": "policy_period",
+            "period_label": "policy_period_label",
+            "intensity": "policy_intensity",
+        }
+    )
+
+    out = (
+        periods.merge(grouped_all, on="policy_period", how="left")
+        .merge(grouped_ns, on="policy_period", how="left")
+        .sort_values("period_order")
+    )
+
+    count_cols = [
+        "total_cluster_rows",
+        "total_sequences_represented",
+        "singleton_clusters",
+        "non_singleton_clusters",
+        "n_windows",
+    ]
+    for col in count_cols:
+        out[col] = out[col].fillna(0).astype(int)
+    out["singleton_fraction"] = np.where(
+        out["total_cluster_rows"] > 0,
+        out["singleton_clusters"] / out["total_cluster_rows"],
+        np.nan,
+    )
+    out["chapter_role"] = np.select(
+        [
+            out["policy_period"].isin(SELECTED_PERIODS),
+            out["policy_period"].isin(CONTEXT_PERIODS),
+        ],
+        ["selected phase", "context/supplement"],
+        default="supplement",
+    )
+
+    out.to_csv(TABLE_DIR / "period_descriptives.csv", index=False)
+    return out
+
+
+def summarise_weekly(cluster: pd.DataFrame) -> pd.DataFrame:
+    non_singleton = cluster[cluster["is_non_singleton"]].copy()
+
+    all_counts = (
+        cluster.groupby(["window_id", "window_idx", "wn_mid_date"], as_index=False)
+        .agg(
+            total_clusters=("cluster_id", "size"),
+            singleton_clusters=("is_non_singleton", lambda s: int((~s).sum())),
+            non_singleton_clusters=("is_non_singleton", "sum"),
+            total_sequences_represented=("cluster_size", "sum"),
+            wn_no_sequences=("wn_no_sequences", "max"),
+            mean_window_seq_fraction=("mean_window_seq_fraction", "mean"),
+        )
+    )
+
+    ns_summary = (
+        non_singleton.groupby(["window_id", "window_idx", "wn_mid_date"], as_index=False)
+        .agg(
             median_cluster_size=("cluster_size", "median"),
             median_log_cluster_size=("log_cluster_size", "median"),
             median_datazones=("cluster_n_datazones", "median"),
             median_log_datazones=("log_datazones", "median"),
-            mean_simd_excess=(
-                "simd_excess_discordance",
-                lambda x: x.dropna().mean() if x.notna().any() else np.nan,
-            ),
-            mean_age_excess=(
-                "age_excess_discordance",
-                lambda x: x.dropna().mean() if x.notna().any() else np.nan,
-            ),
+            mean_simd_excess_discordance=("simd_excess_discordance", "mean"),
+            mean_age_excess_discordance=("age_excess_discordance", "mean"),
+            mean_sex_excess_discordance=("sex_excess_discordance", "mean"),
+            mean_profile_excess_discordance=("profile_excess_discordance", "mean"),
         )
-        .reset_index()
     )
 
-    # Total cluster count (all clusters, including singletons) per week.
-    agg_all = (
-        df.groupby("week_start", sort=True)
-        .agg(
-            n_clusters_total=("cluster_id", "count"),
-            pct_singleton=(
-                "is_non_singleton",
-                lambda x: 100.0 * (1 - x.mean()),
-            ),
-        )
-        .reset_index()
+    weekly = all_counts.merge(
+        ns_summary, on=["window_id", "window_idx", "wn_mid_date"], how="left"
     )
-
-    # Dominant policy period per week (modal value).
-    policy_mode = (
-        df.groupby("week_start")["policy_period"]
-        .agg(lambda s: s.mode().iloc[0] if not s.mode().empty else None)
-        .reset_index()
-        .rename(columns={"policy_period": "dominant_period_code"})
-    )
-    policy_mode = policy_mode.merge(
-        POLICY_PERIODS_PD[["period_code", "period_label", "intensity"]],
-        left_on="dominant_period_code",
-        right_on="period_code",
-        how="left",
-    ).drop(columns=["period_code"]).rename(
-        columns={"period_label": "dominant_period_label",
-                 "intensity":    "dominant_intensity"}
-    )
-
-    result = (
-        agg_all
-        .merge(agg_ns, on="week_start", how="left")
-        .merge(policy_mode, on="week_start", how="left")
-        .sort_values("week_start")
-        .reset_index(drop=True)
-    )
-    return result
+    weekly["singleton_fraction"] = weekly["singleton_clusters"] / weekly["total_clusters"]
+    weekly = attach_policy(weekly, "wn_mid_date")
+    weekly = weekly.sort_values("window_idx")
+    weekly.to_csv(TABLE_DIR / "weekly_summaries.csv", index=False)
+    return weekly
 
 
-# ---------------------------------------------------------------------------
-# Section 3: Intensity correlation with weekly cluster outcomes
-# ---------------------------------------------------------------------------
-
-def compute_intensity_correlations(weekly: pd.DataFrame) -> pd.DataFrame:
-    """Compute Spearman correlations between policy intensity and cluster outcomes.
-
-    Correlations are computed pooled across all weeks.
-    """
-    outcome_cols = [
+def intensity_correlations(weekly: pd.DataFrame) -> pd.DataFrame:
+    outcomes = [
+        "total_clusters",
+        "non_singleton_clusters",
+        "singleton_fraction",
         "median_log_cluster_size",
         "median_log_datazones",
-        "mean_simd_excess",
-        "mean_age_excess",
+        "mean_simd_excess_discordance",
+        "mean_age_excess_discordance",
+        "mean_sex_excess_discordance",
+        "mean_profile_excess_discordance",
     ]
-    records = []
-    for col in outcome_cols:
-        valid = weekly[["dominant_intensity", col]].dropna()
-        if len(valid) < 5:
-            continue
-        rho = valid["dominant_intensity"].corr(valid[col], method="spearman")
-        records.append({
-            "outcome": col,
-            "spearman_rho_pooled": round(rho, 4),
-            "n_weeks": len(valid),
-        })
-    return pd.DataFrame(records)
-
-
-# ---------------------------------------------------------------------------
-# Section 4: ITS analyses
-# ---------------------------------------------------------------------------
-
-def _its_weekly_data(
-    df: pd.DataFrame,
-    transition_date: pd.Timestamp,
-    window_weeks: int,
-) -> pd.DataFrame:
-    """Extract and aggregate the ITS analysis window for one transition.
-
-    Returns a weekly-level DataFrame with signed week offset (t), post-transition
-    indicator (post), and outcome variables.
-    """
-    half = pd.Timedelta(weeks=window_weeks)
-    win_start = transition_date - half
-    win_end   = transition_date + half - pd.Timedelta(days=1)
-
-    sub = df[(df["wn_mid_date"] >= win_start) & (df["wn_mid_date"] <= win_end)].copy()
-    ns  = sub[sub["is_non_singleton"]].copy()
-
-    agg = (
-        ns.groupby("week_start", sort=True)
-        .agg(
-            n_nonsingleton=("cluster_id", "count"),
-            log_cluster_size=("log_cluster_size", "median"),
-            log_datazones=("log_datazones", "median"),
-            simd_excess_discordance=(
-                "simd_excess_discordance",
-                lambda x: x.dropna().mean() if x.notna().any() else np.nan,
-            ),
-            age_excess_discordance=(
-                "age_excess_discordance",
-                lambda x: x.dropna().mean() if x.notna().any() else np.nan,
-            ),
+    rows: list[dict] = []
+    for outcome in outcomes:
+        dat = weekly[["policy_intensity", outcome]].dropna()
+        if len(dat) < 3 or dat["policy_intensity"].nunique() < 2:
+            rho = np.nan
+            pvalue = np.nan
+        else:
+            rho, pvalue = stats.spearmanr(dat["policy_intensity"], dat[outcome])
+        rows.append(
+            {
+                "outcome": outcome,
+                "n_weeks": len(dat),
+                "spearman_rho": rho,
+                "pvalue": pvalue,
+                "interpretation": "descriptive/confounded by variant phase, surveillance, immunity, and calendar time",
+            }
         )
-        .reset_index()
+    out = pd.DataFrame(rows)
+    out.to_csv(TABLE_DIR / "intensity_correlations.csv", index=False)
+    return out
+
+
+def fit_segmented_ols(
+    weekly: pd.DataFrame,
+    transition_slug: str,
+    transition_date: pd.Timestamp,
+    outcome: str,
+    window_weeks: int,
+) -> tuple[list[dict], pd.DataFrame]:
+    lo = transition_date - pd.Timedelta(weeks=window_weeks)
+    hi = transition_date + pd.Timedelta(weeks=window_weeks)
+    dat = weekly.loc[
+        weekly["wn_mid_date"].between(lo, hi),
+        [
+            "window_id",
+            "window_idx",
+            "wn_mid_date",
+            "policy_period",
+            "policy_intensity",
+            outcome,
+        ],
+    ].copy()
+    dat = dat.dropna(subset=[outcome])
+    dat["t_weeks"] = (dat["wn_mid_date"] - transition_date).dt.days / 7.0
+    dat["post"] = (dat["wn_mid_date"] >= transition_date).astype(int)
+    dat["post_t_weeks"] = dat["post"] * dat["t_weeks"]
+
+    rows: list[dict] = []
+    dat[f"fitted_{outcome}"] = np.nan
+    if len(dat) < 7 or dat["post"].nunique() < 2:
+        for term in ["const", "t_weeks", "post", "post_t_weeks"]:
+            rows.append(
+                {
+                    "transition": transition_slug,
+                    "transition_label": TRANSITIONS[transition_slug]["label"],
+                    "from_to": TRANSITIONS[transition_slug]["from_to"],
+                    "transition_date": transition_date.date().isoformat(),
+                    "window_weeks": window_weeks,
+                    "outcome": outcome,
+                    "outcome_label": ITS_OUTCOMES[outcome],
+                    "term": term,
+                    "estimate": np.nan,
+                    "std_error": np.nan,
+                    "pvalue": np.nan,
+                    "ci_low": np.nan,
+                    "ci_high": np.nan,
+                    "n_weeks": len(dat),
+                    "adj_r2": np.nan,
+                }
+            )
+        return rows, dat
+
+    x = sm.add_constant(dat[["t_weeks", "post", "post_t_weeks"]], has_constant="add")
+    try:
+        model = sm.OLS(dat[outcome].astype(float), x.astype(float)).fit(cov_type="HC1")
+        dat[f"fitted_{outcome}"] = model.predict(x)
+        conf = model.conf_int()
+        for term in ["const", "t_weeks", "post", "post_t_weeks"]:
+            rows.append(
+                {
+                    "transition": transition_slug,
+                    "transition_label": TRANSITIONS[transition_slug]["label"],
+                    "from_to": TRANSITIONS[transition_slug]["from_to"],
+                    "transition_date": transition_date.date().isoformat(),
+                    "window_weeks": window_weeks,
+                    "outcome": outcome,
+                    "outcome_label": ITS_OUTCOMES[outcome],
+                    "term": term,
+                    "estimate": model.params.get(term, np.nan),
+                    "std_error": model.bse.get(term, np.nan),
+                    "pvalue": model.pvalues.get(term, np.nan),
+                    "ci_low": conf.loc[term, 0] if term in conf.index else np.nan,
+                    "ci_high": conf.loc[term, 1] if term in conf.index else np.nan,
+                    "n_weeks": int(model.nobs),
+                    "adj_r2": model.rsquared_adj,
+                }
+            )
+    except Exception as exc:  # pragma: no cover - retained for robust reruns
+        warnings.warn(f"ITS model failed for {transition_slug} {outcome}: {exc}")
+        for term in ["const", "t_weeks", "post", "post_t_weeks"]:
+            rows.append(
+                {
+                    "transition": transition_slug,
+                    "transition_label": TRANSITIONS[transition_slug]["label"],
+                    "from_to": TRANSITIONS[transition_slug]["from_to"],
+                    "transition_date": transition_date.date().isoformat(),
+                    "window_weeks": window_weeks,
+                    "outcome": outcome,
+                    "outcome_label": ITS_OUTCOMES[outcome],
+                    "term": term,
+                    "estimate": np.nan,
+                    "std_error": np.nan,
+                    "pvalue": np.nan,
+                    "ci_low": np.nan,
+                    "ci_high": np.nan,
+                    "n_weeks": len(dat),
+                    "adj_r2": np.nan,
+                }
+            )
+    return rows, dat
+
+
+def run_its(weekly: pd.DataFrame) -> pd.DataFrame:
+    coeff_rows: list[dict] = []
+    for transition_slug, meta in TRANSITIONS.items():
+        primary_weekly: pd.DataFrame | None = None
+        for window_weeks in [8, 6, 10, 12]:
+            for outcome in ITS_OUTCOMES:
+                rows, fitted = fit_segmented_ols(
+                    weekly=weekly,
+                    transition_slug=transition_slug,
+                    transition_date=meta["date"],
+                    outcome=outcome,
+                    window_weeks=window_weeks,
+                )
+                coeff_rows.extend(rows)
+                if window_weeks == 8:
+                    cols = [
+                        "window_id",
+                        "window_idx",
+                        "wn_mid_date",
+                        "policy_period",
+                        "policy_intensity",
+                        "t_weeks",
+                        "post",
+                        outcome,
+                        f"fitted_{outcome}",
+                    ]
+                    fitted = fitted[cols].copy()
+                    if primary_weekly is None:
+                        primary_weekly = fitted
+                    else:
+                        primary_weekly = primary_weekly.merge(
+                            fitted[
+                                [
+                                    "window_id",
+                                    outcome,
+                                    f"fitted_{outcome}",
+                                ]
+                            ],
+                            on="window_id",
+                            how="left",
+                        )
+
+        if primary_weekly is not None:
+            primary_weekly = primary_weekly.sort_values("window_idx")
+            primary_weekly.to_csv(
+                TABLE_DIR / f"its_weekly_{transition_slug}.csv", index=False
+            )
+
+    coeffs = pd.DataFrame(coeff_rows)
+    coeffs.to_csv(TABLE_DIR / "its_coefficients.csv", index=False)
+    return coeffs
+
+
+def load_sequence_table() -> pd.DataFrame:
+    """Read the primary sequence-level table needed for the Alpha case study."""
+    paths = data_utils.Paths.from_config(ROOT)
+    columns = [
+        "sequence_id",
+        "window_id",
+        "window_idx",
+        "wn_start_date",
+        "wn_mid_date",
+        "wn_end_date",
+        "wn_no_sequences",
+        "wn_positive_tests",
+        "wn_prop_sequenced",
+        "resolution",
+        "nextclade_qc",
+        "cluster_id",
+        "cluster_size",
+        "cluster_n_datazones",
+        "collection_date",
+        "pango_lineage",
+        "dz_health_board",
+        "dz_local_authority",
+        "hb_hospital_occupancy",
+    ]
+    try:
+        seq = pd.read_parquet(
+            paths.analysis_dataset,
+            columns=columns,
+            filters=[
+                ("resolution", "==", PRIMARY_RESOLUTION),
+                ("nextclade_qc", "==", PRIMARY_QC),
+            ],
+        )
+    except Exception:
+        seq = pd.read_parquet(paths.analysis_dataset, columns=columns)
+        seq = seq[
+            (seq["resolution"] == PRIMARY_RESOLUTION)
+            & (seq["nextclade_qc"] == PRIMARY_QC)
+        ].copy()
+
+    for col in ["wn_start_date", "wn_mid_date", "wn_end_date", "collection_date"]:
+        seq[col] = pd.to_datetime(seq[col])
+
+    seq["pango_lineage"] = seq["pango_lineage"].fillna("unknown").astype(str)
+    seq["is_alpha_pango"] = seq["pango_lineage"].str.startswith("B.1.1.7")
+    seq["is_b1177_pango"] = seq["pango_lineage"].str.startswith("B.1.177")
+    seq = attach_policy(seq, "wn_mid_date")
+    seq.to_parquet(CACHE_DIR / "alpha_sequence_table.parquet", index=False)
+    return seq
+
+
+def alpha_phase_definitions(seq: pd.DataFrame) -> list[dict]:
+    """Define phase windows by date and record the observed window labels."""
+    window_table = (
+        seq[["window_id", "window_idx", "wn_mid_date"]]
+        .drop_duplicates()
+        .sort_values("window_idx")
+    )
+    phase_specs = [
+        (
+            "cryptic_early",
+            "Cryptic/early Alpha phase",
+            pd.Timestamp("2020-10-27"),
+            pd.Timestamp("2020-12-02"),
+        ),
+        (
+            "multi_region_expansion",
+            "Multi-region Alpha expansion",
+            pd.Timestamp("2020-12-08"),
+            pd.Timestamp("2020-12-23"),
+        ),
+        (
+            "f5_l2_bridge",
+            "F5/L2 bridge",
+            pd.Timestamp("2020-12-23"),
+            pd.Timestamp("2020-12-30"),
+        ),
+    ]
+
+    phases: list[dict] = []
+    for slug, label, start, end in phase_specs:
+        wins = window_table[window_table["wn_mid_date"].between(start, end)].copy()
+        if wins.empty:
+            start_idx = (window_table["wn_mid_date"] - start).abs().idxmin()
+            end_idx = (window_table["wn_mid_date"] - end).abs().idxmin()
+            lo = min(window_table.loc[start_idx, "window_idx"], window_table.loc[end_idx, "window_idx"])
+            hi = max(window_table.loc[start_idx, "window_idx"], window_table.loc[end_idx, "window_idx"])
+            wins = window_table[window_table["window_idx"].between(lo, hi)].copy()
+        phases.append(
+            {
+                "phase": slug,
+                "phase_label": label,
+                "target_start_date": start,
+                "target_end_date": end,
+                "start_window_idx": int(wins["window_idx"].min()),
+                "end_window_idx": int(wins["window_idx"].max()),
+                "start_window_id": wins.sort_values("window_idx")["window_id"].iloc[0],
+                "end_window_id": wins.sort_values("window_idx")["window_id"].iloc[-1],
+                "observed_start_mid_date": wins["wn_mid_date"].min(),
+                "observed_end_mid_date": wins["wn_mid_date"].max(),
+            }
+        )
+    return phases
+
+
+def summarise_alpha_phases(seq: pd.DataFrame) -> pd.DataFrame:
+    alpha = seq[seq["is_alpha_pango"]].copy()
+    phases = alpha_phase_definitions(seq)
+    rows = []
+    for phase in phases:
+        mask_phase = seq["window_idx"].between(
+            phase["start_window_idx"], phase["end_window_idx"]
+        )
+        phase_all = seq[mask_phase].copy()
+        phase_alpha = alpha[
+            alpha["window_idx"].between(
+                phase["start_window_idx"], phase["end_window_idx"]
+            )
+        ].copy()
+        alpha_clusters = (
+            phase_alpha.groupby(["window_id", "cluster_id"], as_index=False)
+            .agg(
+                n_alpha_sequences=("sequence_id", "nunique"),
+                cluster_size=("cluster_size", "max"),
+                cluster_n_datazones=("cluster_n_datazones", "max"),
+                n_health_boards=("dz_health_board", "nunique"),
+                n_local_authorities=("dz_local_authority", "nunique"),
+            )
+        )
+        hb_counts = (
+            phase_alpha["dz_health_board"].dropna().value_counts().head(5)
+        )
+        la_counts = (
+            phase_alpha["dz_local_authority"].dropna().value_counts().head(5)
+        )
+        rows.append(
+            {
+                **phase,
+                "n_sequences_all": int(phase_all["sequence_id"].nunique()),
+                "n_alpha_sequences": int(phase_alpha["sequence_id"].nunique()),
+                "alpha_sequence_fraction": (
+                    phase_alpha["sequence_id"].nunique()
+                    / phase_all["sequence_id"].nunique()
+                    if phase_all["sequence_id"].nunique()
+                    else np.nan
+                ),
+                "n_alpha_clusters": int(alpha_clusters["cluster_id"].nunique()),
+                "median_alpha_cluster_size": alpha_clusters["cluster_size"].median(),
+                "max_alpha_cluster_size": alpha_clusters["cluster_size"].max(),
+                "median_alpha_cluster_datazones": alpha_clusters[
+                    "cluster_n_datazones"
+                ].median(),
+                "max_alpha_cluster_datazones": alpha_clusters[
+                    "cluster_n_datazones"
+                ].max(),
+                "n_health_boards": int(phase_alpha["dz_health_board"].nunique()),
+                "n_local_authorities": int(phase_alpha["dz_local_authority"].nunique()),
+                "top_health_boards": "; ".join(
+                    f"{idx} ({val})" for idx, val in hb_counts.items()
+                ),
+                "top_local_authorities": "; ".join(
+                    f"{idx} ({val})" for idx, val in la_counts.items()
+                ),
+            }
+        )
+    out = pd.DataFrame(rows)
+    out.to_csv(TABLE_DIR / "alpha_phase_summary.csv", index=False)
+    return out
+
+
+def summarise_alpha_emergence(seq: pd.DataFrame) -> None:
+    alpha = seq[seq["is_alpha_pango"]].copy()
+    cluster_emergence = (
+        alpha.groupby(["window_id", "window_idx", "wn_mid_date", "cluster_id"], as_index=False)
+        .agg(
+            n_alpha_sequences=("sequence_id", "nunique"),
+            cluster_size=("cluster_size", "max"),
+            cluster_n_datazones=("cluster_n_datazones", "max"),
+            n_health_boards=("dz_health_board", "nunique"),
+            n_local_authorities=("dz_local_authority", "nunique"),
+            health_boards=("dz_health_board", lambda s: "; ".join(sorted(set(s.dropna()))[:8])),
+            local_authorities=("dz_local_authority", lambda s: "; ".join(sorted(set(s.dropna()))[:8])),
+        )
+        .sort_values(["window_idx", "cluster_size", "n_alpha_sequences"], ascending=[True, False, False])
+    )
+    cluster_emergence.to_csv(TABLE_DIR / "alpha_cluster_emergence.csv", index=False)
+
+    hb_weekly = (
+        alpha.groupby(["window_id", "window_idx", "wn_mid_date", "dz_health_board"], as_index=False)
+        .agg(
+            n_alpha_sequences=("sequence_id", "nunique"),
+            n_alpha_clusters=("cluster_id", "nunique"),
+            median_alpha_cluster_size=("cluster_size", "median"),
+            max_alpha_cluster_size=("cluster_size", "max"),
+        )
+        .rename(columns={"dz_health_board": "health_board"})
+        .sort_values(["window_idx", "health_board"])
+    )
+    hb_weekly.to_csv(TABLE_DIR / "alpha_health_board_weekly.csv", index=False)
+
+    la_weekly = (
+        alpha.groupby(["window_id", "window_idx", "wn_mid_date", "dz_local_authority"], as_index=False)
+        .agg(
+            n_alpha_sequences=("sequence_id", "nunique"),
+            n_alpha_clusters=("cluster_id", "nunique"),
+            median_alpha_cluster_size=("cluster_size", "median"),
+            max_alpha_cluster_size=("cluster_size", "max"),
+        )
+        .rename(columns={"dz_local_authority": "local_authority"})
+        .sort_values(["window_idx", "local_authority"])
+    )
+    la_weekly.to_csv(TABLE_DIR / "alpha_local_authority_weekly.csv", index=False)
+
+
+def read_nextclade_mutation_flags(sequence_ids: set[str]) -> pd.DataFrame:
+    """Read mutation flags from Nextclade in chunks and keep project sequences."""
+    path = nextclade_tsv_path()
+    chunks: list[pd.DataFrame] = []
+    usecols = ["seqName", "aaSubstitutions"]
+    for chunk in pd.read_csv(
+        path,
+        sep="\t",
+        usecols=usecols,
+        dtype=str,
+        chunksize=100_000,
+        low_memory=False,
+    ):
+        chunk = chunk[chunk["seqName"].isin(sequence_ids)].copy()
+        if chunk.empty:
+            continue
+        chunk = chunk.reset_index(drop=True)
+        aa = chunk["aaSubstitutions"].fillna("")
+        out = pd.DataFrame({"sequence_id": chunk["seqName"].to_numpy()})
+        for marker, slug in MUTATION_MARKERS.items():
+            out[slug] = aa.str.contains(marker, regex=False).astype("int8").to_numpy()
+        chunks.append(out)
+
+    if not chunks:
+        raise RuntimeError(
+            f"No sequence IDs from the processed data matched {path}. "
+            "Check sequence_id/seqName naming."
+        )
+
+    flags = pd.concat(chunks, ignore_index=True)
+    agg = {slug: "max" for slug in MUTATION_MARKERS.values()}
+    flags = flags.groupby("sequence_id", as_index=False).agg(agg)
+    flags.to_parquet(CACHE_DIR / "nextclade_mutation_flags.parquet", index=False)
+    return flags
+
+
+def build_mutation_trajectories(seq: pd.DataFrame) -> pd.DataFrame:
+    mapping_cols = [
+        "sequence_id",
+        "window_id",
+        "window_idx",
+        "wn_mid_date",
+        "wn_positive_tests",
+        "wn_prop_sequenced",
+        "wn_no_sequences",
+        "is_alpha_pango",
+        "is_b1177_pango",
+    ]
+    mapping = seq[mapping_cols].drop_duplicates("sequence_id").copy()
+    flags = read_nextclade_mutation_flags(set(mapping["sequence_id"]))
+    joined = mapping.merge(flags, on="sequence_id", how="inner")
+
+    grouped = (
+        joined.groupby(["window_id", "window_idx", "wn_mid_date"], as_index=False)
+        .agg(
+            mutation_records=("sequence_id", "nunique"),
+            wn_positive_tests=("wn_positive_tests", "max"),
+            wn_prop_sequenced=("wn_prop_sequenced", "max"),
+            wn_no_sequences=("wn_no_sequences", "max"),
+            alpha_pango_sequences=("is_alpha_pango", "sum"),
+            b1177_pango_sequences=("is_b1177_pango", "sum"),
+            **{f"n_{slug}": (slug, "sum") for slug in MUTATION_MARKERS.values()},
+        )
+        .sort_values("window_idx")
     )
 
-    # Signed week offset from transition (0 = first week at or after transition).
-    t_dates = agg["week_start"].dt.tz_localize(None)
-    tdate = transition_date.tz_localize(None) if transition_date.tzinfo else transition_date
+    for slug in MUTATION_MARKERS.values():
+        grouped[f"freq_{slug}"] = grouped[f"n_{slug}"] / grouped["mutation_records"]
 
-    # Week number relative to transition week.
-    agg["t"] = ((t_dates - tdate).dt.days / 7).round().astype(int)
-    # Normalise so that pre-transition is negative, first post-week is 0.
-    agg["post"] = (agg["t"] >= 0).astype(int)
-    # Interaction for slope change after transition.
-    agg["t_post"] = agg["t"] * agg["post"]
+    alpha_cluster_counts = (
+        seq[seq["is_alpha_pango"]]
+        .groupby(["window_id"], as_index=False)
+        .agg(alpha_pango_clusters=("cluster_id", "nunique"))
+    )
+    grouped = grouped.merge(alpha_cluster_counts, on="window_id", how="left")
+    grouped["alpha_pango_clusters"] = grouped["alpha_pango_clusters"].fillna(0).astype(int)
 
-    return agg.sort_values("t").reset_index(drop=True)
-
-
-def _fit_its(data: pd.DataFrame, outcome_col: str) -> dict:
-    """Fit a segmented OLS ITS model for one outcome.
-
-    Model: y ~ 1 + t + post + t_post
-
-    Returns a dict with coefficient estimates, 95 % CIs, p-values, and R².
-    """
-    valid = data[["t", "post", "t_post", outcome_col]].dropna()
-    if len(valid) < 6:
-        return {"n": len(valid), "error": "too few observations"}
-
-    X = sm.add_constant(valid[["t", "post", "t_post"]])
-    y = valid[outcome_col]
-    model = sm.OLS(y, X).fit()
-
-    result = {"n": len(valid), "r2": round(model.rsquared, 4)}
-    for term in ["const", "t", "post", "t_post"]:
-        idx = model.params.index.get_loc(term)
-        result[f"coef_{term}"]    = round(model.params.iloc[idx], 6)
-        result[f"ci_lo_{term}"]   = round(model.conf_int().iloc[idx, 0], 6)
-        result[f"ci_hi_{term}"]   = round(model.conf_int().iloc[idx, 1], 6)
-        result[f"pval_{term}"]    = round(model.pvalues.iloc[idx], 6)
-    return result
+    hb_occupancy = (
+        seq.dropna(subset=["dz_health_board"])
+        .groupby(["window_id", "dz_health_board"], as_index=False)
+        .agg(hb_hospital_occupancy=("hb_hospital_occupancy", "max"))
+        .groupby("window_id", as_index=False)
+        .agg(
+            hb_hospital_occupancy_total=("hb_hospital_occupancy", "sum"),
+            hb_hospital_boards_with_data=("hb_hospital_occupancy", "count"),
+        )
+    )
+    grouped = grouped.merge(hb_occupancy, on="window_id", how="left")
+    grouped = attach_policy(grouped, "wn_mid_date")
+    grouped.to_csv(TABLE_DIR / "alpha_mutation_trajectories.csv", index=False)
+    return grouped
 
 
-def run_its_analyses(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, pd.DataFrame]]:
-    """Run ITS analyses for all three transitions and all four outcomes.
+def glm_weight_vector(dat: pd.DataFrame, scheme: str) -> pd.Series:
+    if scheme == "positive_test_weighted":
+        weights = dat["wn_positive_tests"].replace(0, np.nan)
+    elif scheme == "sequence_count_weighted":
+        weights = dat["mutation_records"].replace(0, np.nan)
+    elif scheme == "coverage_adjusted":
+        coverage = dat["wn_prop_sequenced"].replace(0, np.nan)
+        weights = dat["mutation_records"] / coverage
+    elif scheme == "unweighted_weekly":
+        weights = pd.Series(1.0, index=dat.index)
+    else:
+        raise ValueError(f"Unknown weight scheme: {scheme}")
+    return weights.fillna(dat["mutation_records"]).astype(float).clip(lower=1.0)
 
-    Returns
-    -------
-    coef_table:
-        Long-format DataFrame of ITS coefficients (one row per transition ×
-        outcome × parameter).
-    weekly_data:
-        Dict mapping transition label to the weekly ITS data DataFrame.
-    """
-    coef_records = []
-    weekly_data: dict[str, pd.DataFrame] = {}
 
-    for label, tdate, pre_code, post_code, description in ITS_TRANSITIONS:
-        its_df = _its_weekly_data(df, tdate, ITS_WINDOW_WEEKS)
-        weekly_data[label] = its_df
+def fit_growth_model(
+    traj: pd.DataFrame,
+    *,
+    analysis: str,
+    marker: str,
+    marker_slug: str,
+    period_code: str,
+    weight_scheme: str,
+) -> GrowthFit | None:
+    periods = ordered_policy_table().set_index("period_code")
+    period_row = periods.loc[period_code]
+    start = pd.Timestamp(period_row["start_date"])
+    end = pd.Timestamp(period_row["end_date"])
+    dat = traj[
+        traj["wn_mid_date"].between(start, end)
+        & traj["mutation_records"].gt(0)
+    ].copy()
+    if dat.empty:
+        return None
 
-        for outcome, meta in ITS_OUTCOMES.items():
-            fit = _fit_its(its_df, outcome)
-            base = {
-                "transition":        label,
-                "transition_date":   tdate.date(),
-                "pre_period":        pre_code,
-                "post_period":       post_code,
-                "description":       description,
-                "outcome":           outcome,
-                "outcome_label":     meta["label"],
+    success_col = f"n_{marker_slug}"
+    dat["success"] = dat[success_col].astype(float)
+    dat["total"] = dat["mutation_records"].astype(float)
+    dat["prop"] = dat["success"] / dat["total"]
+    dat["days"] = (dat["wn_mid_date"] - start).dt.days.astype(float)
+    dat = dat.dropna(subset=["prop", "days"])
+    if len(dat) < 4 or dat["prop"].nunique() < 2:
+        return None
+
+    x = sm.add_constant(dat[["days"]], has_constant="add")
+    weights = glm_weight_vector(dat, weight_scheme)
+    try:
+        model = sm.GLM(
+            dat["prop"].astype(float),
+            x.astype(float),
+            family=sm.families.Binomial(),
+            freq_weights=weights,
+        ).fit()
+    except Exception as exc:
+        warnings.warn(
+            f"Growth model failed for {analysis}, {period_code}, {weight_scheme}: {exc}"
+        )
+        return None
+
+    null = getattr(model, "null_deviance", np.nan)
+    dev = getattr(model, "deviance", np.nan)
+    pseudo_r2 = 1 - dev / null if null and np.isfinite(null) and null > 0 else np.nan
+    conf = model.conf_int()
+    return GrowthFit(
+        analysis=analysis,
+        marker=marker,
+        marker_slug=marker_slug,
+        period_code=period_code,
+        period_label=period_row["period_label"],
+        weight_scheme=weight_scheme,
+        n_windows=int(len(dat)),
+        n_success=int(dat["success"].sum()),
+        n_total=int(dat["total"].sum()),
+        start_date=dat["wn_mid_date"].min(),
+        end_date=dat["wn_mid_date"].max(),
+        origin_date=start,
+        intercept=float(model.params["const"]),
+        slope_per_day=float(model.params["days"]),
+        intercept_se=float(model.bse["const"]),
+        slope_se_per_day=float(model.bse["days"]),
+        intercept_pvalue=float(model.pvalues["const"]),
+        slope_pvalue=float(model.pvalues["days"]),
+        slope_ci_low_per_day=float(conf.loc["days", 0]),
+        slope_ci_high_per_day=float(conf.loc["days", 1]),
+        aic=float(model.aic),
+        pseudo_r2=float(pseudo_r2) if np.isfinite(pseudo_r2) else np.nan,
+    )
+
+
+def growth_fit_to_row(fit: GrowthFit) -> dict:
+    slope_week = fit.slope_per_day * 7.0
+    low_week = fit.slope_ci_low_per_day * 7.0
+    high_week = fit.slope_ci_high_per_day * 7.0
+    doubling_days = np.log(2) / fit.slope_per_day if fit.slope_per_day > 0 else np.nan
+    halving_days = np.log(2) / abs(fit.slope_per_day) if fit.slope_per_day < 0 else np.nan
+    return {
+        **fit.__dict__,
+        "start_date": fit.start_date.date().isoformat(),
+        "end_date": fit.end_date.date().isoformat(),
+        "origin_date": fit.origin_date.date().isoformat(),
+        "slope_per_week": slope_week,
+        "slope_ci_low_per_week": low_week,
+        "slope_ci_high_per_week": high_week,
+        "odds_ratio_per_week": np.exp(slope_week),
+        "odds_ratio_ci_low_per_week": np.exp(low_week),
+        "odds_ratio_ci_high_per_week": np.exp(high_week),
+        "doubling_time_days_if_growth": doubling_days,
+        "halving_time_days_if_decline": halving_days,
+    }
+
+
+def run_growth_models(traj: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    specs = [
+        ("alpha_f5_n501y", "S:N501Y", "s_n501y", "F5"),
+        ("alpha_l2_n501y", "S:N501Y", "s_n501y", "L2"),
+        ("b1177_l2_a222v", "S:A222V", "s_a222v", "L2"),
+    ]
+    weight_schemes = [
+        "positive_test_weighted",
+        "sequence_count_weighted",
+        "unweighted_weekly",
+        "coverage_adjusted",
+    ]
+    fits: list[GrowthFit] = []
+    for analysis, marker, slug, period_code in specs:
+        for scheme in weight_schemes:
+            fit = fit_growth_model(
+                traj,
+                analysis=analysis,
+                marker=marker,
+                marker_slug=slug,
+                period_code=period_code,
+                weight_scheme=scheme,
+            )
+            if fit is not None:
+                fits.append(fit)
+
+    rows = [growth_fit_to_row(fit) for fit in fits]
+    all_fits = pd.DataFrame(rows)
+    sensitivity = all_fits.copy()
+    sensitivity.to_csv(TABLE_DIR / "alpha_growth_model_sensitivity.csv", index=False)
+
+    primary = all_fits[all_fits["weight_scheme"] == "positive_test_weighted"].copy()
+    primary.to_csv(TABLE_DIR / "alpha_growth_params.csv", index=False)
+    return primary, sensitivity
+
+
+def inv_logit(x: np.ndarray | float) -> np.ndarray | float:
+    return 1 / (1 + np.exp(-np.asarray(x)))
+
+
+def nearest_window(traj: pd.DataFrame, date: pd.Timestamp) -> pd.Series:
+    idx = (traj["wn_mid_date"] - date).abs().idxmin()
+    return traj.loc[idx]
+
+
+def build_counterfactuals(
+    traj: pd.DataFrame,
+    growth_params: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    primary = growth_params.set_index("analysis")
+    if "alpha_f5_n501y" not in primary.index or "alpha_l2_n501y" not in primary.index:
+        raise RuntimeError("Counterfactuals require primary F5 and L2 N501Y fits.")
+
+    f5 = primary.loc["alpha_f5_n501y"]
+    l2 = primary.loc["alpha_l2_n501y"]
+    f5_origin = pd.Timestamp(f5["origin_date"])
+    l2_slope = float(l2["slope_per_day"])
+
+    observed_crossing = traj.loc[traj["freq_s_n501y"] >= 0.5, "wn_mid_date"].min()
+    if pd.isna(observed_crossing):
+        observed_crossing = pd.NaT
+
+    scenarios = [
+        ("actual_l2_start", "Actual L2 start", pd.Timestamp("2021-01-05")),
+        ("expansion_date_2020_12_08", "Earlier L2 from 2020-12-08", pd.Timestamp("2020-12-08")),
+        ("nearest_w021_2020_12_02", "Earlier L2 from 2020-12-02", pd.Timestamp("2020-12-02")),
+        ("f5_start_2020_11_02", "L2 from F5 start", pd.Timestamp("2020-11-02")),
+    ]
+
+    projection_rows: list[dict] = []
+    trajectory_rows: list[dict] = []
+    grid = pd.date_range("2020-11-02", "2021-04-15", freq="D")
+
+    actual_reach_date: pd.Timestamp | None = None
+    for slug, label, switch_date in scenarios:
+        near = nearest_window(traj, switch_date)
+        switch_logit = float(f5["intercept"]) + float(f5["slope_per_day"]) * (
+            switch_date - f5_origin
+        ).days
+        switch_freq = float(inv_logit(switch_logit))
+        if l2_slope <= 0:
+            reach_date = pd.NaT
+        else:
+            days_after_switch = (0 - switch_logit) / l2_slope
+            reach_date = switch_date + pd.Timedelta(days=float(days_after_switch))
+        if slug == "actual_l2_start":
+            actual_reach_date = reach_date
+        projection_rows.append(
+            {
+                "scenario": slug,
+                "scenario_label": label,
+                "requested_switch_date": switch_date.date().isoformat(),
+                "nearest_observed_window_id": near["window_id"],
+                "nearest_observed_window_mid_date": near["wn_mid_date"].date().isoformat(),
+                "nearest_observed_n501y_frequency": near["freq_s_n501y"],
+                "projected_switch_frequency": switch_freq,
+                "projected_50pct_date": (
+                    reach_date.date().isoformat() if pd.notna(reach_date) else ""
+                ),
+                "observed_50pct_window_mid_date": (
+                    observed_crossing.date().isoformat()
+                    if pd.notna(observed_crossing)
+                    else ""
+                ),
+                "days_vs_actual_l2_projection": np.nan,
             }
-            base.update(fit)
-            coef_records.append(base)
+        )
 
-    coef_table = pd.DataFrame(coef_records)
-    return coef_table, weekly_data
+        for date in grid:
+            if date <= switch_date:
+                logit = float(f5["intercept"]) + float(f5["slope_per_day"]) * (
+                    date - f5_origin
+                ).days
+            else:
+                logit = switch_logit + l2_slope * (date - switch_date).days
+            trajectory_rows.append(
+                {
+                    "date": date,
+                    "scenario": slug,
+                    "scenario_label": label,
+                    "requested_switch_date": switch_date,
+                    "projected_n501y_frequency": float(inv_logit(logit)),
+                }
+            )
 
+    projections = pd.DataFrame(projection_rows)
+    if actual_reach_date is not None and pd.notna(actual_reach_date):
+        actual = pd.Timestamp(actual_reach_date).normalize()
+        projections["days_vs_actual_l2_projection"] = projections["projected_50pct_date"].apply(
+            lambda x: (pd.Timestamp(x).normalize() - actual).days if x else np.nan
+        )
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
+    trajectories = pd.DataFrame(trajectory_rows)
+    projections.to_csv(TABLE_DIR / "alpha_counterfactual_projections.csv", index=False)
+    trajectories.to_csv(TABLE_DIR / "alpha_counterfactual_trajectories.csv", index=False)
+    return projections, trajectories
+
 
 def main() -> None:
-    print("Part 3 analysis — policy period associations")
-    print("=" * 55)
+    setup_environment()
 
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    print("Loading and summarising policy cluster table...")
+    cluster = load_policy_cluster_table()
+    summarise_periods(cluster)
+    weekly = summarise_weekly(cluster)
+    intensity_correlations(weekly)
+    run_its(weekly)
 
-    # --- Load data ---
-    print("Loading main cluster table and attaching policy periods…")
-    df = load_and_prepare()
-    print(f"  {len(df):,} cluster-window observations (from {STUDY_START.date()})")
-    print(f"  {df['is_non_singleton'].sum():,} non-singleton clusters")
-    print(f"  Policy periods observed: {sorted(df['policy_period'].dropna().unique())}")
+    print("Loading sequence-level data for Alpha case study...")
+    seq = load_sequence_table()
+    summarise_alpha_phases(seq)
+    summarise_alpha_emergence(seq)
 
-    # --- Section 1: Period descriptives ---
-    print("\nComputing period-level descriptive table…")
-    period_desc = compute_period_descriptives(df)
-    out_path = OUT_DIR / "period_descriptives.csv"
-    period_desc.to_csv(out_path, index=False)
-    print(f"  Saved → {out_path.relative_to(ROOT)}")
-    print(period_desc[["period_code", "policy_intensity", "n_clusters_total",
-                         "median_cluster_size", "median_datazones"]].to_string(index=False))
+    print("Reading Nextclade mutation flags and fitting Alpha/B.1.177 growth models...")
+    traj = build_mutation_trajectories(seq)
+    growth_params, _ = run_growth_models(traj)
+    build_counterfactuals(traj, growth_params)
 
-    # --- Section 2: Weekly summaries ---
-    print("\nComputing weekly aggregate summaries…")
-    weekly = compute_weekly_summaries(df)
-    out_path = OUT_DIR / "weekly_summaries.csv"
-    weekly.to_csv(out_path, index=False)
-    print(f"  {len(weekly)} ISO weeks covered → {out_path.relative_to(ROOT)}")
-
-    # --- Section 3: Intensity correlations ---
-    print("\nComputing policy-intensity vs outcome correlations…")
-    corr_table = compute_intensity_correlations(weekly)
-    out_path = OUT_DIR / "intensity_correlations.csv"
-    corr_table.to_csv(out_path, index=False)
-    print(corr_table.to_string(index=False))
-    print(f"  Saved → {out_path.relative_to(ROOT)}")
-
-    # --- Section 4: ITS analyses ---
-    print("\nRunning ITS analyses (3 transitions × 4 outcomes)…")
-    coef_table, weekly_data = run_its_analyses(df)
-
-    out_path = OUT_DIR / "its_coefficients.csv"
-    coef_table.to_csv(out_path, index=False)
-    print(f"  ITS coefficients saved → {out_path.relative_to(ROOT)}")
-
-    # Save per-transition weekly data for figures
-    for label, its_df in weekly_data.items():
-        out_path = OUT_DIR / f"its_weekly_{label}.csv"
-        its_df.to_csv(out_path, index=False)
-        print(f"  ITS window data ({label}) → {out_path.relative_to(ROOT)}")
-
-    # Print ITS summary
-    print("\nITS level-change estimates (β_post, 95 % CI, p):")
-    summary_cols = [
-        "transition", "outcome", "coef_post", "ci_lo_post", "ci_hi_post", "pval_post",
-    ]
-    if all(c in coef_table.columns for c in summary_cols):
-        print(coef_table[summary_cols].to_string(index=False))
-
-    print("\nPart 3 analysis complete.")
+    print("Part 3 analysis complete.")
+    print(f"Wrote tables to {TABLE_DIR}")
+    print(f"Wrote caches to {CACHE_DIR}")
 
 
 if __name__ == "__main__":

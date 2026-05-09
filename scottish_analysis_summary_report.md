@@ -240,21 +240,21 @@ than broad policy intensity.
 | Part 3 Figure 2 | Interrupted time-series plots for the T1 onset, L2 to SL, and NN onset transitions.    |
 | Part 3 Figure 3 | Median cluster size and geographic spread compared across observed policy periods.     |
 
-![Part 3 Figure 1: Weekly time series and policy context](part3/manuscript/figures/fig1_weekly_time_series.png)
+![Part 3 Figure 1: Weekly time series and policy context](archive/part3/manuscript/figures/fig1_weekly_time_series.png)
 
-![Part 3 Figure 2: Interrupted time-series transitions](part3/manuscript/figures/fig2_its_transitions.png)
+![Part 3 Figure 2: Interrupted time-series transitions](archive/part3/manuscript/figures/fig2_its_transitions.png)
 
-![Part 3 Figure 3: Policy-period outcomes](part3/manuscript/figures/fig3_period_outcomes.png)
+![Part 3 Figure 3: Policy-period outcomes](archive/part3/manuscript/figures/fig3_period_outcomes.png)
 
 ### 7.6. Key Tables
 
 | Table                         | File                                                                                          |
 |-------------------------------|-----------------------------------------------------------------------------------------------|
-| Policy-period descriptives    | [period_descriptives.csv](part3/tables/period_descriptives.csv)                               |
-| Intensity correlations        | [intensity_correlations.csv](part3/tables/intensity_correlations.csv)                         |
-| ITS coefficients              | [its_coefficients.csv](part3/tables/its_coefficients.csv)                                     |
-| Lagged intensity correlations | [supp_lagged_intensity_correlations.csv](part3/tables/supp_lagged_intensity_correlations.csv) |
-| ITS window sensitivity        | [supp_its_window_sensitivity.csv](part3/tables/supp_its_window_sensitivity.csv)               |
+| Policy-period descriptives    | [period_descriptives.csv](archive/part3/tables/period_descriptives.csv)                               |
+| Intensity correlations        | [intensity_correlations.csv](archive/part3/tables/intensity_correlations.csv)                         |
+| ITS coefficients              | [its_coefficients.csv](archive/part3/tables/its_coefficients.csv)                                     |
+| Lagged intensity correlations | [supp_lagged_intensity_correlations.csv](archive/part3/tables/supp_lagged_intensity_correlations.csv) |
+| ITS window sensitivity        | [supp_its_window_sensitivity.csv](archive/part3/tables/supp_its_window_sensitivity.csv)               |
 
 ## 8. Overall Interpretation
 

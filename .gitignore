@@ -8,6 +8,8 @@ __pycache__/
 *.egg-info/
 dist/
 .claude/
+/surveillance/figures/
+/surveillance/tables/
 /part1/main/cache/
 /part1/main/figures/
 /part1/main/tables/
@@ -37,11 +39,8 @@ dist/
 /part2/cache/
 /part2/figures/
 /part2/tables/
+/part2/manuscript/figures/
+/archive/
+/part3/cache/
 /part3/tables/
 /part3/manuscript/figures/
-/part2/manuscript/figures/
-/surveillance/figures/
-/surveillance/tables/
-/part4/figures/
-/part4/tables/
-/part4/manuscript/figures/
