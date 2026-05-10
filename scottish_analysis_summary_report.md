@@ -248,8 +248,8 @@ than broad policy intensity.
 
 ### 7.6. Key Tables
 
-| Table                         | File                                                                                          |
-|-------------------------------|-----------------------------------------------------------------------------------------------|
+| Table                         | File                                                                                                  |
+|-------------------------------|-------------------------------------------------------------------------------------------------------|
 | Policy-period descriptives    | [period_descriptives.csv](archive/part3/tables/period_descriptives.csv)                               |
 | Intensity correlations        | [intensity_correlations.csv](archive/part3/tables/intensity_correlations.csv)                         |
 | ITS coefficients              | [its_coefficients.csv](archive/part3/tables/its_coefficients.csv)                                     |

@@ -169,7 +169,89 @@ the most negative mean SIMD excess discordance (−0.256), consistent with a
 period when Alpha, during a restriction phase, produced the most homogeneous
 clusters relative to expectation.
 
-### 4.2 Policy intensity correlations
+### 4.2 Clustering Rate and Dispersion Parameter k
+
+Because cluster size is highly right-skewed across all periods, the log median
+is an insensitive summary of the full distribution. Two additional per-period
+metrics are reported in `period_clustering_dispersion.csv`:
+
+**Clustering rate** quantifies what fraction of sequenced isolates belong to
+transmission chains rather than appearing as isolated detections:
+
+```
+clustering_rate = (n_c - c) / n_c
+```
+
+where `n_c` is the total number of sequenced isolates (sum of all cluster
+sizes in the period) and `c` is the total number of clusters. When every
+cluster is a singleton, `c = n_c` and the rate is 0; when all isolates belong
+to a single large cluster, the rate approaches 1. This is equivalent to
+1 − (clusters / sequences).
+
+**Dispersion parameter k** is estimated by the method of moments (MME):
+
+```
+k_hat = x̄² / (s² − x̄)
+```
+
+where `x̄` is the mean cluster size and `s²` is the sample variance, computed
+across all clusters (including singletons). Overdispersion requires `s² > x̄`,
+which holds for all observed periods. A smaller `k` indicates greater dominance
+of a few large clusters ("superspreading-like" heterogeneity); as `k → ∞` the
+distribution approaches Poisson. A complementary estimate `k_non_singleton` is
+computed from the non-singleton population only.
+
+The same two metrics are computed in parallel for **geographic spread**
+(`cluster_n_datazones`), giving `geo_clustering_rate` and `geo_k_all`:
+
+```
+geo_clustering_rate = (sum(cluster_n_datazones) − c) / sum(cluster_n_datazones)
+```
+
+This is the fraction of "datazone-slots" that are secondary (i.e., belong to a
+cluster spanning more than one datazone). `geo_k_all` is fitted to the
+distribution of `cluster_n_datazones` with the same MME formula.
+
+All four metrics (clustering_rate, k_all, geo_clustering_rate, geo_k_all) are
+also computed per analysis window and stored in `weekly_summaries.csv`, where
+they drive Figures 1 and 2. ITS segmented-regression fitted values for each
+metric are included in the three `its_weekly_*.csv` files.
+
+Computed from `part3/cache/policy_cluster_table.parquet` and saved to
+`part3/tables/period_clustering_dispersion.csv`.
+
+| Period | Label                | Clustering rate | k (all) | k (non-singleton) | Mean size | Var size |
+|--------|----------------------|----------------:|--------:|------------------:|----------:|---------:|
+| P3     | Route map phase 3    |          0.8522 |  0.1083 |            0.2060 |      6.77 |    429.7 |
+| T1     | Pre-tier tightening  |          0.7799 |  0.1715 |            0.3588 |      4.54 |    124.9 |
+| F5     | Five-tier framework  |          0.6750 |  0.2646 |            0.4721 |      3.08 |     38.9 |
+| L2     | Second lockdown      |          0.8310 |  0.1444 |            0.2472 |      5.92 |    248.3 |
+| SL     | Stay local           |          0.8440 |  0.3623 |            0.6148 |      6.41 |    119.9 |
+| L3     | Level 3              |          0.8819 |  0.0763 |            0.1188 |      8.47 |    948.4 |
+| L21    | Level 2/1            |          0.8629 |  0.0171 |            0.0325 |      7.29 |  3,118.9 |
+| L0     | Level 0              |          0.6335 |  0.2157 |            0.3595 |      2.73 |     37.3 |
+| NN     | Near-normal          |          0.7358 |  0.1429 |            0.2469 |      3.78 |    104.0 |
+| OM     | Omicron wave         |          0.8093 |  0.0102 |            0.0197 |      5.24 |  2,692.7 |
+| FE     | Final easing         |          0.7834 |  0.0240 |            0.0419 |      4.62 |    893.4 |
+| PR     | Post-restriction     |          0.5922 |  0.0817 |            0.1269 |      2.45 |     76.1 |
+
+Key patterns:
+
+- k is below 1.0 in all periods, confirming strong overdispersion throughout
+  the epidemic. The distribution is never Poisson-like.
+- The lowest k values occur in long multi-variant periods (L21 k = 0.017,
+  OM k = 0.010), where extreme variance is driven by mixing of many small
+  post-variant clusters with a few large outbreak clusters.
+- Among selected phases, SL has the highest k (0.362) — relatively less
+  extreme overdispersion — consistent with Alpha declining and producing a
+  less concentrated size distribution. F5 has the next highest (0.265).
+- Clustering rate is highest in the L3/SL/L2 periods (Alpha wave, 0.83–0.88),
+  meaning 83–88% of sequences in those periods were secondary cluster members
+  rather than singletons. It is lowest in PR (0.592) and L0 (0.634).
+- The variance column explains why log median is insensitive: variance in L21
+  (3,119) is 250× that in F5 (39), but the log median is 0.0 in both.
+
+### 4.3 Policy intensity correlations
 
 Spearman correlations between policy intensity and weekly outcomes across all
 134 observed analysis windows (from `intensity_correlations.csv`). All
@@ -464,6 +546,7 @@ growth model well beyond its observation window.
 | File                                | Contents                                                                  |
 |-------------------------------------|---------------------------------------------------------------------------|
 | `period_descriptives.csv`           | Per-period cluster counts, singleton fractions, medians, mixing means     |
+| `period_clustering_dispersion.csv`  | Per-period clustering rate and MME dispersion parameter k (all and non-singleton) |
 | `weekly_summaries.csv`              | Weekly cluster outcomes, dominant policy period, and policy intensity     |
 | `intensity_correlations.csv`        | Spearman correlations between policy intensity and weekly outcomes         |
 | `its_coefficients.csv`             | ITS model coefficients for all three transitions and four window widths   |
@@ -506,15 +589,17 @@ Six figures generated by `part3/manuscript/make_figures.py` and
 `part3/manuscript/make_alpha_meta_cluster_supp_figures.py`. Figures are
 written as PDF, PNG, and LZW-compressed TIFF at 600 dpi.
 
-| Figure stem                                | Description                                                              |
-|--------------------------------------------|--------------------------------------------------------------------------|
-| `fig1_policy_timeline_cluster_structure`   | Weekly median log cluster size with policy-period shading                |
-| `fig2_selected_policy_transitions`         | ±8-week ITS plots for T1, SL, and NN (cluster size and datazones)       |
-| `fig3_alpha_emergence_f5_l2`              | S:N501Y and S:A222V frequencies plus health-board expansion during F5/L2 |
-| `fig4_alpha_counterfactual_timing`         | Fitted and counterfactual S:N501Y trajectories                           |
-| `supp_fig1_its_mixing_outcomes`            | ±8-week ITS plots for SIMD and age excess-discordance outcomes           |
-| `supp_fig2_alpha_meta_cluster_amplification`| AM001 amplification and meta-cluster growth curves                     |
-| `supp_fig3_alpha_top6_meta_cluster_context`| Demographics and geography of the six largest pre-L2 Alpha meta-clusters |
+| Figure stem                                   | Description                                                                          |
+|-----------------------------------------------|--------------------------------------------------------------------------------------|
+| `fig1_policy_timeline_cluster_structure`      | Three-panel weekly overview: (A) median cluster size + IQR, (B) clustering rate, (C) dispersion k̂ |
+| `fig2_selected_policy_transitions`            | ±8-week ITS (main): log-median cluster size + log-median datazones, with IQR error bars |
+| `fig3_alpha_emergence_f5_l2`                 | S:N501Y and S:A222V frequencies plus health-board expansion during F5/L2             |
+| `fig4_alpha_counterfactual_timing`            | Fitted and counterfactual S:N501Y trajectories                                       |
+| `supp_fig1_its_mixing_outcomes`               | ±8-week ITS plots for SIMD and age excess-discordance outcomes                       |
+| `supp_fig2_alpha_meta_cluster_amplification`  | AM001 amplification and meta-cluster growth curves                                   |
+| `supp_fig2a_its_clustering_rate`              | ±8-week ITS (supplementary A): clustering rate — cluster size (left) and geographic spread (right) |
+| `supp_fig2b_its_dispersion`                   | ±8-week ITS (supplementary B): dispersion k̂ — cluster size (left) and geographic spread (right) |
+| `supp_fig3_alpha_top6_meta_cluster_context`   | Demographics and geography of the six largest pre-L2 Alpha meta-clusters             |
 
 ---
 
@@ -570,6 +655,14 @@ The current Part 3 results support four linked conclusions:
    restrictions coincided with the Alpha and Delta waves, which drove larger
    and more geographically dispersed clusters regardless of policy. Policy
    intensity shows near-null correlation with SIMD excess discordance (ρ = 0.019).
+   Because cluster size is strongly right-skewed, per-period clustering rate and
+   the MME dispersion parameter k complement the log-median summary. Clustering
+   rate peaked at 0.88 in the Alpha-wave periods (L3, SL), meaning 88% of
+   sequences were secondary cluster members rather than isolated detections.
+   k remained below 1.0 in all periods (strong overdispersion throughout), with
+   the lowest values in long multi-variant periods (OM k = 0.010; L21 k = 0.017)
+   reflecting mixing of many small clusters with a few very large outbreak events,
+   and relatively higher values in F5 (k = 0.265) and SL (k = 0.362).
 
 2. **Specific policy transitions coincided with changes in cluster structure
    trends, but immediate level changes were inconsistent.** At T1 onset and

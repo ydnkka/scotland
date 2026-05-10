@@ -177,7 +177,7 @@ def plot_alpha_meta_cluster_amplification(table_dir: Path) -> None:
     ax_a.set_yticklabels(["1", "2", "5", "10", "20", "50", "100", "250"])
     ax_a.set_xlabel("Meta-cluster rank")
     ax_a.set_ylabel("Unique pre-L2 Alpha sequences")
-    ax_a.set_title("A. Six largest of 78 inferred Alpha meta-clusters", loc="left")
+    ax_a.set_title("Six largest of 78 inferred Alpha meta-clusters")
     ax_a.grid(axis="y", color="#dddddd", lw=0.45, alpha=0.7)
 
     weekly = (
@@ -196,7 +196,7 @@ def plot_alpha_meta_cluster_amplification(table_dir: Path) -> None:
     ax_b.axvline(L2_START, color="#333333", lw=0.8, ls="--")
     ax_b.text(L2_START, ax_b.get_ylim()[1] * 0.95, "L2", ha="center", va="top", fontsize=6.5)
     ax_b.set_ylabel("Unique sequences")
-    ax_b.set_title("B. Weekly pre-L2 Alpha burden by meta-cluster", loc="left")
+    ax_b.set_title("Weekly pre-L2 Alpha burden by meta-cluster")
     format_month_axis(ax_b)
     ax_b.grid(axis="y", color="#dddddd", lw=0.45, alpha=0.7)
 
@@ -226,7 +226,7 @@ def plot_alpha_meta_cluster_amplification(table_dir: Path) -> None:
     ax_c.axvline(L2_START, color="#333333", lw=0.8, ls="--")
     ax_c.set_ylabel("Cumulative unique sequences")
     ax_c.set_xlabel("Collection week")
-    ax_c.set_title("C. Cumulative pre-L2 expansion", loc="left")
+    ax_c.set_title("Cumulative pre-L2 expansion")
     ax_c.legend(loc="upper left", frameon=False, fontsize=6.5)
     format_month_axis(ax_c)
     ax_c.grid(axis="y", color="#dddddd", lw=0.45, alpha=0.7)
@@ -272,7 +272,7 @@ def plot_alpha_meta_cluster_amplification(table_dir: Path) -> None:
         ax_d.set_ylim(-0.03, 1.03)
         ax_d.set_ylabel("Frequency among Alpha")
         ax_d.set_xlabel("Collection week")
-        ax_d.set_title("D. Candidate signature trajectories after L2", loc="left")
+        ax_d.set_title("Candidate signature trajectories after L2")
         ax_d.legend(loc="upper right", frameon=False, fontsize=5.7)
         format_month_axis(ax_d)
         ax_d.grid(axis="y", color="#dddddd", lw=0.45, alpha=0.7)
@@ -291,6 +291,8 @@ def plot_alpha_meta_cluster_amplification(table_dir: Path) -> None:
         frameon=False,
         fontsize=6.2,
     )
+
+    style.add_panel_labels([ax_a, ax_b, ax_c, ax_d], x=-0.14, y=1.08, size=9)
     save_all(fig, FIGURE_DIR / "supp_fig2_alpha_meta_cluster_amplification", height_in=6.2)
 
 
@@ -339,7 +341,7 @@ def plot_prop_stackedh(
     ax.invert_yaxis()
     ax.set_xlim(0, 1)
     ax.set_xlabel("Proportion of unique sequences")
-    ax.set_title(title, loc="left")
+    ax.set_title(title)
     ax.xaxis.set_major_formatter(lambda x, _: f"{x:.0%}")
     ax.grid(axis="x", color="#dddddd", lw=0.45, alpha=0.75)
     ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.18), ncol=2, frameon=False, fontsize=5.8)
@@ -422,10 +424,12 @@ def plot_alpha_top6_context(table_dir: Path) -> None:
         "Missing": "#bdbdbd",
     }
 
-    plot_prop_stackedh(ax_a, health_prop, hb_palette, title="A. Health-board composition", sizes=sizes)
-    plot_prop_stackedh(ax_b, age_prop, age_palette, title="B. Age composition", sizes=sizes)
-    plot_prop_stackedh(ax_c, simd_prop, simd_palette, title="C. SIMD quintile composition", sizes=sizes)
-    plot_prop_stackedh(ax_d, reason_prop, reason_palette, title="D. Testing-reason composition", sizes=sizes)
+    plot_prop_stackedh(ax_a, health_prop, hb_palette, title="Health-board composition", sizes=sizes)
+    plot_prop_stackedh(ax_b, age_prop, age_palette, title="Age composition", sizes=sizes)
+    plot_prop_stackedh(ax_c, simd_prop, simd_palette, title="SIMD quintile composition", sizes=sizes)
+    plot_prop_stackedh(ax_d, reason_prop, reason_palette, title="Testing-reason composition", sizes=sizes)
+
+    style.add_panel_labels([ax_a, ax_b, ax_c, ax_d], x=-0.14, y=1.08, size=9)
 
     save_all(fig, FIGURE_DIR / "supp_fig3_alpha_top6_meta_cluster_context", height_in=7.4)
 
