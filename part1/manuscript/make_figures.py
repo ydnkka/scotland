@@ -1038,26 +1038,6 @@ def plot_mixing_overall(
 # ---------------------------------------------------------------------------
 
 
-def _ratio_colorbar_ticks(vmax_log: float) -> tuple[list[float], list[str]]:
-    """Return colour-bar tick positions (in log space) and labels (ratios)."""
-    if vmax_log >= np.log(8):
-        candidate_ratios = [0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 10.0]
-    elif vmax_log >= np.log(3):
-        candidate_ratios = [0.25, 0.5, 1.0, 2.0, 4.0]
-    elif vmax_log >= np.log(1.5):
-        candidate_ratios = [0.5, 0.75, 1.0, 1.5, 2.0]
-    else:
-        candidate_ratios = [0.8, 0.9, 1.0, 1.1, 1.25]
-    positions: list[float] = []
-    labels: list[str] = []
-    for r in candidate_ratios:
-        lr = np.log(r)
-        if abs(lr) <= vmax_log + 1e-6:
-            positions.append(lr)
-            labels.append(f"{r:g}")
-    return positions, labels
-
-
 def plot_mixing_wave_specific(
     style,
     wave_mixing_predictor_results: pd.DataFrame,
@@ -1069,12 +1049,7 @@ def plot_mixing_wave_specific(
     ratio), each a heatmap with waves as rows and the four mixing predictors as
     columns. The hurdle geographic-spread component is reported as a
     supplementary table because its SIMD coefficient blows up to ratio ~30 000
-    in the Alpha wave and is uninformative on a heatmap. A single vertical
-    colour bar on the right (ratio scale) is shared across the two panels.
-    With the hurdle panel removed, the largest cell ratio is 4.4, so the
-    scale is capped at ratio 5 (i.e. log-ratio ±log 5); a single low-end
-    outlier (Alpha-wave sex on geographic-spread ZTNB, ratio 0.075) saturates
-    the lower triangle, and the cell annotations carry the exact ratios.
+    in the Alpha wave and is uninformative on a heatmap.
     """
     from matplotlib.colors import TwoSlopeNorm
     import matplotlib.pyplot as plt
@@ -1086,29 +1061,16 @@ def plot_mixing_wave_specific(
     if data.empty or not waves:
         return
 
-    data["log_ratio"] = np.log(data["ratio"].astype(float))
-
     panels: list[tuple[str, str, str]] = [
         ("cluster_size", "positive_zero_truncated_count", "Cluster size"),
         ("geographic_dispersion", "positive_zero_truncated_count", "Geographic spread"),
     ]
-
-    # Cap the shared colour scale at ratio 5. The observed cells span roughly
-    # 0.07-4.4; ratio 5 covers the bulk and leaves only one Alpha-wave sex
-    # cell to saturate the lower bound.
-    panel_mask = data[["outcome", "component"]].apply(tuple, axis=1).isin(
-        {(o, c) for o, c, _ in panels}
-    )
-    finite = (
-        data.loc[panel_mask, "log_ratio"]
-        .to_numpy(dtype=float)
-    )
-    finite = finite[np.isfinite(finite)]
-    observed_vmax = (
-        max(0.1, float(np.nanmax(np.abs(finite)))) if finite.size else 0.1
-    )
-    vmax = min(observed_vmax, float(np.log(5.0)))
-    norm = TwoSlopeNorm(vcenter=0.0, vmin=-vmax, vmax=vmax)
+    values = data[(data["outcome"].isin([panels[0][0], panels[1][0]]))
+               & (data["component"].isin([panels[0][1], panels[1][1]]))]
+    vmax = max(2, float(np.nanmax(np.abs(values["ratio"]))))
+    vmin = min(0, float(np.nanmin(np.abs(values["ratio"]))))
+    vcenter = 1
+    norm = TwoSlopeNorm(vcenter=vcenter, vmin=vmin, vmax=vmax)
 
     fig, axes = style.new_figure(
         width="double",
@@ -1130,7 +1092,7 @@ def plot_mixing_wave_specific(
                 sub.pivot_table(
                     index="wave_group",
                     columns="term",
-                    values="log_ratio",
+                    values="ratio",
                     aggfunc="first",
                 )
                 .reindex(index=waves, columns=MIXING_PREDICTOR_TERMS)
@@ -1151,46 +1113,18 @@ def plot_mixing_wave_specific(
         for x in np.arange(len(MIXING_PREDICTOR_TERMS) + 1) - 0.5:
             ax.axvline(x, color="white", linewidth=0.6)
 
-        # Annotate each cell with its raw ratio (not log) for readability.
-        if not sub.empty:
-            for r_idx, wave in enumerate(waves):
-                for c_idx, term in enumerate(MIXING_PREDICTOR_TERMS):
-                    cell = sub[(sub["wave_group"] == wave) & (sub["term"] == term)]
-                    if cell.empty:
-                        continue
-                    ratio = float(cell["ratio"].iloc[0])
-                    if not np.isfinite(ratio):
-                        continue
-                    label = f"{ratio:.2g}"
-                    log_val = matrix.iloc[r_idx, c_idx]
-                    text_colour = "white" if abs(log_val) > vmax * 0.55 else "#333333"
-                    ax.text(
-                        c_idx,
-                        r_idx,
-                        label,
-                        ha="center",
-                        va="center",
-                        fontsize=6.5,
-                        color=text_colour,
-                    )
-
     assert image is not None
     cbar_ax = fig.add_axes([0.885, 0.24, 0.020, 0.58])
     cbar = fig.colorbar(image, cax=cbar_ax, extend="both")
-    tick_pos, tick_labels = _ratio_colorbar_ticks(vmax)
-    cbar.set_ticks(tick_pos)
-    cbar.set_ticklabels(tick_labels)
     cbar.set_label("ZTNB count ratio per 1 SD higher excess mixing", fontsize=7.5)
     cbar.ax.tick_params(labelsize=7)
     style.add_panel_labels(axes, x=-0.10, y=1.10, size=9)
     save_all(style, fig, out_dir / "fig4_mixing_wave_specific", "double", 4.0)
     plt.close("all")
 
-
 # ---------------------------------------------------------------------------
 # SUPPLEMENTARY FIGURES
 # ---------------------------------------------------------------------------
-
 
 def binned_percent(values: pd.Series, bins: list[float], labels: list[str]) -> pd.DataFrame:
     cats = pd.cut(values, bins=bins, labels=labels, include_lowest=True, right=True)
@@ -1334,8 +1268,10 @@ def plot_observed_expected_matrices(
         font_scale=0.8,
     )
     overall = matrices[matrices["wave_group"] == "Overall"].copy()
-    vmax = max(2.5, np.nanmax(np.abs(overall["excess_percentage_points"])))
-    norm = TwoSlopeNorm(vcenter=0, vmin=-vmax, vmax=vmax)
+    vmax = max(0.1, float(np.nanmax(np.abs(overall["excess_percentage_points"]))))
+    vmin = min(-0.1, float(np.nanmin(np.abs(overall["excess_percentage_points"]))))
+    vcenter = 0
+    norm = TwoSlopeNorm(vcenter=vcenter, vmin=vmin, vmax=vmax)
     image = None
     for idx, (variable, title) in enumerate(specs):
         ax = axes[idx]
@@ -1359,7 +1295,8 @@ def plot_observed_expected_matrices(
         ax.set_title(f"{title}: observed - expected", pad=4)
         ax.set_xticks(np.arange(len(col_order)))
         ax.set_yticks(np.arange(len(row_order)))
-        ax.set_xticklabels(col_order, rotation=45, ha="right")
+        if idx == 1:
+            ax.set_xticklabels(col_order, rotation=45, ha="right")
         ax.set_yticklabels(row_order)
         ax.set_xlabel(title)
         ax.set_ylabel(title if idx == 0 else "")
@@ -1369,27 +1306,10 @@ def plot_observed_expected_matrices(
         for x in np.arange(len(col_order) + 1) - 0.5:
             ax.axvline(x, color="white", linewidth=0.5)
 
-        # Annotate cells with the excess-pair-probability value (pp).
-        for r_idx in range(len(row_order)):
-            for c_idx in range(len(col_order)):
-                val = matrix.iloc[r_idx, c_idx]
-                if not np.isfinite(val):
-                    continue
-                text_colour = "white" if abs(val) > vmax * 0.55 else "#333333"
-                ax.text(
-                    c_idx,
-                    r_idx,
-                    f"{val:.1f}",
-                    ha="center",
-                    va="center",
-                    fontsize=6.5,
-                    color=text_colour,
-                )
-
     assert image is not None
     fig.subplots_adjust(left=0.08, right=0.84, top=0.87, bottom=0.21, wspace=0.18)
     cbar_ax = fig.add_axes([0.875, 0.28, 0.024, 0.50])
-    cbar = fig.colorbar(image, cax=cbar_ax)
+    cbar = fig.colorbar(image, cax=cbar_ax, extend="both")
     cbar.set_label("Observed - expected pair probability (pp)")
     style.add_panel_labels(axes, x=-0.1, y=1.12, size=9)
     save_all(style, fig, out_dir / "supp_fig3_observed_expected_matrices", "double", 3.7)
@@ -1580,8 +1500,10 @@ def plot_deprivation_domain_wave_mixing(
         ncols=1,
         font_scale=0.82,
     )
-    vmax = max(5.5, np.nanmax(np.abs(data["coefficient_percentage_points"])))
-    norm = TwoSlopeNorm(vcenter=0, vmin=-vmax, vmax=vmax)
+    vmax = max(1, float(np.nanmax(np.abs(data["coefficient_percentage_points"]))))
+    vmin = min(-1, float(np.nanmin(np.abs(data["coefficient_percentage_points"]))))
+    vcenter = 0
+    norm = TwoSlopeNorm(vcenter=vcenter, vmin=vmin, vmax=vmax)
 
     image = None
     for idx, mixing in enumerate(mixings):
@@ -1608,27 +1530,10 @@ def plot_deprivation_domain_wave_mixing(
         for x in np.arange(len(waves) + 1) - 0.5:
             ax.axvline(x, color="white", linewidth=0.6)
 
-        # Annotate cells with the coefficient (pp).
-        for r_idx in range(len(DOMAIN_ORDER)):
-            for c_idx in range(len(waves)):
-                val = matrix.iloc[r_idx, c_idx]
-                if not np.isfinite(val):
-                    continue
-                text_colour = "white" if abs(val) > vmax * 0.55 else "#333333"
-                ax.text(
-                    c_idx,
-                    r_idx,
-                    f"{val:.1f}",
-                    ha="center",
-                    va="center",
-                    fontsize=6.5,
-                    color=text_colour,
-                )
-
     assert image is not None
     fig.subplots_adjust(left=0.17, right=0.84, top=0.93, bottom=0.12, hspace=0.46)
     cbar_ax = fig.add_axes([0.875, 0.20, 0.022, 0.62])
-    cbar = fig.colorbar(image, cax=cbar_ax)
+    cbar = fig.colorbar(image, cax=cbar_ax, extend="both")
     cbar.set_label("pp per 1 SD higher domain deprivation")
     style.add_panel_labels(axes, x=-0.1, y=1.10, size=9)
     save_all(style, fig, out_dir / "supp_fig6_deprivation_domain_wave_mixing", "double", 6.2)
@@ -1664,26 +1569,12 @@ def plot_mixing_domain_outcomes(
     if data.empty:
         return
 
-    data["log_ratio"] = np.log(data["ratio"].astype(float))
-    # Anchor vmax to non-domain-quintile predictors only, within the panels
-    # we actually plot.
-    panel_mask = data[["outcome", "component"]].apply(tuple, axis=1).isin(
-        {(o, c) for o, c, _ in panels}
-    )
-    demo_predictors = [p for p in DOMAIN_MIXING_PREDICTOR_ORDER if p != "domain_quintile"]
-    finite = (
-        data.loc[panel_mask & data["predictor"].isin(demo_predictors), "log_ratio"]
-        .to_numpy(dtype=float)
-    )
-    finite = finite[np.isfinite(finite)]
-    if len(finite) == 0:
-        # Fall back to all values if no demographic predictors are estimable.
-        finite = data.loc[panel_mask, "log_ratio"].to_numpy(dtype=float)
-        finite = finite[np.isfinite(finite)]
-        if len(finite) == 0:
-            return
-    vmax = max(0.1, float(np.nanmax(np.abs(finite))))
-    norm = TwoSlopeNorm(vcenter=0.0, vmin=-vmax, vmax=vmax)
+    values = data[(data["outcome"].isin([panels[0][0], panels[1][0]]))
+               & (data["component"].isin([panels[0][1], panels[1][1]]))]
+    vmax = max(2, float(np.nanmax(np.abs(values["ratio"]))))
+    vmin = min(0, float(np.nanmin(np.abs(values["ratio"]))))
+    vcenter = 1
+    norm = TwoSlopeNorm(vcenter=vcenter, vmin=vmin, vmax=vmax)
 
     fig, axes = style.new_figure(
         width="double",
@@ -1707,7 +1598,7 @@ def plot_mixing_domain_outcomes(
                 sub.pivot_table(
                     index="domain",
                     columns="predictor",
-                    values="log_ratio",
+                    values="ratio",
                     aggfunc="first",
                 )
                 .reindex(index=DOMAIN_ORDER, columns=DOMAIN_MIXING_PREDICTOR_ORDER)
@@ -1739,35 +1630,11 @@ def plot_mixing_domain_outcomes(
                 color="#666666",
                 fontsize=8,
             )
-        else:
-            # Annotate cells with the raw ratio for readability.
-            for r_idx, domain in enumerate(DOMAIN_ORDER):
-                for c_idx, predictor in enumerate(DOMAIN_MIXING_PREDICTOR_ORDER):
-                    cell = sub[(sub["domain"] == domain) & (sub["predictor"] == predictor)]
-                    if cell.empty:
-                        continue
-                    ratio = float(cell["ratio"].iloc[0])
-                    if not np.isfinite(ratio):
-                        continue
-                    log_val = matrix.iloc[r_idx, c_idx]
-                    text_colour = "white" if abs(log_val) > vmax * 0.55 else "#333333"
-                    ax.text(
-                        c_idx,
-                        r_idx,
-                        f"{ratio:.2g}",
-                        ha="center",
-                        va="center",
-                        fontsize=6.5,
-                        color=text_colour,
-                    )
 
     assert image is not None
     fig.subplots_adjust(left=0.13, right=0.86, top=0.86, bottom=0.22, wspace=0.10)
     cbar_ax = fig.add_axes([0.885, 0.24, 0.020, 0.58])
     cbar = fig.colorbar(image, cax=cbar_ax, extend="both")
-    tick_pos, tick_labels = _ratio_colorbar_ticks(vmax)
-    cbar.set_ticks(tick_pos)
-    cbar.set_ticklabels(tick_labels)
     cbar.set_label("ZTNB count ratio per 1 SD higher excess mixing", fontsize=7.5)
     cbar.ax.tick_params(labelsize=7)
     style.add_panel_labels(axes, x=-0.10, y=1.12, size=9)
