@@ -38,7 +38,7 @@ conda run -n PhD python manuscript/make_figures.py \
 # ------------------------------------------------------------------
 echo ""
 echo "--- 2/5  --use-size-offset ---"
-conda run -n PhD python main_analysis.py \
+conda run -n PhD python overall_analysis.py \
     --use-size-offset \
     --tables-dir  sensitivity/tables_size_offset \
     --figures-dir sensitivity/figures_size_offset \
@@ -55,7 +55,7 @@ conda run -n PhD python manuscript/make_figures.py \
 # ------------------------------------------------------------------
 echo ""
 echo "--- 3/5  --use-index-simd ---"
-conda run -n PhD python main_analysis.py \
+conda run -n PhD python overall_analysis.py \
     --use-index-simd \
     --tables-dir  sensitivity/tables_index_simd \
     --figures-dir sensitivity/figures_index_simd \
@@ -72,7 +72,7 @@ conda run -n PhD python manuscript/make_figures.py \
 # ------------------------------------------------------------------
 echo ""
 echo "--- 4/5  --winsorise-quantile 0.99 ---"
-conda run -n PhD python main_analysis.py \
+conda run -n PhD python overall_analysis.py \
     --winsorise-quantile 0.99 \
     --tables-dir  sensitivity/tables_winsorise99 \
     --figures-dir sensitivity/figures_winsorise99 \
@@ -89,7 +89,7 @@ conda run -n PhD python manuscript/make_figures.py \
 # ------------------------------------------------------------------
 echo ""
 echo "--- 5/5  --window-stride 3 ---"
-conda run -n PhD python main_analysis.py \
+conda run -n PhD python overall_analysis.py \
     --window-stride 3 \
     --tables-dir  sensitivity/tables_stride3 \
     --figures-dir sensitivity/figures_stride3 \
