@@ -15,67 +15,67 @@ The accompanying narrative description is
 
 ## Figure Set
 
-The manuscript is organised around two complementary lines of inquiry. Figures
-1–4 cover the deprivation-as-exposure line; Figures 5–7 cover the
-excess-mixing-as-predictor line.
+The manuscript is organised around two complementary lines of inquiry. Each
+line has two main figures (overall and wave-specific). Domain extensions,
+outcome and mixing distributions, observed-expected matrices, and other
+sensitivities live in the supplement.
 
 ### Main figures — Line 1 (deprivation as exposure)
 
-- `fig1_main_cluster_outcomes`: main hurdle and zero-truncated negative-binomial
-  count results for cluster size and geographic spread.
-- `fig2_main_cluster_mixing`: main observed-minus-expected mixing model results.
-- `fig3_simd_domain_mixing`: SIMD-domain effects on domain-quintile, age, sex,
-  and joint age-sex excess mixing.
-- `fig4_wave_specific_cluster_outcomes`: wave-specific deprivation effects on
-  cluster size and geographic spread.
+- `fig1_deprivation_overall`: combined figure with deprivation's effects on
+  the four count-model components (top row) and on SIMD-quintile, age, sex,
+  and joint-profile excess mixing outcomes (bottom row).
+- `fig2_deprivation_wave_specific`: per-wave deprivation effects on the four
+  count-model components, for the eight dominant Pango-lineage waves.
 
 ### Main figures — Line 2 (excess mixing as predictor)
 
-- `fig5_main_mixing_predictor_cluster_outcomes`: main hurdle and ZTNB count
-  models using the four excess-mixing scores (SIMD-quintile, age, sex, joint
-  age-sex profile) as predictors of cluster size and geographic spread,
-  alongside the primary deprivation and surveillance covariates.
-  *Promoted from former `supp_fig9_mixing_predictor_cluster_outcomes`.*
-- `fig6_simd_domain_mixing_predictor_cluster_outcomes`: SIMD-domain extensions
-  of `fig5`, substituting each domain-quintile excess-mixing score for the
-  overall SIMD-quintile mixing score.
-  *Promoted from former `supp_fig11_simd_domain_mixing_predictor_cluster_outcomes`.*
-- `fig7_wave_specific_mixing_predictor_cluster_outcomes`: wave-specific
-  extensions of `fig5`, fitted within each dominant Pango-lineage wave.
-  *Promoted from former `supp_fig12_wave_specific_mixing_predictor_cluster_outcomes`.*
+- `fig3_mixing_overall`: pooled effects of the four excess-mixing scores
+  (SIMD-quintile, age, sex, joint profile) on the three estimable count
+  components — positive cluster size (ZTNB), geographic spread hurdle, and
+  positive geographic spread (ZTNB). The cluster-size hurdle is omitted
+  because mixing scores are undefined for singletons; see manuscript Methods.
+- `fig4_mixing_wave_specific`: per-wave heatmap of the four excess-mixing
+  scores' effects on the three estimable count components, with cell-level
+  ratio annotations.
 
 ### Supplementary figures
 
 - `supp_fig1_outcome_distributions`: distributions of non-singleton cluster
-  size, duration, geography, and age, sex, and deprivation excess mixing.
-- `supp_fig2_size_adjusted_positive_counts`: size-adjusted positive-count
-  sensitivity model for geographic spread.
-- `supp_fig3_loglinear_vs_hurdle_ztnb`: comparison of main-formulation
-  log-linear estimates with the main hurdle and positive ZTNB components.
-- `supp_fig4_simd_domain_cluster_outcomes`: SIMD domain deprivation effects on
-  cluster size and geographic spread.
-- `supp_fig5_simd_domain_quintile_mixing`: domain-specific deprivation effects
-  on domain-quintile excess mixing.
-- `supp_fig6_simd_domain_demographic_mixing`: SIMD domain effects on age, sex,
-  and joint age-sex excess mixing.
-- `supp_fig7_wave_specific_domain_demographic_mixing`: wave-specific heatmaps
-  for SIMD domain effects on demographic mixing.
-- `supp_fig8_observed_expected_mixing_matrices`: observed-minus-expected SIMD
-  and age mixing matrices.
-- `supp_fig9_mixing_predictor_loglinear_vs_hurdle_ztnb`: comparison of
-  log-linear, hurdle, and positive ZTNB mixing-predictor sensitivities.
-  *Renumbered from former `supp_fig10_mixing_predictor_loglinear_vs_hurdle_ztnb`
-  after promotion of three former supplementary figures to the main set.*
+  size, duration, and distinct datazones.
+- `supp_fig2_mixing_distributions`: distributions of SIMD, age, sex, and joint
+  profile excess discordance among non-singleton clusters.
+- `supp_fig3_observed_expected_matrices`: observed-minus-expected SIMD and
+  age pair-probability matrices.
+- `supp_fig4_deprivation_domain_outcomes`: each SIMD-domain deprivation's
+  effect on cluster size and geographic spread.
+- `supp_fig5_deprivation_domain_mixing`: each SIMD-domain deprivation's
+  effect on domain-quintile, age, sex, and joint age-sex excess mixing.
+- `supp_fig6_deprivation_domain_wave_mixing`: per-wave heatmap of domain
+  deprivation effects on demographic mixing.
+- `supp_fig7_mixing_domain_outcomes`: per-domain heatmap of mixing-predictor
+  effects on count outcomes (substituting domain-quintile excess mixing for
+  the overall SIMD-quintile excess mixing predictor).
+- `supp_fig8_deprivation_size_adjusted`: size-adjusted positive geographic
+  spread sensitivity model.
+- `supp_fig9_deprivation_loglinear`: log-linear vs hurdle/ZTNB comparison for
+  the deprivation-as-exposure count models.
+- `supp_fig10_mixing_loglinear`: log-linear vs hurdle/ZTNB comparison for the
+  mixing-predictor count models.
 
-### Figure-script renaming
+### Notes on the figure script
 
-`make_figures.py` currently writes the legacy filenames `supp_fig9`, `supp_fig11`,
-and `supp_fig12`. To produce the new main-figure outputs, the corresponding
-plotting functions should write to `fig5_main_mixing_predictor_cluster_outcomes`,
-`fig6_simd_domain_mixing_predictor_cluster_outcomes`, and
-`fig7_wave_specific_mixing_predictor_cluster_outcomes`, respectively. The
-log-linear-vs-hurdle/ZTNB mixing-predictor comparator should be renamed from
-`supp_fig10` to `supp_fig9` to remove the gap.
+`make_figures.py` is organised into a single `run()` function that calls the
+main-figure plots first, then the supplementary plots. The script removes
+legacy filenames (`fig1_main_cluster_outcomes`, `supp_fig9_mixing_predictor_*`,
+etc.) on each run so stale outputs do not coexist with the renamed files.
+
+The mixing-predictor model results file
+(`main_mixing_predictor_hurdle_count_model_results.csv`) does not include a
+cluster-size hurdle row — the hurdle is correctly skipped at model-fit time
+because singletons (the comparison group) have undefined mixing scores. The
+`fig3` and `fig4` plotting functions therefore use only the three estimable
+components.
 
 All manuscript figures are generated from `part1/main/tables` and
 `part1/main/cache`; the legacy `part1/tables` outputs are not used by the
