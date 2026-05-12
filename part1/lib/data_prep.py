@@ -245,7 +245,11 @@ def _pairwise_discordance_from_counts(
     )
     out = pd.concat([totals, same_pairs], axis=1).reset_index()
     denom = out["n_valid"] * (out["n_valid"] - 1)
-    out["discordance"] = np.where(denom > 0, 1 - out["same_pairs"] / denom, np.nan)
+    out["discordance"] = np.nan
+    mask = denom > 0
+    out.loc[mask, "discordance"] = (
+        1 - out.loc[mask, "same_pairs"] / denom.loc[mask]
+    )
     return out.drop(columns=["same_pairs"])
 
 
