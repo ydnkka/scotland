@@ -1,6 +1,6 @@
 # Part 1 Main Analysis
 
-This directory contains the main Part 1 modelling pass using outcome-specific
+This directory contains the Part 1 modelling pass using outcome-specific
 models for the primary cluster outcomes.
 
 ## Question
@@ -93,46 +93,46 @@ complete-case population with non-missing mixing metrics.
 
 Tables:
 
-- `tables/main_dataset_descriptives.csv`
-- `tables/main_covariate_scaling.csv`
-- `tables/main_hurdle_count_model_results.csv`
-- `tables/main_hurdle_count_model_diagnostics.csv`
-- `tables/main_mixing_predictor_hurdle_count_model_results.csv`
-- `tables/main_mixing_predictor_hurdle_count_model_diagnostics.csv`
-- `tables/main_mixing_model_results.csv`
-- `tables/main_mixing_model_diagnostics.csv`
-- `tables/main_loglinear_count_model_results.csv`
-- `tables/main_mixing_predictor_loglinear_count_model_results.csv`
-- `tables/main_simd_domain_hurdle_count_model_results.csv`
-- `tables/main_simd_domain_mixing_predictor_hurdle_count_model_results.csv`
-- `tables/main_simd_domain_mixing_predictor_hurdle_count_model_diagnostics.csv`
-- `tables/main_simd_domain_quintile_mixing_model_results.csv`
-- `tables/main_simd_domain_demographic_mixing_model_results.csv`
-- `tables/main_wave_specific_domain_demographic_mixing_model_results.csv`
-- `tables/main_wave_specific_hurdle_count_model_results.csv`
-- `tables/main_wave_specific_hurdle_count_model_diagnostics.csv`
-- `tables/main_wave_specific_mixing_predictor_hurdle_count_model_results.csv`
-- `tables/main_wave_specific_mixing_predictor_hurdle_count_model_diagnostics.csv`
-- `tables/main_wave_cluster_outcome_descriptives.csv`
-- `tables/main_observed_expected_mixing_matrices.csv`
+- `tables/dataset_descriptives.csv`
+- `tables/covariate_scaling.csv`
+- `tables/hurdle_count_model_results.csv`
+- `tables/hurdle_count_model_diagnostics.csv`
+- `tables/mixing_predictor_hurdle_count_model_results.csv`
+- `tables/mixing_predictor_hurdle_count_model_diagnostics.csv`
+- `tables/mixing_model_results.csv`
+- `tables/mixing_model_diagnostics.csv`
+- `tables/loglinear_count_model_results.csv`
+- `tables/mixing_predictor_loglinear_count_model_results.csv`
+- `tables/simd_domain_hurdle_count_model_results.csv`
+- `tables/simd_domain_mixing_predictor_hurdle_count_model_results.csv`
+- `tables/simd_domain_mixing_predictor_hurdle_count_model_diagnostics.csv`
+- `tables/simd_domain_quintile_mixing_model_results.csv`
+- `tables/simd_domain_demographic_mixing_model_results.csv`
+- `tables/wave_specific_domain_demographic_mixing_model_results.csv`
+- `tables/wave_specific_hurdle_count_model_results.csv`
+- `tables/wave_specific_hurdle_count_model_diagnostics.csv`
+- `tables/wave_specific_mixing_predictor_hurdle_count_model_results.csv`
+- `tables/wave_specific_mixing_predictor_hurdle_count_model_diagnostics.csv`
+- `tables/wave_cluster_outcome_descriptives.csv`
+- `tables/observed_expected_mixing_matrices.csv`
 
 Figures:
 
-- `figures/main_hurdle_count_effects.png`
-- `figures/main_hurdle_count_effects.pdf`
-- `figures/main_mixing_predictor_hurdle_count_effects.png`
-- `figures/main_mixing_predictor_hurdle_count_effects.pdf`
-- `figures/main_mixing_effects.png`
-- `figures/main_mixing_effects.pdf`
+- `figures/hurdle_count_effects.png`
+- `figures/hurdle_count_effects.pdf`
+- `figures/mixing_predictor_hurdle_count_effects.png`
+- `figures/mixing_predictor_hurdle_count_effects.pdf`
+- `figures/mixing_effects.png`
+- `figures/mixing_effects.pdf`
 
 Cache:
 
-- `cache/main_cluster_table.parquet`
-- `cache/main_domain_wave_cluster_table.parquet`
+- `cache/cluster_table.parquet`
+- `cache/domain_wave_cluster_table.parquet`
 
 ## Domain And Wave Extensions
 
-`main_domain_wave_analysis.py` refits the SIMD-domain and wave-specific analyses
+`domain_wave_analysis.py` refits the SIMD-domain and wave-specific analyses
 under the same main formulation: primary resolution 0.3, good-QC genomes, rare
 lineage pooling at 50 clusters, 8 df calendar spline, and window-clustered
 standard errors.
@@ -144,7 +144,7 @@ linear models with cluster size included. BA.4, BQ.1, and XBB are retained in
 descriptives and matrices but skipped in the wave-specific regression table when
 they fall below the minimum non-singleton cluster/window threshold.
 
-`main_wave_outcome_analysis.py` also refits the main hurdle/ZTNB cluster-outcome
+`wave_outcome_analysis.py` also refits the main hurdle/ZTNB cluster-outcome
 models separately by wave for cluster size and geographic spread. These
 wave-stratified outcome models retain the main calendar, incidence,
 sequencing, test-positivity, and SIMD-deprivation covariates. Within-wave

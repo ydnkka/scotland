@@ -27,7 +27,7 @@ Supplementary figures:
     supp_fig9_deprivation_loglinear
     supp_fig10_mixing_loglinear
 
-Outputs are written to ``part1/main/manuscript/figures`` as PDF, PNG, and TIFF.
+Outputs are written to ``part1/manuscript/figures`` as PDF, PNG, and TIFF.
 The script uses the shared project plotting module at ``utils/style.py``.
 
 Note on mixing-predictor models: excess mixing is undefined for singletons, so
@@ -1984,7 +1984,7 @@ def run(
     setup_environment()
     style = load_style(root)
 
-    main_dir = root / "part1" / "main"
+    main_dir = root / "part1"
     if tables_dir is None:
         tables_dir = main_dir / "tables"
     if out_dir is None:
@@ -1997,9 +1997,9 @@ def run(
     # ------------------------------------------------------------------
     # Required core tables
     # ------------------------------------------------------------------
-    count_results = pd.read_csv(tables_dir / "main_hurdle_count_model_results.csv")
-    mixing_results = pd.read_csv(tables_dir / "main_mixing_model_results.csv")
-    cluster_table = pd.read_parquet(cache_dir / "main_cluster_table.parquet")
+    count_results = pd.read_csv(tables_dir / "hurdle_count_model_results.csv")
+    mixing_results = pd.read_csv(tables_dir / "mixing_model_results.csv")
+    cluster_table = pd.read_parquet(cache_dir / "cluster_table.parquet")
 
     # ------------------------------------------------------------------
     # Main figures
@@ -2008,12 +2008,12 @@ def run(
     plot_deprivation_overall(style, count_results, mixing_results, out_dir)
 
     # fig2 — Line 1 by wave
-    wave_count_path = tables_dir / "main_wave_specific_hurdle_count_model_results.csv"
+    wave_count_path = tables_dir / "wave_specific_hurdle_count_model_results.csv"
     if wave_count_path.exists():
         plot_deprivation_wave_specific(style, pd.read_csv(wave_count_path), out_dir)
 
     # fig3 — Line 2 overall (mixing predictors)
-    mixing_predictor_path = tables_dir / "main_mixing_predictor_hurdle_count_model_results.csv"
+    mixing_predictor_path = tables_dir / "mixing_predictor_hurdle_count_model_results.csv"
     mixing_predictor_count_results = None
     if mixing_predictor_path.exists():
         mixing_predictor_count_results = pd.read_csv(mixing_predictor_path)
@@ -2021,7 +2021,7 @@ def run(
 
     # fig4 — Line 2 by wave
     wave_mixing_predictor_path = (
-        tables_dir / "main_wave_specific_mixing_predictor_hurdle_count_model_results.csv"
+        tables_dir / "wave_specific_mixing_predictor_hurdle_count_model_results.csv"
     )
     if wave_mixing_predictor_path.exists():
         wmp = pd.read_csv(wave_mixing_predictor_path)
@@ -2044,22 +2044,22 @@ def run(
     plot_mixing_distributions(style, cluster_table, out_dir)
 
     # supp_fig3 — observed-expected matrices
-    obs_exp_path = tables_dir / "main_observed_expected_mixing_matrices.csv"
+    obs_exp_path = tables_dir / "observed_expected_mixing_matrices.csv"
     if obs_exp_path.exists():
         plot_observed_expected_matrices(style, pd.read_csv(obs_exp_path), out_dir)
 
     # supp_fig4 — deprivation × domain on count outcomes
-    domain_outcome_path = tables_dir / "main_simd_domain_hurdle_count_model_results.csv"
+    domain_outcome_path = tables_dir / "simd_domain_hurdle_count_model_results.csv"
     if domain_outcome_path.exists():
         plot_deprivation_domain_outcomes(style, pd.read_csv(domain_outcome_path), out_dir)
 
     # supp_fig5 — deprivation × domain on mixing outcomes
     domain_mixing = None
     domain_demo = None
-    domain_mixing_path = tables_dir / "main_simd_domain_quintile_mixing_model_results.csv"
+    domain_mixing_path = tables_dir / "simd_domain_quintile_mixing_model_results.csv"
     if domain_mixing_path.exists():
         domain_mixing = pd.read_csv(domain_mixing_path)
-    domain_demo_path = tables_dir / "main_simd_domain_demographic_mixing_model_results.csv"
+    domain_demo_path = tables_dir / "simd_domain_demographic_mixing_model_results.csv"
     if domain_demo_path.exists():
         domain_demo = pd.read_csv(domain_demo_path)
     if domain_mixing is not None and domain_demo is not None:
@@ -2067,14 +2067,14 @@ def run(
 
     # supp_fig6 — wave × domain demographic mixing heatmap
     wave_domain_demo_path = (
-        tables_dir / "main_wave_specific_domain_demographic_mixing_model_results.csv"
+        tables_dir / "wave_specific_domain_demographic_mixing_model_results.csv"
     )
     if wave_domain_demo_path.exists():
         plot_deprivation_domain_wave_mixing(style, pd.read_csv(wave_domain_demo_path), out_dir)
 
     # supp_fig7 — mixing × domain on count outcomes
     domain_mixing_predictor_path = (
-        tables_dir / "main_simd_domain_mixing_predictor_hurdle_count_model_results.csv"
+        tables_dir / "simd_domain_mixing_predictor_hurdle_count_model_results.csv"
     )
     if domain_mixing_predictor_path.exists():
         dmp = pd.read_csv(domain_mixing_predictor_path)
@@ -2091,12 +2091,12 @@ def run(
     plot_deprivation_size_adjusted(style, count_results, out_dir)
 
     # supp_fig9 — deprivation log-linear vs hurdle/ZTNB
-    loglinear_path = tables_dir / "main_loglinear_count_model_results.csv"
+    loglinear_path = tables_dir / "loglinear_count_model_results.csv"
     if loglinear_path.exists():
         plot_deprivation_loglinear(style, count_results, pd.read_csv(loglinear_path), out_dir)
 
     # supp_fig10 — mixing-predictor log-linear vs hurdle/ZTNB
-    mixing_loglinear_path = tables_dir / "main_mixing_predictor_loglinear_count_model_results.csv"
+    mixing_loglinear_path = tables_dir / "mixing_predictor_loglinear_count_model_results.csv"
     if mixing_loglinear_path.exists() and mixing_predictor_count_results is not None:
         plot_mixing_loglinear(
             style,
@@ -2121,7 +2121,7 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help=(
             "Directory containing the model result CSV tables to plot. "
-            "Defaults to part1/main/tables (primary results). "
+            "Defaults to part1/tables (primary results). "
             "Pass the --tables-dir used for a sensitivity run to plot those results."
         ),
     )
@@ -2129,13 +2129,13 @@ def parse_args() -> argparse.Namespace:
         "--out-dir",
         type=Path,
         default=None,
-        help="Directory to write figures into. Defaults to part1/main/manuscript/figures.",
+        help="Directory to write figures into. Defaults to part1/manuscript/figures.",
     )
     parser.add_argument(
         "--cache-dir",
         type=Path,
         default=None,
-        help="Directory containing main_cluster_table.parquet. Defaults to part1/main/cache.",
+        help="Directory containing main_cluster_table.parquet. Defaults to part1/cache.",
     )
     return parser.parse_args()
 

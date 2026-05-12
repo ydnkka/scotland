@@ -1,11 +1,11 @@
-# Part 1 Main Analysis Documentation
+# Part 1 Analysis Documentation
 
 ## Socioeconomic deprivation, surveillance conditions, and SARS-CoV-2 genomic cluster structure in Scotland
 
-This document records the current main Part 1 analysis implemented in:
+This document records the Part 1 analysis implemented in:
 
 ```text
-part1/main/main_analysis.py
+part1/overall_analysis.py
 ```
 
 It is written as an implementation record: what data were used, how sequence rows were collapsed to cluster rows, how outcomes and covariates were constructed, what models were fitted, what outputs were written, how the summary plots were produced, and what the current main results show.
@@ -41,7 +41,7 @@ The source table is sequence-level and includes repeated sequence appearances ac
 
 Only the columns required for the main analysis are read from parquet. These include identifiers, window metadata, collection dates, geography, lineage, QC status, SIMD, age, sex, incidence, sequencing proportions, test positivity, window sequence counts, and health board.
 
-Current retained analysis counts from `part1/main/tables/main_dataset_descriptives.csv`:
+Current retained analysis counts from `part1/tables/main_dataset_descriptives.csv`:
 
 | Quantity                                        |   Value |
 |-------------------------------------------------|--------:|
@@ -62,7 +62,7 @@ Earlier exploratory Part 1 scripts fitted log-linear models across all Leiden re
 2. Models structural zeros explicitly with hurdle components instead of relying only on log-transformed outcomes.
 3. Uses zero-truncated negative-binomial models for the positive count components, matching the heavy-tailed count nature of cluster size and geographic spread.
 4. Keeps mixing models aligned with the same primary-resolution cluster table.
-5. Writes all primary tables, diagnostics, cache files, and summary figures under `part1/main/`.
+5. Writes all primary tables, diagnostics, cache files, and summary figures under `part1/`.
 
 The older scripts remain useful as exploratory or supplementary analyses, but the outputs documented here are the main analysis outputs.
 
@@ -260,7 +260,7 @@ log[E(Y_i | Y_i > 0)] =
   + calendar spline terms
 ```
 
-The zero-truncated negative-binomial likelihood is implemented directly in `main_analysis.py`. The optimiser is `scipy.optimize.minimize()` with L-BFGS-B. The dispersion parameter is represented as `log_alpha` and bounded between `-10` and `8`.
+The zero-truncated negative-binomial likelihood is implemented directly in `overall_analysis.py`. The optimiser is `scipy.optimize.minimize()` with L-BFGS-B. The dispersion parameter is represented as `log_alpha` and bounded between `-10` and `8`.
 
 Cluster-robust standard errors for the custom ZTNB model are computed with a sandwich estimator:
 
@@ -283,14 +283,14 @@ window_id
 This accounts for dependence among clusters from the same sliding analysis window. A command-line sensitivity option allows clustering by health board instead:
 
 ```bash
-conda run -n PhD python part1/main/main_analysis.py --cluster-by health_board
+conda run -n PhD python part1/overall_analysis.py --cluster-by health_board
 ```
 
 The result table column remains named `std_error_clustered_by_window` for historical compatibility, while the diagnostics table records the actual `cluster_by` value used.
 
 ### 6.5 Current count-model diagnostics
 
-Current diagnostics from `main_hurdle_count_model_diagnostics.csv`:
+Current diagnostics from `hurdle_count_model_diagnostics.csv`:
 
 | Outcome                              | Component     | Observations |      Events / mean response | Converged |
 |--------------------------------------|---------------|-------------:|----------------------------:|-----------|
@@ -418,7 +418,7 @@ excess_mixing_i =
 
 Models are fitted as OLS regressions with clustered standard errors. Coefficients are reported as percentage-point changes in excess discordance per 1 SD higher covariate.
 
-### 8.4 Current mixing descriptives
+### 8.4 Mixing descriptives
 
 Among 84,067 non-singleton clusters:
 
@@ -431,7 +431,7 @@ Among 84,067 non-singleton clusters:
 
 The negative mean SIMD and age values indicate that, before covariate adjustment, clusters tend to be less mixed by those dimensions than expected from their lineage-window sampling strata.
 
-## 9. Main Mixing Results
+## 9. Mixing Results
 
 ### 9.1 Deprivation effects
 
@@ -462,23 +462,23 @@ Cluster size is a strong predictor of SIMD and age mixing. Test positivity has a
 ## 10. Wave-Specific Cluster Outcome Descriptives
 
 Wave-level summaries of cluster outcomes are written to
-`part1/main/tables/main_wave_cluster_outcome_descriptives.csv`. These describe
+`part1/tables/wave_cluster_outcome_descriptives.csv`. These describe
 the distribution of cluster outcomes within each dominant variant wave and
 provide context for the main regression results.
 
 ### 10.1 Cluster size by wave
 
-| Wave    | Clusters | Singleton fraction | 75th pct | 90th pct | Among non-singletons: median | mean |
-|---------|---------:|--------------------|----------:|----------:|-----------------------------:|-----:|
-| B.1.177 |   4,621  | 54.6%              |       3.0 |       7.0 |                          2.0 | 6.95 |
-| Alpha   |  12,112  | 43.0%              |       5.0 |      15.0 |                          3.0 | 10.04|
-| Delta   |  74,272  | 54.3%              |       3.0 |       7.0 |                          2.0 | 6.62 |
-| BA.1    |  32,928  | 57.3%              |       3.0 |       6.0 |                          2.0 | 9.41 |
-| BA.2    |  38,893  | 56.3%              |       3.0 |       6.0 |                          2.0 | 6.81 |
-| BA.4    |   2,669  | 66.5%              |       2.0 |       4.0 |                          1.0 | 4.30 |
-| BA.5    |  16,423  | 66.9%              |       2.0 |       4.0 |                          1.0 | 3.77 |
-| BQ.1    |   3,314  | 70.9%              |       2.0 |       3.0 |                          1.0 | 2.29 |
-| XBB     |     509  | 74.7%              |       2.0 |       3.0 |                          1.0 | 2.86 |
+| Wave    | Clusters | Singleton fraction | 75th pct | 90th pct | Among non-singletons: median |  mean |
+|---------|---------:|--------------------|---------:|---------:|-----------------------------:|------:|
+| B.1.177 |    4,621 | 54.6%              |      3.0 |      7.0 |                          2.0 |  6.95 |
+| Alpha   |   12,112 | 43.0%              |      5.0 |     15.0 |                          3.0 | 10.04 |
+| Delta   |   74,272 | 54.3%              |      3.0 |      7.0 |                          2.0 |  6.62 |
+| BA.1    |   32,928 | 57.3%              |      3.0 |      6.0 |                          2.0 |  9.41 |
+| BA.2    |   38,893 | 56.3%              |      3.0 |      6.0 |                          2.0 |  6.81 |
+| BA.4    |    2,669 | 66.5%              |      2.0 |      4.0 |                          1.0 |  4.30 |
+| BA.5    |   16,423 | 66.9%              |      2.0 |      4.0 |                          1.0 |  3.77 |
+| BQ.1    |    3,314 | 70.9%              |      2.0 |      3.0 |                          1.0 |  2.29 |
+| XBB     |      509 | 74.7%              |      2.0 |      3.0 |                          1.0 |  2.86 |
 
 Alpha has the lowest singleton fraction (43.0%) and the largest non-singleton
 mean cluster size (10.04 additional sequences), reflecting the concentrated
@@ -490,16 +490,16 @@ lower sequencing depth.
 ### 10.2 Geographic dispersion by wave
 
 | Wave    | Single-datazone fraction | Among non-singletons: median datazones | 90th pct |
-|---------|--------------------------:|----------------------------------------:|---------:|
-| B.1.177 |            58.4%          |                                     2.0 |     13.0 |
-| Alpha   |            50.7%          |                                     3.0 |     17.0 |
-| Delta   |            59.3%          |                                     2.0 |     11.0 |
-| BA.1    |            61.8%          |                                     2.0 |      9.0 |
-| BA.2    |            62.0%          |                                     2.0 |     10.0 |
-| BA.4    |            70.8%          |                                     1.0 |      8.0 |
-| BA.5    |            71.3%          |                                     2.0 |      7.9 |
-| BQ.1    |            77.1%          |                                     1.0 |      5.0 |
-| XBB     |            80.4%          |                                     2.0 |      7.1 |
+|---------|-------------------------:|---------------------------------------:|---------:|
+| B.1.177 |                    58.4% |                                    2.0 |     13.0 |
+| Alpha   |                    50.7% |                                    3.0 |     17.0 |
+| Delta   |                    59.3% |                                    2.0 |     11.0 |
+| BA.1    |                    61.8% |                                    2.0 |      9.0 |
+| BA.2    |                    62.0% |                                    2.0 |     10.0 |
+| BA.4    |                    70.8% |                                    1.0 |      8.0 |
+| BA.5    |                    71.3% |                                    2.0 |      7.9 |
+| BQ.1    |                    77.1% |                                    1.0 |      5.0 |
+| XBB     |                    80.4% |                                    2.0 |      7.1 |
 
 Alpha has the lowest single-datazone fraction (50.7%) and the widest geographic
 spread among non-singleton clusters (median 3.0 datazones, 90th percentile
@@ -525,12 +525,12 @@ Selected count-ratio and odds-ratio estimates per 1 SD higher mixing score,
 from the positive-count (ZTNB) components among non-singleton clusters
 (n = 84,067 for cluster size; n = 74,010 for geographic dispersion):
 
-| Mixing predictor         | Cluster size count ratio | Geographic dispersion count ratio | Geographic dispersion hurdle OR |
-|--------------------------|-------------------------:|----------------------------------:|--------------------------------:|
-| SIMD excess discordance  |       3.478 (3.245–3.727)|                    3.029 (2.793–3.285)|                  22.107 (18.977–25.753)|
-| Age excess discordance   |       1.668 (1.560–1.783)|                    1.966 (1.800–2.148)|                   1.283 (1.246–1.322)|
-| Sex excess discordance   |       0.852 (0.764–0.949)|                    1.060 (0.918–1.223)|                   0.770 (0.737–0.805)|
-| Joint profile excess     |       0.812 (0.763–0.865)|                    0.718 (0.665–0.775)|                   1.029 (1.007–1.050)|
+| Mixing predictor        | Cluster size count ratio | Geographic dispersion count ratio | Geographic dispersion hurdle OR |
+|-------------------------|-------------------------:|----------------------------------:|--------------------------------:|
+| SIMD excess discordance |      3.478 (3.245–3.727) |               3.029 (2.793–3.285) |          22.107 (18.977–25.753) |
+| Age excess discordance  |      1.668 (1.560–1.783) |               1.966 (1.800–2.148) |             1.283 (1.246–1.322) |
+| Sex excess discordance  |      0.852 (0.764–0.949) |               1.060 (0.918–1.223) |             0.770 (0.737–0.805) |
+| Joint profile excess    |      0.812 (0.763–0.865) |               0.718 (0.665–0.775) |             1.029 (1.007–1.050) |
 
 SIMD excess discordance is the strongest mixing predictor of both cluster size
 and geographic dispersion. A 1 SD increase in SIMD excess discordance is
@@ -548,7 +548,7 @@ The command-line interface supports several pre-specified sensitivity runs.
 ### 12.1 Alternative standard-error clustering
 
 ```bash
-conda run -n PhD python part1/main/main_analysis.py --cluster-by health_board
+conda run -n PhD python part1/overall_analysis.py --cluster-by health_board
 ```
 
 This clusters the sandwich standard errors by health board instead of window. The default is `window_id`.
@@ -556,7 +556,7 @@ This clusters the sandwich standard errors by health board instead of window. Th
 ### 12.2 Size-offset cluster-size positive model
 
 ```bash
-conda run -n PhD python part1/main/main_analysis.py --use-size-offset
+conda run -n PhD python part1/overall_analysis.py --use-size-offset
 ```
 
 This includes `log(wn_no_sequences)` as an offset in the cluster-size positive-count model. The estimand changes from raw reconstructed cluster size to cluster size relative to the number of sequences available in the analysis window.
@@ -564,7 +564,7 @@ This includes `log(wn_no_sequences)` as an offset in the cluster-size positive-c
 ### 12.3 Tail winsorisation
 
 ```bash
-conda run -n PhD python part1/main/main_analysis.py --winsorise-quantile 0.99
+conda run -n PhD python part1/overall_analysis.py --winsorise-quantile 0.99
 ```
 
 This caps positive count outcomes at the specified quantile before fitting the ZTNB models. It is intended to test sensitivity to very large right-tail clusters.
@@ -572,7 +572,7 @@ This caps positive count outcomes at the specified quantile before fitting the Z
 ### 12.4 Index-case SIMD exposure
 
 ```bash
-conda run -n PhD python part1/main/main_analysis.py --use-index-simd
+conda run -n PhD python part1/overall_analysis.py --use-index-simd
 ```
 
 This replaces mean cluster SIMD deprivation with deprivation for the earliest collected sequence in the cluster.
@@ -580,7 +580,7 @@ This replaces mean cluster SIMD deprivation with deprivation for the earliest co
 ### 12.5 Approximately non-overlapping windows
 
 ```bash
-conda run -n PhD python part1/main/main_analysis.py --window-stride 3
+conda run -n PhD python part1/overall_analysis.py --window-stride 3
 ```
 
 This keeps only clusters from windows where `window_idx % 3 == 0`. With 3-week windows advanced in 1-week steps, this approximates a non-overlapping window sensitivity.
@@ -590,11 +590,11 @@ This keeps only clusters from windows where `window_idx % 3 == 0`. With 3-week w
 Sensitivity runs should use separate output directories to avoid overwriting primary results:
 
 ```bash
-conda run -n PhD python part1/main/main_analysis.py \
+conda run -n PhD python part1/overall_analysis.py \
   --cluster-by health_board \
-  --tables-dir part1/main/tables_health_board \
-  --figures-dir part1/main/figures_health_board \
-  --cache-dir part1/main/cache_health_board
+  --tables-dir part1/sensitivty/tables_health_board \
+  --figures-dir part1/sensitivty/figures_health_board \
+  --cache-dir part1/sensitivty/cache_health_board
 ```
 
 ## 13. Outputs
@@ -602,49 +602,49 @@ conda run -n PhD python part1/main/main_analysis.py \
 The main run writes tables to:
 
 ```text
-part1/main/tables/
+part1/tables/
 ```
 
 Primary table outputs:
 
-| File                                      | Contents                                          |
-|-------------------------------------------|---------------------------------------------------|
-| `main_covariate_scaling.csv`                                  | Means and SDs used for standardisation                           |
-| `main_dataset_descriptives.csv`                               | Analysis counts and descriptive outcome summaries                |
-| `main_wave_cluster_outcome_descriptives.csv`                  | Per-wave cluster size and geographic dispersion summaries        |
-| `main_hurdle_count_model_results.csv`                         | Binary and positive count effect estimates (primary covariates)  |
-| `main_hurdle_count_model_diagnostics.csv`                     | Count-model diagnostics                                          |
-| `main_mixing_predictor_hurdle_count_model_results.csv`        | Count estimates with mixing scores added as predictors           |
-| `main_mixing_predictor_hurdle_count_model_diagnostics.csv`    | Diagnostics for mixing-predictor count models                    |
-| `main_mixing_predictor_loglinear_count_model_results.csv`     | Log-linear supplementary estimates with mixing scores            |
-| `main_loglinear_count_model_results.csv`                      | Log-linear count estimates (supplementary)                       |
-| `main_mixing_model_results.csv`                               | Mixing-model effect estimates                                    |
-| `main_mixing_model_diagnostics.csv`                           | Mixing-model diagnostics                                         |
-| `main_observed_expected_mixing_matrices.csv`                  | Observed and expected mixing matrices                            |
-| `main_simd_domain_hurdle_count_model_results.csv`             | SIMD-domain hurdle count results                                 |
-| `main_simd_domain_mixing_model_results.csv`                   | SIMD-domain mixing model results                                 |
-| `main_wave_specific_hurdle_count_model_results.csv`           | Wave-specific hurdle count results                               |
-| `main_wave_specific_mixing_predictor_hurdle_count_model_results.csv` | Wave-specific hurdle with mixing predictors             |
+| File                                                            | Contents                                                        |
+|-----------------------------------------------------------------|-----------------------------------------------------------------|
+| `covariate_scaling.csv`                                         | Means and SDs used for standardisation                          |
+| `dataset_descriptives.csv`                                      | Analysis counts and descriptive outcome summaries               |
+| `wave_cluster_outcome_descriptives.csv`                         | Per-wave cluster size and geographic dispersion summaries       |
+| `hurdle_count_model_results.csv`                                | Binary and positive count effect estimates (primary covariates) |
+| `hurdle_count_model_diagnostics.csv`                            | Count-model diagnostics                                         |
+| `mixing_predictor_hurdle_count_model_results.csv`               | Count estimates with mixing scores added as predictors          |
+| `mixing_predictor_hurdle_count_model_diagnostics.csv`           | Diagnostics for mixing-predictor count models                   |
+| `mixing_predictor_loglinear_count_model_results.csv`            | Log-linear supplementary estimates with mixing scores           |
+| `loglinear_count_model_results.csv`                             | Log-linear count estimates (supplementary)                      |
+| `mixing_model_results.csv`                                      | Mixing-model effect estimates                                   |
+| `mixing_model_diagnostics.csv`                                  | Mixing-model diagnostics                                        |
+| `observed_expected_mixing_matrices.csv`                         | Observed and expected mixing matrices                           |
+| `simd_domain_hurdle_count_model_results.csv`                    | SIMD-domain hurdle count results                                |
+| `simd_domain_mixing_model_results.csv`                          | SIMD-domain mixing model results                                |
+| `wave_specific_hurdle_count_model_results.csv`                  | Wave-specific hurdle count results                              |
+| `wave_specific_mixing_predictor_hurdle_count_model_results.csv` | Wave-specific hurdle with mixing predictors                     |
 
 The main run also writes the cluster cache:
 
 ```text
-part1/main/cache/main_cluster_table.parquet
+part1/cache/main_cluster_table.parquet
 ```
 
 Figures are written to:
 
 ```text
-part1/main/figures/
+part1/figures/
 ```
 
 Primary summary figures:
 
 ```text
-main_hurdle_count_effects.png
-main_hurdle_count_effects.pdf
-main_mixing_effects.png
-main_mixing_effects.pdf
+hurdle_count_effects.png
+hurdle_count_effects.pdf
+mixing_effects.png
+mixing_effects.pdf
 ```
 
 ## 14. Summary Plotting
@@ -674,7 +674,7 @@ The count summary plot:
 
 | Feature          | Implementation                   |
 |------------------|----------------------------------|
-| Figure file stem | `main_hurdle_count_effects`      |
+| Figure file stem | `hurdle_count_effects`           |
 | Layout           | 2 outcomes x 2 components        |
 | X-axis scale     | Log ratio scale                  |
 | Reference line   | Ratio = 1                        |
@@ -686,7 +686,7 @@ The mixing summary plot:
 
 | Feature          | Implementation                                                       |
 |------------------|----------------------------------------------------------------------|
-| Figure file stem | `main_mixing_effects`                                                |
+| Figure file stem | `mixing_effects`                                                     |
 | Layout           | Single horizontal coefficient plot                                   |
 | X-axis scale     | Percentage-point difference                                          |
 | Reference line   | Difference = 0                                                       |
@@ -700,7 +700,7 @@ The x-axis ticks were explicitly controlled because Matplotlib's defaults on log
 The main analysis can be rerun from the repository root with:
 
 ```bash
-conda run -n PhD python part1/main/main_analysis.py
+conda run -n PhD python part1/overall_analysis.py
 ```
 
 Important default arguments:
@@ -722,18 +722,18 @@ To regenerate only the two summary figures from existing CSV results, use:
 conda run -n PhD python -c "
 from pathlib import Path
 import pandas as pd
-from part1.main.main_analysis import plot_count_effects, plot_mixing_effects
+from part1.overall_analysis import plot_count_effects, plot_mixing_effects
 
 root = Path('.')
-tables = root / 'part1/main/tables'
-figures = root / 'part1/main/figures'
+tables = root / 'part1/tables'
+figures = root / 'part1/figures'
 plot_count_effects(
-    pd.read_csv(tables / 'main_hurdle_count_model_results.csv'),
-    figures / 'main_hurdle_count_effects',
+    pd.read_csv(tables / 'hurdle_count_model_results.csv'),
+    figures / 'hurdle_count_effects',
 )
 plot_mixing_effects(
-    pd.read_csv(tables / 'main_mixing_model_results.csv'),
-    figures / 'main_mixing_effects',
+    pd.read_csv(tables / 'mixing_model_results.csv'),
+    figures / 'mixing_effects',
 )
 "
 ```

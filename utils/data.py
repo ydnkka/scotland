@@ -315,23 +315,23 @@ def load_simd_columns_pandas(
     return load_simd_columns(columns=columns, all_cols=all_cols).to_pandas()
 
 
-def main_cluster_table_path(
+def cluster_table_path(
     root: Path | None = None,
     cache_dir: Path | None = None,
 ) -> Path:
-    """Return the default main cluster-cache parquet path."""
+    """Return the default cluster-cache parquet path."""
     root = (root or repo_root()).resolve()
     if cache_dir is not None:
-        return cache_dir / "main_cluster_table.parquet"
-    return root / "part1" / "main" / "cache" / "main_cluster_table.parquet"
+        return cache_dir / "cluster_table.parquet"
+    return root / "part1" / "cache" / "cluster_table.parquet"
 
 
-def load_main_cluster_table(
+def load_cluster_table(
     root: Path | None = None,
     cache_dir: Path | None = None,
 ) -> pd.DataFrame:
-    """Load the cached Part 1 main cluster table."""
-    return pd.read_parquet(main_cluster_table_path(root=root, cache_dir=cache_dir))
+    """Load the cached Part 1  cluster table."""
+    return pd.read_parquet(cluster_table_path(root=root, cache_dir=cache_dir))
 
 
 def load_datazone_info(columns: Iterable[str]) -> gpd.GeoDataFrame:
