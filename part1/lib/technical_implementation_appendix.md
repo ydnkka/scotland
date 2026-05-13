@@ -178,7 +178,10 @@ clusters = (
         mean_window_seq_fraction=("wn_prop_sequenced", "mean"),
         mean_test_positivity=("dz_7d_test_positivity", "mean"),
         wn_no_sequences=("wn_no_sequences", "first"),
-        health_board=("dz_health_board_code", "first"),
+        health_board=(
+           "dz_health_board_code",
+           lambda x: x.mode().iloc[0] if not x.mode().empty else pd.NA
+        )
     )
     .reset_index()
 )
@@ -477,19 +480,7 @@ lineage_dummies = pd.get_dummies(
 parts.append(lineage_dummies)
 ```
 
-Empty lineage columns are pruned:
-
-```python
-zero_columns = [
-    col
-    for col in x.columns
-    if col not in {"const", *numeric_terms} and float(x[col].abs().sum()) == 0
-]
-if zero_columns:
-    x = x.drop(columns=zero_columns)
-```
-
-For wave-stratified models, a further rank check removes redundant columns by sequential orthogonalisation. The column order preserves substantive covariates before calendar and lineage terms wherever possible.
+Prior to model fitting, numerical rank of the design matrix was assessed via QR decomposition with column pivoting (LAPACK `dgeqp3`); columns whose corresponding diagonal element of R fell below a relative tolerance of $10^{-8} \times |R_{11}|$ were considered linearly redundant and excluded.
 
 ---
 
@@ -1247,40 +1238,3 @@ reported as percentage points of excess discordance per 1 standard deviation hig
 ### 19.4 Mixing-predictor models
 
 For the mixing-predictor count models, coefficients for standardised excess-mixing variables estimate whether clusters with greater-than-expected bridging across categories are larger or more geographically dispersed after adjustment for deprivation, surveillance covariates, calendar time, and lineage.
-
----
-
-## 20. References
-
-50. Cameron AC, Miller DL. A practitioner's guide to cluster-robust inference. *J Hum Resour.* 2015;50(2):317–372.
-51. Zeileis, Achim. "Object-oriented computation of sandwich estimators." Journal of statistical software 16 (2006): 1-16.
-52. Zeileis, Achim, Susanne Köll, and Nathaniel Graham. "Various versatile variances: an object-oriented implementation of clustered covariances in R." Journal of Statistical Software 95 (2020): 1-36.
-
-7. Mullahy J. Specification and testing of some modified count data models. *Journal of Econometrics*. 1986;33(3):341--365. doi:10.1016/0304-4076(86)90002-3.
-
-8. Cameron AC, Trivedi PK. *Regression Analysis of Count Data*. 2nd ed. Cambridge University Press; 2013.
-
-9. Hilbe JM. *Negative Binomial Regression*. 2nd ed. Cambridge University Press; 2011.
-
-10. White H. Maximum likelihood estimation of misspecified models. *Econometrica*. 1982;50(1):1--25. doi:10.2307/1912526.
-
-11. Liang K-Y, Zeger SL. Longitudinal data analysis using generalized linear models. *Biometrika*. 1986;73(1):13--22. doi:10.1093/biomet/73.1.13.
-
-12. Zeileis A. Econometric computing with HC and HAC covariance matrix estimators. *Journal of Statistical Software*. 2004;11(10):1--17. doi:10.18637/jss.v011.i10.
-
-13. Virtanen P, Gommers R, Oliphant TE, et al. SciPy 1.0: fundamental algorithms for scientific computing in Python. *Nature Methods*. 2020;17:261--272. doi:10.1038/s41592-019-0686-2.
-
-14. Seabold S, Perktold J. statsmodels: Econometric and statistical modelling with Python. In: *Proceedings of the 9th Python in Science Conference*. 2010;92--96. doi:10.25080/Majora-92bf1922-011.
-
-15. Csárdi G, Nepusz T. The igraph software package for complex network research. *InterJournal, Complex Systems*. 2006;1695.
-
-16. Tange O. GNU Parallel 20240422. Zenodo. 2024. doi:10.5281/zenodo.11098743.
-
----
-
-## 21. Notes for manuscript integration
-
-- Keep Part A in the main manuscript or supplementary methods, depending on target journal word limits.
-- Keep Part B as a reproducibility appendix.
-- During final formatting, harmonise the reference numbers in Part A with the manuscript bibliography.
-- The code excerpts in this appendix are explanatory and should be checked against the final committed repository version before submission.

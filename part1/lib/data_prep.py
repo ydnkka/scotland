@@ -392,7 +392,10 @@ def build_cluster_table(
             mean_window_seq_fraction=("wn_prop_sequenced", "mean"),
             mean_test_positivity=("dz_7d_test_positivity", "mean"),
             wn_no_sequences=("wn_no_sequences", "first"),
-            health_board=("dz_health_board_code", "first"),
+            health_board=(
+                "dz_health_board_code",
+                lambda x: x.mode().iloc[0] if not x.mode().empty else pd.NA
+            ),
         )
         .reset_index()
     )

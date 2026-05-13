@@ -123,7 +123,7 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         type=Path,
         default=None,
         help=(
-            "Directory for output CSV tables. Defaults to part1/main/tables. "
+            "Directory for output CSV tables. Defaults to part1/tables. "
             "Set to match the --tables-dir used by overall_analysis.py for the "
             "same sensitivity run."
         ),
@@ -133,7 +133,7 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         type=Path,
         default=None,
         help=(
-            "Directory containing the main_cluster_table.parquet cache. "
+            "Directory containing the cluster_table.parquet cache. "
             "Defaults to part1/cache. Must match the --cache-dir used "
             "by overall_analysis.py for the same sensitivity run."
         ),

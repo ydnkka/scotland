@@ -12,8 +12,23 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
 echo "======================================================="
-echo "  Part 1 sensitivity analyses"
+echo "  Part 1 primary analyses"
 echo "  $(date)"
+echo "======================================================="
+
+echo ""
+echo "--- Main analyses ---"
+conda run -n PhD python overall_analysis.py
+echo "--- SIMD domain analyses ---"
+conda run -n PhD python domain_analysis.py
+echo "--- Wave analyses ---"
+conda run -n PhD python wave_analysis.py
+echo "--- Log-linear sensitivity analyses ---"
+conda run -n PhD python loglinear_sensitivity.py
+
+
+echo "======================================================="
+echo "  Part 1 sensitivity analyses"
 echo "======================================================="
 
 # ------------------------------------------------------------------
