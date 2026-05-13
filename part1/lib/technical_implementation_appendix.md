@@ -134,9 +134,6 @@ categorical = [
 ]
 for col in categorical:
     seq[col] = seq[col].astype("category")
-
-seq["collection_date"] = pd.to_datetime(seq["collection_date"])
-seq["wn_mid_date"] = pd.to_datetime(seq["wn_mid_date"])
 ```
 
 The joint SIMD-age-sex profile is constructed only for rows with complete values:

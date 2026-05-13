@@ -99,8 +99,8 @@ def _extract_ratio_rows_from_arrays(
     params: np.ndarray,
     bse: np.ndarray,
     pvalues: np.ndarray,
-    exog_names: list[str],
-    terms: list[str],
+    exog_names: Iterable[str],
+    terms: Iterable[str],
     base_fields: dict[str, object],
     label_resolver=lambda term: TERM_LABELS[term],
 ) -> pd.DataFrame:
@@ -222,10 +222,10 @@ def fit_positive_component(
     calendar_cols: Iterable[str],
     maxiter: int,
     cluster_by: str = "window_id",
-    use_size_offset: bool = False,
-    winsorise_quantile: float = 0.0,
     primary_terms: Iterable[str] = PRIMARY_TERMS,
     extra_terms: Iterable[str] | None = None,
+    winsorise_quantile: float = 0.0,
+    use_size_offset: bool = False,
 ) -> tuple[pd.DataFrame, dict]:
     terms = _model_terms(spec, primary_terms=primary_terms, extra_terms=extra_terms)
     use = clusters.loc[clusters[spec.positive_col] > 0].dropna(
@@ -468,8 +468,8 @@ def fit_mixing_predictor_count_models(
 
 def fit_mixing_models(
     clusters: pd.DataFrame,
-    lineage_levels_all: list[str],
-    calendar_cols: list[str],
+    lineage_levels_all: Iterable[str],
+    calendar_cols: Iterable[str],
     cluster_by: str = "window_id",
     primary_terms: Iterable[str] = PRIMARY_TERMS,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -564,7 +564,7 @@ _LOGLINEAR_OUTCOMES: dict[str, dict[str, object]] = {
 def fit_loglinear_models(
     clusters: pd.DataFrame,
     *,
-    extra_terms: list[str] | None = None,
+    extra_terms: Iterable[str] | None = None,
     predictor_set: str | None = None,
     primary_terms: Iterable[str] = PRIMARY_TERMS,
 ) -> pd.DataFrame:
@@ -630,8 +630,8 @@ def _domain_extract_rows(
     params: np.ndarray,
     bse: np.ndarray,
     pvalues: np.ndarray,
-    exog_names: list[str],
-    terms: list[str],
+    exog_names: Iterable[str],
+    terms: Iterable[str],
     domain: str,
     outcome: str,
     outcome_label: str,
@@ -669,10 +669,10 @@ def fit_domain_binary_component(
     clusters: pd.DataFrame,
     spec: CountModelSpec,
     domain: str,
-    lineage_levels_all: list[str],
-    calendar_cols: list[str],
+    lineage_levels_all: Iterable[str],
+    calendar_cols: Iterable[str],
     maxiter: int,
-    extra_terms: list[str] | None = None,
+    extra_terms: Iterable[str] | None = None,
 ) -> tuple[pd.DataFrame, dict]:
     terms = [f"{domain}_deprivation_z", *SHARED_COUNT_TERMS]
     if extra_terms:
@@ -714,7 +714,7 @@ def fit_domain_binary_component(
         "n_events": int(y.sum()),
         "event_fraction": float(y.mean()),
         "n_features": int(x.shape[1]),
-        "n_lineage_levels_available": int(len(lineage_levels_all)),
+        "n_lineage_levels_available": int(len(list(lineage_levels_all))),
         "n_lineage_terms_used": int(sum(col.startswith("lineage_") for col in x.columns)),
         "n_windows": int(use["window_id"].nunique()),
         "converged": bool(getattr(result, "converged", False)),
@@ -729,10 +729,10 @@ def fit_domain_positive_component(
     clusters: pd.DataFrame,
     spec: CountModelSpec,
     domain: str,
-    lineage_levels_all: list[str],
-    calendar_cols: list[str],
+    lineage_levels_all: Iterable[str],
+    calendar_cols: Iterable[str],
     maxiter: int,
-    extra_terms: list[str] | None = None,
+    extra_terms: Iterable[str] | None = None,
 ) -> tuple[pd.DataFrame, dict]:
     terms = [f"{domain}_deprivation_z", *SHARED_COUNT_TERMS]
     if extra_terms:
@@ -779,7 +779,7 @@ def fit_domain_positive_component(
         "mean_response": float(np.mean(y)),
         "max_response": int(np.max(y)),
         "n_features": int(x.shape[1]),
-        "n_lineage_levels_available": int(len(lineage_levels_all)),
+        "n_lineage_levels_available": int(len(list(lineage_levels_all))),
         "n_lineage_terms_used": int(sum(col.startswith("lineage_") for col in x.columns)),
         "n_windows": int(use["window_id"].nunique()),
         "converged": bool(result.converged),
@@ -800,8 +800,8 @@ def fit_domain_positive_component(
 
 def fit_domain_count_models(
     clusters: pd.DataFrame,
-    lineage_levels_all: list[str],
-    calendar_cols: list[str],
+    lineage_levels_all: Iterable[str],
+    calendar_cols: Iterable[str],
     maxiter: int,
     include_mixing_predictors: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -876,9 +876,9 @@ def _fit_linear_model(
     domain: str,
     outcome: str,
     outcome_label: str,
-    terms: list[str],
-    lineage_levels_all: list[str],
-    calendar_cols: list[str],
+    terms: Iterable[str],
+    lineage_levels_all: Iterable[str],
+    calendar_cols: Iterable[str],
     extra_result_fields: dict[str, object] | None = None,
     extra_diag_fields: dict[str, object] | None = None,
 ) -> tuple[pd.DataFrame, dict]:
@@ -947,7 +947,7 @@ def _fit_linear_model(
         "response": outcome,
         "n_observations": int(len(use)),
         "n_features": int(x.shape[1]),
-        "n_lineage_levels_available": int(len(lineage_levels_all)),
+        "n_lineage_levels_available": int(len(list(lineage_levels_all))),
         "n_lineage_terms_used": int(sum(col.startswith("lineage_") for col in x.columns)),
         "n_windows": int(use["window_id"].nunique()),
         "mean_response": float(y.mean()),
@@ -965,8 +965,8 @@ def _fit_linear_model(
 
 def fit_domain_quintile_mixing_models(
     clusters: pd.DataFrame,
-    lineage_levels_all: list[str],
-    calendar_cols: list[str],
+    lineage_levels_all: Iterable[str],
+    calendar_cols: Iterable[str],
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     frames: list[pd.DataFrame] = []
     diagnostics: list[dict] = []
@@ -992,8 +992,8 @@ def fit_domain_quintile_mixing_models(
 
 def fit_domain_demographic_mixing_models(
     clusters: pd.DataFrame,
-    lineage_levels_all: list[str],
-    calendar_cols: list[str],
+    lineage_levels_all: Iterable[str],
+    calendar_cols: Iterable[str],
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     frames: list[pd.DataFrame] = []
     diagnostics: list[dict] = []
@@ -1020,8 +1020,8 @@ def fit_domain_demographic_mixing_models(
 
 def fit_wave_domain_demographic_mixing_models(
     clusters: pd.DataFrame,
-    lineage_levels_all: list[str],
-    calendar_cols: list[str],
+    lineage_levels_all: Iterable[str],
+    calendar_cols: Iterable[str],
     *,
     min_clusters: int,
     min_windows: int,
@@ -1091,8 +1091,8 @@ def _wave_extract_rows(
     params: np.ndarray,
     bse: np.ndarray,
     pvalues: np.ndarray,
-    exog_names: list[str],
-    terms: list[str],
+    exog_names: Iterable[str],
+    terms: Iterable[str],
     wave: str,
     spec: CountModelSpec,
     component: str,
@@ -1149,12 +1149,12 @@ def fit_wave_binary_component(
     wave_df: pd.DataFrame,
     wave: str,
     spec: CountModelSpec,
-    lineage_levels_all: list[str],
-    calendar_cols: list[str],
+    lineage_levels_all: Iterable[str],
+    calendar_cols: Iterable[str],
     *,
     maxiter: int,
     min_events: int,
-    extra_terms: list[str] | None = None,
+    extra_terms: Iterable[str] | None = None,
 ) -> tuple[pd.DataFrame, dict]:
     terms = list(PRIMARY_TERMS)
     if extra_terms:
@@ -1216,7 +1216,7 @@ def fit_wave_binary_component(
         "n_events": n_events,
         "event_fraction": float(y.mean()),
         "n_features": int(x.shape[1]),
-        "n_lineage_levels_available": int(len(lineage_levels_all)),
+        "n_lineage_levels_available": int(len(list(lineage_levels_all))),
         "n_lineage_terms_used": int(sum(col.startswith("lineage_") for col in x.columns)),
         "lineage_adjustment": "wave-stratified; lineage dummies included, rank-dropped if collinear",
         "n_windows": n_windows,
@@ -1233,13 +1233,13 @@ def fit_wave_positive_component(
     wave_df: pd.DataFrame,
     wave: str,
     spec: CountModelSpec,
-    lineage_levels_all: list[str],
-    calendar_cols: list[str],
+    lineage_levels_all: Iterable[str],
+    calendar_cols: Iterable[str],
     *,
     maxiter: int,
     min_positive: int,
     min_windows: int,
-    extra_terms: list[str] | None = None,
+    extra_terms: Iterable[str] | None = None,
 ) -> tuple[pd.DataFrame, dict]:
     terms = list(PRIMARY_TERMS)
     if extra_terms:
@@ -1293,7 +1293,7 @@ def fit_wave_positive_component(
         "mean_response": float(np.mean(y)),
         "max_response": int(np.max(y)),
         "n_features": int(x.shape[1]),
-        "n_lineage_levels_available": int(len(lineage_levels_all)),
+        "n_lineage_levels_available": int(len(list(lineage_levels_all))),
         "n_lineage_terms_used": int(sum(col.startswith("lineage_") for col in x.columns)),
         "lineage_adjustment": "wave-stratified; lineage dummies included, rank-dropped if collinear",
         "n_windows": n_windows,
@@ -1317,7 +1317,7 @@ def fit_wave_outcome_models(
     min_windows: int,
     min_positive: int,
     min_events: int,
-    extra_terms: list[str] | None = None,
+    extra_terms: Iterable[str] | None = None,
     predictor_set: str | None = None,
     skip_cluster_size_binary: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
