@@ -384,9 +384,13 @@ def fit_ztnb(
 
     meat = cluster_scores.T @ cluster_scores
     cov = bread_inv @ meat @ bread_inv
-    n, p = x_array.shape
-    if len(group_codes) > 1 and n > p:
-        correction = (len(group_codes) / (len(group_codes) - 1)) * ((n - 1) / (n - p))
+    n = x_array.shape[0]
+    k_params = len(params)
+    if len(group_codes) > 1 and n > k_params:
+        correction = (
+            (len(group_codes) / (len(group_codes) - 1))
+            * ((n - 1) / (n - k_params))
+        )
         cov *= correction
     bse = np.sqrt(np.clip(np.diag(cov), 0, np.inf))
     z_values = np.divide(params, bse, out=np.full_like(params, np.nan), where=bse > 0)

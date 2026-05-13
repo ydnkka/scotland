@@ -25,6 +25,8 @@ echo "--- Wave analyses ---"
 conda run -n PhD python wave_analysis.py
 echo "--- Log-linear sensitivity analyses ---"
 conda run -n PhD python loglinear_sensitivity.py
+echo "--- Primary analysis figures ---"
+conda run -n PhD python manuscript/make_figures.py
 
 
 echo "======================================================="

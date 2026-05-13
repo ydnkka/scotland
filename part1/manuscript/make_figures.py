@@ -1297,6 +1297,8 @@ def plot_observed_expected_matrices(
         ax.set_yticks(np.arange(len(row_order)))
         if idx == 1:
             ax.set_xticklabels(col_order, rotation=45, ha="right")
+        else:
+            ax.set_xticklabels(col_order)
         ax.set_yticklabels(row_order)
         ax.set_xlabel(title)
         ax.set_ylabel(title if idx == 0 else "")

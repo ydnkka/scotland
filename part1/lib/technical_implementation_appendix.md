@@ -486,6 +486,13 @@ Prior to model fitting, numerical rank of the design matrix was assessed via QR 
 
 ## 9. Hurdle model implementation
 
+The count models are implemented as two-part hurdle models: a binary model for
+whether the count exceeds the structural minimum, followed by a positive-count
+model fitted only among observations that cross that hurdle. This follows the
+standard hurdle/zero-altered count-data formulation described by
+[Mullahy (1986)](https://doi.org/10.1016/0304-4076(86)90002-3) and the
+implementation review in [Zeileis, Kleiber, and Jackman (2008)](https://doi.org/10.18637/jss.v027.i08).
+
 For a count outcome with structural minimum $a=1$, the analysis uses:
 
 $$
@@ -538,6 +545,12 @@ $$
 ## 10. ZTNB likelihood and optimisation
 
 ### 10.1 Parameterisation
+
+The positive component uses an NB2 negative-binomial parameterisation, where
+the untruncated parent distribution has mean $\mu_i$ and variance
+$\mu_i+\alpha\mu_i^2$; this is the common count-regression parameterisation
+used in texts such as [Cameron and Trivedi (2013)](https://doi.org/10.1017/CBO9781139013567)
+and [Hilbe (2011)](https://www.cambridge.org/us/titles/negative-binomial-regression-2nd-edition).
 
 The ZTNB parameter vector is:
 
@@ -622,6 +635,12 @@ $$
 \ell_i= \log f_{\mathrm{NB}}(y_i;\mu_i,\alpha) - \log(1-p_{0i}).
 $$
 
+Equivalently, the positive-count density is
+$f_{\mathrm{NB}}(y_i;\mu_i,\alpha)/(1-f_{\mathrm{NB}}(0;\mu_i,\alpha))$ for
+$y_i=1,2,\ldots$, matching standard zero-truncated negative-binomial
+definitions, for example the `countreg` implementation notes for
+[zero-truncated negative binomial distributions](https://rdrr.io/rforge/countreg/man/ztnbinom.html).
+
 The implementation is:
 
 ```python
@@ -705,6 +724,59 @@ opt = minimize(
 )
 ```
 
+### 10.6 Critical correctness review
+
+The implementation was reviewed against the hurdle and zero-truncated NB
+factorisation above.
+
+1. **Hurdle decomposition:** the binary component is fitted on the full
+   relevant cluster table, while the ZTNB component is restricted to
+   `positive_col > 0`. Because `positive_col` is defined as the raw count minus
+   the structural minimum, the ZTNB support is exactly $1,2,\ldots$ for both
+   `cluster_size_excess` and `datazones_excess`. This is consistent with a
+   hurdle model rather than a zero-inflated model: the structural-minimum mass
+   is modelled only by the binary component.
+
+2. **ZTNB likelihood:** the log-PMF, zero probability $p_{0i}$, and
+   truncation adjustment match the standard density
+   $f(y)/(1-f(0))$. The analytical score includes the additional truncation
+   terms for both $\eta_i=\log\mu_i$ and $r=1/\alpha$. A finite-difference
+   check of `ztnb_loglike_score` against the summed log-likelihood gave a
+   maximum absolute score discrepancy of approximately $8\times10^{-9}$ in a
+   representative synthetic example, supporting the signs and scaling of the
+   custom gradient.
+
+3. **Dispersion handling:** the fitted parameter is $\log\alpha$, with
+   $\alpha$ bounded to a finite interval for numerical stability. Diagnostics
+   record whether $\alpha$ reaches the upper bound, which is important because
+   boundary estimates indicate that the positive-count tail may be heavier
+   than the fitted ZTNB can comfortably represent.
+
+4. **Finite-sample correction:** the ZTNB cluster-robust covariance correction
+   uses the total number of estimated parameters, including $\log\alpha$.
+   This is slightly more conservative than counting only the regression
+   coefficients and matches the usual cluster-robust degrees-of-freedom
+   adjustment.
+
+5. **Interpretation:** exponentiating $\beta_j$ gives a ratio for $\mu_i$, the
+   mean parameter of the untruncated parent NB distribution. For a
+   zero-truncated NB response, the actual conditional positive mean is
+   $\mu_i/(1-p_{0i})$, so $\exp(\beta_j)$ is not generally an exact marginal
+   ratio for $E(Y_i\mid Y_i>0,\mathbf{x}_i)$. Conditional positive-mean
+   contrasts should be obtained by prediction if an exact marginal contrast is
+   required.
+
+6. **Robust inference:** the covariance estimator uses the observed
+   information as the sandwich bread and group-summed scores as the meat. This
+   follows the usual sandwich-estimator logic for clustered estimating
+   equations developed by [Liang and Zeger (1986)](https://doi.org/10.1093/biomet/73.1.13)
+   and reviewed for applied cluster-robust inference by
+   [Cameron and Miller (2015)](https://doi.org/10.3368/jhr.50.2.317).
+   The remaining fragility is numerical rather than conceptual: near-singular
+   Hessians, few robust clusters, or boundary dispersion estimates can make
+   Wald intervals unstable, so the diagnostics table should be checked before
+   interpreting a component.
+
 ---
 
 ## 11. Cluster-robust covariance estimation
@@ -771,12 +843,18 @@ The robust covariance is:
 cov = bread_inv @ meat @ bread_inv
 ```
 
-A finite-sample correction is applied when there is more than one robust cluster and $n>p$:
+A finite-sample correction is applied when there is more than one robust
+cluster and the number of observations exceeds the total number of estimated
+parameters:
 
 ```python
-n, p = x_array.shape
-if len(group_codes) > 1 and n > p:
-    correction = (len(group_codes) / (len(group_codes) - 1)) * ((n - 1) / (n - p))
+n = x_array.shape[0]
+k_params = len(params)
+if len(group_codes) > 1 and n > k_params:
+    correction = (
+        (len(group_codes) / (len(group_codes) - 1))
+        * ((n - 1) / (n - k_params))
+    )
     cov *= correction
 ```
 
@@ -1215,13 +1293,25 @@ For cluster size, this is the association with being a non-singleton cluster. Fo
 
 ### 19.2 Positive ZTNB component
 
-For a coefficient $\beta_j$, the reported adjusted count ratio is:
+For a coefficient $\beta_j$, the reported adjusted ZTNB ratio is:
 
 $$
 \exp(\beta_j).
 $$
 
-This is the multiplicative association with the expected positive excess count, conditional on exceeding the structural minimum.
+This is the multiplicative association with $\mu_i$, the parent
+negative-binomial mean parameter inside the zero-truncated likelihood. Because
+the positive-count mean after truncation is:
+
+$$
+E(Y_i\mid Y_i>0,\mathbf{x}_i)=\frac{\mu_i}{1-p_{0i}},
+$$
+
+and $p_{0i}$ itself depends on $\mu_i$ and $\alpha$, $\exp(\beta_j)$ should be
+read as a model-parameter ratio rather than an exact marginal ratio for the
+conditional positive mean. Exact conditional mean contrasts can be obtained by
+predicting $\mu_i$, $p_{0i}$, and then $\mu_i/(1-p_{0i})$ under the covariate
+values being compared.
 
 For cluster size, the positive outcome is $N_c-1$, so the coefficient refers to additional sequences among non-singleton clusters. For geographic dispersion, the positive outcome is $D_c-1$, so the coefficient refers to additional datazones among multi-datazone clusters.
 
@@ -1238,3 +1328,15 @@ reported as percentage points of excess discordance per 1 standard deviation hig
 ### 19.4 Mixing-predictor models
 
 For the mixing-predictor count models, coefficients for standardised excess-mixing variables estimate whether clusters with greater-than-expected bridging across categories are larger or more geographically dispersed after adjustment for deprivation, surveillance covariates, calendar time, and lineage.
+
+---
+
+## 20. Methodological sources
+
+- [Mullahy J. (1986). Specification and testing of some modified count data models. *Journal of Econometrics*, 33(3), 341-365.](https://doi.org/10.1016/0304-4076(86)90002-3)
+- [Zeileis A, Kleiber C, Jackman S. (2008). Regression models for count data in R. *Journal of Statistical Software*, 27(8), 1-25.](https://doi.org/10.18637/jss.v027.i08)
+- [Cameron AC, Trivedi PK. (2013). *Regression Analysis of Count Data*, 2nd ed. Cambridge University Press.](https://doi.org/10.1017/CBO9781139013567)
+- [Hilbe JM. (2011). *Negative Binomial Regression*, 2nd ed. Cambridge University Press.](https://www.cambridge.org/us/titles/negative-binomial-regression-2nd-edition)
+- [`countreg` documentation: zero-truncated negative binomial distribution.](https://rdrr.io/rforge/countreg/man/ztnbinom.html)
+- [Liang KY, Zeger SL. (1986). Longitudinal data analysis using generalized linear models. *Biometrika*, 73(1), 13-22.](https://doi.org/10.1093/biomet/73.1.13)
+- [Cameron AC, Miller DL. (2015). A practitioner's guide to cluster-robust inference. *Journal of Human Resources*, 50(2), 317-372.](https://doi.org/10.3368/jhr.50.2.317)
