@@ -1,164 +1,25 @@
-# Supplementary Methods Appendix 1  
-# Technical implementation of the regression analysis
-
-This appendix contains two parts. **Part A** is a concise manuscript-ready Methods section that can be copied into the main manuscript. **Part B** gives the detailed implementation notes, including equations and code excerpts corresponding to the Python analysis pipeline.
-
----
-
-# Part A. Concise manuscript Methods text
-
-## Study population and source data
-
-We analysed SARS-CoV-2 whole-genome sequences collected from Scottish residents between July 2020 and February 2023 through Public Health Scotland and the COVID-19 Genomics UK (COG-UK) surveillance infrastructure. Sequences were aligned to the SARS-CoV-2 reference genome and quality-controlled using Nextclade; only sequences passing the `good` overall quality filter were retained. Records were linked to sequence metadata, including collection date, anonymised patient identifier, datazone of residence, age band, sex, and Pango lineage, and to the Scottish Index of Multiple Deprivation 2020 version 2 (SIMD), including overall rank and seven domain ranks: income, employment, education, health, geographic access, crime, and housing. Datazone-level testing aggregates and health-board-level surveillance trends were used to derive local surveillance covariates.
-
-## Cluster inference pipeline
-
-Cluster inference followed the EpiLink-Leiden framework described elsewhere. Briefly, sequences were grouped into 3-week sliding windows advanced in 1-week steps and then partitioned by Pango lineage. Within each window-lineage group, pairwise genetic distances were computed under the TN93 substitution model and paired with specimen-collection time differences. Each pair was scored using EpiLink, a process-based compatibility model that evaluates whether the observed genetic and temporal separation is consistent with simulated recent-transmission scenarios under specified assumptions about mutation accumulation, disease progression, and infectiousness. Pairwise compatibility scores were used as weighted graph edges, and recent-transmission clusters were inferred using the Leiden community-detection algorithm at the primary resolution $\gamma = 0.3$. Sequences in groups too small for pairwise processing were assigned to singleton clusters.
-
-## Cluster-level outcomes and covariates
-
-The long-format cluster table was collapsed to one row per inferred cluster at the primary Leiden resolution. For cluster $c$, let $N_c$ denote the number of distinct sequences and $D_c$ the number of distinct residential datazones represented in the cluster. The primary outcomes were cluster size $N_c$ and geographic dispersion $D_c$. Cluster duration was calculated as the interval between the earliest and latest sampled case but retained only descriptively because the fixed 3-week window structure mechanically constrains observed duration.
-
-Because both primary count outcomes are bounded below by 1, we modelled excess counts above the structural minimum:
-
-$$
-Y^{(N)}_c=N_c-1,
-\qquad
-Y^{(D)}_c=D_c-1.
-$$
-
-The associated hurdle indicators were:
-
-$$
-H^{(N)}_c=\mathbb{I}(N_c > 1),
-\qquad
-H^{(D)}_c=\mathbb{I}(D_c > 1).
-$$
-
-Mean cluster-level deprivation was defined as the mean SIMD rank across sampled cases in the cluster, multiplied by $-1$ so that higher values indicate greater deprivation. Local cumulative incidence was log-transformed after scaling per 1,000 population. Local cumulative sequencing fraction, window-level sequencing proportion, and local 7-day test positivity were logit-transformed after clipping probabilities away from 0 and 1. Continuous covariates were standardised to mean 0 and unit variance. Calendar time was represented using a cubic B-spline basis over the window index, and Pango lineages represented by fewer than 50 clusters were pooled into an "Other rare lineages" category.
-
-## Within-cluster sociodemographic mixing
-
-Within-cluster sociodemographic mixing was measured using observed-minus-expected pairwise discordance. For categorical variable $V$, let $n_{ck}$ be the number of valid sampled cases in cluster $c$ belonging to category $k$, and let $n_c=\sum_k n_{ck}$. Observed pairwise discordance was defined as:
-
-$$
-d^{\mathrm{obs}}_{c,V}=1-\sum_k\frac{n_{ck}(n_{ck}-1)}{n_c(n_c-1)}.
-$$
-
-Expected discordance was computed from all sampled cases in the same window-lineage stratum. If $m_{slk}$ is the number of cases in window $s$, lineage $l$, and category $k$, with $m_{sl=\sum_k m_{slk}}$, then:
-
-$$
-d^{\mathrm{exp}}_{sl,V}=1-\sum_k\frac{m_{slk}(m_{slk}-1)}{m_{sl}(m_{sl}-1)}.
-$$
-
-The cluster-level excess-mixing outcome was:
-
-$$
-e_{c,V} =d^{\mathrm{obs}}_{c,V}-d^{\mathrm{exp}}_{s(c)l(c),V}.
-$$
-
-Positive values indicate more cross-category mixing than expected for the cluster's window-lineage context, whereas negative values indicate more assortative composition. Excess discordance was computed for SIMD quintile, age band, sex, and a joint SIMD-age-sex profile.
-
-## Regression analyses
-
-The primary analysis examined deprivation as the exposure. For each count outcome, we fitted a two-part hurdle model. The first component modelled whether the outcome exceeded its structural minimum:
-
-$$
-H_c \sim \operatorname{Bernoulli}(\pi_c),
-\qquad
-\operatorname{logit}(\pi_c)=\mathbf{x}_c^\top\boldsymbol{\gamma}.
-$$
-
-The second component modelled the positive excess count using a zero-truncated negative-binomial model:
-
-$$
-Y_c \mid Y_c > 0
-\sim
-\operatorname{ZTNB}(\mu_c,\alpha),
-\qquad
-\log(\mu_c)=\mathbf{x}_c^\top\boldsymbol{\beta}.
-$$
-
-Here, $\mathbf{x}_c$ included standardised deprivation, local cumulative incidence, local cumulative sequencing fraction, window-level sequencing proportion, local test positivity, calendar spline terms, and lineage fixed effects. For geographic dispersion, an additional pre-specified size-adjusted model included log cluster size as a covariate.
-
-The ZTNB component used the negative-binomial variance function:
-
-$$
-\operatorname{Var}(Y_c)=\mu_c + \alpha\mu_c^2,
-$$
-
-with $\alpha>0$ estimated on the log scale. If $f_{\mathrm{NB}}(y;\mu,\alpha)$ is the ordinary negative-binomial probability mass function and $p_0=f_{\mathrm{NB}}(0;\mu,\alpha)$, then the zero-truncated likelihood contribution for $y=1,2,\ldots$ is:
-
-$$
-P(Y=y \mid Y>0)=\frac{f_{\mathrm{NB}}(y;\mu,\alpha)}{1-p_0}.
-$$
-
-For the excess-mixing outcomes, we fitted linear models among non-singleton clusters:
-
-$$
-e_{c,V}=\mathbf{x}_c^\top \boldsymbol{\delta}+\varepsilon_c,
-$$
-
-where $\mathbf{x}_c$ included the same deprivation and surveillance covariates, calendar spline terms, lineage fixed effects, and log cluster size. Coefficients were reported as percentage-point differences in excess discordance per 1 standard deviation higher covariate value.
-
-To address the complementary question of whether bridging across sociodemographic strata predicted cluster scale, we refitted the count models with four standardised excess-mixing predictors: SIMD quintile, age band, sex, and joint SIMD-age-sex profile. These models retained deprivation, surveillance covariates, calendar splines, and lineage fixed effects as adjustments. Because excess mixing is undefined for singleton clusters, the cluster-size hurdle component was not estimable in this analysis; the positive cluster-size ZTNB component and both geographic-dispersion components were fitted among non-singleton clusters.
-
-## Inference
-
-All models used cluster-robust standard errors, clustered by window in the primary analysis to account for dependence induced by overlapping windows. A pre-specified sensitivity analysis clustered standard errors by health board. ZTNB standard errors were obtained using a sandwich covariance estimator with a numerical-Hessian bread and score-based meat. Let $\hat{\boldsymbol{\theta}}$ denote the fitted parameter vector and $s_c(\hat{\boldsymbol{\theta}})$ the observation-level score. For robust cluster $g$, the cluster-level score was:
-
-$$
-S_g(\hat{\boldsymbol{\theta}})=\sum_{c\in g}s_c(\hat{\boldsymbol{\theta}}).
-$$
-
-The sandwich covariance estimator was:
-
-$$
-\widehat{\operatorname{Var}}(\hat{\boldsymbol{\theta}}) =
-\widehat{B}^{-1}
-\left[\sum_g S_g(\hat{\boldsymbol{\theta}})S_g(\hat{\boldsymbol{\theta}})^\top\right]
-\widehat{B}^{-1},
-$$
-
-where $\widehat{B}$ is the observed information matrix. A finite-sample correction,
-
-$$
-\frac{G}{G-1}\frac{n-1}{n-p},
-$$
-
-was applied when $G>1$ and $n>p$. Hurdle coefficients are reported as adjusted odds ratios, ZTNB coefficients as adjusted count ratios, and linear mixing coefficients as adjusted percentage-point differences.
-
-## Sensitivity and extension analyses
-
-We conducted pre-specified sensitivity analyses using health-board-clustered standard errors, a log offset for the number of sequences in the analysis window in the positive cluster-size model, size adjustment for positive geographic dispersion, index-case SIMD deprivation, 99th-percentile winsorisation of positive counts, an approximately non-overlapping window subset retaining every third window, and log-linear single-component models as comparators. We also fitted wave-stratified models for B.1.177, Alpha, Delta, BA.1, BA.2, BA.4, BA.5, and BQ.1, excluding XBB from regression models because of small sample size. Finally, domain-specific models were fitted for all seven SIMD domains and extended to the mixing-predictor count-model framework.
-
----
-
-# Part B. Technical implementation details
+# Supplementary Methods Appendix 1: Technical Implementation of the Regression Analysis
 
 ## 1. Overview of the Python workflow
 
 The implementation is organised around three layers:
 
-1. **Shared constants and model specifications**  
-   Defines the primary covariates, mixing variables, count-model outcomes, SIMD domains, wave labels, and run defaults.
+1. **Shared constants and model specifications:** Defines the primary covariates, mixing variables, count-model outcomes, SIMD domains, wave labels, and run defaults.
 
-2. **Data preparation**  
-   Loads sequence-level rows, constructs the cluster-level table, calculates observed and expected discordance, applies covariate transformations, standardises variables, pools sparse lineages, and attaches calendar spline terms.
+2. **Data preparation:** Loads sequence-level rows, constructs the cluster-level table, calculates observed and expected discordance, applies covariate transformations, standardises variables, pools sparse lineages, and attaches calendar spline terms.
 
-3. **Model fitting**  
-   Builds design matrices, fits binomial hurdle models, implements the ZTNB likelihood and gradient, calculates cluster-robust standard errors, and orchestrates the primary, sensitivity, domain-specific, wave-specific, and mixing-predictor analyses.
+3. **Model fitting:** Builds design matrices, fits binomial hurdle models, implements the ZTNB likelihood and gradient, calculates cluster-robust standard errors, and orchestrates the primary, sensitivity, domain-specific, wave-specific, and mixing-predictor analyses.
 
 The high-level mapping is:
 
-| Analysis question | Main functions |
-|---|---|
-| Deprivation as exposure for count outcomes | `fit_count_models` |
-| Deprivation as exposure for mixing outcomes | `fit_mixing_models` |
-| Excess mixing as predictor for count outcomes | `fit_mixing_predictor_count_models` |
-| SIMD domain analyses | `fit_domain_count_models`, `fit_domain_*_mixing_models` |
-| Wave-stratified analyses | `fit_wave_outcome_models` |
-| Log-linear sensitivity analyses | `fit_loglinear_models` |
+| Analysis question                             | Main functions                                          |
+|-----------------------------------------------|---------------------------------------------------------|
+| Deprivation as exposure for count outcomes    | `fit_count_models`                                      |
+| Deprivation as exposure for mixing outcomes   | `fit_mixing_models`                                     |
+| Excess mixing as predictor for count outcomes | `fit_mixing_predictor_count_models`                     |
+| SIMD domain analyses                          | `fit_domain_count_models`, `fit_domain_*_mixing_models` |
+| Wave-stratified analyses                      | `fit_wave_outcome_models`                               |
+| Log-linear sensitivity analyses               | `fit_loglinear_models`                                  |
 
 ---
 
@@ -392,10 +253,10 @@ out.loc[mask, "discordance"] = (
 This corresponds to:
 
 $$
-d=1-\frac{\sum_k n_k(n_k-1)}{n(n-1)}.
+d^{\mathrm{obs}}_{c,V} = 1 - \sum_k\frac{N_{ck}(N_{ck}-1)}{N_c(N_c-1)}.
 $$
 
-The use of $n(n-1)$, rather than $n(n-1)/2$, is equivalent because the same ordered-pair convention is used in both numerator and denominator.
+The use of $N_c(N_c-1)$, rather than $N_c(N_c-1)/2$, is equivalent because the same ordered-pair convention is used in both numerator and denominator.
 
 ### 5.2 Observed cluster discordance
 
@@ -469,7 +330,7 @@ for prefix, spec in MIXING_VARIABLES.items():
 This gives:
 
 $$
-e_{c,V}=d^{\mathrm{obs}}_{c,V}-d^{\mathrm{exp}}_{s(c)l(c),V}.
+e_{c,V} = d^{\mathrm{obs}}_{c,V} - d^{\mathrm{exp}}_{w(c)l(c),V}.
 $$
 
 ---
@@ -693,7 +554,7 @@ $$
 The ZTNB parameter vector is:
 
 $$
-\boldsymbol{\theta} = (\boldsymbol{\beta}, \log\alpha).
+\theta = (\beta, \log\alpha).
 $$
 
 The code transforms:
@@ -719,7 +580,7 @@ mu = np.exp(eta)
 Thus:
 
 $$
-\log(\mu_i)=\eta_i=\mathbf{x}_i^\top\boldsymbol{\beta}+\mathrm{offset}_i.
+\log(\mu_i)=\eta_i=\mathbf{x}_i^\top\beta+\mathrm{offset}_i.
 $$
 
 ### 10.2 Negative-binomial log-PMF
@@ -990,7 +851,9 @@ For each outcome except the size-adjusted geographic-dispersion specification, t
 if not spec.include_size:
     rows, diag = fit_binary_component(
         clusters, spec, lineage_levels_all, calendar_cols, maxiter,
-        cluster_by=cluster_by, primary_terms=primary_terms,
+        cluster_by=cluster_by,
+        use_size_offset=use_size_offset,
+        primary_terms=primary_terms,
     )
 ```
 
@@ -1038,7 +901,7 @@ for prefix, spec in MIXING_VARIABLES.items():
     result = model.fit(cov_type="cluster", cov_kwds={"groups": groups})
 ```
 
-The reported effect scale is percentage points:
+Results are additionally reported on the percentage-point scale:
 
 ```python
 "coefficient_percentage_points": coef * 100
@@ -1084,6 +947,7 @@ rows, diag = fit_binary_component(
     calendar_cols,
     maxiter,
     cluster_by=cluster_by,
+    use_size_offset=use_size_offset,
     primary_terms=primary_terms,
     extra_terms=MIXING_PREDICTOR_TERMS,
     analysis_population_label=analysis_population,
@@ -1125,9 +989,9 @@ fit_count_models(
 )
 ```
 
-### 16.2 Window-pool offset for positive cluster size
+### 16.2 Window-pool offset for cluster size
 
-The offset sensitivity applies only to the cluster-size positive model:
+The offset sensitivity applies to the cluster-size hurdle and positive models:
 
 ```python
 offset = None
@@ -1139,10 +1003,16 @@ if use_size_offset and spec.name == "cluster_size":
 The model becomes:
 
 $$
-\log(\mu_c)=\log(W_c)+\mathbf{x}_c^\top\boldsymbol{\beta},
+\operatorname{logit}(\pi_c)=\log(W_c)+\mathbf{x}_c^\top\gamma
 $$
 
-where $W_c$ is the number of sequences in the corresponding analysis window.
+for the hurdle component, and:
+
+$$
+\log(\mu_c)=\log(W_c)+\mathbf{x}_c^\top\beta,
+$$
+
+for the positive component, where $W_c$ is the number of sequences in the corresponding analysis window.
 
 ### 16.3 Winsorised positive counts
 
@@ -1155,7 +1025,7 @@ if winsorise_quantile > 0.0:
     winsorised = True
 ```
 
-The planned sensitivity uses the 99th percentile.
+The pre-specified sensitivity uses the 99th percentile.
 
 ### 16.4 Size-adjusted geographic dispersion
 
@@ -1299,8 +1169,7 @@ XBB is excluded from regression models where sample size is insufficient.
 
 Each model returns two tidy tables:
 
-1. **Results table**  
-   One row per coefficient of interest, with:
+1. **Results table:** One row per coefficient of interest, with:
    - term name;
    - term label;
    - coefficient;
@@ -1309,8 +1178,7 @@ Each model returns two tidy tables:
    - p-value;
    - exponentiated ratio and confidence interval, where appropriate.
 
-2. **Diagnostics table**  
-   Model-level metadata, including:
+2. **Diagnostics table:** Model-level metadata, including:
    - outcome;
    - model component;
    - response variable;
@@ -1374,10 +1242,10 @@ For cluster size, the positive outcome is $N_c-1$, so the coefficient refers to 
 For a coefficient $\delta_j$, the reported effect is:
 
 $$
-100\delta_j.
+100\delta_j,
 $$
 
-percentage points of excess discordance per 1 standard deviation higher covariate value.
+reported as percentage points of excess discordance per 1 standard deviation higher covariate value.
 
 ### 19.4 Mixing-predictor models
 
@@ -1387,19 +1255,9 @@ For the mixing-predictor count models, coefficients for standardised excess-mixi
 
 ## 20. References
 
-The references below support the main statistical and computational methods used in the manuscript and appendix. Replace bracket numbers with the final manuscript numbering during journal formatting.
-
-1. COVID-19 Genomics UK (COG-UK) Consortium. An integrated national scale SARS-CoV-2 genomic surveillance network. *The Lancet Microbe*. 2020;1(3):e99--e100. doi:10.1016/S2666-5247(20)30054-9.
-
-2. da Silva Filipe A, Shepherd JG, Williams T, et al. Genomic epidemiology reveals multiple introductions of SARS-CoV-2 from mainland Europe into Scotland. *Nature Microbiology*. 2021;6:112--122. doi:10.1038/s41564-020-00838-z.
-
-3. Aksamentov I, Roemer C, Hodcroft EB, Neher RA. Nextclade: clade assignment, mutation calling and quality control for viral genomes. *Journal of Open Source Software*. 2021;6(67):3773. doi:10.21105/joss.03773.
-
-4. Scottish Government. Scottish Index of Multiple Deprivation 2020: technical notes. 2020.
-
-5. Tamura K, Nei M. Estimation of the number of nucleotide substitutions in the control region of mitochondrial DNA in humans and chimpanzees. *Molecular Biology and Evolution*. 1993;10(3):512--526. doi:10.1093/oxfordjournals.molbev.a040023.
-
-6. Traag VA, Waltman L, van Eck NJ. From Louvain to Leiden: guaranteeing well-connected communities. *Scientific Reports*. 2019;9:5233. doi:10.1038/s41598-019-41695-z.
+50. Cameron AC, Miller DL. A practitioner's guide to cluster-robust inference. *J Hum Resour.* 2015;50(2):317–372.
+51. Zeileis, Achim. "Object-oriented computation of sandwich estimators." Journal of statistical software 16 (2006): 1-16.
+52. Zeileis, Achim, Susanne Köll, and Nathaniel Graham. "Various versatile variances: an object-oriented implementation of clustered covariances in R." Journal of Statistical Software 95 (2020): 1-36.
 
 7. Mullahy J. Specification and testing of some modified count data models. *Journal of Econometrics*. 1986;33(3):341--365. doi:10.1016/0304-4076(86)90002-3.
 

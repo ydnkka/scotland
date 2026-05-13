@@ -48,9 +48,10 @@
 46. Mullahy J. Specification and testing of some modified count data models. *J Econom.* 1986;33(3):341–365. 
 47. Cameron AC, Trivedi PK. *Regression Analysis of Count Data.* 2nd ed. Cambridge: Cambridge University Press; 2013.
 48. Endo, A., Abbott, S., Kucharski, A. J. and Funk, S. (2020) ‘Estimating the overdispersion in COVID-19 transmission using outbreak sizes outside China’, Wellcome Open Research, 5, 67. https://doi.org/10.12688/wellcomeopenres.15842.3
-49. Volz E, Hill V, McCrone JT, Price A, Jorgensen D, O'Toole Á, et al. Evaluating the effects of SARS-CoV-2 spike mutation D614G on transmissibility and pathogenicity. *Cell.* 2021;184(1):64–75.
-50. White H. A heteroskedasticity-consistent covariance matrix estimator and a direct test for heteroskedasticity. *Econometrica.* 1980;48(4):817–838. 
-51. Cameron AC, Miller DL. A practitioner's guide to cluster-robust inference. *J Hum Resour.* 2015;50(2):317–372.
+49. Volz E, Hill V, McCrone JT, Price A, Jorgensen D, O'Toole Á, et al. Evaluating the effects of SARS-CoV-2 spike mutation D614G on transmissibility and pathogenicity. *Cell.* 2021;184(1):64–75. 
+50. Cameron AC, Miller DL. A practitioner's guide to cluster-robust inference. *J Hum Resour.* 2015;50(2):317–372.
+51. Zeileis, Achim. "Object-oriented computation of sandwich estimators." Journal of statistical software 16 (2006): 1-16.
+52. Zeileis, Achim, Susanne Köll, and Nathaniel Graham. "Various versatile variances: an object-oriented implementation of clustered covariances in R." Journal of Statistical Software 95 (2020): 1-36.
 
 
 46. Hellewell J, Russell TW, SAFER Investigators and Field Study Team, Crick COVID-19 Consortium, CMMID COVID-19 working group, Beale R, et al. Estimating the effectiveness of routine asymptomatic PCR testing at different frequencies for the detection of SARS-CoV-2 infections. *BMC Med.* 2021;19:106.

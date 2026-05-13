@@ -8,6 +8,7 @@ truth.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Iterable
 
 
 # ---------------------------------------------------------------------------
@@ -24,7 +25,7 @@ CALENDAR_SPLINE_DF = 8
 # Columns pulled from the analysis dataset
 # ---------------------------------------------------------------------------
 
-SEQUENCE_COLUMNS: list[str] = [
+SEQUENCE_COLUMNS: Iterable[str] = [
     "cluster_id",
     "sequence_id",
     "resolution",
@@ -48,7 +49,7 @@ SEQUENCE_COLUMNS: list[str] = [
 ]
 
 # Domain/wave analyses use the same base columns plus the SIMD subdomain ranks.
-BASE_SEQUENCE_COLUMNS: list[str] = [
+BASE_SEQUENCE_COLUMNS: Iterable[str] = [
     "cluster_id",
     "sequence_id",
     "resolution",
@@ -73,7 +74,7 @@ BASE_SEQUENCE_COLUMNS: list[str] = [
 # Primary covariate sets (Line 1 — deprivation)
 # ---------------------------------------------------------------------------
 
-PRIMARY_TERMS: list[str] = [
+PRIMARY_TERMS: Iterable[str] = [
     "deprivation_z",
     "local_incidence_z",
     "local_seq_fraction_z",
@@ -122,7 +123,7 @@ MIXING_VARIABLES: dict[str, dict[str, str]] = {
     },
 }
 
-MIXING_PREDICTOR_TERMS: list[str] = [
+MIXING_PREDICTOR_TERMS: Iterable[str] = [
     f"{prefix}_excess_mixing_z" for prefix in MIXING_VARIABLES
 ]
 
@@ -152,7 +153,7 @@ class CountModelSpec:
 
 # Duration is excluded from the primary count outcomes because the fixed
 # three-week clustering windows mechanically constrain the observed span.
-COUNT_MODEL_SPECS: list[CountModelSpec] = [
+COUNT_MODEL_SPECS: Iterable[CountModelSpec] = [
     CountModelSpec(
         name="cluster_size",
         label="Cluster size",
@@ -215,7 +216,7 @@ DEMOGRAPHIC_MIXING: dict[str, dict[str, str]] = {
     "age_sex": {"column": "age_sex_profile", "label": "Joint age-sex profile mixing", "short_label": "Age-sex"},
 }
 
-DEMOGRAPHIC_MIXING_PREDICTOR_TERMS: list[str] = [
+DEMOGRAPHIC_MIXING_PREDICTOR_TERMS: Iterable[str] = [
     f"{prefix}_excess_mixing_z" for prefix in DEMOGRAPHIC_MIXING
 ]
 
@@ -224,7 +225,7 @@ DEMOGRAPHIC_MIXING_PREDICTOR_TERMS: list[str] = [
 # Wave configuration
 # ---------------------------------------------------------------------------
 
-WAVE_ORDER: list[str] = [
+WAVE_ORDER: Iterable[str] = [
     "B.1.177",
     "Alpha",
     "Delta",

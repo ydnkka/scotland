@@ -44,95 +44,170 @@ Throughout, we treated local sequencing intensity and test positivity not only a
 
 ## 2. Methods
 
-### 2.1 Study population and source data
+### 2.1. Study population and source data
 
-We analysed SARS-CoV-2 whole-genome sequences collected from Scottish residents between July 2020 and February 2023 through Public Health Scotland and COG-UK [1,6]. Sequences were aligned to the SARS-CoV-2 reference genome (GenBank accession MN908947) and quality-controlled using Nextclade [42]; only sequences passing the Nextclade `good` overall quality filter were retained. Records were linked to sequence metadata (collection date, anonymised patient identifier, datazone of residence, age band, sex), to the Scottish Index of Multiple Deprivation 2020 v2 (SIMD; overall rank and seven domain ranks: income, employment, education, health, geographic access, crime, housing) [39], and to daily datazone-level testing aggregates and health-board-level surveillance trends. Datazones are the standard small-area geography of Scotland ($\approx$760 residents on average), enabling fine-scale spatial linkage between sequencing data, deprivation, and local surveillance intensity.
+We analysed SARS-CoV-2 whole-genome sequences collected from Scottish residents between July 2020 and February 2023 through Public Health Scotland and the COVID-19 Genomics UK (COG-UK) surveillance infrastructure [1,6]. Consensus genomes were aligned to the SARS-CoV-2 reference genome (GenBank accession MN908947) and quality-controlled using Nextclade [42]; only records passing the Nextclade `good` overall quality filter were retained. Sequence records were linked to collection date, anonymised patient identifier, residential datazone, age band, sex, Pango lineage, and the Scottish Index of Multiple Deprivation 2020 version 2 (SIMD). SIMD linkage included the overall rank and seven domain ranks: income, employment, education, health, geographic access, crime, and housing [39]. Datazone-level (standard small-area geography of Scotland with $\approx$760 residents on average) testing aggregates and health-board-level surveillance trends were used to derive local surveillance covariates.
 
-### 2.2 Cluster inference pipeline
+### 2.2. Cluster inference pipeline
 
-Cluster inference followed the framework described in detail elsewhere [31]. Briefly, sequences were grouped into 3-week sliding windows advanced in 1-week steps and further partitioned by Pango lineage. Within each (window-lineage) group with at least two sequences, pairwise consensus genetic distances were computed under the TN93 substitution model [43] using the standalone `tn93` tool [44]. Pairwise temporal distances were computed in days from specimen collection dates.
+Cluster inference followed the EpiLink-Leiden framework described elsewhere [31]. Briefly, sequences were grouped into 3-week sliding windows advanced in 1-week steps and then partitioned by Pango lineage. Within each window-lineage group containing at least two sequences, pairwise consensus genetic distances were computed under the TN93 substitution model [43] using the standalone `tn93` tool [44] and paired with specimen-collection time differences. Each pair was scored using EpiLink, a process-based compatibility model that evaluates whether the observed genetic and temporal separation is consistent with simulated recent-transmission scenarios under specified assumptions about mutation accumulation, disease progression, and infectiousness [31]. Pairwise compatibility scores were used as graph edge weights, and recent-transmission clusters were inferred using the Leiden community-detection algorithm with a modularity-based objective [36] at the primary resolution $\gamma = 0.3$ (partition are stability across $\gamma \in$ [0.1, 0.6] in the EpiLink benchmark). Sequences in window-lineage groups with fewer than two sequences were assigned to singleton clusters.
 
-Each (genetic distance, temporal distance) pair was scored using EpiLink [31], a process-based pairwise compatibility model that evaluates whether observed values are consistent with Monte Carlo distributions generated under user-specified recent-transmission scenarios. EpiLink was run with its default configuration for SARS-CoV-2: a maximum hidden-depth of M = 0, a target subset of $\mathcal{S}_\star = \{H_{\mathrm{AD}}(0), H_{\mathrm{CA}}(0,0)\}$ (direct transmission and co-primary infection from an unsampled shared source), Gamma-distributed natural-history parameters drawn from published SARS-CoV-2 estimates [32--34], a per-site substitution rate of $1 \times 10^{-3}$ substitutions/site/year [35], a relaxed log-normal molecular clock [45], a genome length of 29,903 nt, and 10,000 Monte Carlo draws per pair. EpiLink scores fall in [0, 1] and were thresholded at $10^{–4}$ to sparsify the resulting weighted graphs while preserving more than 99% of total edge weight [31]. Clusters were inferred using the Leiden algorithm with a modularity-based objective [36] at a single primary resolution $\gamma$ = 0.3, chosen because partition stability is essentially flat across $\gamma \in$  [0.1, 0.6] in the EpiLink benchmark [31]. Sequences in (window-lineage) groups too small for TN93 processing were assigned to their own singleton clusters.
+### 2.3. Cluster-level outcomes and covariates
 
-### 2.3 Cluster table construction and outcomes
+The resulting long-format cluster table, with one row for each sequence, window, and Leiden resolution combination, was collapsed to one row per cluster at the primary resolution. For cluster $c$, the primary count outcomes were cluster size $N_c$ (number of unique sequences) and geographic dispersion $D_c$ (number of distinct residential datazones represented in the cluster). Cluster duration was calculated as the interval between the earliest and latest sampled case but retained only descriptively because the fixed 3-week window structure mechanically constrains observed duration.
 
-The resulting long-format cluster table (one row per [sequence $\times$ window $\times$ Leiden resolution]) was collapsed to one row per cluster at the primary resolution. For each cluster we computed the cluster size (number of distinct sequences), the cluster duration (days between earliest and latest sampled case), and the geographic spread (number of distinct datazones represented). All three measures are bounded below by their structural minimum (size 1, duration 0 days, datazones 1). Because the fixed three-week clustering window mechanically constrains observed duration, cluster duration is retained only as a descriptive variable; the modelled count outcomes are cluster size and geographic spread.
-
-The distributions of cluster size and geographic spread have large structural masses at their minima---56.5% of clusters are singletons, 61.7% are confined to a single datazone---and heavy right tails (maxima 2,792 sequences and 2,100 datazones, respectively). We therefore used two-part hurdle models: a binomial generalised linear model with logit link for whether a cluster exceeded its structural minimum, and a zero-truncated negative-binomial (ZTNB) model for the positive count among clusters exceeding the minimum [46,47]. Equivalent formulations have been widely adopted for heavy-tailed epidemiological count data and for modelling secondary case distributions under transmission heterogeneity [29,48].
-
-Within-cluster sociodemographic mixing was measured as observed-minus-expected pairwise discordance among non-singleton clusters. For category counts $n_k$ within a cluster of total valid cases $n$, observed pairwise discordance is
+Because both primary count outcomes are bounded below by 1, we modelled excess counts above the structural minimum:
 
 $$
-d_{\mathrm{obs}} = 1 - \sum_k \frac{n_k(n_k - 1)}{n(n - 1)}.
+Y^{(N)}_c = N_c - 1,
+\qquad
+Y^{(D)}_c = D_c - 1.
 $$
 
-Expected discordance was computed from sampled cases of the same window and lineage. The modelled outcome is the difference $d_{\mathrm{obs}} - d_{\mathrm{exp}}$, with positive values indicating more mixing than expected for the cluster's lineage-window context and negative values indicating more assortative composition. We computed excess discordance for SIMD quintile, age band, sex, and a joint SIMD-age-sex profile.
+The associated hurdle indicators were:
 
-### 2.4 Exposures and covariates
+$$
+H^{(N)}_c=\mathbb{I}(N_c > 1),
+\qquad
+H^{(D)}_c=\mathbb{I}(D_c > 1).
+$$
 
-The primary exposure was mean cluster-level SIMD deprivation. SIMD ranks were negated (so that higher values indicate greater deprivation) and standardised to unit variance. Domain-specific deprivation exposures were constructed analogously for the seven SIMD domains [37]. An index-case SIMD sensitivity exposure was constructed from the SIMD rank of the earliest collected sequence in each cluster.
+Mean cluster-level deprivation was defined as the mean SIMD rank across sampled cases in the cluster, multiplied by $-1$ so that higher values indicate greater deprivation. Local cumulative incidence was log-transformed after scaling per 1,000 population. Local cumulative sequencing fraction, window-level sequencing proportion, and local 7-day test positivity were logit-transformed after clipping probabilities away from 0 and 1. Continuous covariates were standardised to mean 0 and unit variance. Calendar time was represented using a cubic B-spline basis over the window index, and Pango lineages represented by fewer than 50 clusters were pooled into an "Other rare lineages" category.
 
-All models adjusted for: local cumulative incidence per capita (log-transformed and standardised); local cumulative sequencing fraction (logit-transformed and standardised, capturing the proportion of confirmed local infections that had been sequenced up to the cluster's window); window-level sequencing proportion (analogously transformed); local 7-day test positivity; Pango lineage fixed effects with lineages contributing fewer than 50 clusters pooled into an "Other rare lineages" category (183 lineage levels in the final design matrix); and calendar time using a cubic B-spline basis with 8 degrees of freedom over the window index. Mixing models additionally adjusted for log-transformed cluster size. The choice to model lineage explicitly, rather than collapsing to broader variant labels is to avoid conflating biological lineage-specific transmissibility with covariate effects [12,13,49].
+### 2.4. Within-cluster sociodemographic mixing
 
-### 2.5 Statistical analysis
+Within-cluster sociodemographic mixing was measured using observed-minus-expected pairwise discordance. For categorical variable $V$, let $N_{ck}$ be the number of sampled cases in cluster $c$ belonging to category $k$, therefore $N_c=\sum_k N_{ck}$. Observed pairwise discordance was defined as:
 
-The logit hurdle component was fitted by maximum likelihood using a standard binomial GLM. The ZTNB positive component was implemented directly in Python and fitted by quasi-Newton optimisation (L-BFGS-B in `scipy.optimize`), with the dispersion parameter $\alpha$ parameterised on the log scale and bounded. Cluster-robust standard errors were computed analytically with score-based meat and a numerical-Hessian bread, with finite-sample correction [50,51]. Standard errors were clustered by window in the primary analysis, recognising that clusters from overlapping windows share dependence, and by health board in a pre-specified sensitivity analysis. Linear excess-mixing models were fitted by OLS with the same clustering scheme.
+$$
+d^{\mathrm{obs}}_{c,V} = 1 - \sum_k\frac{N_{ck}(N_{ck}-1)}{N_c(N_c-1)}.
+$$
 
-Hurdle binomial coefficients are reported as adjusted odds ratios. ZTNB coefficients are reported as adjusted count ratios. Mixing model coefficients are reported as adjusted percentage-point differences in excess discordance per 1 standard deviation of the covariate. All confidence intervals are two-sided 95% Wald intervals.
+Expected discordance was computed from all sampled cases in the same window-lineage stratum. If $m_{wlk}$ is the number of cases in window $w$, lineage $l$, and category $k$, with $m_{wl}=\sum_k m_{wlk}$, then:
 
-### Mixing-predictor count models
+$$
+d^{\mathrm{exp}}_{wl,V} = 1 - \sum_k\frac{m_{wlk}(m_{wlk}-1)}{m_{wl}(m_{wl}-1)}.
+$$
 
-To address the second line of inquiry, we re-specified the count models with the four excess-mixing scores (SIMD quintile, age band, sex, joint SIMD-age-sex profile) added as predictors alongside the primary deprivation and surveillance covariates. The model form is otherwise identical to the main hurdle and ZTNB count models, retaining lineage fixed effects, the calendar B-spline, and the surveillance and deprivation covariates as adjustments; the four mixing scores enter linearly on the cluster scale. Because excess discordance is undefined for singletons, these models are fitted among non-singleton clusters only. The **cluster-size hurdle is therefore not estimable**: its comparison group would be singletons, which are excluded by construction. We fit the cluster-size positive ZTNB component (n = 84,067), the geographic-spread hurdle (n = 84,067; here the hurdle distinguishes multi-datazone from single-datazone clusters within the non-singleton population) and positive ZTNB component (n = 74,010), and the size-adjusted positive geographic-spread component as a sensitivity. Coefficients are reported as adjusted count ratios (per 1 SD higher mixing score) for the positive ZTNB components and as adjusted odds ratios for the geographic-spread hurdle.
+The cluster-level excess-mixing outcome was:
 
-### Pre-specified sensitivity and extension analyses
+$$
+e_{c,V} = d^{\mathrm{obs}}_{c,V} - d^{\mathrm{exp}}_{w(c)l(c),V}.
+$$
 
-We pre-specified the following sensitivities. (i) Standard errors clustered by health board rather than by window. (ii) An offset on `log(wn_no_sequences)` in the cluster-size positive model, recasting the estimand as positive cluster size relative to the analysis-window sequence pool. (iii) Cluster-size adjustment in the positive geographic-spread model. (iv) An index-case SIMD exposure replacing mean cluster SIMD. (v) Winsorisation of positive counts at the 99th percentile, to test sensitivity to the right tail. (vi) An approximately non-overlapping window subsample retaining only every third window (`window_idx % 3 == 0`). (vii) Log-linear count models, fitted on `log(1 + outcome)`, as a comparator to the hurdle/ZTNB formulation. (viii) Per-wave models, fitted separately for B.1.177, Alpha, Delta, BA.1, BA.2, BA.4, BA.5, and BQ.1; the XBB wave was excluded from regression models due to small sample size. (ix) Domain-specific deprivation models for all seven SIMD domains, fitted to both count and mixing outcomes. (x) Wave-specific and domain-specific extensions of the mixing-predictor count models.
+Positive values indicate more cross-category mixing than expected for the cluster's window-lineage context, whereas negative values indicate more assortative composition. Excess discordance was computed for SIMD quintile, age band, sex, and a joint SIMD-age-sex profile.
 
-### Software, reproducibility, and ethics
+### 2.5. Regression analyses
 
-All analyses were implemented in Python 3.11. The cluster inference pipeline relies on `igraph` for community detection [36,53], GNU parallel for parallelisation across (window × lineage) groups [54], and standard scientific Python libraries (`pandas`, `numpy`, `scipy`, `statsmodels`) [55–57]. EpiLink is available at `https://github.com/ydnkka/epilink` [31]. Random operations used a fixed seed (42). Sequence data and SIMD linkage were processed under approvals from Public Health Scotland.
+The primary analysis examined deprivation as the exposure. For each count outcome, we fitted a two-part hurdle model. The first component modelled whether the outcome exceeded its structural minimum:
+
+$$
+H_c \sim \operatorname{Bernoulli}(\pi_c),
+\qquad
+\operatorname{logit}(\pi_c) = \mathbf{x}_c^\top\gamma.
+$$
+
+The second component modelled the positive excess count using a zero-truncated negative-binomial (ZTNB) model:
+
+$$
+Y_c \mid Y_c > 0 \sim \operatorname{ZTNB}(\mu_c,\alpha),
+\qquad
+\log(\mu_c) = \mathbf{x}_c^\top\beta.
+$$
+
+Here, $\mathbf{x}_c$ included standardised deprivation, local cumulative incidence, local cumulative sequencing fraction, window-level sequencing proportion, local test positivity, calendar spline terms, and lineage fixed effects. For geographic dispersion, an additional positive-count model included log cluster size as a covariate.
+
+The ZTNB component used an underlying negative-binomial distribution with the NB2 variance function:
+
+$$
+\operatorname{Var}(Y_c) = \mu_c + \alpha\mu_c^2,
+$$
+
+with $\alpha>0$ estimated on the log scale before conditioning on $Y>0$. If $f_{\mathrm{NB}}(y;\mu,\alpha)$ is the ordinary negative-binomial probability mass function and $p_0=f_{\mathrm{NB}}(0;\mu,\alpha)$, then the zero-truncated likelihood contribution for $y=1,2,\ldots$ is:
+
+$$
+P(Y=y \mid Y>0) = \frac{f_{\mathrm{NB}}(y;\mu,\alpha)}{1-p_0}.
+$$
+
+For the excess-mixing outcomes, we fitted linear models among non-singleton clusters:
+
+$$
+e_{c,V} = \mathbf{x}_c^\top \delta + \varepsilon_c,
+$$
+
+where $\mathbf{x}_c$ included the same deprivation and surveillance covariates, calendar spline terms, lineage fixed effects, and log cluster size. Coefficients were reported as percentage-point differences in excess discordance per 1 standard deviation higher covariate value.
+
+To address the complementary question of whether bridging across sociodemographic strata predicted cluster scale, we refitted the count models with four standardised excess-mixing predictors: SIMD quintile, age band, sex, and joint SIMD-age-sex profile. These models retained deprivation, surveillance covariates, calendar splines, and lineage fixed effects as adjustments. Because excess mixing is undefined for singleton clusters, the cluster-size hurdle component was not estimable in this analysis. The positive cluster-size ZTNB component, the geographic-dispersion hurdle and positive ZTNB components, and the size-adjusted positive geographic-dispersion component were fitted among non-singleton clusters.
+
+### 2.6. Inference
+
+All models used cluster-robust standard errors, clustered by analysis window in the primary analysis to account for dependence induced by overlapping windows [50]. Sensitivity analysis clustered standard errors by health board. ZTNB standard errors were obtained using a sandwich covariance estimator with a numerical-Hessian bread and score-based meat [50--52]. Let $\hat{\theta}$ denote the fitted parameter vector and $s_c(\hat{\theta})$ the observation-level score. For robust cluster $g$, the cluster-level score was:
+
+$$
+S_g(\hat{\theta}) = \sum_{c\in g}s_c(\hat{\theta}).
+$$
+
+The sandwich covariance estimator was:
+
+$$
+\widehat{\operatorname{Var}}(\hat{\theta}) =
+\widehat{B}^{-1}
+\left[\sum_g S_g(\hat{\theta})S_g(\hat{\theta})^\top\right]
+\widehat{B}^{-1},
+$$
+
+where $\widehat{B}$ is the observed information matrix. A finite-sample correction,
+
+$$
+\frac{G}{G-1}\frac{n-1}{n-p},
+$$
+
+was applied when $G>1$ and $n>p$. Hurdle coefficients are reported as adjusted odds ratios, ZTNB coefficients as adjusted count ratios, and linear mixing coefficients as adjusted percentage-point differences.
+
+### 2.7. Sensitivity and extension analyses
+
+We conducted sensitivity analyses using health-board-clustered standard errors, a log offset for the number of sequences in the analysis window in the positive cluster-size model, size adjustment for positive geographic dispersion, index-case SIMD deprivation, 99th-percentile winsorisation of positive counts, an approximately non-overlapping window subset retaining every third window, and log-linear single-component models as comparators. We also fitted wave-stratified models for B.1.177, Alpha, Delta, BA.1, BA.2, BA.4, BA.5, and BQ.1, excluding XBB from regression models because of small sample size. Finally, domain-specific models were fitted for all seven SIMD domains and extended to the mixing-predictor count-model framework.
 
 ---
 
-## 2. Results
+## 3. Results
 
-### 2.1. Analysis dataset
+### 3.1. Analysis dataset
 
 After applying Nextclade QC and the primary Leiden resolution ($\gamma$ = 0.3), the analysis dataset comprised 789,347 sequence-rows representing 281,320 unique sequences from Scottish residents, distributed across 134 sliding three-week windows and 788 raw Pango lineages (183 levels after rare-lineage pooling). The cluster table contained 193,112 inferred genomic clusters, of which 84,067 (43.5%) were non-singletons and were retained for mixing analyses. Outcome distributions were strongly right-skewed: median cluster size was 1 with 56.5% singletons and a maximum of 2,792 sequences; median distinct datazones was 1 with 61.7% confined to a single datazone and a maximum of 2,100 datazones (Supplementary Figure 1). Among non-singleton clusters, median size was 3 and median distinct datazones was 3. Wave-level summaries showed a marked shift towards smaller, more spatially confined clusters in late Omicron subwaves (Table 1).
 
 **Table 1.** Analysis population and outcome distributions across the Scottish SARS-CoV-2 genomic surveillance dataset, March 2020 to early 2023, at primary Leiden resolution $\gamma$ = 0.3.
 
-| Quantity | Value |
-|---|---:|
-| *Cohort* | |
-| Sequence-rows used | 789,347 |
-| Unique sequences | 281,320 |
-| Sliding 3-week windows | 134 |
-| Raw Pango lineages | 788 |
-| Pango lineage levels modelled (after pooling lineages with < 50 clusters) | 183 |
-| Inferred clusters ($\gamma$ = 0.3) | 193,112 |
-| Non-singleton clusters used in mixing models | 84,067 |
-| *Outcome distributions across all clusters* | |
-| Cluster size: structural minimum (singleton) | 56.5% |
-| Cluster size: median / 75th / 90th / 99th percentile / maximum | 1 / 3 / 6 / 39 / 2,792 |
-| Duration: structural minimum (0 days) | 63.1% |
-| Duration: median / 75th / 90th / 99th percentile / maximum (days) | 0 / 3 / 7 / 12 / 19 |
-| Distinct datazones: structural minimum (1 datazone) | 61.7% |
-| Distinct datazones: median / 75th / 90th / 99th percentile / maximum | 1 / 2 / 5 / 32 / 2,100 |
+| Quantity                                                                  |                  Value |
+|---------------------------------------------------------------------------|-----------------------:|
+| *Cohort*                                                                  |                        |
+| Sequence-rows used                                                        |                789,347 |
+| Unique sequences                                                          |                281,320 |
+| Sliding 3-week windows                                                    |                    134 |
+| Raw Pango lineages                                                        |                    788 |
+| Pango lineage levels modelled (after pooling lineages with < 50 clusters) |                    183 |
+| Inferred clusters ($\gamma$ = 0.3)                                        |                193,112 |
+| Non-singleton clusters used in mixing models                              |                 84,067 |
+| *Outcome distributions across all clusters*                               |                        |
+| Cluster size: structural minimum (singleton)                              |                  56.5% |
+| Cluster size: median / 75th / 90th / 99th percentile / maximum            | 1 / 3 / 6 / 39 / 2,792 |
+| Duration: structural minimum (0 days)                                     |                  63.1% |
+| Duration: median / 75th / 90th / 99th percentile / maximum (days)         |    0 / 3 / 7 / 12 / 19 |
+| Distinct datazones: structural minimum (1 datazone)                       |                  61.7% |
+| Distinct datazones: median / 75th / 90th / 99th percentile / maximum      | 1 / 2 / 5 / 32 / 2,100 |
 
 **Per-wave breakdown.** Dominant Pango-lineage waves used in wave-stratified analyses (additional clusters from inter-wave periods are not shown). "Mean cluster size (non-singletons)" is the mean of cluster sizes among clusters with size > 1, computed as 1 plus the mean positive-count value reported in the analysis tables. "Single-datazone % (non-singletons)" is the fraction of non-singleton clusters confined to a single datazone, excluding singletons (which are single-datazone by construction).
 
-| Wave | Clusters | Singleton % | Mean cluster size (non-singletons) | Single-datazone % (non-singletons) |
-|---|---:|---:|---:|---:|
-| B.1.177 | 4,621 | 54.6 | 7.95 | 8.3 |
-| Alpha | 12,112 | 43.0 | 11.04 | 13.4 |
-| Delta | 74,272 | 54.3 | 7.62 | 11.1 |
-| BA.1 | 32,928 | 57.3 | 10.41 | 10.5 |
-| BA.2 | 38,893 | 56.3 | 7.81 | 13.1 |
-| BA.4 | 2,669 | 66.5 | 5.30 | 12.8 |
-| BA.5 | 16,423 | 66.9 | 4.77 | 13.4 |
-| BQ.1 | 3,314 | 70.9 | 3.29 | 21.2 |
-| XBB | 509 | 74.7 | 3.86 | 22.5 |
+| Wave    | Clusters | Singleton % | Mean cluster size (non-singletons) | Single-datazone % (non-singletons) |
+|---------|---------:|------------:|-----------------------------------:|-----------------------------------:|
+| B.1.177 |    4,621 |        54.6 |                               7.95 |                                8.3 |
+| Alpha   |   12,112 |        43.0 |                              11.04 |                               13.4 |
+| Delta   |   74,272 |        54.3 |                               7.62 |                               11.1 |
+| BA.1    |   32,928 |        57.3 |                              10.41 |                               10.5 |
+| BA.2    |   38,893 |        56.3 |                               7.81 |                               13.1 |
+| BA.4    |    2,669 |        66.5 |                               5.30 |                               12.8 |
+| BA.5    |   16,423 |        66.9 |                               4.77 |                               13.4 |
+| BQ.1    |    3,314 |        70.9 |                               3.29 |                               21.2 |
+| XBB     |      509 |        74.7 |                               3.86 |                               22.5 |
 
 ### 2.2. Deprivation was not associated with larger or more dispersed clusters
 
@@ -148,33 +223,33 @@ Mixing analyses revealed a different pattern. In the primary models among 84,067
 
 **Panel A. Count models** (n = 193,112 clusters for hurdle components; n = 84,067 / 74,010 for positive cluster size and positive geographic spread respectively).
 
-| Covariate (per 1 SD) | Cluster size hurdle (OR) | Cluster size positive (CR) | Geographic spread hurdle (OR) | Geographic spread positive (CR) |
-|---|---:|---:|---:|---:|
-| **SIMD deprivation** | **0.971 (0.960–0.983)**\*\*\* | **0.926 (0.869–0.987)**\* | **1.004 (0.992–1.016)** | **0.851 (0.792–0.915)**\*\*\* |
-| Local cumulative incidence | 1.173 | 1.650 | 1.223 | 1.699 |
-| Local sequencing fraction | 1.067 | 3.240 | 1.047 | 2.269 |
-| Window sequencing proportion | 1.252 | 1.314 | 1.170 | 1.274 |
-| Local test positivity | 1.448 | 2.649 | 1.314 | 2.999 |
+| Covariate (per 1 SD)         |      Cluster size hurdle (OR) | Cluster size positive (CR) | Geographic spread hurdle (OR) | Geographic spread positive (CR) |
+|------------------------------|------------------------------:|---------------------------:|------------------------------:|--------------------------------:|
+| **SIMD deprivation**         | **0.971 (0.960–0.983)**\*\*\* |  **0.926 (0.869–0.987)**\* |       **1.004 (0.992–1.016)** |   **0.851 (0.792–0.915)**\*\*\* |
+| Local cumulative incidence   |                         1.173 |                      1.650 |                         1.223 |                           1.699 |
+| Local sequencing fraction    |                         1.067 |                      3.240 |                         1.047 |                           2.269 |
+| Window sequencing proportion |                         1.252 |                      1.314 |                         1.170 |                           1.274 |
+| Local test positivity        |                         1.448 |                      2.649 |                         1.314 |                           2.999 |
 
 **Panel B. Mixing models** (n = 84,067 non-singleton clusters; outcomes in percentage-point excess discordance).
 
-| Covariate (per 1 SD) | SIMD-quintile mixing (pp) | Age-band mixing (pp) | Sex mixing (pp) | Joint SIMD-age-sex profile mixing (pp) |
-|---|---:|---:|---:|---:|
-| **SIMD deprivation** | **+0.31 (−0.18, +0.80)** | **+1.66 (+1.29, +2.03)**\*\*\* | **−0.78 (−1.16, −0.39)**\*\*\* | **+0.48 (+0.29, +0.67)**\*\*\* |
-| Local cumulative incidence | +4.86 | +1.56 | −0.79 | +1.09 |
-| Local sequencing fraction | −1.22 | −1.02 | −0.36 | −0.54 |
-| Window sequencing proportion | −3.79 | −0.76 | +0.61 | −0.30 |
-| Local test positivity | −6.65 | −0.73 | +1.15 | −0.98 |
-| Log cluster size | +7.49 | +2.80 | −1.20 | +0.98 |
+| Covariate (per 1 SD)         | SIMD-quintile mixing (pp) |           Age-band mixing (pp) |                Sex mixing (pp) | Joint SIMD-age-sex profile mixing (pp) |
+|------------------------------|--------------------------:|-------------------------------:|-------------------------------:|---------------------------------------:|
+| **SIMD deprivation**         |  **+0.31 (−0.18, +0.80)** | **+1.66 (+1.29, +2.03)**\*\*\* | **−0.78 (−1.16, −0.39)**\*\*\* |         **+0.48 (+0.29, +0.67)**\*\*\* |
+| Local cumulative incidence   |                     +4.86 |                          +1.56 |                          −0.79 |                                  +1.09 |
+| Local sequencing fraction    |                     −1.22 |                          −1.02 |                          −0.36 |                                  −0.54 |
+| Window sequencing proportion |                     −3.79 |                          −0.76 |                          +0.61 |                                  −0.30 |
+| Local test positivity        |                     −6.65 |                          −0.73 |                          +1.15 |                                  −0.98 |
+| Log cluster size             |                     +7.49 |                          +2.80 |                          −1.20 |                                  +0.98 |
 
 **Panel C. Mixing-predictor count models** (n = 84,067 non-singleton clusters for cluster size and the geographic-spread hurdle; n = 74,010 for positive geographic spread). The four excess-mixing scores enter the same hurdle/ZTNB specification as Panel A, alongside SIMD deprivation, the four surveillance covariates, lineage fixed effects, and the calendar B-spline. Estimates per 1 SD higher mixing score.
 
-| Mixing predictor (per 1 SD) | Cluster size positive (CR) | Geographic spread hurdle (OR) | Geographic spread positive (CR) |
-|---|---:|---:|---:|
-| SIMD-quintile excess discordance | **3.48 (3.25–3.73)**\*\*\* | **22.11 (18.98–25.75)**\*\*\* | **3.03 (2.79–3.29)**\*\*\* |
-| Age-band excess discordance | **1.67 (1.56–1.78)**\*\*\* | **1.28 (1.25–1.32)**\*\*\* | **1.97 (1.80–2.15)**\*\*\* |
-| Sex excess discordance | **0.85 (0.76–0.95)**\*\* | **0.77 (0.74–0.81)**\*\*\* | 1.06 (0.92–1.22) |
-| Joint SIMD-age-sex profile excess | **0.81 (0.76–0.87)**\*\*\* | **1.03 (1.01–1.05)**\*\* | **0.72 (0.67–0.78)**\*\*\* |
+| Mixing predictor (per 1 SD)       | Cluster size positive (CR) | Geographic spread hurdle (OR) | Geographic spread positive (CR) |
+|-----------------------------------|---------------------------:|------------------------------:|--------------------------------:|
+| SIMD-quintile excess discordance  | **3.48 (3.25–3.73)**\*\*\* | **22.11 (18.98–25.75)**\*\*\* |      **3.03 (2.79–3.29)**\*\*\* |
+| Age-band excess discordance       | **1.67 (1.56–1.78)**\*\*\* |    **1.28 (1.25–1.32)**\*\*\* |      **1.97 (1.80–2.15)**\*\*\* |
+| Sex excess discordance            |   **0.85 (0.76–0.95)**\*\* |    **0.77 (0.74–0.81)**\*\*\* |                1.06 (0.92–1.22) |
+| Joint SIMD-age-sex profile excess | **0.81 (0.76–0.87)**\*\*\* |      **1.03 (1.01–1.05)**\*\* |      **0.72 (0.67–0.78)**\*\*\* |
 
 OR = adjusted odds ratio; CR = adjusted count ratio; pp = percentage points. Significance markers: \* p < 0.05; \*\* p < 0.01; \*\*\* p < 0.001. SIMD ranks were negated and standardised, so positive coefficients in mixing models, and ratios < 1 in count models, indicate associations in the direction of greater deprivation. Excess-mixing scores in Panel C are observed-minus-expected pairwise discordance within lineage × window strata, standardised to unit variance. Sensitivity analyses (health-board-clustered SEs, 99th-percentile winsorisation, index-case SIMD exposure, size-offset cluster-size model, approximately non-overlapping windows, and wave/domain extensions of Panel C) are summarised in the Discussion and reported in full in the supplementary tables.
 

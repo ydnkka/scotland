@@ -50,18 +50,152 @@ def logit_clipped(values: pd.Series, eps: float = 1e-5) -> pd.Series:
 # ---------------------------------------------------------------------------
 
 
+def drop_redundant_columns(
+    x: pd.DataFrame,
+    tol: float = 1e-8,
+    *,
+    check_finite: bool = True,
+) -> pd.DataFrame:
+    """Return a numerically full-rank subset of the columns of ``x``.
+
+    Columns are processed from left to right, so earlier columns are given
+    priority over later columns. A column is retained only if it contributes
+    variation that is not already explained by the columns retained before it.
+    Columns that are numerically zero or linearly redundant up to ``tol`` are
+    discarded.
+
+    Redundancy is assessed using sequential Gram--Schmidt orthogonalisation.
+    For each candidate column, the component lying in the span of the already
+    retained columns is removed. The column is kept if the norm of the
+    remaining residual is larger than ``tol * max(col_norm, sqrt(n))``, where
+    ``col_norm`` is the Euclidean norm of the original column and ``n`` is the
+    number of rows.
+
+    This order-sensitive behaviour is useful for model design matrices where
+    substantive covariates should be protected from being dropped in favour of
+    later nuisance terms. For example, when columns are ordered as intercept,
+    primary covariates, calendar spline terms, and lineage indicators, the
+    lineage indicators are preferentially dropped when they become redundant.
+
+    Parameters
+    ----------
+    x : pandas.DataFrame
+        Design matrix whose columns should be checked for numerical
+        redundancy.
+    tol : float, default=1e-8
+        Numerical tolerance used to decide whether a column is effectively
+        zero or linearly redundant.
+    check_finite : bool, default=True
+        If True, raise a ``ValueError`` when a column contains NaN or infinite
+        values. If False, non-finite columns are silently skipped.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A column subset of ``x`` containing only the retained columns, in their
+        original order.
+
+    Raises
+    ------
+    ValueError
+        If ``check_finite=True`` and any candidate column contains NaN or
+        infinite values.
+
+    Notes
+    -----
+    The result depends on the order of the columns. If several columns are
+    mutually redundant, the earliest valid columns are retained and later
+    redundant columns are dropped.
+    """
+    keep: list[str] = []
+    basis: list[np.ndarray] = []
+
+    n = max(len(x), 1)
+    base_scale = math.sqrt(n)
+
+    for col in x.columns:
+        values = np.asarray(x[col], dtype=float)
+
+        if not np.all(np.isfinite(values)):
+            if check_finite:
+                raise ValueError(
+                    f"Column {col!r} contains non-finite values. "
+                    "Handle NaN or infinite values before fitting the model."
+                )
+            continue
+
+        col_norm = float(np.linalg.norm(values))
+
+        if col_norm <= tol:
+            continue
+
+        residual = values.copy()
+
+        for q in basis:
+            residual -= float(np.dot(q, residual)) * q
+
+        residual_norm = float(np.linalg.norm(residual))
+
+        if residual_norm > tol * max(col_norm, base_scale):
+            keep.append(col)
+            basis.append(residual / residual_norm)
+
+    return x[keep]
+
+
 def build_exog(
     df: pd.DataFrame,
     numeric_terms: Iterable[str],
     calendar_cols: Iterable[str],
     all_lineage_levels: Iterable[str],
+    *,
+    tol: float = 1e-8,
 ) -> pd.DataFrame:
-    """Assemble the model design matrix.
+    """Assemble the full-pandemic model design matrix.
 
-    Columns are ordered: intercept → numeric covariates → calendar spline →
-    lineage dummies (one-hot encoded with the reference level dropped).
-    Empty lineage columns (i.e. levels with no observations in ``df``) are
-    pruned so the matrix stays full rank.
+    The returned matrix contains an intercept, numeric covariates, calendar
+    spline terms, and lineage dummy variables. Columns are ordered as:
+
+    ``const`` -> numeric covariates -> calendar spline terms -> lineage dummies
+
+    This ordering is intentional. The final rank-checking step processes
+    columns from left to right, so earlier substantive terms are preserved in
+    preference to later lineage indicators when redundancy occurs.
+
+    Lineage membership is encoded using ``pandas.Categorical`` with categories
+    fixed by ``all_lineage_levels``. Dummy variables are then generated with
+    ``drop_first=True``, so the first lineage level acts as the reference
+    category. Empty, zero, and linearly redundant columns are removed by
+    ``drop_redundant_columns``.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input data containing ``lineage_model`` as well as the requested
+        numeric and calendar columns.
+    numeric_terms : iterable of str
+        Names of numeric covariates to include after the intercept.
+    calendar_cols : iterable of str
+        Names of calendar spline or time-adjustment columns to include after
+        the numeric covariates.
+    all_lineage_levels : iterable of str
+        Full set of lineage categories to use when constructing dummy
+        variables. The first level is treated as the reference level.
+    tol : float, default=1e-8
+        Numerical tolerance passed to ``drop_redundant_columns``.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A numerically full-rank design matrix with columns retained in their
+        original priority order.
+
+    Raises
+    ------
+    KeyError
+        If ``df`` does not contain one or more requested columns.
+    ValueError
+        If any included column contains NaN or infinite values.
     """
     numeric_terms = list(numeric_terms)
     calendar_cols = list(calendar_cols)
@@ -78,54 +212,19 @@ def build_exog(
         categories=all_lineage_levels,
         ordered=False,
     )
+
     lineage_dummies = pd.get_dummies(
         pd.Series(lineages, index=df.index, name="lineage_model"),
         prefix="lineage",
         drop_first=True,
         dtype=float,
     )
+
     parts.append(lineage_dummies)
 
     x = pd.concat(parts, axis=1)
-    zero_columns = [
-        col
-        for col in x.columns
-        if col not in {"const", *numeric_terms} and float(x[col].abs().sum()) == 0
-    ]
-    if zero_columns:
-        x = x.drop(columns=zero_columns)
-    return x
 
-
-def drop_redundant_columns(x: pd.DataFrame, tol: float = 1e-8) -> pd.DataFrame:
-    """Keep a full-rank column set, preserving earlier columns first.
-
-    The intended use is the wave-stratified design matrix, where sparse
-    lineages may collide with the intercept or with calendar splines.  The
-    column ordering produced by :func:`build_wave_exog` is intercept →
-    primary terms → calendar spline → lineage dummies, so the sequential
-    orthogonalisation always preserves the substantive covariates unless
-    they are themselves redundant within a wave.
-    """
-    keep: list[str] = []
-    basis: list[np.ndarray] = []
-    n = max(len(x), 1)
-    base_scale = math.sqrt(n)
-    for col in x.columns:
-        values = np.asarray(x[col], dtype=float)
-        if not np.all(np.isfinite(values)):
-            continue
-        col_norm = float(np.linalg.norm(values))
-        if col_norm <= tol:
-            continue
-        residual = values.copy()
-        for q in basis:
-            residual -= float(np.dot(q, residual)) * q
-        residual_norm = float(np.linalg.norm(residual))
-        if residual_norm > tol * max(col_norm, base_scale):
-            keep.append(col)
-            basis.append(residual / residual_norm)
-    return x[keep]
+    return drop_redundant_columns(x, tol=tol, check_finite=True)
 
 
 def build_wave_exog(
@@ -133,36 +232,87 @@ def build_wave_exog(
     terms: Iterable[str],
     calendar_cols: Iterable[str],
     lineage_levels_wave: Iterable[str],
+    *,
+    tol: float = 1e-8,
 ) -> pd.DataFrame:
-    """Wave-stratified design matrix.
+    """Assemble a wave-stratified model design matrix.
 
-    Lineage dummies are included when ``lineage_levels_wave`` is non-empty.
-    ``drop_redundant_columns`` handles rank deficiency caused by sparse
-    lineages within a wave, so no manual lineage pre-filtering is needed.
+    The returned matrix contains an intercept, wave-specific covariates,
+    calendar spline terms, and lineage dummy variables for the lineages
+    considered within the wave. Columns are ordered as:
+
+    ``const`` -> primary terms -> calendar spline terms -> lineage dummies
+
+    The matrix is passed through ``drop_redundant_columns`` before being
+    returned. This is especially important in wave-stratified models, where
+    sparse lineages, short time windows, or restricted calendar variation may
+    cause lineage dummies to become redundant with the intercept, calendar
+    spline terms, or other covariates.
+
+    Lineage membership is encoded using ``pandas.Categorical`` with categories
+    fixed by ``lineage_levels_wave``. Dummy variables are generated with
+    ``drop_first=True``, so the first lineage level in ``lineage_levels_wave``
+    acts as the reference level. If no lineage levels are supplied, no lineage
+    dummy variables are added.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Wave-specific input data containing ``lineage_model`` as well as the
+        requested covariate and calendar columns.
+    terms : iterable of str
+        Names of primary covariates to include after the intercept.
+    calendar_cols : iterable of str
+        Names of calendar spline or time-adjustment columns to include after
+        the primary covariates.
+    lineage_levels_wave : iterable of str
+        Lineage categories to encode within the wave. The first level is
+        treated as the reference level when dummy variables are generated.
+    tol : float, default=1e-8
+        Numerical tolerance passed to ``drop_redundant_columns``.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A numerically full-rank wave-specific design matrix with columns
+        retained in their original priority order.
+
+    Raises
+    ------
+    KeyError
+        If ``df`` does not contain one or more requested columns.
+    ValueError
+        If any included column contains NaN or infinite values.
     """
     terms = list(terms)
     calendar_cols = list(calendar_cols)
     lineage_levels_wave = list(lineage_levels_wave)
 
-    parts = [
+    parts: list[pd.DataFrame] = [
         pd.DataFrame({"const": np.ones(len(df), dtype=float)}, index=df.index),
         df[terms].astype(float),
         df[calendar_cols].astype(float),
     ]
+
     if lineage_levels_wave:
         lineages = pd.Categorical(
             df["lineage_model"].astype(str),
             categories=lineage_levels_wave,
             ordered=False,
         )
+
         lineage_dummies = pd.get_dummies(
             pd.Series(lineages, index=df.index, name="lineage_model"),
             prefix="lineage",
             drop_first=True,
             dtype=float,
         )
+
         parts.append(lineage_dummies)
-    return drop_redundant_columns(pd.concat(parts, axis=1))
+
+    x = pd.concat(parts, axis=1)
+
+    return drop_redundant_columns(x, tol=tol, check_finite=True)
 
 
 def lineage_levels(clusters: pd.DataFrame) -> list[str]:
@@ -347,7 +497,7 @@ def fit_ztnb(
         cov *= correction
     bse = np.sqrt(np.clip(np.diag(cov), 0, np.inf))
     z_values = np.divide(params, bse, out=np.full_like(params, np.nan), where=bse > 0)
-    pvalues = 2 * norm.sf(np.abs(z_values))
+    pvalues = np.asarray(2 * norm.sf(np.abs(z_values)))
 
     return ZTNBResult(
         params=params,

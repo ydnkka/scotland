@@ -323,8 +323,8 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         action="store_true",
         default=False,
         help=(
-            "Include log(wn_no_sequences) as an offset in the cluster-size positive "
-            "count model (SAP §6.1 sensitivity)."
+            "Include log(wn_no_sequences) as an offset in the cluster-size hurdle "
+            "and positive count model."
         ),
     )
     parser.add_argument(

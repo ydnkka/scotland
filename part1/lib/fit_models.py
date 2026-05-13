@@ -138,13 +138,14 @@ def _extract_ratio_rows_from_arrays(
 def fit_binary_component(
     clusters: pd.DataFrame,
     spec: CountModelSpec,
-    lineage_levels_all: list[str],
-    calendar_cols: list[str],
+    lineage_levels_all: Iterable[str],
+    calendar_cols: Iterable[str],
     maxiter: int,
     cluster_by: str = "window_id",
     primary_terms: Iterable[str] = PRIMARY_TERMS,
-    extra_terms: list[str] | None = None,
+    extra_terms: Iterable[str] | None = None,
     analysis_population_label: str | None = None,
+    use_size_offset: bool = False,
 ) -> tuple[pd.DataFrame, dict]:
     terms = _model_terms(spec, primary_terms=primary_terms, extra_terms=extra_terms)
     if spec.include_size:
@@ -153,10 +154,16 @@ def fit_binary_component(
         use = clusters.copy()
     use = use.dropna(subset=[spec.binary_col, *terms, *calendar_cols, "lineage_model"]).copy()
     y = use[spec.binary_col].astype(int)
+
+    offset: np.ndarray | None = None
+    if use_size_offset and spec.name == "cluster_size":
+        wn_seq = use["wn_no_sequences"].to_numpy(dtype=float)
+        offset = np.log(np.clip(wn_seq, 1.0, None))
+
     x = build_exog(use, terms, calendar_cols, lineage_levels_all)
     groups = use[cluster_by].astype(str).to_numpy()
 
-    model = sm.GLM(y, x, family=sm.families.Binomial())
+    model = sm.GLM(y, x, family=sm.families.Binomial(), offset=offset)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always", ConvergenceWarning)
         result = model.fit(
@@ -180,7 +187,7 @@ def fit_binary_component(
             "response": spec.binary_col,
             "n_observations": len(use),
             "n_events": int(y.sum()),
-        },
+        }
     )
     diag = {
         "outcome": spec.name,
@@ -199,6 +206,7 @@ def fit_binary_component(
         "n_lineage_terms_used": int(sum(col.startswith("lineage_") for col in x.columns)),
         "n_windows": int(use["window_id"].nunique()),
         "cluster_by": cluster_by,
+        "size_offset_used": bool(offset is not None),
         "converged": bool(getattr(result, "converged", False)),
         "log_likelihood": float(result.llf),
         "aic": float(result.aic),
@@ -210,14 +218,14 @@ def fit_binary_component(
 def fit_positive_component(
     clusters: pd.DataFrame,
     spec: CountModelSpec,
-    lineage_levels_all: list[str],
-    calendar_cols: list[str],
+    lineage_levels_all: Iterable[str],
+    calendar_cols: Iterable[str],
     maxiter: int,
     cluster_by: str = "window_id",
     use_size_offset: bool = False,
     winsorise_quantile: float = 0.0,
     primary_terms: Iterable[str] = PRIMARY_TERMS,
-    extra_terms: list[str] | None = None,
+    extra_terms: Iterable[str] | None = None,
 ) -> tuple[pd.DataFrame, dict]:
     terms = _model_terms(spec, primary_terms=primary_terms, extra_terms=extra_terms)
     use = clusters.loc[clusters[spec.positive_col] > 0].dropna(
@@ -235,7 +243,7 @@ def fit_positive_component(
         y = np.minimum(y, winsorise_cap)
         winsorised = True
 
-    # Window-pool size offset for cluster-size model (SAP §6.1).
+    # Window-pool size offset for cluster-size model.
     offset: np.ndarray | None = None
     if use_size_offset and spec.name == "cluster_size":
         wn_seq = use["wn_no_sequences"].to_numpy(dtype=float)
@@ -303,8 +311,8 @@ def fit_positive_component(
 
 def fit_count_models(
     clusters: pd.DataFrame,
-    lineage_levels_all: list[str],
-    calendar_cols: list[str],
+    lineage_levels_all: Iterable[str],
+    calendar_cols: Iterable[str],
     maxiter: int,
     cluster_by: str = "window_id",
     use_size_offset: bool = False,
@@ -319,7 +327,9 @@ def fit_count_models(
             print(f"  - {spec.name}: hurdle binary", flush=True)
             rows, diag = fit_binary_component(
                 clusters, spec, lineage_levels_all, calendar_cols, maxiter,
-                cluster_by=cluster_by, primary_terms=primary_terms,
+                cluster_by=cluster_by,
+                use_size_offset=use_size_offset,
+                primary_terms=primary_terms,
             )
             result_frames.append(rows)
             diagnostics.append(diag)
@@ -363,7 +373,7 @@ def _add_predictor_set_metadata(
     diag: dict,
     *,
     predictor_set: str,
-    extra_terms: list[str],
+    extra_terms: Iterable[str],
 ) -> tuple[pd.DataFrame, dict]:
     rows = rows.copy()
     if not rows.empty:
@@ -413,6 +423,7 @@ def fit_mixing_predictor_count_models(
                     calendar_cols,
                     maxiter,
                     cluster_by=cluster_by,
+                    use_size_offset=use_size_offset,
                     primary_terms=primary_terms,
                     extra_terms=MIXING_PREDICTOR_TERMS,
                     analysis_population_label=analysis_population,
