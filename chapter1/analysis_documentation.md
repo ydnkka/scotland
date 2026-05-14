@@ -78,7 +78,7 @@ group level.
 Outcome | Form
 ---|---
 `cluster_size` | `log E[size − 1] = β₀ + β·(excess mixing) + γ·(adjustments) + spline(window_idx) + lineage`
-`cluster_n_datazones` | `log E[datazones − 1] = β₀ + β·(excess mixing) + γ·(adjustments) + spline(window_idx) + lineage`
+`cluster_n_datazones` | `log datazones = β₀ + β·(excess mixing) + γ·(adjustments) + spline(window_idx) + lineage`
 
 Both equations are fit on non-singleton clusters with ZTNB.
 
@@ -152,13 +152,12 @@ health, access, crime, housing).  Age and sex stay in.
 
 **Epidemic wave** (`fit_wave_stratified`): refits the main model
 within each wave, using a wave-restricted lineage list.  Waves with
-fewer than 200 non-singleton clusters are skipped to avoid unstable
+fewer than 50 non-singleton clusters are skipped to avoid unstable
 fits, with the omission recorded in the diagnostics file.
 
 ## 6. Interpreting the outputs
 
-Coefficients on z-scored predictors are per-SD effects.  For the ZTNB
-and hurdle components the table reports both the raw coefficient and
+Coefficients on z-scored predictors are per-SD effects.  The table reports both the raw coefficient and
 its exp() rate ratio plus 95% CI; the linear-component column is
 populated only by the size-spline rows.
 

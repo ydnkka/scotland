@@ -59,28 +59,28 @@ def run(
     seq = read_sequence_rows(
         qc=qc, primary_resolution=primary_resolution, include_domains=True,
     )
-    # print(
-    #     f"[chapter1.domain] building cluster table from {len(seq):,} rows",
-    #     flush=True,
-    # )
-    # clusters, scaling, _ = build_domain_cluster_table(
-    #     seq,
-    #     lineage_min_clusters=lineage_min_clusters,
-    #     calendar_spline_df=calendar_spline_df,
-    # )
-    # clusters.to_parquet(cache_dir / "domain_cluster_table.parquet", index=False)
-    # scaling.to_csv(tables_dir / "domain_covariate_scaling.csv", index=False)
-    #
-    # print("[chapter1.domain] fitting domain-stratified main effects", flush=True)
-    # domain_results, domain_diag = fit_domain_main_effects(
-    #     clusters, cluster_by=cluster_by, maxiter=maxiter,
-    # )
-    # domain_results.to_csv(
-    #     tables_dir / "domain_main_effects_results.csv", index=False,
-    # )
-    # domain_diag.to_csv(
-    #     tables_dir / "domain_main_effects_diagnostics.csv", index=False,
-    # )
+    print(
+        f"[chapter1.domain] building cluster table from {len(seq):,} rows",
+        flush=True,
+    )
+    clusters, scaling, _ = build_domain_cluster_table(
+        seq,
+        lineage_min_clusters=lineage_min_clusters,
+        calendar_spline_df=calendar_spline_df,
+    )
+    clusters.to_parquet(cache_dir / "domain_cluster_table.parquet", index=False)
+    scaling.to_csv(tables_dir / "domain_covariate_scaling.csv", index=False)
+
+    print("[chapter1.domain] fitting domain-stratified main effects", flush=True)
+    domain_results, domain_diag = fit_domain_main_effects(
+        clusters, cluster_by=cluster_by, maxiter=maxiter,
+    )
+    domain_results.to_csv(
+        tables_dir / "domain_main_effects_results.csv", index=False,
+    )
+    domain_diag.to_csv(
+        tables_dir / "domain_main_effects_diagnostics.csv", index=False,
+    )
 
     print("[chapter1.domain] Building primary-resolution observed-vs-expected mixing matrices", flush=True)
     matrices = pd.concat(
@@ -89,26 +89,26 @@ def run(
     )
     matrices.to_csv(tables_dir / "observed_expected_mixing_matrices.csv", index=False)
 
-    # plot_stratified_forest(
-    #     domain_results,
-    #     figures_dir / "domain_forest",
-    #     stratum_col="domain",
-    #     terms=[
-    #         "age_excess_mixing_z",
-    #         "sex_excess_mixing_z",
-    #         "overall_domain_excess_mixing_z",
-    #         "income_domain_excess_mixing_z",
-    #         "employment_domain_excess_mixing_z",
-    #         "education_domain_excess_mixing_z",
-    #         "health_domain_excess_mixing_z",
-    #         "access_domain_excess_mixing_z",
-    #         "crime_domain_excess_mixing_z",
-    #         "housing_domain_excess_mixing_z",
-    #     ],
-    #     title="Excess mixing → cluster scale, by SIMD domain",
-    # )
-    # print(f"[chapter1.domain] tables written under {tables_dir}", flush=True)
-    # print(f"[chapter1.domain] figures written under {figures_dir}", flush=True)
+    plot_stratified_forest(
+        domain_results,
+        figures_dir / "domain_forest",
+        stratum_col="domain",
+        terms=[
+            "age_excess_mixing_z",
+            "sex_excess_mixing_z",
+            "overall_domain_excess_mixing_z",
+            "income_domain_excess_mixing_z",
+            "employment_domain_excess_mixing_z",
+            "education_domain_excess_mixing_z",
+            "health_domain_excess_mixing_z",
+            "access_domain_excess_mixing_z",
+            "crime_domain_excess_mixing_z",
+            "housing_domain_excess_mixing_z",
+        ],
+        title="Excess mixing → cluster scale, by SIMD domain",
+    )
+    print(f"[chapter1.domain] tables written under {tables_dir}", flush=True)
+    print(f"[chapter1.domain] figures written under {figures_dir}", flush=True)
 
 
 def parse_args(argv=None) -> argparse.Namespace:

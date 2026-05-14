@@ -164,10 +164,9 @@ def _fit_outcome(
     """Fit a ZTNB on the non-singleton sub-population.
 
     Chapter 1 is ZTNB-only: the population is non-singleton clusters
-    (``cluster_size > 1``).
     """
     full = clusters.dropna(subset=list(numeric_terms)).copy()
-    df_pos = full.loc[full["cluster_size"] > 1].copy()
+    df_pos = full.loc[full["cluster_size"] >= 2].copy()
 
     if len(df_pos) == 0:
         return pd.DataFrame(), [_diagnostic_row(
@@ -593,7 +592,7 @@ def fit_wave_stratified(
     *,
     cluster_by: str = "window_id",
     maxiter: int = 1000,
-    min_clusters_per_wave: int = 200,
+    min_clusters_per_wave: int = 50,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Refit the main model separately within each wave.
 

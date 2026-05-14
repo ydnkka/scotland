@@ -38,7 +38,7 @@ def run(
     calendar_spline_df: int = CALENDAR_SPLINE_DF,
     cluster_by: str = "window_id",
     maxiter: int = 1000,
-    min_clusters_per_wave: int = 200,
+    min_clusters_per_wave: int = 50,
     tables_dir: Path | None = None,
     figures_dir: Path | None = None,
     cache_dir: Path | None = None,
