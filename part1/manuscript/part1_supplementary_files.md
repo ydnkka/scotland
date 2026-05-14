@@ -72,40 +72,40 @@ Same contrast as Supplementary Figure 9 but for the four mixing predictors (SIMD
 
 Window-clustered hurdle (binomial GLM with logit link) odds ratios for the four mixing predictors (SIMD-quintile, age, sex, age-sex profile excess mixing) by epidemic wave. This component is omitted from Figure 4 because the SIMD coefficient reaches an odds ratio of ~29,000 in the Alpha wave (95% CI 6,450-129,898), making a heatmap uninformative.
 
-| Wave Group | Mixing predictor | Ratio (95% CI) | p | Notes |
-| --- | --- | --- | --- | --- |
-| Alpha | Age | 1.41 (1.26–1.58) | 1.5e-09 |  |
-| Alpha | Joint profile | 0.904 (0.833–0.981) | 0.0158 |  |
-| Alpha | Sex | 0.955 (0.895–1.02) | 0.167 |  |
-| Alpha | SIMD | 28945 (6450–129898) | 5.2e-41 |  |
-| B.1.177 | Age | 1.96 (1.56–2.47) | 6.1e-09 |  |
-| B.1.177 | Joint profile | 0.845 (0.697–1.02) | 0.0865 |  |
-| B.1.177 | Sex | 0.772 (0.619–0.963) | 0.0218 |  |
-| B.1.177 | SIMD | 22.8 (13.5–38.5) | 1.7e-31 |  |
-| BA.1 | Age | 1.36 (1.29–1.43) | 2.0e-32 |  |
-| BA.1 | Joint profile | 1.04 (0.995–1.08) | 0.088 |  |
-| BA.1 | Sex | 0.791 (0.755–0.828) | 8.7e-24 |  |
-| BA.1 | SIMD | 34.8 (22.2–54.6) | 1.0e-53 |  |
-| BA.2 | Age | 1.21 (1.14–1.3) | 3.8e-09 |  |
-| BA.2 | Joint profile | 1.05 (0.993–1.11) | 0.0837 |  |
-| BA.2 | Sex | 0.656 (0.626–0.688) | 3.4e-68 |  |
-| BA.2 | SIMD | 27 (21.2–34.4) | 5.5e-156 |  |
-| BA.4 | Age | 1.67 (1.16–2.41) | 0.00563 |  |
-| BA.4 | Joint profile | 1.46 (1.16–1.82) | 0.00104 |  |
-| BA.4 | Sex | 0.478 (0.304–0.752) | 0.00142 |  |
-| BA.4 | SIMD | 7.82 (5.34–11.4) | 3.4e-26 |  |
-| BA.5 | Age | 1.35 (1.19–1.54) | 4.9e-06 |  |
-| BA.5 | Joint profile | 1.28 (1.18–1.39) | 2.3e-09 |  |
-| BA.5 | Sex | 0.552 (0.479–0.637) | 3.5e-16 |  |
-| BA.5 | SIMD | 11 (9.34–12.9) | 3.9e-190 |  |
-| BQ.1 | Age | 1.31 (0.996–1.72) | 0.0536 |  |
-| BQ.1 | Joint profile | 1.09 (0.819–1.46) | 0.545 |  |
-| BQ.1 | Sex | 0.641 (0.524–0.783) | 1.3e-05 |  |
-| BQ.1 | SIMD | 7.05 (4.72–10.5) | 1.2e-21 |  |
-| Delta | Age | 1.22 (1.15–1.3) | 1.4e-10 |  |
-| Delta | Joint profile | 0.998 (0.973–1.02) | 0.846 |  |
-| Delta | Sex | 0.841 (0.789–0.897) | 9.9e-08 |  |
-| Delta | SIMD | 50.5 (38.7–65.8) | 7.1e-185 |  |
+> | Wave Group | Mixing predictor | Ratio (95% CI)      | p        | Notes |
+> |------------|------------------|---------------------|----------|-------|
+> | Alpha      | Age              | 1.41 (1.26–1.58)    | 1.5e-09  |       |
+> | Alpha      | Joint profile    | 0.904 (0.833–0.981) | 0.0158   |       |
+> | Alpha      | Sex              | 0.955 (0.895–1.02)  | 0.167    |       |
+> | Alpha      | SIMD             | 28945 (6450–129898) | 5.2e-41  |       |
+> | B.1.177    | Age              | 1.96 (1.56–2.47)    | 6.1e-09  |       |
+> | B.1.177    | Joint profile    | 0.845 (0.697–1.02)  | 0.0865   |       |
+> | B.1.177    | Sex              | 0.772 (0.619–0.963) | 0.0218   |       |
+> | B.1.177    | SIMD             | 22.8 (13.5–38.5)    | 1.7e-31  |       |
+> | BA.1       | Age              | 1.36 (1.29–1.43)    | 2.0e-32  |       |
+> | BA.1       | Joint profile    | 1.04 (0.995–1.08)   | 0.088    |       |
+> | BA.1       | Sex              | 0.791 (0.755–0.828) | 8.7e-24  |       |
+> | BA.1       | SIMD             | 34.8 (22.2–54.6)    | 1.0e-53  |       |
+> | BA.2       | Age              | 1.21 (1.14–1.3)     | 3.8e-09  |       |
+> | BA.2       | Joint profile    | 1.05 (0.993–1.11)   | 0.0837   |       |
+> | BA.2       | Sex              | 0.656 (0.626–0.688) | 3.4e-68  |       |
+> | BA.2       | SIMD             | 27 (21.2–34.4)      | 5.5e-156 |       |
+> | BA.4       | Age              | 1.67 (1.16–2.41)    | 0.00563  |       |
+> | BA.4       | Joint profile    | 1.46 (1.16–1.82)    | 0.00104  |       |
+> | BA.4       | Sex              | 0.478 (0.304–0.752) | 0.00142  |       |
+> | BA.4       | SIMD             | 7.82 (5.34–11.4)    | 3.4e-26  |       |
+> | BA.5       | Age              | 1.35 (1.19–1.54)    | 4.9e-06  |       |
+> | BA.5       | Joint profile    | 1.28 (1.18–1.39)    | 2.3e-09  |       |
+> | BA.5       | Sex              | 0.552 (0.479–0.637) | 3.5e-16  |       |
+> | BA.5       | SIMD             | 11 (9.34–12.9)      | 3.9e-190 |       |
+> | BQ.1       | Age              | 1.31 (0.996–1.72)   | 0.0536   |       |
+> | BQ.1       | Joint profile    | 1.09 (0.819–1.46)   | 0.545    |       |
+> | BQ.1       | Sex              | 0.641 (0.524–0.783) | 1.3e-05  |       |
+> | BQ.1       | SIMD             | 7.05 (4.72–10.5)    | 1.2e-21  |       |
+> | Delta      | Age              | 1.22 (1.15–1.3)     | 1.4e-10  |       |
+> | Delta      | Joint profile    | 0.998 (0.973–1.02)  | 0.846    |       |
+> | Delta      | Sex              | 0.841 (0.789–0.897) | 9.9e-08  |       |
+> | Delta      | SIMD             | 50.5 (38.7–65.8)    | 7.1e-185 |       |
 
 *Full coefficient, standard error, z, n_observations, and n_events columns are in the companion CSV.*
 
@@ -115,40 +115,40 @@ Window-clustered hurdle (binomial GLM with logit link) odds ratios for the four 
 
 Window-clustered hurdle odds ratios for the four mixing predictors (domain-quintile, age, sex, age-sex profile excess mixing) in each per-domain model. The crime and education rows have point estimates but no cluster-robust SE, CI or p-value because the window-clustered sandwich variance estimator failed numerically for those two hurdle fits (Hessian effectively singular under the heavy outcome imbalance, 88% of clusters being multi-datazone). Point estimates remain valid.
 
-| Domain | Mixing predictor | Ratio (95% CI) | p | Notes |
-| --- | --- | --- | --- | --- |
-| Access | Age | 1.35 (1.31–1.4) | 3.8e-69 |  |
-| Access | Age-sex | 0.995 (0.96–1.03) | 0.789 |  |
-| Access | Domain quintile | 22.1 (19–25.8) | <1e-300 |  |
-| Access | Sex | 0.802 (0.769–0.838) | 9.1e-24 |  |
-| Crime | Age | 1.29 (CI unavailable) | — | cluster-robust SE unavailable (Hessian singular); point estimate only |
-| Crime | Age-sex | 1.04 (CI unavailable) | — | cluster-robust SE unavailable (Hessian singular); point estimate only |
-| Crime | Domain quintile | 23.1 (CI unavailable) | — | cluster-robust SE unavailable (Hessian singular); point estimate only |
-| Crime | Sex | 0.799 (CI unavailable) | — | cluster-robust SE unavailable (Hessian singular); point estimate only |
-| Education | Age | 1.28 (CI unavailable) | — | cluster-robust SE unavailable (Hessian singular); point estimate only |
-| Education | Age-sex | 1.02 (CI unavailable) | — | cluster-robust SE unavailable (Hessian singular); point estimate only |
-| Education | Domain quintile | 22.1 (CI unavailable) | — | cluster-robust SE unavailable (Hessian singular); point estimate only |
-| Education | Sex | 0.794 (CI unavailable) | — | cluster-robust SE unavailable (Hessian singular); point estimate only |
-| Employment | Age | 1.29 (1.25–1.33) | 2.6e-63 |  |
-| Employment | Age-sex | 1.02 (0.99–1.05) | 0.205 |  |
-| Employment | Domain quintile | 21.8 (18.7–25.4) | <1e-300 |  |
-| Employment | Sex | 0.789 (0.759–0.821) | 2.2e-32 |  |
-| Health | Age | 1.3 (1.26–1.34) | 1.7e-62 |  |
-| Health | Age-sex | 1.02 (0.986–1.05) | 0.289 |  |
-| Health | Domain quintile | 22.7 (19.4–26.5) | <1e-300 |  |
-| Health | Sex | 0.805 (0.772–0.841) | 4.8e-23 |  |
-| Housing | Age | 1.3 (1.25–1.34) | 2.5e-54 |  |
-| Housing | Age-sex | 1.03 (1–1.06) | 0.0265 |  |
-| Housing | Domain quintile | 23.4 (20.2–27.1) | <1e-300 |  |
-| Housing | Sex | 0.778 (0.743–0.814) | 1.6e-27 |  |
-| Income | Age | 1.29 (1.25–1.33) | 6.6e-65 |  |
-| Income | Age-sex | 1.03 (1–1.06) | 0.0425 |  |
-| Income | Domain quintile | 22.1 (19.1–25.5) | <1e-300 |  |
-| Income | Sex | 0.774 (0.744–0.806) | 3.1e-35 |  |
-| Overall | Age | 1.29 (1.25–1.33) | 2.1e-61 |  |
-| Overall | Age-sex | 1.03 (1.01–1.06) | 0.0151 |  |
-| Overall | Domain quintile | 22.2 (19.1–25.8) | <1e-300 |  |
-| Overall | Sex | 0.771 (0.738–0.807) | 5.2e-30 |  |
+> | Domain     | Mixing predictor | Ratio (95% CI)         | p       | Notes                                                                 |
+> |------------|------------------|------------------------|---------|-----------------------------------------------------------------------|
+> | Access     | Age              | 1.35 (1.31–1.4)        | 3.8e-69 |                                                                       |
+> | Access     | Age-sex          | 0.995 (0.96–1.03)      | 0.789   |                                                                       |
+> | Access     | Domain quintile  | 22.1 (19–25.8)         | <1e-300 |                                                                       |
+> | Access     | Sex              | 0.802 (0.769–0.838)    | 9.1e-24 |                                                                       |
+> | Crime      | Age              | 1.29 (CI unavailable)  | —       | cluster-robust SE unavailable (Hessian singular); point estimate only |
+> | Crime      | Age-sex          | 1.04 (CI unavailable)  | —       | cluster-robust SE unavailable (Hessian singular); point estimate only |
+> | Crime      | Domain quintile  | 23.1 (CI unavailable)  | —       | cluster-robust SE unavailable (Hessian singular); point estimate only |
+> | Crime      | Sex              | 0.799 (CI unavailable) | —       | cluster-robust SE unavailable (Hessian singular); point estimate only |
+> | Education  | Age              | 1.28 (CI unavailable)  | —       | cluster-robust SE unavailable (Hessian singular); point estimate only |
+> | Education  | Age-sex          | 1.02 (CI unavailable)  | —       | cluster-robust SE unavailable (Hessian singular); point estimate only |
+> | Education  | Domain quintile  | 22.1 (CI unavailable)  | —       | cluster-robust SE unavailable (Hessian singular); point estimate only |
+> | Education  | Sex              | 0.794 (CI unavailable) | —       | cluster-robust SE unavailable (Hessian singular); point estimate only |
+> | Employment | Age              | 1.29 (1.25–1.33)       | 2.6e-63 |                                                                       |
+> | Employment | Age-sex          | 1.02 (0.99–1.05)       | 0.205   |                                                                       |
+> | Employment | Domain quintile  | 21.8 (18.7–25.4)       | <1e-300 |                                                                       |
+> | Employment | Sex              | 0.789 (0.759–0.821)    | 2.2e-32 |                                                                       |
+> | Health     | Age              | 1.3 (1.26–1.34)        | 1.7e-62 |                                                                       |
+> | Health     | Age-sex          | 1.02 (0.986–1.05)      | 0.289   |                                                                       |
+> | Health     | Domain quintile  | 22.7 (19.4–26.5)       | <1e-300 |                                                                       |
+> | Health     | Sex              | 0.805 (0.772–0.841)    | 4.8e-23 |                                                                       |
+> | Housing    | Age              | 1.3 (1.25–1.34)        | 2.5e-54 |                                                                       |
+> | Housing    | Age-sex          | 1.03 (1–1.06)          | 0.0265  |                                                                       |
+> | Housing    | Domain quintile  | 23.4 (20.2–27.1)       | <1e-300 |                                                                       |
+> | Housing    | Sex              | 0.778 (0.743–0.814)    | 1.6e-27 |                                                                       |
+> | Income     | Age              | 1.29 (1.25–1.33)       | 6.6e-65 |                                                                       |
+> | Income     | Age-sex          | 1.03 (1–1.06)          | 0.0425  |                                                                       |
+> | Income     | Domain quintile  | 22.1 (19.1–25.5)       | <1e-300 |                                                                       |
+> | Income     | Sex              | 0.774 (0.744–0.806)    | 3.1e-35 |                                                                       |
+> | Overall    | Age              | 1.29 (1.25–1.33)       | 2.1e-61 |                                                                       |
+> | Overall    | Age-sex          | 1.03 (1.01–1.06)       | 0.0151  |                                                                       |
+> | Overall    | Domain quintile  | 22.2 (19.1–25.8)       | <1e-300 |                                                                       |
+> | Overall    | Sex              | 0.771 (0.738–0.807)    | 5.2e-30 |                                                                       |
 
 *Full coefficient, standard error, z, n_observations, and n_events columns are in the companion CSV.*
 

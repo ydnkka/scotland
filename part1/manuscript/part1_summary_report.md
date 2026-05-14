@@ -1,32 +1,21 @@
 # Scottish SARS-CoV-2 Genomic Clustering: Part 1 Summary Report
 
-Prepared: 6 May 2026
-
 ## 1. Introduction
 
 This Part 1 analysis asks whether socioeconomic deprivation and local
-surveillance conditions are associated with the structure of SARS-CoV-2 genomic
-clusters in Scotland. The main question is whether clusters linked to more
-deprived areas are larger, more geographically dispersed, or
-more socially/demographically mixed after accounting for lineage, calendar time,
-local incidence, sequencing intensity, and test positivity.
+surveillance conditions are associated with the structure of SARS-CoV-2 genomic clusters in Scotland. It follows two linked lines of inquiry: first, whether clusters linked to more deprived areas are larger, more geographically dispersed, or more sociodemographically mixed after accounting for lineage, calendar time, local incidence, sequencing intensity, and test positivity; and second, whether within-cluster mixing across socioeconomic and demographic groups itself predicts cluster size and geographic spread.
 
-The core conclusion is cautious: deprivation is associated with some aspects of
-cluster structure, but not in the simple direction of larger or
-more geographically dispersed clusters. Surveillance and epidemic context are
-strong drivers of apparent cluster scale, while deprivation signals are clearest
-in demographic mixing and in selected SIMD domains.
+The core conclusion is cautious: deprivation is associated with some aspects of cluster structure, but not in the simple direction of larger or more geographically dispersed clusters. Surveillance and epidemic context are strong drivers of apparent cluster scale, while deprivation signals are clearest in demographic mixing, selected SIMD domains, and specific epidemic waves. In the reverse modelling direction, clusters that bridge more across SIMD quintiles and age bands are detected as substantially larger and more geographically dispersed, suggesting that cluster scale reflects both who appears in a cluster and how sampled cases bridge social groups under a given surveillance regime.
 
 ## 2. Analysis Population
 
-The analysis used a primary Leiden clustering resolution of `0.3`. Below is some
+The analysis used a primary Leiden clustering resolution of $\gamma = 0.3$. Below is some
 summary information about the dataset:
 
-- QC filter: `nextclade_qc == "good"`
+- QC filter: overall Nextclade quality filter passed
 - Unit of analysis: one inferred genomic cluster at the primary resolution within calendar window
 - Sequence rows used: 789,347 (281,320 unique sequences)
-- Inferred clusters before model-field filtering: 193,160
-- Cluster rows used in the main regression models: 193,112
+- Inferred clusters used in the main regression models: 193,112
 - Sliding time windows: 134
 - Raw Pango lineages: 788
 - Modelled lineage levels after rare-lineage pooling: 183
@@ -96,8 +85,8 @@ The models adjusted for:
 - Local sequencing fraction
 - Window-level sequencing proportion
 - Local test positivity
-- Pango lineage, with rare lineages pooled into `Other` rare lineages
-- Calendar time using an 8 df B-spline over `window_idx`
+- Pango lineage, with rare lineages pooled into an "Other rare lineages" category
+- Calendar time using a cubic B-spline over the analysis-window index
 
 Mixing models additionally adjusted for cluster size.
 
@@ -113,10 +102,10 @@ hurdle models:
 
 Outcome-specific definitions:
 
-- **Cluster size:** hurdle is `cluster_size > 1`; positive count is
-  `cluster_size - 1`.
-- **Geographic spread:** hurdle is `cluster_n_datazones > 1`; positive count is
-  `cluster_n_datazones - 1`.
+- **Cluster size:** hurdle is whether the cluster exceeds a singleton; positive
+  count is the number of additional sequences beyond a singleton.
+- **Geographic spread:** hurdle is whether the cluster spans more than one
+  datazone; positive count is the number of additional datazones beyond one.
 
 This formulation separates the probability of exceeding the structural minimum
 from the magnitude of the outcome among clusters that exceed it.
@@ -163,52 +152,29 @@ Additional analyses included:
 ## 5. Main Figures
 
 The Part 1 manuscript organises results around two complementary lines of
-inquiry. Lines 1–2 of the figures cover the deprivation-as-exposure analyses;
-lines 3–4 cover the reverse direction, with the four cluster-level
-excess-mixing scores entered as predictors of cluster size and geographic
-spread. Supplementary figures and tables extend each main figure to SIMD
-subdomain breakdowns, sensitivities, and model-form comparators.
+inquiry. First, main figures 1 and 2 cover the deprivation-as-exposure analyses; figures 3 and 4 cover the reverse direction, with the four cluster-level  excess-mixing scores entered as predictors of cluster size and geographic spread. Supplementary figures and tables extend each main figure to SIMD subdomain breakdowns, sensitivities, and model-form comparators.
 
 ### 5.1. Figure 1: Deprivation As Exposure — Overall Effects On Cluster Outcomes And Mixing
 
-This is the core figure for the deprivation-as-exposure analyses. The top row
-shows adjusted odds ratios (hurdle components) and ZTNB count ratios (positive
-components) for cluster size and geographic spread; the bottom row shows
-adjusted percentage-point changes in observed-minus-expected excess mixing for
-SIMD-quintile, age, sex, and joint sociodemographic profile.
+This is the core figure for the deprivation-as-exposure analyses. The top row shows adjusted odds ratios (hurdle components) and ZTNB count ratios (positive components) for cluster size and geographic spread; the bottom row shows adjusted percentage-point changes in observed-minus-expected excess mixing for SIMD-quintile, age, sex, and joint sociodemographic profile.
 
 ![Figure 1](figures/fig1_deprivation_overall.png)
 
 ### 5.2. Figure 2: Deprivation As Exposure — Wave-Specific Effects On Cluster Outcomes
 
-This figure shows that deprivation effects on the four count-model components
-vary by epidemic wave. It helps avoid overinterpreting the pooled deprivation
-effect as a single stable process. Delta shows the clearest negative
-associations; BA.2 and BA.4 contrast with positive positive-count estimates.
+This figure shows that deprivation effects on the four count-model components vary by epidemic wave. It helps avoid overinterpreting the pooled deprivation effect as a single stable process. Delta shows the clearest negative associations; BA.2 and BA.4 contrast with positive positive-count estimates.
 
 ![Figure 2](figures/fig2_deprivation_wave_specific.png)
 
 ### 5.3. Figure 3: Excess Mixing As Predictor — Overall Effects On Cluster Scale
 
-Three-panel coefficient plot reversing the modelling direction: the four
-cluster-level excess-mixing scores (SIMD-quintile, age, sex, joint profile)
-enter as predictors alongside SIMD deprivation and the surveillance
-covariates. SIMD-quintile and age excess discordance are strongly positively
-associated with positive cluster size and positive geographic spread; joint
-profile mixing is negatively associated. The cluster-size hurdle is omitted
-because mixing scores are undefined for singletons.
+Three-panel coefficient plot reversing the modelling direction: the four cluster-level excess-mixing scores (SIMD-quintile, age, sex, joint profile) enter as predictors alongside SIMD deprivation and the surveillance covariates. SIMD-quintile and age excess discordance are strongly positively associated with positive cluster size and positive geographic spread; joint profile mixing is negatively associated. The cluster-size hurdle is omitted because mixing scores are undefined for singletons.
 
 ![Figure 3](figures/fig3_mixing_overall.png)
 
 ### 5.4. Figure 4: Excess Mixing As Predictor — Wave-Specific Effects On Cluster Scale (ZTNB)
 
-Two-panel heatmap of per-wave mixing-predictor effects on the ZTNB cluster-size
-and ZTNB geographic-spread components. A single shared ratio-scale colour bar
-spans 0.2–5 with `extend="both"` triangles; cells are annotated with the raw
-count ratio. The geographic-spread hurdle component is reported separately in
-Supplementary Table 1 because the heavily imbalanced binary outcome combines
-with the strong SIMD-excess-mixing predictor to produce implausibly large
-adjusted odds ratios (~29,000 in Alpha) that obscure heatmap interpretation.
+Two-panel heatmap of per-wave mixing-predictor effects on the ZTNB cluster-size and ZTNB geographic-spread components. The geographic-spread hurdle component is reported separately in Supplementary Table 1 because the heavily imbalanced binary outcome combines with the strong SIMD-quintile excess-mixing predictor to produce implausibly large adjusted odds ratios (approximately 29,000 in Alpha) that obscure heatmap interpretation.
 
 ![Figure 4](figures/fig4_mixing_wave_specific.png)
 
@@ -217,28 +183,22 @@ adjusted odds ratios (~29,000 in Alpha) that obscure heatmap interpretation.
 Two supplementary figures are particularly useful for reading the main
 results in context:
 
-- **Supplementary Figure 1** (outcome distributions, `supp_fig1_outcome_distributions.png`)
-  motivates the hurdle/ZTNB formulation by showing the structural mass at the
+- **Supplementary Figure 1**: The outcome distributions motivate the hurdle/ZTNB formulation by showing the structural mass at the
   count minima and the long right tails of the non-singleton distributions.
-- **Supplementary Figure 8** (size-adjusted positive counts, `supp_fig8_deprivation_size_adjusted.png`)
-  shows that the unadjusted negative SIMD-deprivation association with
-  positive geographic spread flips to a weakly positive association after
-  conditioning on cluster size — deprivation affects cluster scale, not
-  geographic diffusion at comparable cluster sizes.
 
-Full panel-by-panel descriptions of all 10 supplementary figures and the two
-supplementary tables (Supplementary Table 1, companion to Figure 4;
-Supplementary Table 2, companion to Supplementary Figure 7) are in
-`part1_results_and_figures_description.md`; concise captions are also
-available in `figures/part1_supplementary_files.md`.
+![Supplementary Figure 1](figures/supp_fig1_outcome_distributions.png)
+
+- **Supplementary Figure 8**: Size-adjusted positive counts show that the unadjusted negative SIMD-deprivation association with positive geographic spread flips to a weakly positive association after conditioning on cluster size — deprivation affects cluster scale, not geographic diffusion at comparable cluster sizes.
+
+![Supplementary Figure 8](figures/supp_fig8_deprivation_size_adjusted.png)
+
+Concise captions for all 10 supplementary figures and the two supplementary tables (Supplementary Table 1, companion to Figure 4; Supplementary Table 2, companion to Supplementary Figure 7) are in `figures/part1_supplementary_files.md`.
 
 ## 6. Key Findings
 
 ### 6.1. More Deprived Clusters Were Not Generally Larger Or More Dispersed
 
-The main pooled count models do not support the simple hypothesis that higher
-SIMD deprivation is associated with larger or more geographically dispersed
-genomic clusters.
+The main pooled count models do not support the simple hypothesis that higher SIMD deprivation is associated with larger or more geographically dispersed genomic clusters.
 
 For SIMD deprivation in the main models:
 
@@ -247,32 +207,23 @@ For SIMD deprivation in the main models:
 - Geographic spread hurdle: OR 1.004, 95% CI 0.992 to 1.016.
 - Positive geographic spread: count ratio 0.851, 95% CI 0.792 to 0.915.
 
-The strongest deprivation-associated count result is therefore lower positive
-geographic spread, not greater spread.
+The strongest deprivation-associated count result is therefore lower positive geographic spread, not greater spread.
 
 ### 6.2. Surveillance And Epidemic Context Strongly Shape Apparent Cluster Scale
 
-Local incidence, sequencing intensity, window-level sequencing proportion, and
-test positivity were more consistently associated with larger apparent clusters
-than SIMD deprivation.
+Local incidence, sequencing intensity, window-level sequencing proportion, and test positivity were more consistently associated with larger apparent clusters than SIMD deprivation.
 
 Examples from the positive-count components:
 
-- Local sequencing fraction was strongly associated with positive cluster size
-  and positive geographic spread.
-- Window-level sequencing proportion was positively associated with all count
-  components.
-- Test positivity showed large positive associations with positive cluster size
-  and geographic spread.
+- Local sequencing fraction was strongly associated with positive cluster size and positive geographic spread.
+- Window-level sequencing proportion was positively associated with all count components.
+- Test positivity showed large positive associations with positive cluster size and geographic spread.
 
-Interpretation: reconstructed genomic clusters are partly a function of
-transmission, but also of how many infections are detected, sequenced, and
-linked within a time window and locality.
+Interpretation: reconstructed genomic clusters are partly a function of transmission, but also of how many infections are detected, sequenced, and linked within a time window and locality.
 
 ### 6.3. Deprivation Signals Are Clearer In Demographic Mixing Than In Cluster Size
 
-Overall SIMD deprivation was not clearly associated with SIMD-quintile excess
-mixing itself:
+Overall SIMD deprivation was not clearly associated with SIMD-quintile excess mixing itself:
 
 - SIMD-quintile excess mixing: +0.31 percentage points, 95% CI -0.18 to 0.80.
 
@@ -280,16 +231,13 @@ However, deprivation was associated with several demographic mixing outcomes:
 
 - Age excess mixing: +1.66 percentage points, 95% CI 1.29 to 2.03.
 - Sex excess mixing: -0.78 percentage points, 95% CI -1.16 to -0.39.
-- Joint SIMD-age-sex profile excess mixing: +0.48 percentage points, 95% CI
-  0.29 to 0.67.
+- Joint SIMD-age-sex profile excess mixing: +0.48 percentage points, 95% CI 0.29 to 0.67.
 
-This suggests that deprivation may be more strongly related to the demographic
-composition of clusters than to simple mixing across SIMD quintiles.
+This suggests that deprivation may be more strongly related to the demographic composition of clusters than to simple mixing across SIMD quintiles.
 
 ### 6.4. SIMD Domains Behave Differently
 
-The SIMD-domain analyses show that the overall SIMD result masks domain-specific
-patterns.
+The SIMD-domain analyses show that the overall SIMD result concealed domain-specific patterns.
 
 For domain-quintile mixing:
 
@@ -302,18 +250,14 @@ For demographic mixing:
 
 - Age mixing was higher for most deprivation domains.
 - Sex mixing tended to be lower with higher deprivation across several domains.
-- Joint age-sex mixing was generally higher for overall, income, employment,
-  education, health, and housing deprivation.
+- Joint age-sex mixing was generally higher for overall, income, employment, education, health, and housing deprivation.
 - Access deprivation was an exception in several analyses.
 
-Interpretation: deprivation should not be treated as a single homogeneous
-mechanism. Different SIMD domains likely capture different social and spatial
-processes relevant to transmission, observation, and cluster composition.
+Interpretation: deprivation should not be treated as a single homogeneous mechanism. Different SIMD domains likely capture different social and spatial processes relevant to transmission, observation, and cluster composition.
 
 ### 6.5. Deprivation Effects Vary By Epidemic Wave
 
-Wave-specific models show that deprivation associations are not stable across
-the pandemic.
+Wave-specific models show that deprivation associations are not stable across the pandemic.
 
 Delta showed the clearest negative deprivation associations:
 
@@ -322,75 +266,39 @@ Delta showed the clearest negative deprivation associations:
 - Lower odds of multi-datazone spread.
 - Lower positive geographic spread.
 
-Later Omicron subwaves were more heterogeneous. BA.2 and BA.4 showed some
-positive positive-count associations, but BA.4 had a much smaller sample and
-should be interpreted cautiously.
+Later Omicron subwaves were more heterogeneous. BA.2 and BA.4 showed some positive positive-count associations, but BA.4 had a much smaller sample and should be interpreted cautiously.
 
-Interpretation: the pooled deprivation effect should be read as an average over
-changing epidemic contexts rather than as a stable biological or social effect.
+Interpretation: the pooled deprivation effect should be read as an average over changing epidemic contexts rather than as a stable biological or social effect.
 
 ### 6.6. Within-Cluster Mixing Strongly Predicted Cluster Scale
 
-Reversing the modelling direction (Figure 3; wave-specific in Figure 4),
-within-cluster excess mixing was itself a substantial predictor of cluster
-size and geographic spread among non-singleton clusters. Per 1 SD higher
-SIMD-quintile excess discordance:
+Reversing the modelling direction (Figure 3; wave-specific in Figure 4), within-cluster excess mixing was itself a substantial predictor of cluster size and geographic spread among non-singleton clusters. Per 1 SD higher SIMD-quintile excess discordance:
 
-- Positive cluster size was 3.48-fold higher (95% CI 3.25–3.73).
-- Positive geographic spread was 3.03-fold higher (95% CI 2.79–3.29).
-- Odds of multi-datazone spread were 22.1-fold higher (95% CI 19.0–25.8).
+- Positive cluster size was 3.478-fold higher (95% CI 3.245–3.727).
+- Positive geographic spread was 3.029-fold higher (95% CI 2.793–3.285).
+- Odds of multi-datazone spread were 22.107-fold higher (95% CI 18.977–25.753).
 
-Age excess discordance was also strongly positively associated with both ZTNB
-components (positive cluster size CR 1.67; positive geographic spread CR
-1.97). Joint SIMD-age-sex profile excess discordance was negatively associated
-with both components.
+Age excess discordance was also strongly positively associated with both ZTNB components (positive cluster size CR 1.668; positive geographic spread CR 1.966). Joint SIMD-age-sex profile excess discordance was negatively associated with both components.
 
-Wave-specific extension (Figure 4, ZTNB only) showed the same directional
-pattern, with the largest mixing-predictor effects in waves with the deepest
-cluster recruitment (Alpha, Delta, BA.1, BA.2). The geographic-spread hurdle
-component is reported in Supplementary Table 1 rather than as a heatmap
-because the heavily imbalanced binary outcome (`datazones_gt1` positive in
-88% of clusters) combined with the strong SIMD-excess-mixing predictor
-produced implausibly large adjusted odds ratios (~29,000 in Alpha).
+Wave-specific extension (Figure 4, ZTNB only) showed the same directional pattern, with the largest mixing-predictor effects in waves with the deepest cluster recruitment (Alpha, Delta, BA.1, BA.2). The geographic-spread hurdle component is reported in Supplementary Table 1 rather than as a heatmap. The heavily imbalanced multiple-datazone outcome, positive in 88.0% of non-singleton clusters, combined with the strong SIMD-quintile excess-mixing predictor produced implausibly large adjusted odds ratios (approximately 29,000 in Alpha).
 
-Interpretation: clusters that bridge across SIMD quintiles and age bands more
-than the lineage-window baseline expectation are detected as substantially
-larger and more geographically dispersed, consistent with a bridging-
-transmission account of cluster scale. The pattern is associational rather
-than causal.
+Interpretation: clusters that bridge across SIMD quintiles and age bands more than the lineage-window baseline expectation are detected as substantially larger and more geographically dispersed, consistent with a bridging-transmission account of cluster scale. The pattern is associational rather than causal.
 
 ### 6.7. SIMD-Domain Mixing-Predictor Heterogeneity
 
-Substituting each SIMD subdomain's quintile excess-mixing score for the
-overall SIMD-quintile score (Supplementary Figure 7) confirmed that all
-seven SIMD subdomains gave positive domain-quintile mixing-predictor effects
-on cluster size and geographic spread (Supplementary Figure 7) with very
-similar magnitudes — the per-domain models share the same age/sex/joint
-demographic mixing variables and only differ in which deprivation/excess-
-mixing pair is included, so the results reflect the consistency of the
-mixing-predictor finding across SIMD subdomains. The companion
-Supplementary Table 2 reports the corresponding geographic-spread hurdle
-results; crime and education rows are reported as point estimates only
-because the cluster-robust sandwich variance estimator failed numerically
-for those two hurdle fits.
+Substituting each SIMD subdomain's quintile excess-mixing score for the overall SIMD-quintile score (Supplementary Figure 7) confirmed that all seven SIMD subdomains gave positive domain-quintile mixing-predictor effects on cluster size and geographic spread (Supplementary Figure 7) with very similar magnitudes — the per-domain models share the same age/sex/joint demographic mixing variables and only differ in which deprivation/excess mixing pair is included, so the results reflect the consistency of the mixing-predictor finding across SIMD subdomains. The companion
+Supplementary Table 2 reports the corresponding geographic-spread hurdle results; crime and education rows are reported as point estimates only because the cluster-robust sandwich variance estimator failed numerically for those two hurdle fits.
 
 ### 6.8. Sensitivity Analyses Support A Cautious Interpretation
 
-Sensitivity analyses generally supported the qualitative pattern but showed that
-some inferential strength depends on modelling choices.
+Sensitivity analyses generally supported the qualitative pattern but showed that some inferential strength depends on modelling choices.
 
 Key points:
 
-- Health-board clustered standard errors widened several confidence intervals,
-  especially for count outcomes.
-- Winsorising positive counts attenuated the positive cluster-size association
-  but did not remove the lower positive geographic-spread result.
-- Index-case SIMD did not reproduce the mean-cluster-SIMD positive-count
-  associations, suggesting that mean cluster deprivation captures whole-cluster
-  composition rather than simply the deprivation context of the earliest
-  observed case.
-- Approximately non-overlapping windows reduced precision but retained the
-  broad qualitative pattern.
+- Health-board clustered standard errors widened several confidence intervals,especially for count outcomes.
+- Winsorising positive counts attenuated the positive cluster-size association but did not remove the lower positive geographic-spread result.
+- Index-case SIMD did not reproduce the mean-cluster-SIMD positive-count associations, suggesting that mean cluster deprivation captures whole-cluster composition rather than simply the deprivation context of the earliest observed case.
+- Approximately non-overlapping windows reduced precision but retained the broad qualitative pattern.
 - Age and sex mixing findings were among the more stable results.
 
 ## 7. Interpretation
@@ -409,7 +317,7 @@ and geographic spread are surveillance and epidemic-intensity variables.
 
 Second, the most interpretable deprivation signal in the
 deprivation-as-exposure analyses is in cluster composition: more deprived
-clusters show higher age mixing and joint socio-demographic profile mixing,
+clusters show higher age mixing and joint sociodemographic profile mixing,
 lower sex mixing, and little evidence of increased SIMD-quintile mixing.
 Domain analyses show that education, crime, access, and housing deprivation
 behave differently, reinforcing that overall SIMD is not a single mechanism.
@@ -419,8 +327,8 @@ scale) revealed that clusters which bridge across SIMD quintiles and age
 bands more than the lineage-window baseline expectation are detected as
 substantially larger and more geographically dispersed. SIMD-quintile excess
 discordance was the strongest mixing-side predictor in every panel of
-Figure 3, with effects 3- to 22-fold larger in magnitude per 1 SD than the
-deprivation-as-exposure estimates. The hurdle component of geographic spread
+Figure 3, with effects spanning 3.029- to 22.107-fold per 1 SD, much larger
+than the deprivation-as-exposure estimates. The hurdle component of geographic spread
 is reported as a supplementary table (Supplementary Tables 1 and 2) rather
 than as a heatmap because the heavily imbalanced binary outcome combined with
 the strong mixing predictor drives the binomial logistic component toward
@@ -432,8 +340,7 @@ The results should be framed as outcome-specific and context-dependent rather
 than as evidence for one monotonic deprivation effect. The findings also
 highlight the importance of adjusting for surveillance variables when using
 genomic clusters as epidemiological outcomes, and the value of treating
-within-cluster mixing structure as both an outcome (in the
-deprivation-as-exposure line) and a predictor (in the reverse line).
+within-cluster mixing structure as both an outcome and a predictor.
 
 ## 8. Takeaway
 
@@ -444,7 +351,7 @@ intensity, and test positivity. Apparent cluster scale was more strongly
 related to local epidemic and surveillance conditions. Deprivation-related
 signals were clearest in cluster composition: higher deprivation was
 associated with greater age mixing, lower sex mixing, and greater joint
-socio-demographic profile mixing, with substantial heterogeneity across SIMD
+sociodemographic profile mixing, with substantial heterogeneity across SIMD
 domains and epidemic waves. Reversing the modelling direction, within-cluster
 SIMD-quintile and age excess discordance were themselves substantial
 positive predictors of cluster size and geographic spread, consistent with a

@@ -459,7 +459,7 @@ SUPPLEMENTARY_TABLE_DESCRIPTIONS: list[tuple[str, str, str, str]] = [
 
 
 def _format_markdown_row(values: list[str]) -> str:
-    return "| " + " | ".join(values) + " |"
+    return "> | " + " | ".join(values) + " |"
 
 
 def _format_ratio_with_ci(row: pd.Series) -> str:
@@ -896,7 +896,7 @@ def plot_deprivation_wave_specific(
             ax.set_xticklabels([f"{tick:g}" for tick in ticks[component]])
             ax.xaxis.set_minor_locator(NullLocator())
             ax.xaxis.set_minor_formatter(NullFormatter())
-            ax.set_title(f"{OUTCOME_LABELS[outcome]}: {COMPONENT_LABELS[component]}", pad=4)
+            ax.set_title(f"{OUTCOME_LABELS[outcome]}\n{COMPONENT_LABELS[component]}", pad=4)
             ax.set_yticks(y_positions)
             ax.set_yticklabels(waves if jdx == 0 else [])
             if idx == len(outcomes) - 1:
@@ -944,9 +944,9 @@ def plot_mixing_overall(
         return
 
     panels: list[tuple[str, str, str]] = [
-        ("cluster_size", "positive_zero_truncated_count", "Cluster size: ZTNB count ratio"),
-        ("geographic_dispersion", "hurdle_binary", "Geographic spread: Hurdle odds"),
-        ("geographic_dispersion", "positive_zero_truncated_count", "Geographic spread: ZTNB count ratio"),
+        ("cluster_size", "positive_zero_truncated_count", "Cluster size\nZTNB count ratio"),
+        ("geographic_dispersion", "hurdle_binary", "Geographic spread\nHurdle odds"),
+        ("geographic_dispersion", "positive_zero_truncated_count", "Geographic spread\nZTNB count ratio"),
     ]
 
     fig, axes = style.new_figure(

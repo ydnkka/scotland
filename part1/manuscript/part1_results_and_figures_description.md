@@ -1,6 +1,6 @@
 # Part 1 Main Results And Figure Guide
 
-Generated for the main Part 1 analysis on 5 May 2026.
+Updated for the main Part 1 analysis on 13 May 2026.
 
 ## Analysis Question
 
@@ -15,12 +15,13 @@ The specific outcomes are:
 - geographic spread, measured by the number of distinct datazones in a cluster
 - observed-minus-expected socioeconomic and demographic mixing within clusters
 
-The main manuscript figures are generated from `part1/main/tables` and
-`part1/main/cache`, using the publication styling in `utils/style.py`.
+The main manuscript figures are generated from `part1/tables` and
+`part1/cache`, with exported figure files in `part1/manuscript/figures`.
 
 ## Analysis Population And Modelling Frame
 
-The main analysis uses good-QC sequences at Leiden resolution 0.3. This produces
+The main analysis uses sequences passing the overall Nextclade quality filter at
+Leiden resolution $\gamma = 0.3$. This produces
 789,347 sequence rows and 193,112 inferred genomic clusters across 134 time
 windows. Rare Pango lineages are pooled at a threshold of 50 clusters, giving
 183 lineage model levels in the main pooled analysis.
@@ -33,9 +34,11 @@ values, so the main count analysis uses two-part hurdle models:
 - a zero-truncated negative-binomial positive-count component for the outcome
   among clusters exceeding the structural minimum
 
-For cluster size, the hurdle is `cluster_size > 1` and the positive count is
-`cluster_size - 1`. For geographic spread, the hurdle is
-`cluster_n_datazones > 1` and the positive count is `cluster_n_datazones - 1`.
+For cluster size, the hurdle distinguishes singleton from non-singleton
+clusters and the positive count is the number of additional sequences beyond a
+singleton. For geographic spread, the hurdle distinguishes single-datazone from
+multi-datazone clusters and the positive count is the number of additional
+datazones beyond one.
 
 Cluster duration remains in the descriptive cluster summaries and the
 supplementary outcome-distribution figure, but it is not modelled in the
@@ -47,7 +50,7 @@ observed pairwise discordance within a cluster minus expected discordance among
 sampled cases from the same lineage and calendar window. Positive values mean
 more mixing than expected; negative values mean more homogeneity than expected.
 
-Throughout the figures, higher `SIMD deprivation` means a more deprived cluster
+Throughout the figures, higher SIMD deprivation means a more deprived cluster
 on the transformed and standardised SIMD rank scale.
 
 ## Overall Results Summary
@@ -98,12 +101,13 @@ clusters. Each panel displays SIMD deprivation alongside the four surveillance
 covariates; the mixing panels additionally include log cluster size.
 
 **Key visual patterns.** In the top row, the SIMD deprivation point falls
-clearly below 1.0 for positive cluster size (count ratio 0.926) and positive
-geographic spread (count ratio 0.851), modestly below 1.0 for the cluster-size
-hurdle (OR 0.971), and is close to 1.0 for the geographic-spread hurdle.
+clearly below the null for positive cluster size (count ratio 0.926) and
+positive geographic spread (count ratio 0.851), modestly below the null for the
+cluster-size hurdle (OR 0.971), and is close to the null for the
+geographic-spread hurdle.
 Surveillance covariates dominate the panel visually: test positivity gives
-positive-count ratios of 2.65 (cluster size) and 3.00 (geographic spread); local
-sequencing fraction 3.24 and 2.27. In the bottom row, SIMD deprivation produces
+positive-count ratios of 2.649 (cluster size) and 2.999 (geographic spread);
+local sequencing fraction 3.240 and 2.269. In the bottom row, SIMD deprivation produces
 its largest mixing estimate for age mixing (+1.66 pp) and a clearly negative
 estimate for sex mixing (−0.78 pp); SIMD-quintile mixing straddles zero (+0.31
 pp), and joint-profile mixing is positive but smaller (+0.48 pp). Log cluster
@@ -115,8 +119,8 @@ size is a strong cross-outcome driver of all four mixing components.
 > (OR 0.971, 95% CI 0.960–0.983, p < 0.001), smaller positive cluster size
 > (count ratio 0.926, 95% CI 0.869–0.987, p = 0.018), and substantially lower
 > positive geographic spread (count ratio 0.851, 95% CI 0.792–0.915, p < 0.001).
-> Local sequencing fraction (count ratio 3.24 for positive cluster size; 2.27
-> for positive geographic spread), test positivity (2.65 and 3.00), and
+> Local sequencing fraction (count ratio 3.240 for positive cluster size; 2.269
+> for positive geographic spread), test positivity (2.649 and 2.999), and
 > window-level sequencing proportion showed far larger positive associations
 > with cluster scale, consistent with surveillance and epidemic intensity being
 > the dominant structural determinants of observed cluster size and geographic
@@ -143,10 +147,10 @@ calendar-time covariates as the pooled main model; within-wave lineage dummies
 are included where estimable.
 
 **Key visual patterns.** Delta stands out with all four estimates clearly below
-their null values: cluster-size hurdle OR ~0.93, positive cluster size count
-ratio ~0.80, geographic-spread hurdle OR ~0.96, positive geographic-spread
-count ratio ~0.78. BA.2 and BA.4 show positive positive-count estimates (BA.2
-positive cluster size count ratio 1.19; BA.4 1.68), in contrast to Delta.
+their null values: cluster-size hurdle OR 0.934, positive cluster size count
+ratio 0.797, geographic-spread hurdle OR 0.958, positive geographic-spread
+count ratio 0.781. BA.2 and BA.4 show positive positive-count estimates (BA.2
+positive cluster size count ratio 1.176; BA.4 1.674), in contrast to Delta.
 Earlier waves (B.1.177, Alpha) show estimates closer to the null with wider
 confidence intervals. BA.4 has the widest intervals, reflecting its small
 sample (2,669 clusters).
@@ -159,9 +163,9 @@ sample (2,669 clusters).
 > cluster size (count ratio 0.797, 95% CI 0.725–0.876), lower odds of
 > multi-datazone clusters (OR 0.958, 95% CI 0.945–0.971), and lower positive
 > geographic spread (count ratio 0.781, 95% CI 0.703–0.867). BA.2 showed a
-> contrasting pattern, with higher positive cluster size (count ratio 1.19,
-> 95% CI 1.07–1.32) and weakly higher positive geographic spread (count ratio
-> 1.10, 95% CI 0.97–1.24). BA.4 also showed positive positive-count
+> contrasting pattern, with higher positive cluster size (count ratio 1.176,
+> 95% CI 1.061–1.303) and weakly higher positive geographic spread (count ratio
+> 1.106, 95% CI 0.978–1.252). BA.4 also showed positive positive-count
 > associations, but with wide confidence intervals reflecting the small wave
 > sample (n = 2,669). B.1.177 and Alpha showed weaker or outcome-specific
 > associations. These wave-specific patterns argue against a single stable
@@ -186,28 +190,28 @@ singletons (see Methods). Each point is an adjusted ratio per 1 SD higher
 mixing score with 95% CIs.
 
 **Key visual patterns.** SIMD-quintile excess discordance is the dominant
-positive predictor in all three panels: positive cluster size CR 3.48,
-positive geographic spread CR 3.03, and geographic-spread hurdle OR 22.1. Age
-excess discordance is also strongly positive on the ZTNB components (CR 1.67
-positive cluster size; 1.97 positive geographic spread) and weakly positive on
-the hurdle (OR 1.28). Sex excess discordance is small but negative on positive
+positive predictor in all three panels: positive cluster size CR 3.478,
+positive geographic spread CR 3.029, and geographic-spread hurdle OR 22.107. Age
+excess discordance is also strongly positive on the ZTNB components (CR 1.668
+positive cluster size; 1.966 positive geographic spread) and weakly positive on
+the hurdle (OR 1.283). Sex excess discordance is small but negative on positive
 cluster size and on the hurdle; joint SIMD-age-sex profile excess discordance
-is negative on both ZTNB components (CR 0.81 positive cluster size; 0.72
+is negative on both ZTNB components (CR 0.812 positive cluster size; 0.718
 positive geographic spread).
 
 **Suggested results paragraph.**
 > Among non-singleton clusters, SIMD-quintile excess discordance was the
 > strongest mixing-side predictor of cluster scale: per 1 SD higher score,
-> positive cluster size was 3.48-fold higher (95% CI 3.25–3.73), positive
-> geographic spread 3.03-fold higher (95% CI 2.79–3.29), and the odds of
-> multi-datazone spread 22.1-fold higher (95% CI 19.0–25.8). Age excess
+> positive cluster size was 3.478-fold higher (95% CI 3.245–3.727), positive
+> geographic spread 3.029-fold higher (95% CI 2.793–3.285), and the odds of
+> multi-datazone spread 22.107-fold higher (95% CI 18.977–25.753). Age excess
 > discordance was also substantially positively associated with both ZTNB
-> components (positive cluster size CR 1.67, 95% CI 1.56–1.78; positive
-> geographic spread CR 1.97, 95% CI 1.80–2.15) and weakly positively associated
-> with the geographic-spread hurdle (OR 1.28, 95% CI 1.25–1.32). Joint
+> components (positive cluster size CR 1.668, 95% CI 1.560–1.783; positive
+> geographic spread CR 1.966, 95% CI 1.800–2.148) and weakly positively associated
+> with the geographic-spread hurdle (OR 1.283, 95% CI 1.246–1.322). Joint
 > SIMD-age-sex profile excess discordance was negatively associated with both
-> ZTNB components (cluster size CR 0.81, 95% CI 0.76–0.87; geographic spread
-> CR 0.72, 95% CI 0.67–0.78). Clusters bridging more across SIMD quintiles and
+> ZTNB components (cluster size CR 0.812, 95% CI 0.763–0.865; geographic spread
+> CR 0.718, 95% CI 0.665–0.775). Clusters bridging more across SIMD quintiles and
 > age bands than the lineage-window baseline expectation are therefore detected
 > as substantially larger and more geographically dispersed, while clusters
 > whose excess discordance is concentrated in fine-grained joint profile
@@ -227,13 +231,13 @@ lineage fixed effects, and the calendar B-spline. Rows are the eight dominant
 Pango-lineage waves; columns are the four mixing predictors. Panels: (A)
 positive cluster size (n = 84,067) and (B) positive geographic spread
 (n = 74,010). Cells are coloured on a shared symmetric ratio scale (centred at
-1, capped at ratio 5) with `extend="both"` colour-bar triangles, and annotated
-with the raw count ratio. The corresponding geographic-spread hurdle component
-is reported in Supplementary Table 1 rather than as a third heatmap panel,
-because the `datazones_gt1` outcome is 1 for 88% of non-singleton clusters and
-combines with the strong `simd_excess_mixing_z` predictor to drive the
-binomial logistic component toward quasi-separation in some waves, producing
-adjusted odds ratios (~29,000 in Alpha) that are uninformative on a heatmap.
+1, capped at ratio 5) and annotated with the count ratio. The corresponding
+geographic-spread hurdle component is reported in Supplementary Table 1 rather
+than as a third heatmap panel, because the multiple-datazone outcome is
+positive for 88.0% of non-singleton clusters and combines with the strong
+SIMD-quintile excess-mixing predictor to drive the binomial logistic component
+toward quasi-separation in some waves, producing adjusted odds ratios
+(approximately 29,000 in Alpha) that are uninformative on a heatmap.
 
 **Key visual patterns.** Positive SIMD-quintile and age-band mixing-predictor
 effects on the ZTNB components are directionally stable across waves but
@@ -256,10 +260,10 @@ attenuated and noisier estimates.
 > per-wave deprivation-as-exposure pattern in Figure 2. Late Omicron subwaves
 > (BA.4, BA.5, BQ.1) produced smaller and noisier mixing-predictor effects.
 > The geographic-spread hurdle component is reported as Supplementary
-> Table 1 because the heavily imbalanced binary outcome (`datazones_gt1`
-> positive in 88% of clusters) combines with the strong SIMD-excess-mixing
-> predictor to produce implausibly large adjusted odds ratios (e.g. ~29,000 in
-> Alpha) that should be read as evidence of strong direction rather than as
+> Table 1 because the heavily imbalanced multiple-datazone outcome, positive
+> in 88.0% of non-singleton clusters, combines with the strong SIMD-quintile
+> excess-mixing predictor to produce implausibly large adjusted odds ratios
+> (e.g. approximately 29,000 in Alpha) that should be read as evidence of strong direction rather than as
 > interpretable effect sizes.
 
 ---
@@ -337,10 +341,10 @@ relative to the lineage- and calendar-window-matched expectation, with each
 cell annotated with the numeric value.
 
 **Key visual patterns.** For SIMD quintiles, the diagonal (same-quintile
-pairs) is positive throughout, with the strongest excess at quintile 1 ×
-quintile 1 (most deprived, +0.3 pp). Off-diagonal cells are close to zero or
+pairs) is positive throughout, with the strongest excess at pairs of two
+most-deprived-quintile cases (+0.28 pp). Off-diagonal cells are close to zero or
 slightly negative. For age, the within-band diagonal is positive across bands,
-peaking at 20–24 × 20–24 (+0.2 pp); adjacent young-adult pairs (20–24 ×
+peaking at pairs of two 20-24-year-old cases (+0.21 pp); adjacent young-adult pairs (20–24 ×
 25–29) are also positive. Some child-to-adult pairings fall slightly below
 zero.
 
@@ -348,10 +352,10 @@ zero.
 > The observed-minus-expected mixing matrices (Supplementary Figure 3)
 > illustrate the pairwise structure underlying the aggregate excess-discordance
 > metrics. Same-quintile SIMD pairs showed positive excess in all quintiles,
-> with the most-deprived quintile 1 pairs showing the largest excess
-> (+0.3 pp), consistent with spatially concentrated transmission within
+> with the most-deprived quintile pairs showing the largest excess
+> (+0.28 pp), consistent with spatially concentrated transmission within
 > deprived areas. Within-age-band pairs showed the strongest positive excess
-> in young adults (20–24: +0.2 pp), with adjacent young-adult pairs also above
+> in young adults (20-24 years: +0.21 pp), with adjacent young-adult pairs also above
 > expectation. These patterns are consistent with genomic clusters
 > preferentially capturing transmission chains within socioeconomically and
 > age-similar groups, even after accounting for lineage and calendar-window
@@ -403,7 +407,7 @@ among non-singleton clusters, with 95% CIs.
 
 **Key visual patterns.** In panel A, two domains (access, −2.08 pp; housing,
 −1.19 pp) are clearly left of zero, while education (+1.17 pp) and crime
-(+1.09 pp) are clearly right of zero — a contrast spanning roughly 3 pp. The
+(+1.09 pp) are clearly right of zero — a contrast spanning roughly 3.0 pp. The
 overall SIMD estimate sits between them, close to zero. In panel B (age
 mixing), most domain estimates including overall SIMD are positive, with
 access deprivation as an outlier in the negative direction. Panel C (sex
@@ -466,11 +470,10 @@ excess mixing) on (A) the positive cluster-size ZTNB count ratio and (B) the
 positive geographic-spread ZTNB count ratio, fit separately in each of eight
 SIMD subdomains (rows: Overall, Income, Employment, Education, Health, Access,
 Crime, Housing). A single ratio-scale colour bar is shared across panels, with
-ticks centred at 1 and `extend="both"` colour-bar triangles. Each cell is
-annotated with the raw ratio. The hurdle component of geographic spread is
+ticks centred at 1. Each cell is annotated with the ratio. The hurdle component of geographic spread is
 omitted from this figure and reported in Supplementary Table 2 because the
-heavily imbalanced `datazones_gt1` outcome combined with the strong
-`<domain>_domain_excess_mixing_z` predictor drives the binomial logistic
+heavily imbalanced multiple-datazone outcome combined with the strong
+domain-quintile excess-mixing predictor drives the binomial logistic
 component toward quasi-separation, producing odds ratios (~22) of comparable
 size across all domains but with cluster-robust SE failures for two of them.
 
@@ -517,14 +520,14 @@ conditioning on cluster size.
 
 **Key visual patterns.** The SIMD deprivation estimate for positive
 geographic spread visibly flips sign between the primary model (count ratio
-~0.85, clearly left of 1.0) and the size-adjusted model (count ratio ~1.03,
-right of 1.0). This sign reversal is the central visual message of the figure.
+0.851, clearly below the null) and the size-adjusted model (count ratio 1.027,
+above the null). This sign reversal is the central visual message of the figure.
 
 **Suggested results paragraph.**
 > After additionally adjusting the positive-count geographic-spread model for
 > cluster size, the overall SIMD deprivation estimate changed direction from
 > the primary model (count ratio 0.851, 95% CI 0.792–0.915) to a weakly
-> positive association (count ratio 1.027, 95% CI 1.010–1.044, p < 0.001).
+> positive association (count ratio 1.027, 95% CI 1.019–1.035, p < 0.001).
 > This sign reversal indicates that more deprived clusters are generally
 > smaller, and that the unadjusted negative geographic-spread result is
 > driven primarily by cluster-size differences. Among clusters of comparable
@@ -543,7 +546,7 @@ deprivation association with cluster size and geographic spread, contrasting
 the log-linear geometric mean ratio model with the hurdle (odds ratio) and
 ZTNB (count ratio) components of the two-part main model.
 
-**Key visual patterns.** The log-linear SIMD estimates are both close to 1.0
+**Key visual patterns.** The log-linear SIMD estimates are both close to 1.000
 (cluster size geometric mean ratio 0.992; geographic spread 1.001), with
 narrow intervals straddling the null. The hurdle and positive-count
 components show clearly differentiated estimates in both directions, making
@@ -602,11 +605,11 @@ wave. One row per wave × predictor combination. Columns: `wave_group`,
 `ratio_ci_low`, `ratio_ci_high`, `p_value`, `n_observations`, `n_events`,
 `notes`.
 
-**Why a table instead of a heatmap.** The hurdle binary outcome is
-`datazones_gt1`, which is 1 for 88% of non-singleton clusters — heavily
-imbalanced. Combined with the strong `simd_excess_mixing_z` predictor, the
+**Why a table instead of a heatmap.** The multiple-datazone hurdle outcome is
+positive for 88.0% of non-singleton clusters and is therefore heavily
+imbalanced. Combined with the strong SIMD-quintile excess-mixing predictor, the
 binomial logistic component approaches quasi-separation in some waves,
-producing implausibly large adjusted odds ratios (e.g. OR ~29,000 in the
+producing implausibly large adjusted odds ratios (e.g. OR approximately 29,000 in the
 Alpha wave, 95% CI 6,450–129,898). Such cells dominate a heatmap and make the
 other predictor cells visually unreadable, so the wave-specific hurdle
 estimates are reported as a table rather than as a third heatmap panel in
@@ -616,11 +619,10 @@ Figure 4.
 > Wave-specific geographic-spread hurdle odds ratios for the four mixing
 > predictors are reported in Supplementary Table 1; the SIMD-quintile
 > mixing-predictor hurdle OR was clearly positive in every wave but reached
-> implausibly large values in Alpha (~29,000), consistent with quasi-separation
+> implausibly large values in Alpha (approximately 29,000), consistent with quasi-separation
 > in the heavily imbalanced binary outcome. The age, sex, and joint-profile
-> hurdle estimates were of more interpretable magnitude across waves (age
-> OR 1.21–1.96 in well-estimated waves) and broadly consistent in direction
-> with the pooled Figure 3 estimates.
+> hurdle estimates were of more interpretable magnitude across waves and were
+> broadly consistent in direction with the pooled Figure 3 estimates.
 
 ---
 
@@ -639,11 +641,11 @@ window-clustered sandwich variance estimator failed numerically for those two
 hurdle fits — the maximum-likelihood point estimates remain valid.
 
 **Why a table instead of a heatmap.** Same reasoning as Supplementary
-Table 1: the geographic-spread hurdle outcome (`datazones_gt1` positive in 88%
-of clusters) combined with the strong `<domain>_domain_excess_mixing_z`
-predictor produces domain-quintile odds ratios in the range 21–23, comparable
-across domains, that saturate any practical heatmap colour scale and obscure
-the smaller age, sex, and age-sex predictor cells.
+Table 1: the geographic-spread hurdle outcome is positive in 88.0%
+of non-singleton clusters and, when combined with the strong domain-quintile
+excess-mixing predictor, produces domain-quintile odds ratios in the range
+21-23. These comparable large effects saturate any practical heatmap colour
+scale and obscure the smaller age, sex, and age-sex predictor cells.
 
 **Suggested results paragraph.**
 > Per-domain geographic-spread hurdle odds ratios for the four mixing
@@ -651,9 +653,8 @@ the smaller age, sex, and age-sex predictor cells.
 > mixing produced adjusted hurdle ORs of approximately 22 across all eight
 > domain models, with very narrow between-domain variation — a consistency
 > that follows directly from the highly correlated SIMD subdomains. Age
-> excess discordance was positively associated with the hurdle outcome
-> (OR 1.28–1.35 in well-estimated rows), sex was mildly negative
-> (OR 0.77–0.80), and joint age-sex was close to 1. Crime and Education rows
+> excess discordance was positively associated with the hurdle outcome, sex was
+> mildly negative, and joint age-sex was close to the null. Crime and Education rows
 > are reported as point estimates only, because the cluster-robust sandwich
 > variance estimator failed numerically for those two hurdle fits (singular
 > Hessian under the heavy outcome imbalance and near-collinear domain-mixing
@@ -669,11 +670,11 @@ not overwritten:
 
 | Sensitivity | Tables | Figures |
 |---|---|---|
-| Health-board clustered standard errors | `part1/main/tables_health_board` | `part1/main/manuscript/figures_health_board` |
-| Cluster-size positive-count offset | `part1/main/tables_size_offset` | `part1/main/manuscript/figures_size_offset` |
-| Index-case SIMD exposure | `part1/main/tables_index_simd` | `part1/main/manuscript/figures_index_simd` |
-| 99th-percentile positive-count winsorisation | `part1/main/tables_winsorise99` | `part1/main/manuscript/figures_winsorise99` |
-| Approximately non-overlapping windows | `part1/main/tables_stride3` | `part1/main/manuscript/figures_stride3` |
+| Health-board clustered standard errors | `part1/sensitivity/tables_health_board` | `part1/sensitivity/figures_health_board` |
+| Cluster-size positive-count offset | `part1/sensitivity/tables_size_offset` | `part1/sensitivity/figures_size_offset` |
+| Index-case SIMD exposure | `part1/sensitivity/tables_index_simd` | `part1/sensitivity/figures_index_simd` |
+| 99th-percentile positive-count winsorisation | `part1/sensitivity/tables_winsorise99` | `part1/sensitivity/figures_winsorise99` |
+| Approximately non-overlapping windows | `part1/sensitivity/tables_stride3` | `part1/sensitivity/figures_stride3` |
 
 ### Health-Board Clustered Standard Errors
 
@@ -707,9 +708,10 @@ estimates is unchanged. The most robust mixing signals are age and sex.
 
 ### Cluster-Size Positive-Count Offset
 
-This sensitivity adds `log(wn_no_sequences)` as an offset in the cluster-size
-positive-count model, changing the estimand from raw positive cluster size to
-positive cluster size relative to the analysis-window sequencing pool.
+This sensitivity adds the log number of sequences in the analysis window as an
+offset in the cluster-size positive-count model, changing the estimand from raw
+positive cluster size to positive cluster size relative to the analysis-window
+sequencing pool.
 
 Only the cluster-size positive model changes. The SIMD deprivation estimate is
 almost identical to the primary result:
@@ -771,7 +773,7 @@ The negative positive geographic-spread association remains:
 The size-adjusted positive-count result remains positive:
 
 - Positive geographic spread, size-adjusted: count ratio 1.027, 95% CI 1.019
-  to 1.036.
+  to 1.035.
 
 Interpretation: the positive cluster-size deprivation estimate is sensitive to
 the extreme right tail, while the negative positive geographic-spread result and
@@ -779,7 +781,7 @@ the size-adjusted positive results are less sensitive to winsorisation.
 
 ### Approximately Non-Overlapping Windows
 
-This sensitivity keeps only windows where `window_idx % 3 == 0`, reducing the
+This sensitivity keeps approximately every third analysis window, reducing the
 cluster table from 193,112 clusters to 63,991 clusters and the mixing-model
 population from 84,067 to 27,897 non-singleton clusters.
 
@@ -850,8 +852,8 @@ Reversing the modelling direction (Figure 3; wave-specific in Figure 4
 ZTNB components, with the companion geographic-spread hurdle in Supplementary
 Table 1), within-cluster excess mixing was itself a substantial predictor of
 cluster scale: per 1 SD higher SIMD-quintile excess discordance, positive
-cluster size was 3.48-fold higher, positive geographic spread was 3.03-fold
-higher, and the odds of multi-datazone spread were 22.1-fold higher. Age
+cluster size was 3.478-fold higher, positive geographic spread was 3.029-fold
+higher, and the odds of multi-datazone spread were 22.107-fold higher. Age
 excess discordance was also strongly positively associated with both ZTNB
 components. The mixing-predictor effects were directionally stable across
 SIMD subdomains (Supplementary Figure 7; Supplementary Table 2 for the
