@@ -119,8 +119,8 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     # These derived bands preserve that direction: quintile/decile 1 = most deprived.
     for rank_col in SIMD_DOMAIN_RANK_FEATURES:
         stem = rank_col.removesuffix("_rank")
-        out[f"{stem}_quintile"] = np.ceil(out[rank_col] / (6976 / 5)).clip(1, 5)
-        out[f"{stem}_decile"] = np.ceil(out[rank_col] / (6976 / 10)).clip(1, 10)
+        out[f"{stem}_quintile"] = np.ceil(out[rank_col] / (6976 / 5)).clip(1, 5).astype(int)
+        out[f"{stem}_decile"] = np.ceil(out[rank_col] / (6976 / 10)).clip(1, 10).astype(int)
     return out
 
 
