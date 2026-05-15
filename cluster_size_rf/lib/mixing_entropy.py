@@ -17,6 +17,21 @@ ENTROPY_FEATURES = [
     "sociodemographic_entropy_norm",
 ]
 
+INDIVIDUAL_ENTROPY_FEATURES = [
+    "age_entropy_norm",
+    "sex_entropy_norm",
+    "simd_entropy_norm",
+]
+
+DEMOGRAPHIC_SIMD_ENTROPY_FEATURES = [
+    "demographic_entropy_norm",
+    "simd_entropy_norm",
+]
+
+SOCIODEMOGRAPHIC_ENTROPY_FEATURES = [
+    "sociodemographic_entropy_norm",
+]
+
 MIXING_ADJUSTMENT_NUMERIC_FEATURES = [
     "cluster_mid_days_since_epoch",
     "log_wn_no_sequences",
@@ -223,20 +238,25 @@ def make_cluster_mixing_table(
 
 
 def make_mixing_feature_sets(adjusted: bool = True) -> dict[str, MixingFeatureSet]:
-    """Return entropy-only and context-adjusted feature sets."""
-    feature_sets = {
-        "entropy_only": MixingFeatureSet(
-            name="entropy_only",
-            numeric_features=list(ENTROPY_FEATURES),
+    """Return separated entropy feature sets to avoid component/joint collinearity."""
+    feature_groups = {
+        "individual": list(INDIVIDUAL_ENTROPY_FEATURES),
+        "demographic_simd": list(DEMOGRAPHIC_SIMD_ENTROPY_FEATURES),
+        "sociodemographic": list(SOCIODEMOGRAPHIC_ENTROPY_FEATURES),
+    }
+    feature_sets = {}
+    for group_name, entropy_features in feature_groups.items():
+        feature_sets[f"{group_name}_entropy"] = MixingFeatureSet(
+            name=f"{group_name}_entropy",
+            numeric_features=entropy_features,
             categorical_features=[],
         )
-    }
-    if adjusted:
-        feature_sets["context_adjusted"] = MixingFeatureSet(
-            name="context_adjusted",
-            numeric_features=list(ENTROPY_FEATURES) + list(MIXING_ADJUSTMENT_NUMERIC_FEATURES),
-            categorical_features=list(MIXING_ADJUSTMENT_CATEGORICAL_FEATURES),
-        )
+        if adjusted:
+            feature_sets[f"{group_name}_context_adjusted"] = MixingFeatureSet(
+                name=f"{group_name}_context_adjusted",
+                numeric_features=entropy_features + list(MIXING_ADJUSTMENT_NUMERIC_FEATURES),
+                categorical_features=list(MIXING_ADJUSTMENT_CATEGORICAL_FEATURES),
+            )
     return feature_sets
 
 
@@ -443,44 +463,57 @@ def run_mixing_entropy_workflow(
     metrics = pd.DataFrame(metrics_rows)
     metrics.to_csv(out / f"{label}_model_metrics.csv", index=False)
 
-    effect_name = "context_adjusted"
-    effect_result = results[effect_name]
-    effect_split = splits[effect_name]
-    X_effect, _ = sample_for_importance(effect_split.X_test, effect_split.y_test, config)
+    pdp_tables = {}
+    ale_tables = {}
+    for effect_name, effect_set in feature_sets.items():
+        if not effect_name.endswith("_context_adjusted"):
+            continue
+        effect_result = results[effect_name]
+        effect_split = splits[effect_name]
+        X_effect, _ = sample_for_importance(effect_split.X_test, effect_split.y_test, config)
+        effect_entropy_features = [
+            feature for feature in ENTROPY_FEATURES if feature in effect_set.numeric_features
+        ]
 
-    pdp_curves = partial_dependence_curves(
-        effect_result.model,
-        X_effect,
-        ENTROPY_FEATURES,
-        grid_resolution=25,
-        positive_class_index=1,
-    )
-    ale_curves = accumulated_local_effects_curves(
-        effect_result.model,
-        X_effect,
-        ENTROPY_FEATURES,
-        bins=20,
-        positive_class_index=1,
-    )
-    pdp_curves.to_csv(out / f"{label}_context_adjusted_partial_dependence_curves.csv", index=False)
-    ale_curves.to_csv(out / f"{label}_context_adjusted_ale_curves.csv", index=False)
+        pdp_curves = partial_dependence_curves(
+            effect_result.model,
+            X_effect,
+            effect_entropy_features,
+            grid_resolution=25,
+            positive_class_index=1,
+        )
+        ale_curves = accumulated_local_effects_curves(
+            effect_result.model,
+            X_effect,
+            effect_entropy_features,
+            bins=20,
+            positive_class_index=1,
+        )
+        pdp_curves.to_csv(
+            out / f"{label}_{effect_name}_partial_dependence_curves.csv",
+            index=False,
+        )
+        ale_curves.to_csv(out / f"{label}_{effect_name}_ale_curves.csv", index=False)
 
-    fig = plot_partial_dependence_curves(pdp_curves)
-    fig.savefig(
-        fig_dir / f"{label}_context_adjusted_partial_dependence_curves.png",
-        dpi=300,
-        bbox_inches="tight",
-    )
-    fig.savefig(
-        fig_dir / f"{label}_context_adjusted_partial_dependence_curves.pdf",
-        bbox_inches="tight",
-    )
-    plt.close(fig)
+        fig = plot_partial_dependence_curves(pdp_curves)
+        fig.savefig(
+            fig_dir / f"{label}_{effect_name}_partial_dependence_curves.png",
+            dpi=300,
+            bbox_inches="tight",
+        )
+        fig.savefig(
+            fig_dir / f"{label}_{effect_name}_partial_dependence_curves.pdf",
+            bbox_inches="tight",
+        )
+        plt.close(fig)
 
-    fig = plot_ale_curves(ale_curves)
-    fig.savefig(fig_dir / f"{label}_context_adjusted_ale_curves.png", dpi=300, bbox_inches="tight")
-    fig.savefig(fig_dir / f"{label}_context_adjusted_ale_curves.pdf", bbox_inches="tight")
-    plt.close(fig)
+        fig = plot_ale_curves(ale_curves)
+        fig.savefig(fig_dir / f"{label}_{effect_name}_ale_curves.png", dpi=300, bbox_inches="tight")
+        fig.savefig(fig_dir / f"{label}_{effect_name}_ale_curves.pdf", bbox_inches="tight")
+        plt.close(fig)
+
+        pdp_tables[effect_name] = pdp_curves
+        ale_tables[effect_name] = ale_curves
 
     save_run_metadata(
         config,
@@ -492,6 +525,13 @@ def run_mixing_entropy_workflow(
             "membership_definition": membership_definition,
             "outcome": "large_cluster_vs_small_cluster_non_singletons",
             "entropy_features": ENTROPY_FEATURES,
+            "mixing_feature_sets": {
+                name: {
+                    "numeric_features": feature_set.numeric_features,
+                    "categorical_features": feature_set.categorical_features,
+                }
+                for name, feature_set in feature_sets.items()
+            },
             "entropy_normalisation": "log(min(K_global, n_valid_in_cluster))",
             "split_group": "window_id x pango_lineage",
             "n_non_singleton_clusters": int(len(cluster_table)),
@@ -506,6 +546,6 @@ def run_mixing_entropy_workflow(
         "metrics": metrics,
         "results": results,
         "splits": splits,
-        "pdp_curves": pdp_curves,
-        "ale_curves": ale_curves,
+        "pdp_curves": pdp_tables,
+        "ale_curves": ale_tables,
     }
