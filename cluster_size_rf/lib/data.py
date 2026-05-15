@@ -9,11 +9,14 @@ import pandas as pd
 from .config import (
     AnalysisConfig,
     DATA_PATH,
+    DATAZONE_SIMD_PATH,
     DATE_COLUMNS,
     PRIMARY_CATEGORICAL_FEATURES,
     READ_COLUMNS,
     SENSITIVITY_NUMERIC_FEATURES,
+    SIMD_DOMAIN_BASES,
     SIMD_DOMAIN_FEATURES_BY_MODE,
+    SIMD_DOMAIN_POP_FEATURES_BY_MODE,
     SIMD_DOMAIN_RANK_FEATURES,
     SIMD_OVERALL_FEATURE_BY_MODE,
     TEST_REASON_MAP,
@@ -24,6 +27,7 @@ from .config import (
 class FeatureSpec:
     simd_overall_feature: str
     simd_domain_mode: str
+    simd_band_weighting: str
     simd_domain_features: list[str]
     numeric_features: list[str]
     categorical_features: list[str]
@@ -40,13 +44,68 @@ def read_analysis_data(
     return pd.read_parquet(data_path, columns=READ_COLUMNS if columns is None else columns)
 
 
-def build_sequence_table(
+def _population_weighted_band(values: pd.DataFrame, rank_col: str, n_bands: int) -> pd.Series:
+    """Assign rank-ordered data zones to bands with approximately equal population."""
+    ordered = values[["datazone", "dz_population", rank_col]].dropna(subset=[rank_col]).copy()
+    ordered = ordered.sort_values([rank_col, "datazone"], kind="mergesort")
+    total_pop = ordered["dz_population"].sum()
+    if total_pop <= 0:
+        raise ValueError("Total datazone population must be positive for population-weighted bands.")
+    midpoint_cum_pop = ordered["dz_population"].cumsum() - (ordered["dz_population"] / 2)
+    band = np.floor((midpoint_cum_pop / total_pop) * n_bands).astype(int) + 1
+    band = band.clip(1, n_bands)
+    return pd.Series(band.to_numpy(), index=ordered["datazone"], name=rank_col)
+
+
+def make_population_weighted_simd_lookup(
+    simd_path: str | Path = DATAZONE_SIMD_PATH,
+) -> pd.DataFrame:
+    """Create PHS-style population-weighted SIMD quintile/decile lookup.
+
+    Bands are assigned after ordering all Scottish data zones by each rank and
+    cutting cumulative population into equal-population groups. Ranks use
+    1 = most deprived, so band 1 remains most deprived.
+    """
+    rank_cols = ["dz_simd_rank", *SIMD_DOMAIN_RANK_FEATURES]
+    lookup = pd.read_parquet(simd_path, columns=["datazone", "dz_population", *rank_cols])
+    out = lookup[["datazone"]].copy()
+    rank_to_stem = {"dz_simd_rank": "dz_simd"}
+    rank_to_stem.update(
+        {f"dz_simd_{base}_rank": f"dz_simd_{base}" for base in SIMD_DOMAIN_BASES}
+    )
+    for rank_col, stem in rank_to_stem.items():
+        for n_bands, suffix in [(5, "quintile"), (10, "decile")]:
+            band = _population_weighted_band(lookup, rank_col, n_bands)
+            out[f"{stem}_pop_{suffix}"] = out["datazone"].map(band).astype("Int64")
+    return out
+
+
+def _add_cluster_type(df: pd.DataFrame, large_min: int) -> pd.DataFrame:
+    """Add shared cluster-type outcome fields."""
+    out = df.copy()
+    out["cluster_type"] = np.select(
+        [out["cluster_size"].eq(1), out["cluster_size"].between(2, large_min - 1)],
+        ["singleton", "small_cluster"],
+        default="large_cluster",
+    )
+    out["cluster_type"] = pd.Categorical(
+        out["cluster_type"],
+        categories=["singleton", "small_cluster", "large_cluster"],
+        ordered=True,
+    )
+    out["is_large_cluster"] = out["cluster_type"].eq("large_cluster").astype("int8")
+    out["is_singleton"] = out["cluster_type"].eq("singleton").astype("int8")
+    out["large_min_threshold"] = large_min
+    return out
+
+
+def build_cluster_membership_table(
     source: pd.DataFrame,
     config: AnalysisConfig,
     resolution: float | None = None,
     large_min: int | None = None,
 ) -> pd.DataFrame:
-    """Filter to one resolution/QC pass and de-duplicate overlapping windows."""
+    """Filter to one resolution/QC pass while keeping all cluster-window memberships."""
     resolution = config.primary_resolution if resolution is None else resolution
     large_min = config.primary_large_min if large_min is None else large_min
 
@@ -59,25 +118,48 @@ def build_sequence_table(
         df[col] = pd.to_datetime(df[col])
 
     df["dist_to_mid"] = (df["collection_date"] - df["wn_mid_date"]).abs()
+    return _add_cluster_type(df.reset_index(drop=True), large_min)
+
+
+def build_sequence_table(
+    source: pd.DataFrame,
+    config: AnalysisConfig,
+    resolution: float | None = None,
+    large_min: int | None = None,
+    dedup_strategy: str | None = None,
+) -> pd.DataFrame:
+    """Filter to one resolution/QC pass and assign each sequence to one window cluster.
+
+    Strategies:
+    - ``largest_cluster``: choose the largest cluster a sequence appears in, then
+      break ties by closeness to the window mid-date and earlier window index.
+    - ``closest_mid_date``: legacy rule, choose the window whose midpoint is
+      closest to the sequence collection date.
+    """
+    dedup_strategy = config.window_dedup_strategy if dedup_strategy is None else dedup_strategy
+    if dedup_strategy not in {"largest_cluster", "closest_mid_date"}:
+        raise ValueError("dedup_strategy must be 'largest_cluster' or 'closest_mid_date'")
+
+    df = build_cluster_membership_table(
+        source,
+        config,
+        resolution=resolution,
+        large_min=large_min,
+    )
+
+    if dedup_strategy == "largest_cluster":
+        sort_cols = ["sequence_id", "cluster_size", "dist_to_mid", "window_idx"]
+        ascending = [True, False, True, True]
+    else:
+        sort_cols = ["sequence_id", "dist_to_mid", "window_idx"]
+        ascending = [True, True, True]
+
     df = (
-        df.sort_values(["sequence_id", "dist_to_mid", "window_idx"], kind="mergesort")
+        df.sort_values(sort_cols, ascending=ascending, kind="mergesort")
         .drop_duplicates("sequence_id", keep="first")
         .reset_index(drop=True)
     )
-
-    df["cluster_type"] = np.select(
-        [df["cluster_size"].eq(1), df["cluster_size"].between(2, large_min - 1)],
-        ["singleton", "small_cluster"],
-        default="large_cluster",
-    )
-    df["cluster_type"] = pd.Categorical(
-        df["cluster_type"],
-        categories=["singleton", "small_cluster", "large_cluster"],
-        ordered=True,
-    )
-    df["is_large_cluster"] = df["cluster_type"].eq("large_cluster").astype("int8")
-    df["is_singleton"] = df["cluster_type"].eq("singleton").astype("int8")
-    df["large_min_threshold"] = large_min
+    df["window_dedup_strategy"] = dedup_strategy
     return df
 
 
@@ -124,6 +206,35 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def add_population_weighted_simd_bands(
+    df: pd.DataFrame,
+    simd_path: str | Path = DATAZONE_SIMD_PATH,
+) -> pd.DataFrame:
+    """Attach population-weighted overall/domain SIMD quintiles and deciles."""
+    lookup = make_population_weighted_simd_lookup(simd_path)
+    return df.merge(lookup, on="datazone", how="left", validate="many_to_one")
+
+
+def _overall_simd_feature(config: AnalysisConfig) -> str:
+    if config.simd_overall_mode == "rank":
+        return "dz_simd_rank"
+    if config.simd_band_weighting == "population":
+        return f"dz_simd_pop_{config.simd_overall_mode}"
+    if config.simd_band_weighting == "equal_rank":
+        return SIMD_OVERALL_FEATURE_BY_MODE[config.simd_overall_mode]
+    raise ValueError("simd_band_weighting must be 'population' or 'equal_rank'")
+
+
+def _domain_simd_features(config: AnalysisConfig) -> list[str]:
+    if config.simd_domain_mode == "rank":
+        return list(SIMD_DOMAIN_RANK_FEATURES)
+    if config.simd_band_weighting == "population":
+        return list(SIMD_DOMAIN_POP_FEATURES_BY_MODE[config.simd_domain_mode])
+    if config.simd_band_weighting == "equal_rank":
+        return list(SIMD_DOMAIN_FEATURES_BY_MODE[config.simd_domain_mode])
+    raise ValueError("simd_band_weighting must be 'population' or 'equal_rank'")
+
+
 def build_feature_spec(config: AnalysisConfig) -> FeatureSpec:
     """Return main and SIMD-domain feature lists for a config."""
     if config.simd_overall_mode not in SIMD_OVERALL_FEATURE_BY_MODE:
@@ -136,9 +247,11 @@ def build_feature_spec(config: AnalysisConfig) -> FeatureSpec:
             "simd_domain_mode must be one of "
             f"{sorted(SIMD_DOMAIN_FEATURES_BY_MODE)}; got {config.simd_domain_mode!r}"
         )
+    if config.simd_band_weighting not in {"population", "equal_rank"}:
+        raise ValueError("simd_band_weighting must be 'population' or 'equal_rank'")
 
-    simd_overall_feature = SIMD_OVERALL_FEATURE_BY_MODE[config.simd_overall_mode]
-    simd_domain_features = SIMD_DOMAIN_FEATURES_BY_MODE[config.simd_domain_mode]
+    simd_overall_feature = _overall_simd_feature(config)
+    simd_domain_features = _domain_simd_features(config)
     numeric_features = [
         "age_midpoint",
         "is_female",
@@ -169,6 +282,7 @@ def build_feature_spec(config: AnalysisConfig) -> FeatureSpec:
     return FeatureSpec(
         simd_overall_feature=simd_overall_feature,
         simd_domain_mode=config.simd_domain_mode,
+        simd_band_weighting=config.simd_band_weighting,
         simd_domain_features=list(simd_domain_features),
         numeric_features=numeric_features,
         categorical_features=categorical_features,
@@ -228,6 +342,8 @@ def prepare_model_inputs(
     """Full data preparation from raw rows to sequence table and model inputs."""
     seq = build_sequence_table(raw, config)
     model_df = engineer_features(seq)
+    if config.simd_band_weighting == "population":
+        model_df = add_population_weighted_simd_bands(model_df)
     feature_spec = build_feature_spec(config)
     targets = {
         "large": model_df["is_large_cluster"].copy(),
@@ -237,3 +353,16 @@ def prepare_model_inputs(
     }
     X = model_df[feature_spec.all_features].copy()
     return model_df, X, feature_spec, targets
+
+
+def prepare_cluster_membership_inputs(
+    raw: pd.DataFrame,
+    config: AnalysisConfig,
+) -> tuple[pd.DataFrame, FeatureSpec]:
+    """Prepare all resolution/QC-passing cluster-window memberships for cluster analyses."""
+    memberships = build_cluster_membership_table(raw, config)
+    model_df = engineer_features(memberships)
+    if config.simd_band_weighting == "population":
+        model_df = add_population_weighted_simd_bands(model_df)
+    feature_spec = build_feature_spec(config)
+    return model_df, feature_spec

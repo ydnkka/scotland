@@ -73,6 +73,7 @@ def save_run_metadata(
         **config.to_dict(),
         "simd_overall_feature": feature_spec.simd_overall_feature,
         "simd_domain_mode": feature_spec.simd_domain_mode,
+        "simd_band_weighting": feature_spec.simd_band_weighting,
         "simd_domain_features": feature_spec.simd_domain_features,
         "numeric_features": feature_spec.numeric_features,
         "categorical_features": feature_spec.categorical_features,

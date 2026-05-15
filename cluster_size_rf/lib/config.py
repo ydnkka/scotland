@@ -6,6 +6,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_PATH = PROJECT_ROOT / "data" / "processed" / "scotland_clustering_analysis_dataset.parquet"
+DATAZONE_SIMD_PATH = PROJECT_ROOT / "data" / "processed" / "scotland_datazone_simd_data.parquet"
 OUT_DIR = PROJECT_ROOT / "cluster_size_rf" / "outputs"
 
 
@@ -33,8 +34,10 @@ class AnalysisConfig:
     primary_resolution: float = 0.3
     primary_large_min: int = 13
     random_state: int = 42
+    window_dedup_strategy: str = "largest_cluster"
     simd_overall_mode: str = "quintile"
     simd_domain_mode: str = "quintile"
+    simd_band_weighting: str = "population"
     use_sensitivity_context_controls: bool = False
     fit_singleton_binary: bool = True
     fit_simd_domain_decomposition: bool = True
@@ -65,6 +68,7 @@ ID_COLUMNS = [
     "sequence_id",
     "patient_id",
     "cluster_id",
+    "datazone",
     "window_idx",
     "window_id",
     "resolution",
@@ -84,7 +88,9 @@ QC_COLUMNS = [
 ]
 
 FOCAL_SOCIODEMOGRAPHIC_COLUMNS = [
+    "age_band",
     "age_midpoint",
+    "sex",
     "is_female",
     "dz_simd_rank",
     "dz_simd_quintile",
@@ -118,6 +124,7 @@ SURVEILLANCE_INCIDENCE_COLUMNS = [
 ]
 
 CONTEXT_COLUMNS = [
+    "pango_lineage",
     "who_voc",
     "dz_health_board",
     "test_reason",
@@ -176,6 +183,12 @@ SIMD_DOMAIN_FEATURES_BY_MODE = {
     "rank": [f"dz_simd_{base}_rank" for base in SIMD_DOMAIN_BASES],
     "quintile": [f"dz_simd_{base}_quintile" for base in SIMD_DOMAIN_BASES],
     "decile": [f"dz_simd_{base}_decile" for base in SIMD_DOMAIN_BASES],
+}
+
+SIMD_DOMAIN_POP_FEATURES_BY_MODE = {
+    "rank": [f"dz_simd_{base}_rank" for base in SIMD_DOMAIN_BASES],
+    "quintile": [f"dz_simd_{base}_pop_quintile" for base in SIMD_DOMAIN_BASES],
+    "decile": [f"dz_simd_{base}_pop_decile" for base in SIMD_DOMAIN_BASES],
 }
 
 PRIMARY_CATEGORICAL_FEATURES = [
