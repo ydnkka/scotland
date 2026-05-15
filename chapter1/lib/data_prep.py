@@ -316,7 +316,11 @@ def _attach_calendar_spline(
 def _pool_lineages(
     clusters: pd.DataFrame, lineage_min_clusters: int,
 ) -> tuple[pd.DataFrame, int, int]:
-    counts = clusters["pango_lineage"].astype(str).value_counts()
+    pool_population = clusters.loc[
+        clusters["cluster_size"] >= 2, "pango_lineage"
+    ].astype(str)
+    counts = pool_population.value_counts()
+    total_counts = clusters["pango_lineage"].astype(str).value_counts()
     common = set(counts[counts >= lineage_min_clusters].index)
     clusters = clusters.copy()
     clusters["lineage_model"] = np.where(
@@ -324,7 +328,7 @@ def _pool_lineages(
         clusters["pango_lineage"].astype(str),
         "Other rare lineages",
     )
-    return clusters, len(counts), len(common)
+    return clusters, len(total_counts), len(common)
 
 
 # ---------------------------------------------------------------------------
@@ -397,6 +401,14 @@ def build_cluster_table(
             clusters[f"{prefix}_discordance"]
             - clusters[f"{prefix}_expected_discordance"]
         )
+        n_valid = clusters[f"{prefix}_n_valid"].astype(float)
+        n_pairs = n_valid * (n_valid - 1.0) / 2.0
+        expected = clusters[f"{prefix}_expected_discordance"].astype(float)
+        null_var = expected * (1.0 - expected) / n_pairs
+        finite_sample_se = np.sqrt(null_var.where(null_var > 0))
+        clusters[f"{prefix}_finite_sample_excess"] = (
+            clusters[f"{prefix}_excess_discordance"] / finite_sample_se
+        )
 
     # Transforms
     clusters["deprivation_raw"] = -clusters["mean_simd_rank"]
@@ -427,6 +439,10 @@ def build_cluster_table(
         f"{prefix}_excess_mixing_z": f"{prefix}_excess_discordance"
         for prefix in MIXING_VARIABLES
     })
+    transforms.update({
+        f"{prefix}_finite_sample_mixing_z": f"{prefix}_finite_sample_excess"
+        for prefix in MIXING_VARIABLES
+    })
     for z_col, raw_col in transforms.items():
         clusters[z_col], mean, sd = zscore(clusters[raw_col])
         scaling_rows.append({
@@ -454,6 +470,7 @@ def build_cluster_table(
         n_lin_common < n_lin_total
     )
     scaling.attrs["lineage_min_clusters"] = lineage_min_clusters
+    scaling.attrs["lineage_pool_population"] = "non_singleton_clusters"
     return clusters, scaling, dropped
 
 

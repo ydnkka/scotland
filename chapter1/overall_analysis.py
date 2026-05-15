@@ -13,9 +13,13 @@ Runs the core fits on the full primary-resolution cluster table:
 4. **Sensitivity: spline on log(cluster_size)** in the spread model.
 5. **Sensitivity: SIMD-decile mixing** — swap the SIMD-quintile excess
    mixing predictor for an SIMD-decile version; age and sex remain.
-6. **Sensitivity: null-residual mixing** — refit main effects using
+6. **Sensitivity: finite-sample mixing** — replace raw observed-minus-
+   expected excess mixing with finite-sample standardised excess mixing.
+7. **Sensitivity: joint-profile adjusted predictor set** — add the joint
+   age × sex × SIMD profile term to the three main mixing predictors.
+8. **Sensitivity: null-residual mixing** — refit main effects using
    residuals from a per-dimension null regression as the predictor.
-7. **Supplementary: joint profile predictors** — one fit per joint
+9. **Supplementary: joint profile predictors** — one fit per joint
    profile: demographic (age × sex) and sociodemographic (age × sex ×
    SIMD).
 
@@ -50,6 +54,8 @@ from lib.data_prep import (  # noqa: E402
 from lib.constants import PROFILE_PREDICTORS  # noqa: E402
 from lib.fit_models import (  # noqa: E402
     build_null_residual_mixing,
+    fit_finite_sample_mixing_sensitivity,
+    fit_joint_profile_adjusted_sensitivity,
     fit_main_effects,
     fit_null_residual_sensitivity,
     fit_profile_predictor,
@@ -72,11 +78,27 @@ def run(
     calendar_spline_df: int = CALENDAR_SPLINE_DF,
     cluster_by: str = "window_id",
     maxiter: int = 1000,
+    winsorise_quantile: float = 0.0,
+    exclude_tail_quantile: float = 0.0,
+    window_stride: int = 1,
     tables_dir: Path | None = None,
     figures_dir: Path | None = None,
     cache_dir: Path | None = None,
     sample_clusters: int | None = None,
 ) -> None:
+    if winsorise_quantile > 0.0 and exclude_tail_quantile > 0.0:
+        raise ValueError(
+            "Use either --winsorise-quantile or --exclude-tail-quantile, not both."
+        )
+    for name, value in {
+        "winsorise_quantile": winsorise_quantile,
+        "exclude_tail_quantile": exclude_tail_quantile,
+    }.items():
+        if value < 0.0 or value >= 1.0:
+            raise ValueError(f"{name} must be in [0, 1); got {value}.")
+    if window_stride < 1:
+        raise ValueError(f"window_stride must be >= 1; got {window_stride}.")
+
     out_dir = root / "chapter1"
     tables_dir = tables_dir or out_dir / "tables"
     figures_dir = figures_dir or out_dir / "figures"
@@ -96,6 +118,16 @@ def run(
         lineage_min_clusters=lineage_min_clusters,
         calendar_spline_df=calendar_spline_df,
     )
+    if window_stride > 1:
+        keep_idx = clusters["window_idx"] % window_stride == 0
+        n_before = len(clusters)
+        clusters = clusters.loc[keep_idx].copy()
+        print(
+            f"[chapter1] non-overlapping window filter "
+            f"(stride={window_stride}): {n_before:,} -> {len(clusters):,} "
+            "clusters",
+            flush=True,
+        )
     if sample_clusters is not None and sample_clusters < len(clusters):
         clusters = clusters.sample(sample_clusters, random_state=42).reset_index(drop=True)
         print(
@@ -114,7 +146,11 @@ def run(
     # ------------------------------------------------------------------
     print("[chapter1] fitting main-effects model", flush=True)
     main_results, main_diag = fit_main_effects(
-        clusters, cluster_by=cluster_by, maxiter=maxiter,
+        clusters,
+        cluster_by=cluster_by,
+        maxiter=maxiter,
+        winsorise_quantile=winsorise_quantile,
+        exclude_tail_quantile=exclude_tail_quantile,
     )
     main_results.to_csv(tables_dir / "main_effects_results.csv", index=False)
     main_diag.to_csv(tables_dir / "main_effects_diagnostics.csv", index=False)
@@ -127,6 +163,8 @@ def run(
         maxiter=maxiter,
         include_log_size=True,
         model_label="main",
+        winsorise_quantile=winsorise_quantile,
+        exclude_tail_quantile=exclude_tail_quantile,
     )
     size_adj_results.to_csv(
         tables_dir / "size_adjusted_spread_results.csv", index=False,
@@ -140,7 +178,11 @@ def run(
     # ------------------------------------------------------------------
     print("[chapter1] fitting wave-interaction model", flush=True)
     wave_results, wave_diag = fit_wave_interactions(
-        clusters, cluster_by=cluster_by, maxiter=maxiter,
+        clusters,
+        cluster_by=cluster_by,
+        maxiter=maxiter,
+        winsorise_quantile=winsorise_quantile,
+        exclude_tail_quantile=exclude_tail_quantile,
     )
     wave_results.to_csv(
         tables_dir / "wave_interaction_results.csv", index=False,
@@ -154,7 +196,11 @@ def run(
     # ------------------------------------------------------------------
     print("[chapter1] fitting size-spline sensitivity", flush=True)
     spline_results, spline_diag = fit_size_spline_sensitivity(
-        clusters, cluster_by=cluster_by, maxiter=maxiter,
+        clusters,
+        cluster_by=cluster_by,
+        maxiter=maxiter,
+        winsorise_quantile=winsorise_quantile,
+        exclude_tail_quantile=exclude_tail_quantile,
     )
     spline_results.to_csv(
         tables_dir / "size_spline_sensitivity_results.csv", index=False,
@@ -168,7 +214,11 @@ def run(
     # ------------------------------------------------------------------
     print("[chapter1] fitting SIMD-decile sensitivity", flush=True)
     decile_results, decile_diag = fit_simd_decile_sensitivity(
-        clusters, cluster_by=cluster_by, maxiter=maxiter,
+        clusters,
+        cluster_by=cluster_by,
+        maxiter=maxiter,
+        winsorise_quantile=winsorise_quantile,
+        exclude_tail_quantile=exclude_tail_quantile,
     )
     decile_results.to_csv(
         tables_dir / "simd_decile_sensitivity_results.csv", index=False,
@@ -178,13 +228,55 @@ def run(
     )
 
     # ------------------------------------------------------------------
+    # 3c. Finite-sample standardised mixing sensitivity
+    # ------------------------------------------------------------------
+    print("[chapter1] fitting finite-sample mixing sensitivity", flush=True)
+    finite_results, finite_diag = fit_finite_sample_mixing_sensitivity(
+        clusters,
+        cluster_by=cluster_by,
+        maxiter=maxiter,
+        winsorise_quantile=winsorise_quantile,
+        exclude_tail_quantile=exclude_tail_quantile,
+    )
+    finite_results.to_csv(
+        tables_dir / "finite_sample_mixing_sensitivity_results.csv",
+        index=False,
+    )
+    finite_diag.to_csv(
+        tables_dir / "finite_sample_mixing_sensitivity_diagnostics.csv",
+        index=False,
+    )
+
+    # ------------------------------------------------------------------
+    # 3d. Predictor-set sensitivity (main predictors + joint profile)
+    # ------------------------------------------------------------------
+    print("[chapter1] fitting joint-profile adjusted sensitivity", flush=True)
+    joint_results, joint_diag = fit_joint_profile_adjusted_sensitivity(
+        clusters,
+        cluster_by=cluster_by,
+        maxiter=maxiter,
+        winsorise_quantile=winsorise_quantile,
+        exclude_tail_quantile=exclude_tail_quantile,
+    )
+    joint_results.to_csv(
+        tables_dir / "joint_profile_adjusted_results.csv", index=False,
+    )
+    joint_diag.to_csv(
+        tables_dir / "joint_profile_adjusted_diagnostics.csv", index=False,
+    )
+
+    # ------------------------------------------------------------------
     # 4. Null-residual mixing sensitivity
     # ------------------------------------------------------------------
     print("[chapter1] building null-residual mixing", flush=True)
     clusters_with_null = build_null_residual_mixing(clusters)
     print("[chapter1] fitting null-residual sensitivity", flush=True)
     null_results, null_diag = fit_null_residual_sensitivity(
-        clusters_with_null, cluster_by=cluster_by, maxiter=maxiter,
+        clusters_with_null,
+        cluster_by=cluster_by,
+        maxiter=maxiter,
+        winsorise_quantile=winsorise_quantile,
+        exclude_tail_quantile=exclude_tail_quantile,
     )
     null_results.to_csv(
         tables_dir / "null_residual_sensitivity_results.csv", index=False,
@@ -208,6 +300,8 @@ def run(
             profile_name=profile_name,
             cluster_by=cluster_by,
             maxiter=maxiter,
+            winsorise_quantile=winsorise_quantile,
+            exclude_tail_quantile=exclude_tail_quantile,
         )
         if not profile_results.empty:
             profile_results["profile"] = profile_name
@@ -259,6 +353,36 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument("--cluster-by", default="window_id",
                         choices=["window_id", "health_board"])
     parser.add_argument("--maxiter", type=int, default=1000)
+    parser.add_argument(
+        "--winsorise-quantile",
+        type=float,
+        default=0.0,
+        metavar="Q",
+        help=(
+            "Winsorise each ZTNB outcome at the Q-th quantile before fitting. "
+            "Use 0 (default) to disable."
+        ),
+    )
+    parser.add_argument(
+        "--exclude-tail-quantile",
+        type=float,
+        default=0.0,
+        metavar="Q",
+        help=(
+            "Exclude rows above the Q-th outcome quantile before each ZTNB fit. "
+            "For example, 0.995 excludes the top 0.5%% tail. Use 0 to disable."
+        ),
+    )
+    parser.add_argument(
+        "--window-stride",
+        type=int,
+        default=1,
+        metavar="N",
+        help=(
+            "Retain only windows where window_idx %% N == 0. "
+            "Default 1 keeps all sliding windows."
+        ),
+    )
     parser.add_argument("--tables-dir", type=Path, default=None)
     parser.add_argument("--figures-dir", type=Path, default=None)
     parser.add_argument("--cache-dir", type=Path, default=None)
@@ -280,6 +404,9 @@ def main(argv=None) -> None:
         calendar_spline_df=args.calendar_spline_df,
         cluster_by=args.cluster_by,
         maxiter=args.maxiter,
+        winsorise_quantile=args.winsorise_quantile,
+        exclude_tail_quantile=args.exclude_tail_quantile,
+        window_stride=args.window_stride,
         tables_dir=args.tables_dir.resolve() if args.tables_dir else None,
         figures_dir=args.figures_dir.resolve() if args.figures_dir else None,
         cache_dir=args.cache_dir.resolve() if args.cache_dir else None,

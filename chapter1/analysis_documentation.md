@@ -36,12 +36,23 @@ its members were exchangeable within their own composition.  The
 null-regression sensitivity (§5) tightens the null by additionally
 adjusting for the cluster's own marginal entropy.
 
+Excess mixing was defined as the difference between the observed within-cluster pairwise discordance and the expected discordance among sequences from the same lineage and analysis window. Positive values therefore indicate clusters whose age, sex, or deprivation composition is more heterogeneous than expected given the contemporaneous lineage-specific background distribution. This formulation controls for changing epidemic composition across time and lineage, so that mixing is interpreted relative to the population at risk of contributing to each cluster.
+
+
+As a sensitivity analysis, we replaced the observed-minus-expected excess-mixing variables with null-residual mixing measures. For each mixing dimension, observed discordance was regressed on log cluster size, marginal cluster entropy, lineage, and calendar spline terms. The standardised residual from this model represents the component of mixing not explained by cluster size, marginal composition, lineage, or calendar period. Persistence of the association under this specification would indicate that the main findings are not simply a consequence of larger or more compositionally diverse clusters.
+
+Because geographic spread is mechanically related to cluster size, we assessed sensitivity to the functional form of size adjustment by replacing the linear log cluster-size term with a spline in log cluster size. This allowed the relationship between cluster size and number of affected datazones to be non-linear. Similar excess-mixing estimates under this model would support the robustness of the inferred mixing–spread association to non-linear size effects.
+
 ## 3. Outcomes
 
 `cluster_size` and `cluster_n_datazones`, both heavily right-skewed
 counts with a structural mass at one.  Both are modelled as
 **zero-truncated negative binomial (ZTNB) on the non-singleton sub-
-population**.  Cluster size response is the excess count `raw − 1`. This is consistent with the observation that mixing is only defined for non-singleton clusters.
+population**.  Cluster size response is the excess count `cluster_size − 1`.
+Geographic-spread response is the raw count of unique datazones because a
+non-singleton cluster can still have one unique datazone.  This is consistent
+with the observation that mixing is only defined for non-singleton clusters
+while preserving within-datazone non-singleton clusters in the spread model.
 
 Inference uses analytical first-order scores in the ZTNB log-likelihood,
 a numerical Hessian as the sandwich bread, and cluster-robust standard
@@ -66,10 +77,11 @@ Adjustment covariates, all z-scored:
 - `test_positivity_z` (logit of mean local test positivity)
 
 Calendar time is modelled with an 8-df B-spline on `window_idx`.
-Lineage is a categorical with rare lineages (<50 clusters) pooled into
-"Other rare lineages".  For the wave-interaction model lineage is
-replaced by wave dummies because the two are collinear at the broad-
-group level.
+Lineage is a categorical with rare lineages pooled into "Other rare
+lineages".  The pooling threshold is fewer than 30 non-singleton
+clusters, matching the Chapter 1 analysis population rather than the
+all-cluster table.  For the wave-interaction model lineage is replaced
+by wave dummies because the two are collinear at the broad-group level.
 
 ## 5. Model specifications
 
@@ -78,7 +90,7 @@ group level.
 Outcome | Form
 ---|---
 `cluster_size` | `log E[size − 1] = β₀ + β·(excess mixing) + γ·(adjustments) + spline(window_idx) + lineage`
-`cluster_n_datazones` | `log datazones = β₀ + β·(excess mixing) + γ·(adjustments) + spline(window_idx) + lineage`
+`cluster_n_datazones` | `log E[unique datazones] = β₀ + β·(excess mixing) + γ·(adjustments) + spline(window_idx) + lineage`
 
 Both equations are fit on non-singleton clusters with ZTNB.
 
@@ -119,6 +131,34 @@ gradient but exposes the expected-discordance calculation to more
 small-cell noise within window × lineage strata, particularly in the
 sparser late-pandemic waves; the decile predictor is therefore
 reported only as a sensitivity, not as part of the primary model.
+
+**Finite-sample standardised mixing** (`fit_finite_sample_mixing_sensitivity`):
+refits the main model after replacing each observed-minus-expected excess
+mixing predictor with a finite-sample standardised version.  For each
+cluster, excess discordance is divided by the approximate pair-sampling
+standard error under the lineage × window null,
+`sqrt[p_expected(1 − p_expected) / choose(n_valid, 2)]`, then z-scored
+across clusters.  This asks whether the association is driven by raw
+excess-discordance scale or persists after accounting for the number of
+valid within-cluster pairs.
+
+**Joint-profile adjusted predictor set** (`fit_joint_profile_adjusted_sensitivity`):
+refits the main model with the three main predictors plus the joint
+age × sex × SIMD profile excess-mixing term.  This checks whether the
+age, sex, and SIMD slopes are stable after adding a higher-dimensional
+boundary-crossing summary.
+
+**Non-overlapping windows** (`overall_analysis.py --window-stride 3`):
+keeps only clusters from windows where `window_idx % 3 == 0`.  Because
+the three-week windows advance weekly, this approximates a non-overlapping
+window sensitivity.
+
+**Tail influence** (`--winsorise-quantile 0.99` or
+`--exclude-tail-quantile 0.995`): refits the same model suite after either
+capping each ZTNB outcome at its 99th percentile or excluding rows above
+the 99.5th percentile of the fitted outcome.  These runs test sensitivity
+to the extreme right tail of reconstructed cluster size and geographic
+spread.
 
 **Null-residual mixing** (`build_null_residual_mixing` +
 `fit_null_residual_sensitivity`): builds an alternative excess-mixing

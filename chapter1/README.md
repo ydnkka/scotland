@@ -25,8 +25,12 @@ deprivation than a random-assembly null would predict.
   two valid cases for the variable in question, so every fit is on the
   non-singleton sub-population.  Both outcomes — `cluster_size` and
   `cluster_n_datazones` — are modelled as **zero-truncated negative
-  binomial only**: the response is the excess count (`raw − 1`) and no
-  hurdle component is fit.
+  binomial only** and no hurdle component is fit.  `cluster_size` uses
+  `cluster_size − 1`; geographic spread uses the raw unique datazone
+  count because some non-singleton clusters still occupy one unique
+  datazone.
+- Pango lineages are pooled if they have fewer than 30 non-singleton
+  clusters.
 
 ## Models
 
@@ -41,6 +45,8 @@ errors clustered by analysis window.
 | Wave interactions | size · spread | age, sex, SIMD, all × wave | wave dummies replace lineage |
 | Size-spline sensitivity | spread | age, sex, SIMD | 4-df B-spline on `log(size)` |
 | SIMD-decile sensitivity | size · spread | age, sex, SIMD decile | sensitivity to SIMD bucketing |
+| Finite-sample mixing sensitivity | size · spread | finite-sample standardised age, sex, SIMD | sensitivity to pair-count precision |
+| Joint-profile adjusted sensitivity | size · spread | age, sex, SIMD, joint age × sex × SIMD profile | predictor-set sensitivity |
 | Null-residual sensitivity | size · spread | residuals from `obs ∼ size + entropy + lineage + window` | sensitivity to the random-assembly null |
 | Demographic profile | size · spread | joint age × sex profile | single-predictor supplement |
 | Sociodemographic profile | size · spread | joint age × sex × SIMD profile | single-predictor supplement |
@@ -63,6 +69,16 @@ conda run -n PhD python chapter1/wave_analysis.py
 Add `--sample-clusters N` to `overall_analysis.py` to fit on a
 subsample (useful while iterating).
 
+The main sensitivity runs can be generated with:
+
+```
+bash chapter1/run_chapter1.sh
+```
+
+The overall-analysis script also accepts `--window-stride 3`,
+`--winsorise-quantile 0.99`, and `--exclude-tail-quantile 0.995` for
+targeted runs into separate output directories.
+
 ## Outputs
 
 Tables (`chapter1/tables/`):
@@ -74,6 +90,8 @@ Tables (`chapter1/tables/`):
 - `wave_interaction_results.csv` / `wave_interaction_diagnostics.csv`
 - `size_spline_sensitivity_results.csv` / `size_spline_sensitivity_diagnostics.csv`
 - `simd_decile_sensitivity_results.csv` / `simd_decile_sensitivity_diagnostics.csv`
+- `finite_sample_mixing_sensitivity_results.csv` / `finite_sample_mixing_sensitivity_diagnostics.csv`
+- `joint_profile_adjusted_results.csv` / `joint_profile_adjusted_diagnostics.csv`
 - `null_residual_sensitivity_results.csv` / `null_residual_sensitivity_diagnostics.csv`
 - `profile_predictor_results.csv` / `profile_predictor_diagnostics.csv`
 - `domain_main_effects_results.csv` / `domain_main_effects_diagnostics.csv`

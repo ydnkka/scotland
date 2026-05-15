@@ -29,3 +29,6 @@ dist/
 /chapter1/figures/
 /chapter1/cache/
 /chapter1/tables/
+/chapter1/sensitivity/
+/chapter1/manuscript/figures/
+/cluster_size_rf/outputs/

@@ -27,6 +27,8 @@ from typing import Iterable
 
 QC_DEFAULT = "good"
 PRIMARY_RESOLUTION = 0.3
+# Minimum number of non-singleton clusters required for a separate lineage
+# fixed-effect level. Rarer lineages are pooled into "Other rare lineages".
 LINEAGE_MIN_CLUSTERS = 30
 CALENDAR_SPLINE_DF = 8
 
@@ -152,6 +154,14 @@ TERM_LABELS: dict[str, str] = {
 TERM_LABELS.update(
     {
         f"{prefix}_excess_mixing_z": f"{spec['short_label']} excess mixing"
+        for prefix, spec in MIXING_VARIABLES.items()
+    }
+)
+TERM_LABELS.update(
+    {
+        f"{prefix}_finite_sample_mixing_z": (
+            f"{spec['short_label']} finite-sample standardised mixing"
+        )
         for prefix, spec in MIXING_VARIABLES.items()
     }
 )

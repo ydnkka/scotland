@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # run_chapter1.sh
-# Run all five Part 1 sensitivity analyses and regenerate figures.
-# Run from the repo (scotland/part1) with the PhD conda environment active:
+# Run Chapter 1 primary analyses and core sensitivity analyses.
+# Run from the repo (scotland/chapter1) with the PhD conda environment active:
 #   conda activate PhD
 #   bash run_chapter1.sh
 # Or without activating first:
@@ -12,7 +12,7 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
 echo "======================================================="
-echo "  Part 1 primary analyses"
+echo "  Chapter 1 primary analyses"
 echo "  $(date)"
 echo "======================================================="
 
@@ -26,7 +26,7 @@ conda run -n PhD python wave_analysis.py
 
 
 echo "======================================================="
-echo "  Part 1 sensitivity analyses"
+echo "  Chapter 1 sensitivity analyses"
 echo "======================================================="
 
 # ------------------------------------------------------------------
@@ -41,41 +41,49 @@ conda run -n PhD python overall_analysis.py \
     --cache-dir   sensitivity/cache_health_board
 
 # ------------------------------------------------------------------
+# 2. Approximately non-overlapping windows
+# ------------------------------------------------------------------
+echo ""
+echo "--- window-stride 3 ---"
+conda run -n PhD python overall_analysis.py \
+    --window-stride 3 \
+    --tables-dir  sensitivity/tables_stride3 \
+    --figures-dir sensitivity/figures_stride3 \
+    --cache-dir   sensitivity/cache_stride3
+
+# ------------------------------------------------------------------
+# 3. Tail influence: winsorise top 1 percent
+# ------------------------------------------------------------------
+echo ""
+echo "--- winsorise-quantile 0.99 ---"
+conda run -n PhD python overall_analysis.py \
+    --winsorise-quantile 0.99 \
+    --tables-dir  sensitivity/tables_winsorise99 \
+    --figures-dir sensitivity/figures_winsorise99 \
+    --cache-dir   sensitivity/cache_winsorise99
+
+# ------------------------------------------------------------------
+# 4. Tail influence: exclude top 0.5 percent
+# ------------------------------------------------------------------
+echo ""
+echo "--- exclude-tail-quantile 0.995 ---"
+conda run -n PhD python overall_analysis.py \
+    --exclude-tail-quantile 0.995 \
+    --tables-dir  sensitivity/tables_exclude_tail995 \
+    --figures-dir sensitivity/figures_exclude_tail995 \
+    --cache-dir   sensitivity/cache_exclude_tail995
+
+# ------------------------------------------------------------------
 # Done
 # ------------------------------------------------------------------
 echo ""
 echo "======================================================="
-echo "  All Complete: $(date)"
+echo "  All complete: $(date)"
 echo "======================================================="
 echo ""
 echo "Results are in:"
 echo "  tables/"
 echo "  sensitivity/tables_health_board/"
-
-
-#echo ""
-#echo "======================================================="
-#echo "  Make figures for all analyses (primary + sensitivity)"
-#echo "======================================================="
-
-#echo "--- Primary analysis figures ---"
-#conda run -n PhD python manuscript/make_figures.py
-
-#echo "--- figures for health_board ---"
-#conda run -n PhD python manuscript/make_figures.py \
-#    --tables-dir sensitivity/tables_health_board \
-#    --out-dir    manuscript/sensitivity/figures_health_board \
-#    --cache-dir  sensitivity/cache_health_board
-
-#echo "--- figures for winsorise99 ---"
-#conda run -n PhD python manuscript/make_figures.py \
-#    --tables-dir sensitivity/tables_winsorise99 \
-#    --out-dir    manuscript/sensitivity/figures_winsorise99 \
-#    --cache-dir  sensitivity/cache_winsorise99
-
-
-#echo ""
-#echo "Figures are in:"
-#echo "  manuscript/figures/"
-#echo "  manuscript/sensitivity/figures_health_board/"
-#echo "  manuscript/sensitivity/figures_winsorise99/"
+echo "  sensitivity/tables_stride3/"
+echo "  sensitivity/tables_winsorise99/"
+echo "  sensitivity/tables_exclude_tail995/"

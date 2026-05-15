@@ -13,6 +13,12 @@ Model families
 * :func:`fit_size_spline_sensitivity` — refits the size-adjusted
   geographic-spread ZTNB with a natural spline on ``log_cluster_size``
   in place of the linear z-score.
+* :func:`fit_finite_sample_mixing_sensitivity` — replaces raw
+  observed-minus-expected excess mixing with finite-sample standardised
+  excess mixing.
+* :func:`fit_joint_profile_adjusted_sensitivity` — adds the joint
+  age × sex × SIMD profile predictor to the main age, sex, and SIMD
+  predictor set.
 * :func:`fit_null_residual_sensitivity` — refits the main model after
   replacing each observed-minus-expected excess-mixing predictor with the
   residual from a per-mixing-dimension null regression of observed
@@ -142,6 +148,35 @@ def _diagnostic_row(
     return row
 
 
+def _tail_sensitivity_extra(
+    y: np.ndarray,
+    *,
+    winsorise_quantile: float,
+    winsorise_cap: int | None,
+    exclude_tail_quantile: float,
+    exclude_tail_cap: float | None,
+    n_before_tail_filter: int,
+    n_after_tail_filter: int,
+) -> dict[str, object]:
+    """Diagnostic metadata for tail-influence sensitivities."""
+    return {
+        "n_obs_before_tail_filter": n_before_tail_filter,
+        "n_tail_excluded": n_before_tail_filter - n_after_tail_filter,
+        "tail_excluded": bool(exclude_tail_quantile > 0.0),
+        "tail_exclude_quantile": (
+            exclude_tail_quantile if exclude_tail_quantile > 0.0 else None
+        ),
+        "tail_exclude_cap": exclude_tail_cap,
+        "winsorised": bool(winsorise_quantile > 0.0),
+        "winsorise_quantile": (
+            winsorise_quantile if winsorise_quantile > 0.0 else None
+        ),
+        "winsorise_cap": winsorise_cap,
+        "mean_response": float(np.mean(y)) if len(y) else np.nan,
+        "max_response": float(np.max(y)) if len(y) else np.nan,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Single-outcome fitter
 # ---------------------------------------------------------------------------
@@ -160,6 +195,8 @@ def _fit_outcome(
     model_label: str,
     maxiter: int,
     terms_of_interest: Sequence[str],
+    winsorise_quantile: float = 0.0,
+    exclude_tail_quantile: float = 0.0,
 ) -> tuple[pd.DataFrame, list[dict[str, object]]]:
     """Fit a ZTNB on the non-singleton sub-population.
 
@@ -176,6 +213,34 @@ def _fit_outcome(
             extra={"error": "no_non_singleton_rows"},
         )]
 
+    n_before_tail_filter = len(df_pos)
+    y_pos = df_pos[spec.positive_col].to_numpy(dtype=float)
+    exclude_tail_cap: float | None = None
+    if exclude_tail_quantile > 0.0:
+        exclude_tail_cap = float(np.quantile(y_pos, exclude_tail_quantile))
+        keep = y_pos <= exclude_tail_cap
+        df_pos = df_pos.loc[keep].copy()
+        y_pos = y_pos[keep]
+
+    if len(df_pos) == 0:
+        return pd.DataFrame(), [_diagnostic_row(
+            outcome=spec.name, component="positive_count",
+            model_label=model_label,
+            n_obs=0, converged=False, llf=np.nan, aic=np.nan,
+            extra={
+                "error": "no_rows_after_tail_filter",
+                "n_obs_before_tail_filter": n_before_tail_filter,
+                "tail_excluded": True,
+                "tail_exclude_quantile": exclude_tail_quantile,
+                "tail_exclude_cap": exclude_tail_cap,
+            },
+        )]
+
+    winsorise_cap: int | None = None
+    if winsorise_quantile > 0.0:
+        winsorise_cap = int(np.quantile(y_pos, winsorise_quantile))
+        y_pos = np.minimum(y_pos, winsorise_cap)
+
     x_pos = build_exog(
         df_pos,
         numeric_terms=numeric_terms,
@@ -184,7 +249,6 @@ def _fit_outcome(
         wave_reference=wave_reference,
         interaction_with_wave=interaction_with_wave,
     )
-    y_pos = df_pos[spec.positive_col].to_numpy(dtype=float)
     groups_pos = df_pos[cluster_by].to_numpy()
 
     try:
@@ -214,6 +278,15 @@ def _fit_outcome(
         model_label=model_label,
         n_obs=len(y_pos), converged=ztnb.converged,
         llf=ztnb.llf, aic=ztnb.aic, alpha=ztnb.alpha,
+        extra=_tail_sensitivity_extra(
+            y_pos,
+            winsorise_quantile=winsorise_quantile,
+            winsorise_cap=winsorise_cap,
+            exclude_tail_quantile=exclude_tail_quantile,
+            exclude_tail_cap=exclude_tail_cap,
+            n_before_tail_filter=n_before_tail_filter,
+            n_after_tail_filter=len(df_pos),
+        ),
     )]
     return results, diagnostics
 
@@ -231,6 +304,8 @@ def fit_main_effects(
     include_log_size: bool = False,
     extra_mixing_terms: Iterable[str] = (),
     model_label: str = "main",
+    winsorise_quantile: float = 0.0,
+    exclude_tail_quantile: float = 0.0,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Main-effects model: outcomes ~ excess mixing + adjustments + lineage.
 
@@ -270,6 +345,8 @@ def fit_main_effects(
             ),
             maxiter=maxiter,
             terms_of_interest=terms_of_interest,
+            winsorise_quantile=winsorise_quantile,
+            exclude_tail_quantile=exclude_tail_quantile,
         )
         all_results.append(results)
         all_diag.extend(diag)
@@ -287,6 +364,8 @@ def fit_wave_interactions(
     maxiter: int = 1000,
     wave_reference: str = WAVE_REFERENCE,
     model_label: str = "wave_interaction",
+    winsorise_quantile: float = 0.0,
+    exclude_tail_quantile: float = 0.0,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Interaction model: mixing × wave terms.
 
@@ -319,6 +398,8 @@ def fit_wave_interactions(
             model_label=model_label,
             maxiter=maxiter,
             terms_of_interest=terms_of_interest,
+            winsorise_quantile=winsorise_quantile,
+            exclude_tail_quantile=exclude_tail_quantile,
         )
         all_results.append(results)
         all_diag.extend(diag)
@@ -341,6 +422,8 @@ def fit_size_spline_sensitivity(
     maxiter: int = 1000,
     spline_df: int = 4,
     model_label: str = "size_spline",
+    winsorise_quantile: float = 0.0,
+    exclude_tail_quantile: float = 0.0,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Refit the size-adjusted spread ZTNB with a natural spline on log_size."""
     calendar_cols = _calendar_cols(clusters)
@@ -380,6 +463,8 @@ def fit_size_spline_sensitivity(
         model_label=model_label,
         maxiter=maxiter,
         terms_of_interest=terms_of_interest,
+        winsorise_quantile=winsorise_quantile,
+        exclude_tail_quantile=exclude_tail_quantile,
     )
     return results, pd.DataFrame(diag)
 
@@ -447,6 +532,8 @@ def fit_null_residual_sensitivity(
     cluster_by: str = "window_id",
     maxiter: int = 1000,
     model_label: str = "null_residual",
+    winsorise_quantile: float = 0.0,
+    exclude_tail_quantile: float = 0.0,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     null_terms = [f"{p}_excess_mixing_null_z" for p in CORE_MIXING_PREDICTORS]
     return fit_main_effects(
@@ -456,6 +543,8 @@ def fit_null_residual_sensitivity(
         include_log_size=False,
         extra_mixing_terms=null_terms,
         model_label=model_label,
+        winsorise_quantile=winsorise_quantile,
+        exclude_tail_quantile=exclude_tail_quantile,
     )
 
 
@@ -470,6 +559,8 @@ def fit_simd_decile_sensitivity(
     cluster_by: str = "window_id",
     maxiter: int = 1000,
     model_label: str = "simd_decile",
+    winsorise_quantile: float = 0.0,
+    exclude_tail_quantile: float = 0.0,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Refit the main model swapping SIMD-quintile mixing for SIMD-decile.
 
@@ -502,6 +593,74 @@ def fit_simd_decile_sensitivity(
         include_log_size=False,
         extra_mixing_terms=mixing_terms,
         model_label=model_label,
+        winsorise_quantile=winsorise_quantile,
+        exclude_tail_quantile=exclude_tail_quantile,
+    )
+
+
+def fit_finite_sample_mixing_sensitivity(
+    clusters: pd.DataFrame,
+    *,
+    cluster_by: str = "window_id",
+    maxiter: int = 1000,
+    model_label: str = "finite_sample_mixing",
+    winsorise_quantile: float = 0.0,
+    exclude_tail_quantile: float = 0.0,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Refit main effects using finite-sample standardised excess mixing.
+
+    The primary observed-minus-expected excess-discordance score is scaled
+    only across clusters.  This sensitivity first divides each cluster's
+    excess discordance by the approximate binomial pair-sampling standard
+    error under the lineage-window null, then z-scores the resulting value.
+    """
+    finite_terms = [
+        f"{prefix}_finite_sample_mixing_z"
+        for prefix in CORE_MIXING_PREDICTORS
+    ]
+    missing = [term for term in finite_terms if term not in clusters.columns]
+    if missing:
+        raise KeyError(
+            "Missing finite-sample mixing columns: " + ", ".join(missing)
+        )
+    return fit_main_effects(
+        clusters,
+        cluster_by=cluster_by,
+        maxiter=maxiter,
+        include_log_size=False,
+        extra_mixing_terms=finite_terms,
+        model_label=model_label,
+        winsorise_quantile=winsorise_quantile,
+        exclude_tail_quantile=exclude_tail_quantile,
+    )
+
+
+def fit_joint_profile_adjusted_sensitivity(
+    clusters: pd.DataFrame,
+    *,
+    profile_name: str = "socio_demographic_profile",
+    cluster_by: str = "window_id",
+    maxiter: int = 1000,
+    model_label: str = "joint_profile_adjusted",
+    winsorise_quantile: float = 0.0,
+    exclude_tail_quantile: float = 0.0,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Refit main effects with age, sex, SIMD, and a joint-profile term."""
+    if profile_name not in PROFILE_PREDICTORS:
+        raise ValueError(
+            f"profile_name must be one of {tuple(PROFILE_PREDICTORS)}; "
+            f"got {profile_name!r}"
+        )
+    profile_term = f"{profile_name}_excess_mixing_z"
+    return fit_main_effects(
+        clusters,
+        cluster_by=cluster_by,
+        maxiter=maxiter,
+        include_log_size=False,
+        extra_mixing_terms=[*EXCESS_MIXING_TERMS, profile_term],
+        model_label=model_label,
+        winsorise_quantile=winsorise_quantile,
+        exclude_tail_quantile=exclude_tail_quantile,
     )
 
 
@@ -512,6 +671,8 @@ def fit_profile_predictor(
     cluster_by: str = "window_id",
     maxiter: int = 1000,
     model_label: str | None = None,
+    winsorise_quantile: float = 0.0,
+    exclude_tail_quantile: float = 0.0,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Refit main model using a single joint-profile excess-mixing predictor.
 
@@ -533,6 +694,8 @@ def fit_profile_predictor(
         include_log_size=False,
         extra_mixing_terms=[profile_term],
         model_label=model_label or f"profile_{profile_name}",
+        winsorise_quantile=winsorise_quantile,
+        exclude_tail_quantile=exclude_tail_quantile,
     )
 
 
@@ -546,6 +709,8 @@ def fit_domain_main_effects(
     *,
     cluster_by: str = "window_id",
     maxiter: int = 1000,
+    winsorise_quantile: float = 0.0,
+    exclude_tail_quantile: float = 0.0,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Refit the main model swapping overall SIMD mixing for each domain.
 
@@ -570,6 +735,8 @@ def fit_domain_main_effects(
             include_log_size=False,
             extra_mixing_terms=mixing_terms,
             model_label=f"domain_{domain}",
+            winsorise_quantile=winsorise_quantile,
+            exclude_tail_quantile=exclude_tail_quantile,
         )
         if not results.empty:
             results["domain"] = domain
@@ -593,6 +760,8 @@ def fit_wave_stratified(
     cluster_by: str = "window_id",
     maxiter: int = 1000,
     min_clusters_per_wave: int = 50,
+    winsorise_quantile: float = 0.0,
+    exclude_tail_quantile: float = 0.0,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Refit the main model separately within each wave.
 
@@ -639,6 +808,8 @@ def fit_wave_stratified(
                 model_label=f"wave_{wave}",
                 maxiter=maxiter,
                 terms_of_interest=numeric_terms,
+                winsorise_quantile=winsorise_quantile,
+                exclude_tail_quantile=exclude_tail_quantile,
             )
             if not results.empty:
                 results["wave"] = wave
