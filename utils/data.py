@@ -20,19 +20,6 @@ from .policy import attach_period
 
 PRIMARY_RESOLUTION: float = 0.3
 
-# Obtained from wave_dates.py
-WAVE = [
-    ("pre-Alpha (B.1.177)",       "2020-08-10",  "2021-02-08"),
-    ("Alpha (B.1.1.7)",           "2020-11-30",  "2021-06-14"),
-    ("Delta (AY.*/B.1.617.2)",    "2021-05-03",  "2021-12-27"),
-    ("Omicron (BA.1)",            "2021-12-06",  "2022-03-28"),
-    ("Omicron (BA.2)",            "2022-01-31",  "2022-07-04"),
-    ("Omicron (BA.4)",            "2022-05-23",  "2022-10-24"),
-    ("Omicron (BA.5 / BE.*)",     "2022-05-23",  "2022-12-19"),
-    ("Omicron (BQ.1)",            "2022-10-03",  "2023-02-06"),
-    ("Omicron (XBB)",             "2022-12-12",  "2023-02-06"),
-]
-
 
 @dataclass(frozen=True)
 class DOMAINS:
@@ -91,56 +78,6 @@ class Paths:
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _normalise_waves(
-        waves: Sequence[tuple[str, date | str, date | str]]
-) -> list[tuple[str, date, date]]:
-    """Coerce wave tuples into date-backed tuples."""
-    normalised: list[tuple[str, date, date]] = []
-    for label, start, end in waves:
-        start_date = date.fromisoformat(start) if isinstance(start, str) else start
-        end_date = date.fromisoformat(end) if isinstance(end, str) else end
-        if end_date < start_date:
-            raise ValueError(f"Wave {label!r} ends before it starts.")
-        normalised.append((label, start_date, end_date))
-    return normalised
-
-
-WAVES = _normalise_waves(WAVE)
-
-
-def _assign_wave(dates: pl.Series) -> pl.Series:
-    """Assign each row to a configured epidemic wave label."""
-    if not WAVES:
-        return pl.Series("wave", ["unknown"] * len(dates), dtype=pl.String)
-
-    cats = [label for label, *_ in WAVES] + ["unknown"]
-    wave_enum = pl.Enum(cats)
-
-    label_expr: pl.Expr = pl.lit("unknown", dtype=pl.Utf8)
-    for label, start, end in WAVES:
-        label_expr = (
-            pl.when((pl.col("_date") >= start) & (pl.col("_date") <= end))
-            .then(pl.lit(label))
-            .otherwise(label_expr)
-        )
-
-    return (
-        pl.DataFrame({"_date": dates.cast(pl.Date)})
-        .with_columns(label_expr.alias("wave"))
-        .get_column("wave")
-        .cast(wave_enum)
-    )
-
-
-def _with_wave(df: pl.DataFrame, date_col: str) -> pl.DataFrame:
-    """Attach configured epidemic wave labels using the given date column."""
-    return df.with_columns(_assign_wave(df[date_col]).alias("wave"))
-
-
-def _with_policy(df: pl.DataFrame, date_col: str) -> pl.DataFrame:
-    """Attach configured policy-period labels using the given date column."""
-    return attach_period(df, date_col)
-
 
 QCStatus = Literal["good", "mediocre", "bad"]
 _VALID_QC: frozenset[str] = frozenset({"good", "mediocre", "bad"})
@@ -168,7 +105,6 @@ def load_analysis_columns(
     all_cols: bool = False,
     resolution: float | None = PRIMARY_RESOLUTION,
     qc: Iterable[QCStatus] | QCStatus = "good",
-    add_wave: bool = False,
     add_policy: bool = False,
 ) -> pl.DataFrame:
     """Read a narrow slice of the master sequence-level parquet.
@@ -178,7 +114,7 @@ def load_analysis_columns(
     columns:
         Names of columns to read; ``resolution`` and ``nextclade_qc`` are
         added automatically when filtering is requested.
-        ``sequence_id``, and ``collection_date`` are also added automatically.
+        ``sequence_id``, ``collection_date``, and ``pango_lineage`` are also added automatically.
     all_cols:
         If True, ignore *columns* and read all columns.  This is not recommended
         for general use, but can be useful for exploratory analysis or when
@@ -189,9 +125,6 @@ def load_analysis_columns(
         If provided, rows are restricted to these Nextclade QC statuses.
         Accepted values: ``"good"``, ``"mediocre"``, ``"bad"``.
         Pass ``None`` to skip QC filtering entirely.
-    add_wave:
-        If True, attach a ``wave`` column with labels according to the configured
-        wave date ranges.
     add_policy:
         If True, attach policy period labels ``policy_period``,
          ``policy_period_label``,  and ``policy_intensity``
@@ -239,7 +172,7 @@ def load_analysis_columns(
 
     paths = Paths.from_config()
 
-    need = {"sequence_id", "collection_date"}
+    need = {"sequence_id", "collection_date", "pango_lineage"}
     if columns is not None:
         need = need.union(columns)
 
@@ -263,10 +196,8 @@ def load_analysis_columns(
 
     df = lf.collect()
 
-    if add_wave:
-        df = _with_wave(df, "collection_date")
     if add_policy:
-        df = _with_policy(df, "collection_date")
+        df = attach_period(df, "collection_date")
 
     return df
 
@@ -276,7 +207,6 @@ def load_analysis_columns_pandas(
     all_cols: bool = False,
     resolution: float | None = PRIMARY_RESOLUTION,
     qc: Iterable[QCStatus] | QCStatus = "good",
-    add_wave: bool = False,
     add_policy: bool = False,
 ) -> pd.DataFrame:
     """Pandas wrapper around ``load_analysis_columns``."""
@@ -285,7 +215,6 @@ def load_analysis_columns_pandas(
         all_cols=all_cols,
         resolution=resolution,
         qc=qc,
-        add_wave=add_wave,
         add_policy=add_policy,
     ).to_pandas()
 
