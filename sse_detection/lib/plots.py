@@ -1,36 +1,9 @@
-"""Figure functions for the SSE-detection output notebook.
-
-Each function returns a matplotlib ``Figure`` so the notebook can decide
-how to display and save. All functions use ``utils.style.new_figure`` for
-size/font/spine consistency with the rest of the Scotland clustering work.
-
-Figure list (matches the four-question structure of the notebook):
-
-Overview
-    * :func:`plot_sequence_volume_timeline`
-    * :func:`plot_cluster_size_ccdf`
-Layer 1 (node-level SSE signatures)
-    * :func:`plot_role_dynamic_heatmap`
-    * :func:`plot_candidate_rate_over_time`
-    * :func:`plot_metric_space_scatter`
-    * :func:`plot_composite_score_distributions`
-Layer 2 (meta-cluster weekly growth)
-    * :func:`plot_meta_cluster_trajectories`
-    * :func:`plot_norm_change_histogram`
-    * :func:`plot_threshold_sensitivity`
-Layer 1 x Layer 2
-    * :func:`plot_layer_concordance`
-Spatial / demographic
-    * :func:`plot_simd_breakdown`
-Methods / robustness
-    * :func:`plot_null_comparison`
-"""
-
 from __future__ import annotations
 
-from typing import Iterable, Sequence
+from typing import Sequence
+import re
 
-import matplotlib.dates as mdates
+from matplotlib.lines import Line2D
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -42,121 +15,192 @@ from .palettes import (
     DYNAMIC_ORDER,
     ROLE_ORDER,
     ROLE_PALETTE,
+    WAVE_GROUPS,
+    WAVE_GROUP_PALETTE,
 )
 
 
 # ---------------------------------------------------------------------------
-# Overview
+# Cluster sizes
 # ---------------------------------------------------------------------------
 
-
-def plot_sequence_volume_timeline(
-    node_stats: pd.DataFrame,
+def plot_cluster_size_distribution(
+    df: pd.DataFrame,
+    size_col="cluster_size",
     *,
-    by: str = "who_voc_plot",
-    title: str = "Cluster volume over time",
-    width: str = "slide",
-    height_in: float = 4.2,
+    by ="pango_lineage",
+    min_size=1,
+    width="double",
+    width_in =None,
+    height_in =3.5,
+    context="paper",
+    font_scale=1,
+    complementary = True,
 ) -> plt.Figure:
-    """Stacked area of cluster volume per window, coloured by ``by``.
+    """Two-panel plot of cluster-size distributions.
 
-    "Volume" is summed ``cluster_size`` per (window, group), which gives a
-    sense of how many sequences belong to each lineage in each window.
+    Left panel:
+        Complementary ECDF / CCDF of size_col on log-log axes.
+
+    Right panel:
+        Violin plot of log10(size_col), stratified by group.
+
+    If ``by="pango_lineage"``, lineages matching WAVE_GROUPS are shown as
+    individual wave groups and all remaining lineages are pooled as "Other".
     """
-    if by not in node_stats.columns:
-        raise KeyError(f"{by!r} not in node_stats columns")
-    if "wn_mid_date" not in node_stats.columns:
-        raise KeyError("node_stats needs a 'wn_mid_date' column")
 
-    g = (
-        node_stats.groupby(["wn_mid_date", by], as_index=False)["cluster_size"]
-        .sum()
-        .rename(columns={"cluster_size": "n_sequences"})
-    )
-    pivot = (
-        g.pivot(index="wn_mid_date", columns=by, values="n_sequences")
-        .fillna(0)
-        .sort_index()
-    )
-    voc_order = [c for c in style.WHO_VOC_PALETTE if c in pivot.columns]
-    extra = [c for c in pivot.columns if c not in voc_order]
-    ordered = voc_order + sorted(extra)
-    colors = [style.WHO_VOC_PALETTE.get(c, "#8C8C8C") for c in ordered]
+    df = df.loc[
+        (df[size_col] >= min_size)
+        & (df[size_col] > 0)
+    ].copy()
 
-    fig, ax = style.new_figure(width=width, height_in=height_in, context="talk", font_scale=0.8)
-    ax.stackplot(
-        pivot.index,
-        [pivot[c].to_numpy() for c in ordered],
-        labels=ordered,
-        colors=colors,
-        alpha=0.88,
-    )
-    ax.set_ylabel("clustered sequences per window")
-    ax.set_xlabel("window midpoint")
-    ax.set_title(title)
-    ax.legend(loc="upper left", ncol=min(5, len(ordered)), frameon=False)
-    ax.xaxis.set_major_locator(mdates.AutoDateLocator())
-    fig.autofmt_xdate()
-    fig.tight_layout()
-    return fig
+    def _assign_wave_group(lineage: object) -> str:
+        if pd.isna(lineage):
+            return "Other"
 
+        lineage = str(lineage)
 
-def plot_cluster_size_ccdf(
-    node_stats: pd.DataFrame,
-    *,
-    by: str | None = "who_voc_plot",
-    min_size: int = 1,
-    title: str = "Cluster-size complementary CDF",
-    width: str = "slide",
-    height_in: float = 4.6,
-) -> plt.Figure:
-    """Log-log CCDF of ``cluster_size``, optionally split by ``by``.
+        for group_name, matcher in WAVE_GROUPS.items():
+            if matcher(lineage):
+                return group_name
 
-    The tail is the relevant region for superspreading; this plot makes it
-    visible without any thresholding.
-    """
-    df = node_stats.loc[node_stats["cluster_size"] >= min_size].copy()
+        return "Other"
 
-    fig, ax = style.new_figure(width=width, height_in=height_in, context="talk", font_scale=0.85)
+    high_contrast_palette = [
+        "#000000",
+        "#E69F00",
+        "#56B4E9",
+        "#009E73",
+        "#F0E442",
+        "#0072B2",
+        "#D55E00",
+        "#CC79A7",
+        "#999999",
+        "#332288",
+        "#88CCEE",
+        "#44AA99",
+    ]
 
-    def _ccdf(values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        if len(values) == 0:
-            return np.array([]), np.array([])
-        x = np.sort(values)
-        n = len(x)
-        # P(X >= x) using rank
-        ccdf = 1.0 - (np.arange(1, n + 1) - 1) / n
-        return x, ccdf
-
+    # ------------------------------------------------------------------
+    # Build plotting group
+    # ------------------------------------------------------------------
     if by is None or by not in df.columns:
-        x, y = _ccdf(df["cluster_size"].to_numpy())
-        ax.plot(x, y, color="#3A6EA5", lw=1.6)
-    else:
-        groups = sorted(df[by].dropna().unique())
-        # Use WHO VOC ordering when applicable.
-        if by.startswith("who_voc"):
-            voc_order = [c for c in style.WHO_VOC_PALETTE if c in groups]
-            extra = [c for c in groups if c not in voc_order]
-            groups = voc_order + sorted(extra)
-        for g in groups:
-            sub = df.loc[df[by] == g, "cluster_size"].to_numpy()
-            if len(sub) == 0:
-                continue
-            x, y = _ccdf(sub)
-            color = (
-                style.WHO_VOC_PALETTE.get(g, "#8C8C8C")
-                if by.startswith("who_voc")
-                else None
-            )
-            ax.plot(x, y, lw=1.4, alpha=0.9, label=g, color=color)
-        ax.legend(loc="lower left", ncol=2, frameon=False)
+        df["_plot_group"] = "All clusters"
+        group_order = ["All clusters"]
+        palette = {"All clusters": "#000000"}
 
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_xlabel("cluster size")
-    ax.set_ylabel("P(X >= cluster size)")
-    ax.set_title(title)
-    fig.tight_layout()
+    elif by == "pango_lineage":
+        df["_plot_group"] = df[by].apply(_assign_wave_group)
+
+        observed_groups = set(df["_plot_group"])
+
+        group_order = [
+            group_name
+            for group_name in WAVE_GROUPS
+            if group_name in observed_groups
+        ]
+
+        if "Other" in observed_groups:
+            group_order.append("Other")
+
+        palette = {
+            group: WAVE_GROUP_PALETTE.get(group, "#8C8C8C")
+            for group in group_order
+        }
+
+    else:
+        df["_plot_group"] = df[by].astype(str)
+
+        group_order = sorted(df["_plot_group"].dropna().unique())
+
+        palette = {
+            group: high_contrast_palette[i % len(high_contrast_palette)]
+            for i, group in enumerate(group_order)
+        }
+
+    df["_log10_cluster_size"] = np.log10(df[size_col])
+
+    # ------------------------------------------------------------------
+    # Figure
+    # ------------------------------------------------------------------
+    fig, axes = style.new_figure(
+        nrows = 1,
+        ncols = 2,
+        gridspec_kw={"width_ratios": [1.15, 1.0]},
+        layout="constrained",
+        width=width,
+        width_in=width_in,
+        height_in=height_in,
+        context=context,
+        font_scale=font_scale
+    )
+    ax_ecdf =axes[0]
+    ax_violin = axes[1]
+
+    # ------------------------------------------------------------------
+    # Left: complementary ECDF / CCDF
+    # ------------------------------------------------------------------
+    sns.ecdfplot(
+        data=df,
+        x=size_col,
+        hue="_plot_group",
+        hue_order=group_order,
+        palette=palette,
+        complementary=complementary,
+        stat="proportion",
+        linewidth=1.5,
+        ax=ax_ecdf,
+    )
+
+    ax_ecdf.set_xscale("log")
+    ax_ecdf.set_yscale("log")
+    ax_ecdf.set_xlabel("Cluster size")
+    ax_ecdf.set_ylabel("P(X ≥ cluster size)")
+
+    leg = ax_ecdf.get_legend()
+    if leg is not None:
+        leg.set_title("")
+        leg.set_frame_on(False)
+
+    # ------------------------------------------------------------------
+    # Right: violin plot on log10-transformed cluster size
+    # ------------------------------------------------------------------
+    sns.violinplot(
+        data=df,
+        x="_plot_group",
+        y="_log10_cluster_size",
+        hue="_plot_group",
+        order=group_order,
+        palette=palette,
+        cut=0,
+        inner="quartile",
+        linewidth=0.8,
+        ax=ax_violin,
+    )
+
+    ax_violin.set_xlabel("")
+    ax_violin.set_ylabel("Cluster size")
+    ax_violin.tick_params(axis="x", rotation=45)
+
+
+    # Convert log10 tick labels back to original cluster sizes
+    smin = np.floor(df["_log10_cluster_size"].min())
+    smax = np.ceil(df["_log10_cluster_size"].max())
+
+    log_ticks = np.arange(smin, smax + 1)
+    size_ticks = 10 ** log_ticks
+
+    # Violin plot: axis is already log10(cluster_size)
+    ax_violin.set_yticks(log_ticks)
+    ax_violin.set_yticklabels([f"{int(t):g}" for t in size_ticks])
+
+    # ECDF plot: axis is raw cluster_size, displayed on log scale
+    ax_ecdf.set_xticks(size_ticks)
+    ax_ecdf.set_xticklabels([f"{int(t):g}" for t in size_ticks])
+
+    style.add_panel_labels([ax_ecdf, ax_violin])
+    plt.close(fig)
+
     return fig
 
 
@@ -168,9 +212,11 @@ def plot_cluster_size_ccdf(
 def plot_role_dynamic_heatmap(
     candidates: pd.DataFrame,
     *,
-    title: str = "SSE-like candidates by role and onward dynamic",
-    width: str = "slide",
-    height_in: float = 5.6,
+    width="double",
+    width_in=None,
+    height_in=5,
+    context="paper",
+    font_scale= 1,
 ) -> plt.Figure:
     """Counts of ``sse_role`` x ``sse_onward_dynamic`` for SSE candidates.
 
@@ -181,9 +227,15 @@ def plot_role_dynamic_heatmap(
     heat = (
         pd.crosstab(candidates["sse_role"], candidates["sse_onward_dynamic"])
         .reindex(index=role_order, columns=dyn_order, fill_value=0)
-    )
+    ).T
 
-    fig, ax = style.new_figure(width=width, height_in=height_in, context="talk", font_scale=0.72)
+    fig, ax = style.new_figure(
+        width=width,
+        width_in=width_in,
+        height_in=height_in,
+        context=context,
+        font_scale=font_scale
+    )
     sns.heatmap(
         np.log10(heat + 1),
         annot=heat,
@@ -194,20 +246,23 @@ def plot_role_dynamic_heatmap(
         cbar_kws={"label": "log10(n + 1)"},
         ax=ax,
     )
-    ax.set_xlabel("onward dynamic")
-    ax.set_ylabel("node role")
-    ax.set_title(title)
+    ax.set_ylabel("Onward dynamic")
+    ax.set_xlabel("Node role")
     ax.tick_params(axis="x", rotation=35)
-    fig.tight_layout()
+    ax.tick_params(axis="y", rotation=0)
+
+    plt.close(fig)
     return fig
 
 
 def plot_candidate_rate_over_time(
     node_stats: pd.DataFrame,
     *,
-    title: str = "SSE-candidate rate per sliding window",
-    width: str = "slide",
-    height_in: float = 5.0,
+    width="double",
+    width_in=None,
+    height_in=5,
+    context="paper",
+    font_scale=1,
 ) -> plt.Figure:
     """Per-window candidate rate, with role composition stacked underneath.
 
@@ -244,8 +299,14 @@ def plot_candidate_rate_over_time(
     )
 
     fig, axes = style.new_figure(
-        width=width, height_in=height_in, nrows=2, sharex=True,
-        context="talk", font_scale=0.78,
+        width=width,
+        width_in=width_in,
+        height_in=height_in,
+        nrows=2,
+        sharex=True,
+        context=context,
+        font_scale=font_scale,
+        layout="constrained",
     )
     ax = axes[0]
     ax.bar(
@@ -266,10 +327,9 @@ def plot_candidate_rate_over_time(
     )
     ax.set_ylabel("candidates (n)")
     ax2.set_ylabel("candidate share (%)")
-    ax.set_title(title)
     handles1, labels1 = ax.get_legend_handles_labels()
     handles2, labels2 = ax2.get_legend_handles_labels()
-    ax.legend(handles1 + handles2, labels1 + labels2, loc="upper left", ncol=2, frameon=False)
+    ax.legend(handles1 + handles2, labels1 + labels2, loc="best", ncol=1, frameon=False)
 
     ax = axes[1]
     if len(role_pivot.columns):
@@ -285,71 +345,101 @@ def plot_candidate_rate_over_time(
     ax.set_ylabel("candidates by role")
     ax.set_xlabel("window midpoint")
     fig.autofmt_xdate()
-    fig.tight_layout()
+
+    style.add_panel_labels(list(axes))
+
+    plt.close(fig)
     return fig
 
 
-def plot_metric_space_scatter(
-    candidates: pd.DataFrame,
-    *,
-    x: str = "core_amplification_score",
-    y: str = "onward_dissemination_score",
-    color_by: str = "sse_role",
-    size_col: str = "cluster_size",
-    sample_cap: int = 8000,
-    random_state: int = 42,
-    title: str | None = None,
-    width: str = "slide",
-    height_in: float = 5.4,
-) -> plt.Figure:
-    """Scatter of ``x`` vs ``y`` for SSE candidates, coloured by ``color_by``.
-
-    Point size encodes ``cluster_size``. The plot is downsampled to
-    ``sample_cap`` rows by default so it remains legible.
-    """
-    df = candidates.dropna(subset=[x, y]).copy()
-    if len(df) > sample_cap:
-        df = df.sample(sample_cap, random_state=random_state)
-    if size_col in df.columns:
-        clip_hi = df[size_col].quantile(0.99)
-        df["_size"] = np.sqrt(df[size_col].clip(lower=1, upper=clip_hi)) * 9.0
-    else:
-        df["_size"] = 18.0
-
-    fig, ax = style.new_figure(width=width, height_in=height_in, context="talk", font_scale=0.82)
-    if color_by in df.columns:
-        for group, sub in df.groupby(color_by):
-            ax.scatter(
-                sub[x], sub[y],
-                s=sub["_size"], alpha=0.28,
-                color=ROLE_PALETTE.get(group, "#8C8C8C") if color_by == "sse_role" else None,
-                label=group, edgecolor="none",
-            )
-        ax.legend(loc="upper left", ncol=2, markerscale=1.6, frameon=False)
-    else:
-        ax.scatter(df[x], df[y], s=df["_size"], alpha=0.35, color="#3A6EA5", edgecolor="none")
-    ax.set_xlabel(x.replace("_", " "))
-    ax.set_ylabel(y.replace("_", " "))
-    ax.set_title(title or f"{x} vs {y} (SSE candidates)")
-    if df[x].between(0, 1.01).all():
-        ax.set_xlim(0, 1.02)
-    if df[y].between(0, 1.01).all():
-        ax.set_ylim(0, 1.02)
-    fig.tight_layout()
-    return fig
-
-
-def plot_composite_score_distributions(
+def plot_core_metric_space(
     node_stats: pd.DataFrame,
     *,
-    scores: Sequence[str] = (
-        "core_amplification_score",
-        "onward_dissemination_score",
-        "mixing_score",
+    height_in=3.5,
+    context="paper",
+    font_scale=1,
+    min_size=1
+) -> plt.Figure:
+    """Scatter of core amplification vs onward dissemination, faceted by SSE candidate."""
+    style.set_theme(
+        context=context,
+        font_scale=font_scale,
+    )
+
+    plot_df = node_stats.loc[node_stats["cluster_size"].ge(min_size)].copy()
+
+    clip_hi = plot_df["cluster_size"].quantile(0.995)
+    plot_df["marker_size"] = np.sqrt(
+        plot_df["cluster_size"].clip(lower=1, upper=clip_hi)
+    )
+
+    g = sns.relplot(
+        data=plot_df,
+        x="core_amplification_score",
+        y="onward_dissemination_score",
+        size="marker_size",
+        hue="sse_role",
+        palette=ROLE_PALETTE,
+        col="sse_candidate",
+        kind="scatter",
+        alpha=0.3,
+        sizes=(12, 220),
+        height=height_in,
+        facet_kws={"sharex": True, "sharey": True},
+    )
+
+    g.set_axis_labels("Core amplification score", "Onward dissemination score")
+    g.set_titles("SSE candidate: {col_name}")
+
+    if g._legend is not None:
+        g._legend.remove()
+
+    handles = [
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            linestyle="",
+            label=role.replace("_", " ").capitalize(),
+            markerfacecolor=ROLE_PALETTE[role],
+            markeredgecolor=ROLE_PALETTE[role],
+            markersize=7,
+            alpha=1,
+        )
+        for role in plot_df["sse_role"].dropna().unique()
+        if role in ROLE_PALETTE
+    ]
+
+    g.figure.legend(
+        handles=handles,
+        title="SSE role",
+        loc="center right",
+        bbox_to_anchor=(0.65, 0.5),
+        frameon=False,
+    )
+
+    style.add_panel_labels(g.axes.flat)
+
+    plt.close(g.figure)
+    return g.figure
+
+
+def plot_composite_distributions(
+    node_stats: pd.DataFrame,
+    *,
+    columns: Sequence[str] = (
+            "cluster_size",
+            "core_amplification_score",
+            "onward_dissemination_score",
     ),
-    title: str = "Composite scores: candidates vs background",
-    width: str = "slide",
-    height_in: float = 3.6,
+    nrows=1,
+    ncols=3,
+    width="double",
+    width_in=None,
+    height_in=2.5,
+    context="paper",
+    font_scale=1,
+    min_size=1
 ) -> plt.Figure:
     """Overlaid KDE of each composite score for candidates vs background.
 
@@ -359,400 +449,320 @@ def plot_composite_score_distributions(
     if "sse_candidate" not in node_stats.columns:
         raise KeyError("node_stats needs 'sse_candidate'")
 
-    scores = [s for s in scores if s in node_stats.columns]
-    if not scores:
+    columns = [s for s in columns if s in node_stats.columns]
+    if not columns:
         raise ValueError("None of the requested score columns are present.")
 
-    fig, axes = style.new_figure(
-        width=width, height_in=height_in, ncols=len(scores),
-        context="talk", font_scale=0.78,
-    )
-    if len(scores) == 1:
-        axes = [axes]
+    if "cluster_size" in columns:
+        node_stats = node_stats.copy()
+        node_stats["cluster_size"] = np.log(node_stats["cluster_size"])
 
-    for ax, score in zip(axes, scores):
+    fig, axes = style.new_figure(
+        nrows=nrows,
+        ncols=ncols,
+        layout="constrained",
+        width=width,
+        width_in=width_in,
+        height_in=height_in,
+        context=context,
+        font_scale=font_scale,
+    )
+
+    axes = axes.flatten()
+
+    for ax, col in zip(axes, columns):
         for label, color, mask in [
-            ("background", "#8C8C8C", ~node_stats["sse_candidate"]),
+            ("background", "#8C8C8C", (~node_stats["sse_candidate"] &
+                                       node_stats["cluster_size"].gt(min_size))),
             ("candidate", "#C75C2C", node_stats["sse_candidate"]),
         ]:
-            values = node_stats.loc[mask, score].dropna().to_numpy()
+            values = node_stats.loc[mask, col].dropna().to_numpy()
             if len(values) < 5:
                 continue
             sns.kdeplot(
                 values, ax=ax, fill=True, color=color, alpha=0.35,
-                linewidth=1.2, label=label, common_norm=False, clip=(0, 1),
+                linewidth=1.2, label=label, common_norm=False,
             )
-        ax.set_xlabel(score.replace("_", " "))
+        ax.set_xlabel(col.replace("_", " "))
+        if col == "cluster_size":
+            ax.set_xlabel("log(cluster size)")
         ax.set_ylabel("density")
-        ax.set_xlim(0, 1)
-        ax.legend(loc="upper left", frameon=False)
-    axes[0].figure.suptitle(title, y=1.02)
-    fig.tight_layout()
+    axes[0].legend(loc="best", frameon=False)
+    plt.close(fig)
     return fig
 
 
-# ---------------------------------------------------------------------------
-# Layer 2
-# ---------------------------------------------------------------------------
-
-
-def plot_meta_cluster_trajectories(
-    weekly_growth: pd.DataFrame,
-    meta_summary: pd.DataFrame | None = None,
-    *,
-    top_n: int = 12,
-    rank_by: str = "n_sequences",
-    title: str = "Meta-cluster cumulative size with SSE weeks marked",
-    width: str = "slide",
-    height_in: float = 5.4,
-) -> plt.Figure:
-    """Cumulative-size trajectories for the largest meta-clusters.
-
-    Each panel shows one meta-cluster: x-axis is calendar week, y-axis is
-    cumulative size (linear), and weeks flagged ``is_sse`` are highlighted.
-    Weeks with no newly observed sequences are omitted so inactive flat
-    stretches do not dominate the panel range.
-
-    ``weekly_growth`` is expected to be the full weekly table (not the
-    SSE-only filter) so the full curve is visible.
-    """
-    required = {"meta_cluster_id", "week", "new_sequences", "cc_size", "is_sse"}
-    missing = sorted(required - set(weekly_growth.columns))
-    if missing:
-        cols = ", ".join(repr(c) for c in missing)
-        raise KeyError(f"weekly_growth must include required column(s): {cols}")
-
-    active_weekly = weekly_growth.loc[weekly_growth["new_sequences"] > 0].copy()
-    if active_weekly.empty:
-        raise ValueError("No weeks with new_sequences > 0 available to plot.")
-
-    if meta_summary is None:
-        # fall back to rank by max cc_size in the weekly table
-        rank = (
-            active_weekly.groupby("meta_cluster_id")["cc_size"]
-            .max()
-            .sort_values(ascending=False)
-            .head(top_n)
-            .index
-        )
-    else:
-        rank = (
-            meta_summary.sort_values(rank_by, ascending=False)
-            .head(top_n)["meta_cluster_id"]
-            .to_numpy()
-        )
-    active_meta_ids = set(active_weekly["meta_cluster_id"].dropna().unique())
-    rank = [meta_id for meta_id in rank if meta_id in active_meta_ids]
-    if not rank:
-        raise ValueError("No meta-clusters with new_sequences > 0 available to plot.")
-
-    sub = active_weekly.loc[active_weekly["meta_cluster_id"].isin(rank)].copy()
-    sub["week"] = pd.to_datetime(sub["week"])
-
-    ncols = min(3, len(rank))
-    nrows = int(np.ceil(len(rank) / ncols))
-    fig, axes = style.new_figure(
-        width=width, height_in=height_in * nrows / 3,
-        nrows=nrows, ncols=ncols, sharex=False,
-        context="talk", font_scale=0.7,
-    )
-    axes = np.atleast_2d(axes).flatten()
-
-    for ax, meta_id in zip(axes, rank):
-        m = sub.loc[sub["meta_cluster_id"] == meta_id].sort_values("week")
-        ax.plot(m["week"], m["cc_size"], color="#3A6EA5", linewidth=1.5)
-        sse = m.loc[m["is_sse"]]
-        if not sse.empty:
-            ax.scatter(
-                sse["week"], sse["cc_size"],
-                color="#C75C2C", s=24, zorder=3, label="SSE week",
-            )
-        ax.set_title(meta_id, fontsize=9)
-        locator = mdates.AutoDateLocator(minticks=3, maxticks=5)
-        ax.xaxis.set_major_locator(locator)
-        ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(locator))
-        ax.tick_params(axis="x", labelrotation=35)
-        ax.set_ylabel("cum. size")
-
-    for ax in axes[len(rank):]:
-        ax.set_visible(False)
-
-    fig.suptitle(title, y=1.02)
-    fig.tight_layout()
-    return fig
-
-
-def plot_norm_change_histogram(
-    weekly_growth: pd.DataFrame,
-    *,
-    threshold: float = 9.0,
-    bins: int = 60,
-    title: str = "Distribution of weekly normalised change",
-    width: str = "slide",
-    height_in: float = 3.8,
-) -> plt.Figure:
-    """Histogram (log y) of ``norm_change`` with the SSE threshold marked.
-
-    ``weekly_growth`` should be the full table, not the SSE-only filter.
-    """
-    vals = weekly_growth["norm_change"].dropna().to_numpy()
-    vals = vals[np.isfinite(vals)]
-
-    fig, ax = style.new_figure(width=width, height_in=height_in, context="talk", font_scale=0.82)
-    ax.hist(vals, bins=bins, color="#3A6EA5", edgecolor="white", alpha=0.85)
-    ax.axvline(threshold, color="#C75C2C", linestyle="--", linewidth=1.4, label=f"SSE threshold = {threshold:g}")
-    ax.set_yscale("log")
-    ax.set_xlabel("normalised weekly change")
-    ax.set_ylabel("weeks (log)")
-    ax.set_title(title)
-    ax.legend(loc="upper right", frameon=False)
-    fig.tight_layout()
-    return fig
-
-
-def plot_threshold_sensitivity(
-    weekly_growth: pd.DataFrame,
-    *,
-    thresholds: Iterable[float] = (3, 5, 7, 9, 11, 13, 15, 20),
-    title: str = "SSE-week count vs threshold",
-    width: str = "onehalf",
-    height_in: float = 3.4,
-) -> plt.Figure:
-    """Sweep the ``flag_sse`` threshold and count the resulting SSE weeks.
-
-    Lets you see how brittle the choice of 9 is.
-    """
-    vals = weekly_growth["norm_change"].dropna().to_numpy()
-    thr = np.asarray(list(thresholds), dtype=float)
-    counts = np.array([(vals > t).sum() for t in thr])
-    affected_meta = []
-    for t in thr:
-        affected_meta.append(
-            weekly_growth.loc[weekly_growth["norm_change"] > t, "meta_cluster_id"].nunique()
-        )
-
-    fig, ax = style.new_figure(width=width, height_in=height_in, context="talk", font_scale=0.82)
-    ax.plot(thr, counts, "-o", color="#3A6EA5", label="SSE weeks")
-    ax.plot(thr, affected_meta, "-s", color="#C75C2C", label="unique meta-clusters")
-    ax.axvline(9.0, color="#14151F", linestyle="--", linewidth=1.0, alpha=0.6)
-    ax.set_xlabel("threshold")
-    ax.set_ylabel("count")
-    ax.set_yscale("log")
-    ax.set_title(title)
-    ax.legend(loc="upper right", frameon=False)
-    fig.tight_layout()
-    return fig
-
-
-# ---------------------------------------------------------------------------
-# Layer 1 x Layer 2 concordance
-# ---------------------------------------------------------------------------
-
-
-def plot_layer_concordance(
+def plot_socio_demo_breakdown(
     node_stats: pd.DataFrame,
-    weekly_growth: pd.DataFrame,
+    col="top_simd_quintiles",
+    score="simd_entropy_obs",
+    xlabel="modal SIMD quintile (1 = most deprived)",
     *,
-    log_axes: bool = True,
-    title: str = "Layer-1 vs Layer-2 SSE evidence per meta-cluster",
-    width: str = "slide",
-    height_in: float = 5.0,
-) -> plt.Figure:
-    """For each meta-cluster, plot Layer-1 candidate count vs Layer-2 SSE-week count.
-
-    Meta-clusters on the diagonal are agreed; off-diagonal cases are the
-    interpretively interesting failure modes.
+    width="double",
+    width_in=None,
+    height_in=4,
+    context="paper",
+    font_scale=1,
+    min_size=1
+) -> tuple[plt.Figure, pd.DataFrame]:
     """
-    if "meta_cluster_id" not in node_stats.columns:
-        raise KeyError("node_stats needs 'meta_cluster_id'")
-
-    layer1 = (
-        node_stats.groupby("meta_cluster_id")["sse_candidate"]
-        .sum()
-        .rename("n_layer1_candidates")
-    )
-    layer2 = (
-        weekly_growth.loc[weekly_growth["is_sse"]]
-        .groupby("meta_cluster_id")
-        .size()
-        .rename("n_layer2_sse_weeks")
-    )
-    joined = pd.concat([layer1, layer2], axis=1).fillna(0)
-    joined["agree"] = (joined["n_layer1_candidates"] > 0) & (joined["n_layer2_sse_weeks"] > 0)
-    joined["layer1_only"] = (joined["n_layer1_candidates"] > 0) & (joined["n_layer2_sse_weeks"] == 0)
-    joined["layer2_only"] = (joined["n_layer1_candidates"] == 0) & (joined["n_layer2_sse_weeks"] > 0)
-
-    fig, ax = style.new_figure(width=width, height_in=height_in, context="talk", font_scale=0.82)
-    masks = [
-        ("neither", (joined["n_layer1_candidates"] == 0) & (joined["n_layer2_sse_weeks"] == 0), "#dddddd"),
-        ("layer 1 only", joined["layer1_only"], "#3A6EA5"),
-        ("layer 2 only", joined["layer2_only"], "#7C8A43"),
-        ("both", joined["agree"], "#C75C2C"),
-    ]
-    for label, mask, color in masks:
-        sub = joined.loc[mask]
-        if sub.empty:
-            continue
-        jitter_x = np.random.default_rng(0).uniform(-0.18, 0.18, len(sub))
-        jitter_y = np.random.default_rng(1).uniform(-0.18, 0.18, len(sub))
-        ax.scatter(
-            sub["n_layer1_candidates"] + jitter_x,
-            sub["n_layer2_sse_weeks"] + jitter_y,
-            s=12, alpha=0.55, color=color, edgecolor="none", label=label,
-        )
-
-    if log_axes:
-        ax.set_xscale("symlog", linthresh=1)
-        ax.set_yscale("symlog", linthresh=1)
-
-    ax.set_xlabel("Layer-1 SSE candidate nodes per meta-cluster")
-    ax.set_ylabel("Layer-2 SSE weeks per meta-cluster")
-    ax.set_title(title)
-    ax.legend(loc="upper left", frameon=False)
-    fig.tight_layout()
-    return fig
-
-
-# ---------------------------------------------------------------------------
-# Spatial / demographic
-# ---------------------------------------------------------------------------
-
-
-def plot_simd_breakdown(
-    node_stats: pd.DataFrame,
-    *,
-    quintile_col: str = "top_simd_quintiles",
-    title: str = "SIMD-entropy z-score: candidates vs background",
-    width: str = "slide",
-    height_in: float = 4.4,
-) -> plt.Figure:
-    """Compare SIMD entropy z-score distributions for candidates vs background.
-
-    The detector's ``simd_entropy_z`` column captures whether a cluster is
-    more or less SIMD-diverse than expected for its size and window. This
-    figure asks whether SSE candidates concentrate in deprivation-mixed
-    clusters or not.
+    Plot the distribution of mixing scores for candidate vs background nodes,
+    and the distribution of class-label frequencies for candidate vs background nodes.
     """
-    score = "simd_entropy_z"
-    if score not in node_stats.columns:
-        raise KeyError(f"node_stats needs '{score}'")
 
     fig, axes = style.new_figure(
-        width=width, height_in=height_in, ncols=2,
-        context="talk", font_scale=0.78,
+        ncols=2,
+        width=width,
+        width_in=width_in,
+        height_in=height_in,
+        context=context,
+        font_scale=font_scale,
+        layout="constrained",
     )
 
     ax = axes[0]
+
     for label, color, mask in [
-        ("background", "#8C8C8C", ~node_stats["sse_candidate"]),
-        ("candidate", "#C75C2C", node_stats["sse_candidate"]),
+        (
+            "background",
+            "#8C8C8C",
+            (
+                ~node_stats["sse_candidate"]
+                & node_stats["cluster_size"].gt(min_size)
+            ),
+        ),
+        (
+            "candidate",
+            "#C75C2C",
+            node_stats["sse_candidate"],
+        ),
     ]:
         values = node_stats.loc[mask, score].dropna().to_numpy()
+
         if len(values) < 5:
             continue
+
         sns.kdeplot(
-            values, ax=ax, fill=True, color=color, alpha=0.35,
-            linewidth=1.2, label=label, common_norm=False,
+            values,
+            ax=ax,
+            fill=True,
+            color=color,
+            alpha=0.35,
+            linewidth=1.2,
+            label=label,
+            common_norm=False,
         )
-    ax.axvline(0, color="#14151F", linestyle="--", linewidth=1.0, alpha=0.5)
-    ax.axvline(1.96, color="#C75C2C", linestyle=":", linewidth=1.0, alpha=0.7)
-    ax.axvline(-1.96, color="#C75C2C", linestyle=":", linewidth=1.0, alpha=0.7)
-    ax.set_xlabel("SIMD entropy z-score")
+
+    ax.set_xlabel(f"{' '.join(score.split('_')[:-1]).capitalize()}")
     ax.set_ylabel("density")
-    ax.set_title("Entropy z-score")
-    ax.legend(loc="upper left", frameon=False)
+    ax.legend(loc="best", frameon=False)
 
     ax = axes[1]
-    if quintile_col in node_stats.columns:
-        def _modal_quintile(s: str) -> str | float:
-            if not isinstance(s, str) or not s:
-                return np.nan
-            return s.split(";")[0].split(" ")[0]
 
-        mq = node_stats[quintile_col].map(_modal_quintile)
-        df = pd.DataFrame({"q": mq, "candidate": node_stats["sse_candidate"]})
-        df = df.dropna(subset=["q"])
+    def _parse_freq_counts(s: str):
+        """
+        Parse strings like:
+        'class label one (3); class label two (10); class label three (1)'
+
+        Returns:
+        [('class label one', 3), ('class label two', 10), ...]
+        """
+        if not isinstance(s, str) or not s.strip():
+            return []
+
+        out = []
+
+        for part in s.split(";"):
+            part = part.strip()
+
+            if not part:
+                continue
+
+            match = re.match(r"^(.*?)\s*\((\d+)\)\s*$", part)
+
+            if match is None:
+                continue
+
+            label = match.group(1).strip()
+            count = int(match.group(2))
+
+            if label and count > 0:
+                out.append((label, count))
+
+        return out
+
+    records = []
+
+    for _, row in node_stats.iterrows():
+        candidate = row["sse_candidate"]
+
+        for q, n in _parse_freq_counts(row[col]):
+            records.append({
+                "q": q,
+                "candidate": candidate,
+                "n": n,
+            })
+
+    if records:
         share = (
-            df.groupby(["q", "candidate"])
-            .size()
-            .rename("n")
-            .reset_index()
+            pd.DataFrame(records)
+            .groupby(["q", "candidate"], as_index=False)["n"]
+            .sum()
         )
+
         denom = share.groupby("candidate")["n"].transform("sum")
         share["frac"] = share["n"] / denom
+
         order = sorted(share["q"].unique())
-        bar_w = 0.4
-        x = np.arange(len(order))
-        for off, (lbl, color) in zip(
-            [-bar_w / 2, bar_w / 2],
-            [("background", "#8C8C8C"), ("candidate", "#C75C2C")],
-        ):
-            sub = share.loc[share["candidate"] == (lbl == "candidate")].set_index("q").reindex(order, fill_value=0)
-            ax.bar(x + off, sub["frac"].to_numpy(), bar_w, color=color, label=lbl)
-        ax.set_xticks(x)
-        ax.set_xticklabels(order)
-        ax.set_xlabel("modal SIMD quintile (1 = most deprived)")
-        ax.set_ylabel("fraction of nodes")
-        ax.set_title("Modal quintile composition")
-        ax.legend(loc="upper right", frameon=False)
-    else:
-        ax.set_visible(False)
 
-    fig.suptitle(title, y=1.02)
-    fig.tight_layout()
-    return fig
+        bar_h = 0.4
+        y = np.arange(len(order))
+
+        for off, candidate_value, lbl, color in [
+            (-bar_h / 2, False, "background", "#8C8C8C"),
+            ( bar_h / 2, True,  "candidate",  "#C75C2C"),
+        ]:
+            sub = (
+                share.loc[share["candidate"] == candidate_value]
+                .set_index("q")
+                .reindex(order, fill_value=0)
+            )
+
+            ax.barh(
+                y + off,
+                sub["frac"].to_numpy(),
+                height=bar_h,
+                color=color,
+                label=lbl,
+            )
+
+        ax.set_yticks(y)
+        ax.set_yticklabels(order)
+
+    ax.set_ylabel(xlabel)
+    ax.set_xlabel("Fraction of nodes")
+
+    style.add_panel_labels(axes)
+
+    plt.close(fig)
+    return fig, pd.DataFrame(records)
 
 
-# ---------------------------------------------------------------------------
-# Methods / robustness
-# ---------------------------------------------------------------------------
-
-
-def plot_null_comparison(
-    node_stats: pd.DataFrame,
+def plot_socio_demo_candidate_background_diff(
+    results_df: pd.DataFrame,
     *,
-    obs_col: str = "downstream_entropy_norm",
-    null_mean_col: str = "downstream_entropy_norm_null_mean",
-    z_col: str = "downstream_entropy_norm_z",
+    q_col: str = "q",
+    diff_col: str = "diff_candidate_minus_background",
+    p_col: str | None = "p_adj_bh",
+    xlabel: str = "Candidate − background fraction",
+    ylabel: str = "Age band",
     title: str | None = None,
-    width: str = "slide",
-    height_in: float = 4.6,
-) -> plt.Figure:
-    """Observed metric vs null mean, coloured by significance.
-
-    Confirms the null distribution is doing what it claims and shows where
-    the observed metric departs from it.
+    order: str = "age",
+    ax=None,
+    annotate: bool = True,
+    as_percent: bool = True,
+    sig_alpha: float = 0.05,
+) -> plt.Axes | plt.Figure:
     """
-    cols = [obs_col, null_mean_col]
-    df = node_stats[[c for c in cols if c in node_stats.columns]].copy()
-    if df.shape[1] < 2:
-        raise KeyError(
-            f"Missing required columns. Need {obs_col!r} and {null_mean_col!r}."
-        )
-    df = df.dropna()
-    if z_col in node_stats.columns:
-        df["_z"] = node_stats.loc[df.index, z_col]
-    else:
-        df["_z"] = np.nan
+    Plot signed percentage-point differences between candidate and background distributions.
 
-    fig, ax = style.new_figure(width=width, height_in=height_in, context="talk", font_scale=0.82)
-    lo = min(df[obs_col].min(), df[null_mean_col].min())
-    hi = max(df[obs_col].max(), df[null_mean_col].max())
-    ax.plot([lo, hi], [lo, hi], "k--", lw=1.0, alpha=0.5)
-    if df["_z"].notna().any():
-        sc = ax.scatter(
-            df[null_mean_col], df[obs_col],
-            c=df["_z"], cmap="coolwarm", vmin=-3, vmax=3,
-            s=10, alpha=0.55, edgecolor="none",
-        )
-        fig.colorbar(sc, ax=ax, label="z-score")
+    Positive values mean over-represented among candidates.
+    Negative values mean under-represented among candidates.
+    """
+
+    df = results_df.copy()
+
+    if q_col not in df or diff_col not in df:
+        raise ValueError(f"`results_df` must contain `{q_col}` and `{diff_col}`.")
+
+    df = df.dropna(subset=[q_col, diff_col])
+
+    def _age_sort_key(label):
+        label = str(label)
+
+        if label.endswith("+"):
+            return int(label.replace("+", ""))
+
+        match = re.match(r"^(\d+)-(\d+)$", label)
+        if match:
+            return int(match.group(1))
+
+        return label
+
+    if order == "age":
+        df = df.sort_values(q_col, key=lambda s: s.map(_age_sort_key))
+    elif order == "effect":
+        df = df.sort_values(diff_col)
+    elif order == "abs_effect":
+        df = df.sort_values(diff_col, key=lambda s: s.abs())
+    elif isinstance(order, list):
+        df[q_col] = pd.Categorical(df[q_col], categories=order, ordered=True)
+        df = df.sort_values(q_col)
     else:
-        ax.scatter(
-            df[null_mean_col], df[obs_col],
-            s=10, alpha=0.55, color="#3A6EA5", edgecolor="none",
-        )
-    ax.set_xlabel(f"null mean ({null_mean_col})")
-    ax.set_ylabel(f"observed ({obs_col})")
-    ax.set_title(title or f"Observed vs null: {obs_col}")
-    fig.tight_layout()
-    return fig
+        raise ValueError("`order` must be 'age', 'effect', 'abs_effect', or a list.")
+
+    plot_values = df[diff_col].to_numpy()
+
+    if as_percent:
+        plot_values = plot_values * 100
+        if xlabel:
+            xlabel = xlabel + " percentage points"
+
+    y = np.arange(len(df))
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6, max(3, 0.35 * len(df))))
+    else:
+        fig = ax.figure
+
+    colors = np.where(plot_values >= 0, "#C75C2C", "#8C8C8C")
+
+    ax.barh(
+        y,
+        plot_values,
+        color=colors,
+        height=0.75,
+    )
+
+    ax.axvline(0, color="black", linewidth=0.8)
+
+    ax.set_yticks(y)
+    ax.set_yticklabels(df[q_col].astype(str))
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+
+    if title is not None:
+        ax.set_title(title)
+
+    if annotate:
+        x_pad = max(abs(plot_values).max() * 0.03, 0.05)
+
+        for i, value in enumerate(plot_values):
+            ha = "left" if value >= 0 else "right"
+            x = value + x_pad if value >= 0 else value - x_pad
+
+            label = f"{value:+.1f}"
+
+            if p_col is not None and p_col in df.columns:
+                p = df.iloc[i][p_col]
+                if pd.notna(p) and p < sig_alpha:
+                    label += "*"
+
+            ax.text(
+                x,
+                i,
+                label,
+                va="center",
+                ha=ha,
+                fontsize=8,
+            )
+
+    max_abs = max(abs(plot_values).max(), 0.01)
+    ax.set_xlim(-max_abs * 1.2, max_abs * 1.2)
+
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    plt.close()
+
+    return ax if ax is not None else fig

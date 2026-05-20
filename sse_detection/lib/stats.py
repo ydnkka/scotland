@@ -23,6 +23,9 @@ __all__ = [
     "add_sse_node_metrics",
     "categorise_sse_nodes",
     "flag_sse",
+    "join_top",
+    "safe_mode",
+    "test_category_distribution",
 ]
 
 
@@ -73,6 +76,18 @@ def mean_with_count(
     existing_cols = [col for col in cols if col in df.columns]
     sub = df[existing_cols]
     return sub.mean(axis=1, skipna=skipna), sub.notna().sum(axis=1)
+
+
+def join_top(values: pd.Series, n: int = 5) -> str:
+    counts = values.dropna().astype(str).value_counts()
+    return "; ".join(f"{name} ({count})" for name, count in counts.head(n).items())
+
+
+def safe_mode(values: pd.Series):
+    values = values.dropna()
+    if values.empty:
+        return np.nan
+    return values.mode().iloc[0]
 
 
 def attach_entropy_zscore(
@@ -579,8 +594,8 @@ def add_sse_node_metrics(
 
     for area_col, density_col, mean_col in [
         ("cluster_n_datazones", "datazone_density", "mean_sequences_per_datazone"),
-        ("local_authorities", "local_authority_density", "mean_sequences_per_local_authority"),
-        ("health_boards", "health_board_density", "mean_sequences_per_health_board"),
+        ("n_local_authorities", "local_authority_density", "mean_sequences_per_local_authority"),
+        ("n_health_boards", "health_board_density", "mean_sequences_per_health_board"),
     ]:
         if area_col in df.columns:
             df[density_col] = safe_divide(df[area_col], df["cluster_size"])
@@ -597,7 +612,7 @@ def add_sse_node_metrics(
         "upstream_novelty_proxy",
         "downstream_retention_ratio",
         "downstream_expansion_proxy",
-        "local_authorities",
+        "n_local_authorities",
         "local_authority_density",
     ]
 
@@ -622,7 +637,7 @@ def add_sse_node_metrics(
         "net_amplification",
         "upstream_novelty_proxy",
         "downstream_expansion_proxy",
-        "local_authorities",
+        "n_local_authorities",
     ]
 
     for col in zscore_cols:
@@ -765,7 +780,7 @@ def categorise_sse_nodes(
     high_out_strength = high_col("out_strength_pct_window_lifecycle", high_q)
 
     spatially_broad = (
-        high_col("local_authorities_pct_window_lifecycle", high_q)
+        high_col("n_local_authorities_pct_window_lifecycle", high_q)
         | high_col("local_authority_density_pct_window_lifecycle", high_q)
         | high_col("mixing_score", high_q)
         | (num_col("health_board_entropy_z") >= 1.96)
@@ -996,3 +1011,86 @@ def flag_sse(
     weekly["is_sse"] = weekly["norm_change"] > threshold
 
     return weekly
+
+def test_category_distribution(df):
+    from scipy.stats import chi2_contingency, fisher_exact
+    from statsmodels.stats.multitest import multipletests
+
+    df = df.copy()
+
+    table = (
+        df
+        .pivot_table(
+            index="q",
+            columns="candidate",
+            values="n",
+            aggfunc="sum",
+            fill_value=0,
+        )
+        .rename(columns={False: "background", True: "candidate"})
+    )
+
+    chi2, p, dof, expected = chi2_contingency(table)
+
+    expected_df = pd.DataFrame(
+        expected,
+        index=table.index,
+        columns=table.columns,
+    )
+
+    std_resid = (table - expected_df) / np.sqrt(expected_df)
+
+    props = table.div(table.sum(axis=0), axis=1)
+    props["diff_candidate_minus_background"] = (
+        props["candidate"] - props["background"]
+    )
+
+    total_background = table["background"].sum()
+    total_candidate = table["candidate"].sum()
+
+    per_category = []
+
+    for q, row in table.iterrows():
+        candidate_in_q = row["candidate"]
+        background_in_q = row["background"]
+
+        test_table = np.array([
+            [candidate_in_q, total_candidate - candidate_in_q],
+            [background_in_q, total_background - background_in_q],
+        ])
+
+        odds_ratio, p_value = fisher_exact(test_table)
+
+        per_category.append({
+            "q": q,
+            "candidate_n": candidate_in_q,
+            "background_n": background_in_q,
+            "candidate_frac": candidate_in_q / total_candidate,
+            "background_frac": background_in_q / total_background,
+            "diff_candidate_minus_background": (
+                candidate_in_q / total_candidate
+                - background_in_q / total_background
+            ),
+            "odds_ratio": odds_ratio,
+            "p_value": p_value,
+        })
+
+    per_category = pd.DataFrame(per_category)
+
+    per_category["p_adj_bh"] = multipletests(
+        per_category["p_value"],
+        method="fdr_bh",
+    )[1]
+
+    per_category = per_category.sort_values("p_adj_bh")
+
+    return {
+        "table": table,
+        "chi2": chi2,
+        "p_value": p,
+        "dof": dof,
+        "expected": expected_df,
+        "standardized_residuals": std_resid,
+        "proportions": props,
+        "per_category_tests": per_category,
+    }

@@ -26,6 +26,7 @@ from ``SSE_CATEGORY_PALETTE`` or calls
 from __future__ import annotations
 
 from typing import Iterable
+from typing import Callable
 
 from matplotlib.colors import to_rgb
 
@@ -167,3 +168,28 @@ def _build_full_category_palette() -> dict[str, tuple[float, float, float] | str
 SSE_CATEGORY_PALETTE: dict[str, tuple[float, float, float] | str] = (
     _build_full_category_palette()
 )
+
+
+WAVE_GROUPS: dict[str, Callable[[str], bool]] = {
+    "B.1.177": lambda lineage: lineage.startswith("B.1.177"),
+    "Alpha": lambda lineage: lineage == "B.1.1.7" or lineage.startswith("B.1.1.7."),
+    "Delta": lambda lineage: lineage.startswith("AY.") or lineage == "B.1.617.2",
+    "BA.1": lambda lineage: lineage.startswith("BA.1"),
+    "BA.2": lambda lineage: lineage.startswith("BA.2"),
+    "BA.4": lambda lineage: lineage.startswith("BA.4"),
+    "BA.5": lambda lineage: lineage.startswith("BA.5") or lineage.startswith("BE."),
+    "BQ.1": lambda lineage: lineage.startswith("BQ."),
+    "XBB": lambda lineage: lineage.startswith("XBB"),
+}
+
+WAVE_GROUP_PALETTE: dict[str, str] = {
+    "B.1.177": "#4e79a7",
+    "Alpha": "#f28e2b",
+    "Delta": "#e15759",
+    "BA.1": "#76b7b2",
+    "BA.2": "#59a14f",
+    "BA.4": "#edc948",
+    "BA.5": "#b07aa1",
+    "BQ.1": "#ff9da7",
+    "XBB": "#9c755f",
+}

@@ -308,9 +308,11 @@ def plot_meta_cluster_subgraph(
     curvature: float = 0.18,
     show_arrows: bool = True,
     show_window_axis: bool = True,
-    title: str | None = None,
-    width: str = "slide",
-    height_in: float | None = None,
+    width= "double",
+    width_in = None,
+    height_in= 5,
+    context= "paper",
+    font_scale= 1,
     ax: plt.Axes | None = None,
 ) -> plt.Figure:
     """Draw the induced subgraph of a single meta-cluster in a dot-tree layout.
@@ -349,11 +351,8 @@ def plot_meta_cluster_subgraph(
     show_window_axis
         If True (default and ``rankdir='LR'``), the x-axis is labelled with
         ``window_idx`` values and ``wn_mid_date`` underneath.
-    title
-        Optional figure title.
-    width, height_in
-        Forwarded to ``utils.style.new_figure``. ``height_in`` defaults to
-        a value scaled by the widest layer when omitted.
+    width, width_in, height_in, context, font_scale
+        Forwarded to ``utils.style.new_figure``.
     ax
         Pre-existing axis to draw onto. If provided, ``width``/``height_in``
         are ignored.
@@ -389,9 +388,10 @@ def plot_meta_cluster_subgraph(
             height_in = float(np.clip(3.5 + 0.18 * widest, 4.0, 9.0))
         fig, ax = style.new_figure(
             width=width,
+            width_in=width_in,
             height_in=height_in,
-            context="talk",
-            font_scale=0.78,
+            context=context,
+            font_scale=font_scale,
         )
     else:
         fig = ax.figure
@@ -461,7 +461,6 @@ def plot_meta_cluster_subgraph(
 
     # ----- Axes / chrome -----
     _format_axes(ax, nodes, rankdir, show_window_axis)
-    ax.set_title(title or _default_title(meta_cluster_id, color_by))
 
     if show_legend:
         _add_color_legend(
@@ -473,6 +472,7 @@ def plot_meta_cluster_subgraph(
             show_window_axis=show_window_axis,
         )
 
+    plt.close(fig)
     return fig
 
 
@@ -556,10 +556,6 @@ def _format_axes(
         ax.set_ylim(ys.min() - pad_y, ys.max() + pad_y)
 
 
-def _default_title(meta_cluster_id: str, color_by: str) -> str:
-    return f"Meta-cluster {meta_cluster_id} (colour: {color_by})"
-
-
 def _legend_text_parts(category: str) -> list[str]:
     return [
         part.replace("_", " ")
@@ -585,7 +581,7 @@ def _legend_column_count(categories: list[str], fig_width_in: float) -> int:
         for category in categories
         for part in _legend_text_parts(category)
     )
-    target_col_width = min(2.5, max(1.3, 0.075 * longest_line + 0.45))
+    target_col_width = min(2.0, max(1.3, 0.06 * longest_line + 0.35))
     width_limited_cols = max(1, int(fig_width_in // target_col_width))
     max_cols = 5 if fig_width_in >= 7 else 4
     max_rows = 4 if fig_width_in >= 7 else 5
@@ -618,13 +614,22 @@ def _legend_margin(
         + 0.05 * max(0, rows - 1)
         + 0.12
     )
+    legend_bottom_in = 0.05
     axis_space_in = 0.3
     if has_bottom_axis:
-        axis_space_in = 0.92 if many_windows else 0.58
+        legend_bottom_in = 0.08
+        axis_space_in = 1.18 if many_windows else 0.72
 
-    bottom = (legend_height_in + axis_space_in) / max(fig_height_in, 1.0)
+    bottom = (
+        legend_bottom_in
+        + legend_height_in
+        + axis_space_in
+    ) / max(fig_height_in, 1.0)
     bottom = min(max(bottom, 0.2), 0.62)
-    legend_top = max(0.02, bottom - axis_space_in / max(fig_height_in, 1.0))
+    legend_top = max(
+        0.02,
+        (legend_bottom_in + legend_height_in) / max(fig_height_in, 1.0),
+    )
     return bottom, legend_top
 
 

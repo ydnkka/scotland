@@ -33,3 +33,6 @@ dist/
 /chapter1/manuscript/figures/
 /cluster_size_rf/outputs/
 /sse_detection/outputs/
+/.jupyter/
+/.virtual_documents/
+/sse_detection/.ipynb_checkpoints/

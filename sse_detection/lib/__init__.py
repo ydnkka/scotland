@@ -2,7 +2,7 @@
 
 The module is organised so each figure is a single function that takes
 ready-to-plot dataframes and returns a matplotlib ``Figure``. The notebook
-``sse_detection_output_plots.ipynb`` is intended to be a thin orchestrator
+``sse_detection_plots.ipynb`` is intended to be a thin orchestrator
 on top of these functions.
 
 Sub-modules
@@ -30,6 +30,7 @@ from .stats import (
     categorise_sse_nodes,
     downstream_entropy_fast,
     downstream_spread_entropy,
+    test_category_distribution,
     flag_sse,
 )
 from .io import SseOutputs, load_sse_outputs, load_weekly_growth
@@ -44,17 +45,12 @@ from .palettes import (
 )
 from .plots import (
     plot_candidate_rate_over_time,
-    plot_cluster_size_ccdf,
-    plot_composite_score_distributions,
-    plot_layer_concordance,
-    plot_metric_space_scatter,
-    plot_meta_cluster_trajectories,
-    plot_norm_change_histogram,
-    plot_null_comparison,
+    plot_cluster_size_distribution,
+    plot_composite_distributions,
+    plot_core_metric_space,
     plot_role_dynamic_heatmap,
-    plot_sequence_volume_timeline,
-    plot_simd_breakdown,
-    plot_threshold_sensitivity,
+    plot_socio_demo_breakdown,
+    plot_socio_demo_candidate_background_diff,
 )
 from .subgraph import plot_meta_cluster_subgraph
 
@@ -64,6 +60,7 @@ __all__ = [
     "categorise_sse_nodes",
     "downstream_entropy_fast",
     "downstream_spread_entropy",
+    "test_category_distribution",
     "flag_sse",
     "SseOutputs",
     "load_sse_outputs",
@@ -76,16 +73,11 @@ __all__ = [
     "SSE_CATEGORY_PALETTE",
     "sse_category_palette_from",
     "plot_candidate_rate_over_time",
-    "plot_cluster_size_ccdf",
-    "plot_composite_score_distributions",
-    "plot_layer_concordance",
+    "plot_cluster_size_distribution",
+    "plot_composite_distributions",
     "plot_meta_cluster_subgraph",
-    "plot_meta_cluster_trajectories",
-    "plot_metric_space_scatter",
-    "plot_norm_change_histogram",
-    "plot_null_comparison",
+    "plot_core_metric_space",
     "plot_role_dynamic_heatmap",
-    "plot_sequence_volume_timeline",
-    "plot_simd_breakdown",
-    "plot_threshold_sensitivity",
+    "plot_socio_demo_breakdown",
+    "plot_socio_demo_candidate_background_diff",
 ]
