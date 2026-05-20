@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Sequence
 import re
 
 from matplotlib.lines import Line2D
@@ -427,7 +426,7 @@ def plot_core_metric_space(
 def plot_composite_distributions(
     node_stats: pd.DataFrame,
     *,
-    columns: Sequence[str] = (
+    columns=(
             "cluster_size",
             "core_amplification_score",
             "onward_dissemination_score",
@@ -496,7 +495,7 @@ def plot_socio_demo_breakdown(
     node_stats: pd.DataFrame,
     col="top_simd_quintiles",
     score="simd_entropy_obs",
-    xlabel="modal SIMD quintile (1 = most deprived)",
+    xlabels=("Deprivation mixing", "SIMD quintile (1 = most deprived)"),
     *,
     width="double",
     width_in=None,
@@ -553,7 +552,7 @@ def plot_socio_demo_breakdown(
             common_norm=False,
         )
 
-    ax.set_xlabel(f"{' '.join(score.split('_')[:-1]).capitalize()}")
+    ax.set_xlabel(xlabels[0])
     ax.set_ylabel("density")
     ax.legend(loc="best", frameon=False)
 
@@ -639,7 +638,7 @@ def plot_socio_demo_breakdown(
         ax.set_yticks(y)
         ax.set_yticklabels(order)
 
-    ax.set_ylabel(xlabel)
+    ax.set_ylabel(xlabels[1])
     ax.set_xlabel("Fraction of nodes")
 
     style.add_panel_labels(axes)
