@@ -3,18 +3,14 @@
 Layout
 ------
 The graph is a DAG whose edges only span adjacent windows by construction
-(see ``sse_detection.ipynb``). That makes it a natural fit for the layered
-("Sugiyama") layout that Graphviz's ``dot`` produces:
+(see ``sse_detection.ipynb``). That makes it a natural fit for Graphviz's
+layered ``dot`` layout:
 
 * Each node's *rank* is its ``window_idx``.
-* Within a rank, nodes are ordered to minimise edge crossings using a
-  bidirectional barycentre sweep over the bipartite layers.
 * Edges are drawn as curved arrows running left-to-right (or top-to-bottom).
 
-If ``pygraphviz`` is importable in the active environment, Graphviz's ``dot``
-engine is used through it. If not, the ``dot`` binary / ``pydot`` are tried
-before falling back to a pure-Python Sugiyama layout. Both produce visually
-similar layouts.
+Graphviz is used through ``pygraphviz``. The public ``layout="auto"`` option
+is retained as a compatibility alias for ``layout="dot"``.
 
 Encodings
 ---------
@@ -26,8 +22,7 @@ Encodings
 
 from __future__ import annotations
 
-import shutil
-import subprocess
+import textwrap
 from typing import Iterable
 
 import matplotlib.patches as mpatches
@@ -98,112 +93,8 @@ def _require_columns(
 
 
 # ---------------------------------------------------------------------------
-# Layered layout (dot-style)
+# Graphviz layout
 # ---------------------------------------------------------------------------
-
-
-def _initial_order(
-    nodes: pd.DataFrame,
-    rank_col: str = "window_idx",
-) -> dict[int, list[str]]:
-    """Deterministic initial within-rank order: largest cluster_size first."""
-    n = nodes.sort_values(
-        [rank_col, "cluster_size", "cluster_id"],
-        ascending=[True, False, True],
-    )
-    return {
-        int(rank): sub["cluster_id"].tolist()
-        for rank, sub in n.groupby(rank_col)
-    }
-
-
-def _barycentre_sweep(
-    order_by_rank: dict[int, list[str]],
-    successors: dict[str, list[str]],
-    predecessors: dict[str, list[str]],
-    *,
-    n_sweeps: int = 24,
-) -> dict[int, list[str]]:
-    """Reduce edge crossings via a bidirectional barycentre heuristic."""
-    ranks = sorted(order_by_rank.keys())
-    if len(ranks) < 2:
-        return order_by_rank
-
-    def _sort_layer(layer_nodes, neighbour_pos, neighbour_map):
-        def key(n):
-            ns = neighbour_map.get(n, [])
-            positions = [neighbour_pos[m] for m in ns if m in neighbour_pos]
-            if not positions:
-                # Keep node at its current position by returning a neutral key.
-                return float("inf")
-            return sum(positions) / len(positions)
-        return sorted(layer_nodes, key=key)
-
-    for _ in range(n_sweeps):
-        # Forward sweep: order by the previous present rank, so skipped
-        # window_idx values do not break ordering.
-        for prev_rank, r in zip(ranks[:-1], ranks[1:]):
-            prev_pos = {n: i for i, n in enumerate(order_by_rank[prev_rank])}
-            order_by_rank[r] = _sort_layer(order_by_rank[r], prev_pos, predecessors)
-        # Backward sweep: order by the next present rank.
-        for r, next_rank in zip(reversed(ranks[:-1]), reversed(ranks[1:])):
-            next_pos = {n: i for i, n in enumerate(order_by_rank[next_rank])}
-            order_by_rank[r] = _sort_layer(order_by_rank[r], next_pos, successors)
-    return order_by_rank
-
-
-def _sugiyama_positions(
-    nodes: pd.DataFrame,
-    edges: pd.DataFrame,
-    *,
-    rank_col: str = "window_idx",
-    n_sweeps: int = 24,
-) -> dict[str, tuple[float, float]]:
-    """Layered layout. Returns rank-space positions (x = layer, y = order)."""
-    order_by_rank = _initial_order(nodes, rank_col=rank_col)
-
-    successors: dict[str, list[str]] = {nid: [] for nid in nodes["cluster_id"]}
-    predecessors: dict[str, list[str]] = {nid: [] for nid in nodes["cluster_id"]}
-    for s, t in zip(edges["source"], edges["target"]):
-        if s in successors and t in predecessors:
-            successors[s].append(t)
-            predecessors[t].append(s)
-
-    order_by_rank = _barycentre_sweep(order_by_rank, successors, predecessors, n_sweeps=n_sweeps)
-
-    # Compress ranks to consecutive indices so x-axis is dot-style equi-spaced.
-    sorted_ranks = sorted(order_by_rank.keys())
-    rank_to_x = {r: i for i, r in enumerate(sorted_ranks)}
-
-    pos: dict[str, tuple[float, float]] = {}
-    for rank, layer in order_by_rank.items():
-        n = len(layer)
-        # Centre the layer vertically around 0; use unit spacing.
-        for i, nid in enumerate(layer):
-            y = (i - (n - 1) / 2.0)
-            pos[nid] = (rank_to_x[rank], y)
-    return pos
-
-
-def _try_graphviz_positions(
-    nodes: pd.DataFrame,
-    edges: pd.DataFrame,
-    *,
-    rankdir: str,
-    rank_col: str = "window_idx",
-) -> dict[str, tuple[float, float]] | None:
-    """Use Graphviz's ``dot`` engine when the binary or Python wrappers exist."""
-    id_by_cluster, anchor_by_rank = _graphviz_ids(nodes, rank_col=rank_col)
-
-    pos = _try_pygraphviz_positions(nodes, edges, id_by_cluster, anchor_by_rank, rankdir)
-    if pos is not None:
-        return pos
-
-    pos = _try_graphviz_binary_positions(nodes, edges, id_by_cluster, anchor_by_rank, rankdir)
-    if pos is not None:
-        return pos
-
-    return _try_pydot_positions(nodes, edges, id_by_cluster, anchor_by_rank, rankdir)
 
 
 def _graphviz_ids(
@@ -220,7 +111,7 @@ def _graphviz_ids(
     return id_by_cluster, anchor_by_rank
 
 
-def _build_dot_source(
+def _pygraphviz_positions(
     nodes: pd.DataFrame,
     edges: pd.DataFrame,
     id_by_cluster: dict[str, str],
@@ -228,205 +119,59 @@ def _build_dot_source(
     rankdir: str,
     *,
     rank_col: str = "window_idx",
-) -> str:
-    lines = [
-        "digraph G {",
-        f'  graph [rankdir="{rankdir}", nodesep="0.3", ranksep="0.6"];',
-        '  node [shape=point, width="0.08", height="0.08", label=""];',
-        '  edge [arrowsize="0.7"];',
-    ]
-
-    for graph_id in id_by_cluster.values():
-        lines.append(f"  {graph_id};")
-    for anchor_id in anchor_by_rank.values():
-        lines.append(
-            f'  {anchor_id} [style="invis", width="0.01", height="0.01", label=""];'
-        )
-
-    for i, (rank, sub) in enumerate(nodes.groupby(rank_col, sort=True)):
-        rank_id = int(rank)
-        members = [anchor_by_rank[rank_id]]
-        members.extend(id_by_cluster[c] for c in sub["cluster_id"])
-        lines.append(f"  subgraph rank_{i} {{")
-        lines.append("    rank=same;")
-        lines.extend(f"    {member};" for member in members)
-        lines.append("  }")
-
-    anchors = [anchor_by_rank[rank] for rank in sorted(anchor_by_rank)]
-    for left, right in zip(anchors[:-1], anchors[1:]):
-        lines.append(f'  {left} -> {right} [style="invis", weight="100"];')
-
-    for src, tgt in zip(edges["source"], edges["target"]):
-        if src in id_by_cluster and tgt in id_by_cluster:
-            lines.append(f"  {id_by_cluster[src]} -> {id_by_cluster[tgt]};")
-
-    lines.append("}")
-    return "\n".join(lines)
-
-
-def _try_graphviz_binary_positions(
-    nodes: pd.DataFrame,
-    edges: pd.DataFrame,
-    id_by_cluster: dict[str, str],
-    anchor_by_rank: dict[int, str],
-    rankdir: str,
-) -> dict[str, tuple[float, float]] | None:
-    dot = shutil.which("dot")
-    if dot is None:
-        return None
-
-    dot_source = _build_dot_source(nodes, edges, id_by_cluster, anchor_by_rank, rankdir)
-    try:
-        result = subprocess.run(
-            [dot, "-Tplain"],
-            input=dot_source,
-            capture_output=True,
-            check=False,
-            text=True,
-        )
-    except OSError:
-        return None
-
-    if result.returncode != 0:
-        return None
-    return _parse_dot_plain_positions(result.stdout, id_by_cluster)
-
-
-def _try_pygraphviz_positions(
-    nodes: pd.DataFrame,
-    edges: pd.DataFrame,
-    id_by_cluster: dict[str, str],
-    anchor_by_rank: dict[int, str],
-    rankdir: str,
-    *,
-    rank_col: str = "window_idx",
-) -> dict[str, tuple[float, float]] | None:
+) -> dict[str, tuple[float, float]]:
     try:
         import pygraphviz as pgv
-    except ImportError:
-        return None
+    except ImportError as exc:
+        raise RuntimeError(
+            "pygraphviz is required for plot_meta_cluster_subgraph(). "
+            "Install pygraphviz in the active Python environment."
+        ) from exc
 
-    try:
-        graph = pgv.AGraph(
-            directed=True,
-            strict=False,
-            rankdir=rankdir,
-            nodesep="0.3",
-            ranksep="0.6",
+    graph = pgv.AGraph(
+        directed=True,
+        strict=False,
+        rankdir=rankdir,
+        nodesep="0.3",
+        ranksep="0.6",
+    )
+    for graph_id in id_by_cluster.values():
+        graph.add_node(graph_id, shape="point", width="0.08", height="0.08", label="")
+    for anchor_id in anchor_by_rank.values():
+        graph.add_node(
+            anchor_id,
+            style="invis",
+            width="0.01",
+            height="0.01",
+            label="",
         )
-        for graph_id in id_by_cluster.values():
-            graph.add_node(graph_id, shape="point", width="0.08", height="0.08", label="")
-        for anchor_id in anchor_by_rank.values():
-            graph.add_node(
-                anchor_id,
-                style="invis",
-                width="0.01",
-                height="0.01",
-                label="",
-            )
-        for _, sub in nodes.groupby(rank_col, sort=True):
-            rank_id = int(sub[rank_col].iloc[0])
-            members = [anchor_by_rank[rank_id]]
-            members.extend(id_by_cluster[c] for c in sub["cluster_id"])
-            graph.add_subgraph(members, rank="same")
-        anchors = [anchor_by_rank[rank] for rank in sorted(anchor_by_rank)]
-        for left, right in zip(anchors[:-1], anchors[1:]):
-            graph.add_edge(left, right, style="invis", weight="100")
-        for src, tgt in zip(edges["source"], edges["target"]):
-            if src in id_by_cluster and tgt in id_by_cluster:
-                graph.add_edge(id_by_cluster[src], id_by_cluster[tgt])
-        graph.layout(prog="dot")
-        return _parse_pygraphviz_positions(graph, id_by_cluster)
-    except Exception:
-        return None
+    for _, sub in nodes.groupby(rank_col, sort=True):
+        rank_id = int(sub[rank_col].iloc[0])
+        members = [anchor_by_rank[rank_id]]
+        members.extend(id_by_cluster[c] for c in sub["cluster_id"])
+        graph.add_subgraph(members, rank="same")
+    anchors = [anchor_by_rank[rank] for rank in sorted(anchor_by_rank)]
+    for left, right in zip(anchors[:-1], anchors[1:]):
+        graph.add_edge(left, right, style="invis", weight="100")
+    for src, tgt in zip(edges["source"], edges["target"]):
+        if src in id_by_cluster and tgt in id_by_cluster:
+            graph.add_edge(id_by_cluster[src], id_by_cluster[tgt])
+
+    graph.layout(prog="dot")
+    return _parse_pygraphviz_positions(graph, id_by_cluster)
 
 
 def _parse_pygraphviz_positions(
     graph,
     id_by_cluster: dict[str, str],
-) -> dict[str, tuple[float, float]] | None:
+) -> dict[str, tuple[float, float]]:
     pos: dict[str, tuple[float, float]] = {}
     for cluster_id, graph_id in id_by_cluster.items():
         raw = graph.get_node(graph_id).attr.get("pos")
         if not raw:
-            return None
-        x, y = raw.split(",", 1)
-        pos[cluster_id] = (float(x), float(y))
-    return pos
-
-
-def _try_pydot_positions(
-    nodes: pd.DataFrame,
-    edges: pd.DataFrame,
-    id_by_cluster: dict[str, str],
-    anchor_by_rank: dict[int, str],
-    rankdir: str,
-    *,
-    rank_col: str = "window_idx",
-) -> dict[str, tuple[float, float]] | None:
-    try:
-        import pydot
-    except ImportError:
-        return None
-
-    try:
-        graph = pydot.Dot(
-            graph_type="digraph",
-            rankdir=rankdir,
-            nodesep="0.3",
-            ranksep="0.6",
-        )
-        for graph_id in id_by_cluster.values():
-            graph.add_node(
-                pydot.Node(graph_id, shape="point", width="0.08", height="0.08", label="")
-            )
-        for anchor_id in anchor_by_rank.values():
-            graph.add_node(
-                pydot.Node(
-                    anchor_id,
-                    style="invis",
-                    width="0.01",
-                    height="0.01",
-                    label="",
-                )
-            )
-        for i, (_, sub) in enumerate(nodes.groupby(rank_col, sort=True)):
-            rank_id = int(sub[rank_col].iloc[0])
-            subgraph = pydot.Subgraph(graph_name=f"rank_{i}", rank="same")
-            subgraph.add_node(pydot.Node(anchor_by_rank[rank_id]))
-            for cluster_id in sub["cluster_id"]:
-                subgraph.add_node(pydot.Node(id_by_cluster[cluster_id]))
-            graph.add_subgraph(subgraph)
-        anchors = [anchor_by_rank[rank] for rank in sorted(anchor_by_rank)]
-        for left, right in zip(anchors[:-1], anchors[1:]):
-            graph.add_edge(pydot.Edge(left, right, style="invis", weight="100"))
-        for src, tgt in zip(edges["source"], edges["target"]):
-            if src in id_by_cluster and tgt in id_by_cluster:
-                graph.add_edge(pydot.Edge(id_by_cluster[src], id_by_cluster[tgt]))
-
-        plain = graph.create_plain(prog="dot")
-        if isinstance(plain, bytes):
-            plain = plain.decode("utf-8")
-        return _parse_dot_plain_positions(plain, id_by_cluster)
-    except Exception:
-        return None
-
-
-def _parse_dot_plain_positions(
-    plain: str,
-    id_by_cluster: dict[str, str],
-) -> dict[str, tuple[float, float]] | None:
-    cluster_by_id = {graph_id: cluster_id for cluster_id, graph_id in id_by_cluster.items()}
-    pos: dict[str, tuple[float, float]] = {}
-    for line in plain.splitlines():
-        parts = line.split()
-        if len(parts) < 4 or parts[0] != "node":
-            continue
-        graph_id = parts[1]
-        if graph_id in cluster_by_id:
-            pos[cluster_by_id[graph_id]] = (float(parts[2]), float(parts[3]))
-    if len(pos) != len(id_by_cluster):
-        return None
+            raise RuntimeError(f"Graphviz did not return a position for node {cluster_id!r}")
+        x, y = str(raw).strip('"').split(",", 1)
+        pos[cluster_id] = (float(x), float(y.rstrip("!")))
     return pos
 
 
@@ -434,9 +179,7 @@ def _dot_layout(
     nodes: pd.DataFrame,
     edges: pd.DataFrame,
     *,
-    layout: str = "auto",
     rankdir: str = "LR",
-    n_sweeps: int = 24,
 ) -> tuple[dict[str, tuple[float, float]], str]:
     """Compute dot-style positions for the subgraph.
 
@@ -444,29 +187,13 @@ def _dot_layout(
     -------
     pos : dict
         Mapping ``cluster_id -> (x, y)``.
-    engine : str
-        Which engine was used (``"graphviz"`` or ``"sugiyama"``).
     """
-    if layout not in {"auto", "dot", "sugiyama"}:
-        raise ValueError("layout must be one of {'auto','dot','sugiyama'}")
     if rankdir not in {"LR", "TB"}:
         raise ValueError("rankdir must be one of {'LR','TB'}")
 
-    if layout in {"auto", "dot"}:
-        pos = _try_graphviz_positions(nodes, edges, rankdir=rankdir)
-        if pos is not None:
-            return pos, "graphviz"
-        if layout == "dot":
-            raise RuntimeError(
-                "layout='dot' requires the Graphviz dot binary, pygraphviz, "
-                "or pydot to be available in the active environment."
-            )
-
-    pos = _sugiyama_positions(nodes, edges, n_sweeps=n_sweeps)
-    if rankdir == "TB":
-        # Swap axes: (x, y) -> (y, -x) so layers stack top-to-bottom.
-        pos = {nid: (y, -x) for nid, (x, y) in pos.items()}
-    return pos, "sugiyama"
+    id_by_cluster, anchor_by_rank = _graphviz_ids(nodes, rank_col="window_idx")
+    pos = _pygraphviz_positions(nodes, edges, id_by_cluster, anchor_by_rank, rankdir)
+    return pos
 
 
 # ---------------------------------------------------------------------------
@@ -491,7 +218,7 @@ def _edge_widths(
     weights: np.ndarray,
     *,
     width_min: float = 0.4,
-    width_max: float = 4.0,
+    width_max: float = 5.0,
 ) -> np.ndarray:
     log_w = np.log1p(np.asarray(weights, dtype=float).clip(min=0))
     if log_w.max() == 0:
@@ -577,7 +304,6 @@ def plot_meta_cluster_subgraph(
     annotate_top_n: int = 6,
     annotate_col: str = "cluster_size",
     show_legend: bool = True,
-    layout: str = "auto",
     rankdir: str = "LR",
     curvature: float = 0.18,
     show_arrows: bool = True,
@@ -612,9 +338,6 @@ def plot_meta_cluster_subgraph(
         ``"cluster_size"``).
     show_legend
         Add a colour legend below the axes.
-    layout
-        ``"auto"`` (try Graphviz dot, fall back to Sugiyama), ``"dot"``
-        (require Graphviz dot), or ``"sugiyama"`` (force pure-Python).
     rankdir
         ``"LR"`` (left to right; default) or ``"TB"`` (top to bottom).
         Mirrors Graphviz's ``rankdir`` attribute.
@@ -649,7 +372,7 @@ def plot_meta_cluster_subgraph(
 
     nodes, edges = _select_subgraph(node_stats, edge_table, meta_cluster_id)
 
-    pos, engine = _dot_layout(nodes, edges, layout=layout, rankdir=rankdir)
+    pos = _dot_layout(nodes, edges, rankdir=rankdir)
 
     # Decorate the nodes dataframe with positions for downstream lookups.
     nodes = nodes.copy()
@@ -738,10 +461,17 @@ def plot_meta_cluster_subgraph(
 
     # ----- Axes / chrome -----
     _format_axes(ax, nodes, rankdir, show_window_axis)
-    ax.set_title(title or _default_title(meta_cluster_id, color_by, engine))
+    ax.set_title(title or _default_title(meta_cluster_id, color_by))
 
     if show_legend:
-        _add_color_legend(ax, color_by, nodes, palette)
+        _add_color_legend(
+            ax,
+            color_by,
+            nodes,
+            palette,
+            rankdir=rankdir,
+            show_window_axis=show_window_axis,
+        )
 
     return fig
 
@@ -826,8 +556,76 @@ def _format_axes(
         ax.set_ylim(ys.min() - pad_y, ys.max() + pad_y)
 
 
-def _default_title(meta_cluster_id: str, color_by: str, engine: str) -> str:
-    return f"Meta-cluster {meta_cluster_id} — dot tree ({engine}; colour: {color_by})"
+def _default_title(meta_cluster_id: str, color_by: str) -> str:
+    return f"Meta-cluster {meta_cluster_id} (colour: {color_by})"
+
+
+def _legend_text_parts(category: str) -> list[str]:
+    return [
+        part.replace("_", " ")
+        for part in str(category).split("__", 1)
+    ]
+
+
+def _legend_label(category: str, *, line_width: int) -> str:
+    lines: list[str] = []
+    for part in _legend_text_parts(category):
+        lines.extend(
+            textwrap.wrap(part, width=line_width, break_long_words=False)
+            or [part]
+        )
+    return "\n".join(lines)
+
+
+def _legend_column_count(categories: list[str], fig_width_in: float) -> int:
+    if not categories:
+        return 1
+    longest_line = max(
+        len(part)
+        for category in categories
+        for part in _legend_text_parts(category)
+    )
+    target_col_width = min(2.5, max(1.3, 0.075 * longest_line + 0.45))
+    width_limited_cols = max(1, int(fig_width_in // target_col_width))
+    max_cols = 5 if fig_width_in >= 7 else 4
+    max_rows = 4 if fig_width_in >= 7 else 5
+    row_limited_cols = (len(categories) + max_rows - 1) // max_rows
+    return min(
+        len(categories),
+        max(1, min(max_cols, max(width_limited_cols, row_limited_cols))),
+    )
+
+
+def _legend_line_width(fig_width_in: float, ncol: int) -> int:
+    column_width = fig_width_in / max(1, ncol)
+    return max(10, min(28, int((column_width - 0.35) / 0.06)))
+
+
+def _legend_margin(
+    labels: list[str],
+    *,
+    ncol: int,
+    fig_height_in: float,
+    has_bottom_axis: bool,
+    many_windows: bool,
+    font_size: float,
+) -> tuple[float, float]:
+    rows = (len(labels) + ncol - 1) // ncol
+    max_lines = max(label.count("\n") + 1 for label in labels)
+    line_height_in = font_size * 1.25 / 72.0
+    legend_height_in = (
+        rows * max_lines * line_height_in
+        + 0.05 * max(0, rows - 1)
+        + 0.12
+    )
+    axis_space_in = 0.3
+    if has_bottom_axis:
+        axis_space_in = 0.92 if many_windows else 0.58
+
+    bottom = (legend_height_in + axis_space_in) / max(fig_height_in, 1.0)
+    bottom = min(max(bottom, 0.2), 0.62)
+    legend_top = max(0.02, bottom - axis_space_in / max(fig_height_in, 1.0))
+    return bottom, legend_top
 
 
 def _add_color_legend(
@@ -835,6 +633,9 @@ def _add_color_legend(
     color_by: str,
     layout: pd.DataFrame,
     palette: dict,
+    *,
+    rankdir: str,
+    show_window_axis: bool,
 ) -> None:
     if color_by == "sse_category":
         cats: Iterable[str] = _ordered_categories(layout["sse_category"].dropna().unique())
@@ -855,15 +656,48 @@ def _add_color_legend(
         if (~_candidate_mask(layout)).any():
             cats.append("not_sse_like")
 
+    cats = list(cats)
+    fig_width_in, fig_height_in = ax.figure.get_size_inches()
+    ncol = _legend_column_count(cats, fig_width_in)
+    line_width = _legend_line_width(fig_width_in, ncol)
+    labels = [_legend_label(c, line_width=line_width) for c in cats]
     handles = [
-        mpatches.Patch(color=palette.get(c, NOT_SSE_COLOR), label=c)
-        for c in cats
+        mpatches.Patch(color=palette.get(c, NOT_SSE_COLOR), label=label)
+        for c, label in zip(cats, labels)
     ]
+    if not handles:
+        return
+
+    has_bottom_axis = show_window_axis and rankdir == "LR"
+    many_windows = has_bottom_axis and layout["window_idx"].nunique() > 10
+    bottom, legend_top = _legend_margin(
+        labels,
+        ncol=ncol,
+        fig_height_in=fig_height_in,
+        has_bottom_axis=has_bottom_axis,
+        many_windows=many_windows,
+        font_size=7,
+    )
+
+    if len(ax.figure.axes) == 1:
+        ax.figure.subplots_adjust(bottom=bottom)
+        bbox_to_anchor = (0.5, legend_top)
+        bbox_transform = ax.figure.transFigure
+    else:
+        bbox_to_anchor = (0.5, -0.12)
+        bbox_transform = ax.transAxes
+
     ax.legend(
         handles=handles,
         loc="upper center",
-        bbox_to_anchor=(0.5, -0.15),
-        ncol=min(4, max(1, len(handles))),
+        bbox_to_anchor=bbox_to_anchor,
+        bbox_transform=bbox_transform,
+        ncol=ncol,
         frameon=False,
         fontsize=7,
+        columnspacing=0.9,
+        handlelength=1.0,
+        handletextpad=0.35,
+        labelspacing=0.55,
+        borderaxespad=0.0,
     )
