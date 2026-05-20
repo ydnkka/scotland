@@ -410,14 +410,26 @@ def plot_meta_cluster_trajectories(
 
     Each panel shows one meta-cluster: x-axis is calendar week, y-axis is
     cumulative size (linear), and weeks flagged ``is_sse`` are highlighted.
+    Weeks with no newly observed sequences are omitted so inactive flat
+    stretches do not dominate the panel range.
 
     ``weekly_growth`` is expected to be the full weekly table (not the
     SSE-only filter) so the full curve is visible.
     """
+    required = {"meta_cluster_id", "week", "new_sequences", "cc_size", "is_sse"}
+    missing = sorted(required - set(weekly_growth.columns))
+    if missing:
+        cols = ", ".join(repr(c) for c in missing)
+        raise KeyError(f"weekly_growth must include required column(s): {cols}")
+
+    active_weekly = weekly_growth.loc[weekly_growth["new_sequences"] > 0].copy()
+    if active_weekly.empty:
+        raise ValueError("No weeks with new_sequences > 0 available to plot.")
+
     if meta_summary is None:
         # fall back to rank by max cc_size in the weekly table
         rank = (
-            weekly_growth.groupby("meta_cluster_id")["cc_size"]
+            active_weekly.groupby("meta_cluster_id")["cc_size"]
             .max()
             .sort_values(ascending=False)
             .head(top_n)
@@ -429,27 +441,25 @@ def plot_meta_cluster_trajectories(
             .head(top_n)["meta_cluster_id"]
             .to_numpy()
         )
-    rank = list(rank)
+    active_meta_ids = set(active_weekly["meta_cluster_id"].dropna().unique())
+    rank = [meta_id for meta_id in rank if meta_id in active_meta_ids]
     if not rank:
-        raise ValueError("No meta-clusters available to plot.")
+        raise ValueError("No meta-clusters with new_sequences > 0 available to plot.")
 
-    sub = weekly_growth.loc[weekly_growth["meta_cluster_id"].isin(rank)].copy()
+    sub = active_weekly.loc[active_weekly["meta_cluster_id"].isin(rank)].copy()
     sub["week"] = pd.to_datetime(sub["week"])
 
     ncols = min(3, len(rank))
     nrows = int(np.ceil(len(rank) / ncols))
     fig, axes = style.new_figure(
         width=width, height_in=height_in * nrows / 3,
-        nrows=nrows, ncols=ncols, sharex=True,
+        nrows=nrows, ncols=ncols, sharex=False,
         context="talk", font_scale=0.7,
     )
     axes = np.atleast_2d(axes).flatten()
 
     for ax, meta_id in zip(axes, rank):
         m = sub.loc[sub["meta_cluster_id"] == meta_id].sort_values("week")
-        if m.empty:
-            ax.set_visible(False)
-            continue
         ax.plot(m["week"], m["cc_size"], color="#3A6EA5", linewidth=1.5)
         sse = m.loc[m["is_sse"]]
         if not sse.empty:
@@ -458,6 +468,9 @@ def plot_meta_cluster_trajectories(
                 color="#C75C2C", s=24, zorder=3, label="SSE week",
             )
         ax.set_title(meta_id, fontsize=9)
+        locator = mdates.AutoDateLocator(minticks=3, maxticks=5)
+        ax.xaxis.set_major_locator(locator)
+        ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(locator))
         ax.tick_params(axis="x", labelrotation=35)
         ax.set_ylabel("cum. size")
 

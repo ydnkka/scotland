@@ -34,6 +34,7 @@ from .stats import (
 )
 from .io import SseOutputs, load_sse_outputs, load_weekly_growth
 from .palettes import (
+    DYNAMIC_PALETTE,
     DYNAMIC_ORDER,
     LIFECYCLE_PALETTE,
     ROLE_ORDER,
@@ -67,6 +68,7 @@ __all__ = [
     "SseOutputs",
     "load_sse_outputs",
     "load_weekly_growth",
+    "DYNAMIC_PALETTE",
     "DYNAMIC_ORDER",
     "LIFECYCLE_PALETTE",
     "ROLE_ORDER",
