@@ -69,22 +69,24 @@ ROLE_PALETTE: dict[str, str] = {
 DYNAMIC_ORDER: list[str] = [
     "no_observed_onward_spread",
     "contained_burst",
-    "single_dominant_chain",
+    "single_successor_chain",
+    "dominant_branch",
     "high_volume_onward_spread",
     "multi_branch_seeder",
     "multi_branch_expander",
-    "diffuse_spatial_broadcaster",
+    "diverse_population_broadcaster",
     "weak_or_ambiguous_onward_spread",
 ]
 
 DYNAMIC_PALETTE: dict[str, str] = {
     "no_observed_onward_spread": "#6C6F73",
     "contained_burst": "#8A7B3F",
-    "single_dominant_chain": "#0072B2",
+    "single_successor_chain": "#0072B2",
+    "dominant_branch": "#332288",
     "high_volume_onward_spread": "#D55E00",
     "multi_branch_seeder": "#E69F00",
     "multi_branch_expander": "#CC79A7",
-    "diffuse_spatial_broadcaster": "#009E73",
+    "diverse_population_broadcaster": "#009E73",
     "weak_or_ambiguous_onward_spread": "#A6ACB3",
 }
 
@@ -94,11 +96,12 @@ DYNAMIC_PALETTE: dict[str, str] = {
 _DYNAMIC_LIGHTNESS: dict[str, float] = {
     "no_observed_onward_spread": 0.50,
     "contained_burst": 0.40,
-    "single_dominant_chain": 0.26,
+    "single_successor_chain": 0.30,
+    "dominant_branch": 0.22,
     "high_volume_onward_spread": 0.12,
     "multi_branch_seeder": 0.18,
     "multi_branch_expander": 0.05,
-    "diffuse_spatial_broadcaster": 0.00,
+    "diverse_population_broadcaster": 0.00,
     "weak_or_ambiguous_onward_spread": 0.58,
 }
 

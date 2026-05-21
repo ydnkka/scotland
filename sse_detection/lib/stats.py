@@ -122,6 +122,9 @@ def add_sse_node_metrics(
     df["hub"] = df["branching"] & df["merging"]
     df["sink"] = df["merging"] & df["death"]
     df["isolated"] = df["birth"] & df["death"]
+    df["window_lifecycle_n"] = df.groupby([window_col, "lifecycle"])[
+        "cluster_size"
+    ].transform("size")
 
     first_window = df[window_col].min()
     last_window = df[window_col].max()
@@ -144,6 +147,15 @@ def add_sse_node_metrics(
 
     df["net_amplification"] = df["cluster_size"] - df["in_strength"]
     df["upstream_novelty_proxy"] = df["cluster_size"] / (1 + df["in_strength"])
+    df["log_cluster_size"] = np.log1p(df["cluster_size"])
+    df["log_excess_over_upstream"] = log1p_ratio(
+        df["cluster_size"],
+        df["in_strength"],
+    )
+    df["novelty_fraction"] = safe_divide(
+        df["cluster_size"] - df["in_strength"],
+        df["cluster_size"],
+    ).clip(lower=0, upper=1)
 
     df["downstream_retention_ratio"] = safe_divide(
         df["out_strength"],
@@ -173,6 +185,9 @@ def add_sse_node_metrics(
         "degree_imbalance",
         "strength_imbalance",
         "log_strength_ratio",
+        "log_cluster_size",
+        "log_excess_over_upstream",
+        "novelty_fraction",
         "net_amplification",
         "upstream_novelty_proxy",
         "downstream_retention_ratio",
@@ -199,6 +214,9 @@ def add_sse_node_metrics(
 
     zscore_cols = [
         "cluster_size",
+        "log_cluster_size",
+        "log_excess_over_upstream",
+        "novelty_fraction",
         "in_strength",
         "out_strength",
         "net_amplification",
@@ -218,9 +236,9 @@ def add_sse_node_metrics(
         )
 
     core_components = [
-        "cluster_size_pct_window",
-        "net_amplification_pct_window",
-        "upstream_novelty_proxy_pct_window",
+        "log_cluster_size_pct_window",
+        "log_excess_over_upstream_pct_window",
+        "novelty_fraction",
     ]
     df["core_amplification_score"], df["core_amplification_n"] = mean_with_count(
         df,
@@ -234,15 +252,19 @@ def add_sse_node_metrics(
         "downstream_expansion_proxy_pct_window",
         "downstream_retention_ratio_pct_window",
     ]
-    df["onward_dissemination_score"], df["onward_dissemination_n"] = mean_with_count(df, onward_components, skipna=False)
+    df["onward_dissemination_score"], df["onward_dissemination_n"] = mean_with_count(
+        df,
+        onward_components,
+        skipna=False,
+    )
 
 
     mixing_components = [
-        "sex_entropy_z",
-        "age_entropy_z",
-        "simd_entropy_z",
-        "health_board_entropy_z",
-        "urban_rural_entropy_z",
+        "sex_entropy_obs",
+        "age_entropy_obs",
+        "simd_entropy_obs",
+        "health_board_entropy_obs",
+        "urban_rural_entropy_obs",
     ]
 
     df["mixing_score"], df["mixing_score_n"] = mean_with_count(
@@ -262,13 +284,16 @@ def categorise_sse_nodes(
     entropy_high: float = 0.65,
     entropy_low: float = 0.35,
     dominant_high: float = 0.75,
+    novelty_high: float = 0.80,
+    min_mixing_components: int = 2,
+    min_cluster_size: int = 3,
 ) -> pd.DataFrame:
     """
     Assign interpretable superspreading-signature categories to node metrics.
 
     The labels are heuristic signatures, not confirmed epidemiological events.
     They combine local amplification, graph lifecycle, downstream branching,
-    spatial breadth, and population-mixing evidence.
+    and population-diversity evidence.
     """
     out = df.copy()
 
@@ -320,40 +345,45 @@ def categorise_sse_nodes(
     in_degree = num_col("in_degree", default=0).fillna(0)
     out_strength = num_col("out_strength", default=0).fillna(0)
     in_strength = num_col("in_strength", default=0).fillna(0)
+    cluster_size = num_col("cluster_size", default=0).fillna(0)
 
     entropy_norm = num_col("downstream_entropy_norm")
     dominant_frac = num_col("dominant_successor_frac")
     high_entropy = entropy_norm >= entropy_high
-    low_entropy = (
-        (entropy_norm <= entropy_low) | (dominant_frac >= dominant_high)
+    dominant_branch = (
+        (out_degree >= 2)
+        & (
+            (entropy_norm <= entropy_low)
+            | (dominant_frac >= dominant_high)
+        )
     )
 
     high_core_amp = high_col("core_amplification_score", high_q)
-    very_large = high_col("cluster_size_pct_window_lifecycle", very_high_q)
-    high_novelty = high_col("upstream_novelty_proxy_pct_window_lifecycle", high_q)
-    high_net_amp = high_col("net_amplification_pct_window_lifecycle", high_q)
+    very_large = high_col("cluster_size_pct_window", very_high_q)
+    high_novelty = num_col("novelty_fraction").ge(novelty_high)
+    high_net_amp = high_col("log_excess_over_upstream_pct_window", high_q)
     high_downstream_expansion = high_col(
-        "downstream_expansion_proxy_pct_window_lifecycle",
+        "downstream_expansion_proxy_pct_window",
         high_q,
     )
-    high_out_strength = high_col("out_strength_pct_window_lifecycle", high_q)
+    high_out_strength = high_col("out_strength_pct_window", high_q)
 
-    spatially_broad = (
-        high_col("n_local_authorities_pct_window_lifecycle", high_q)
-        | high_col("local_authority_density_pct_window_lifecycle", high_q)
-        | high_col("mixing_score", high_q)
-        | (num_col("health_board_entropy_z") >= 1.96)
+    diverse_population = (
+        num_col("mixing_score_n", default=0).fillna(0).ge(min_mixing_components)
+        & num_col("mixing_score").ge(entropy_high)
     )
+    out["diverse_population"] = diverse_population
 
-    out["sse_candidate"] = (
+    candidate_signal = (
         high_core_amp
         | (very_large & (high_novelty | high_net_amp))
         | (high_novelty & high_downstream_expansion)
         | (
-            num_col("cluster_size_z_window").ge(2)
-            & num_col("net_amplification_z_window").ge(1)
+            num_col("log_cluster_size_z_window").ge(2)
+            & num_col("log_excess_over_upstream_z_window").ge(1)
         )
     )
+    out["sse_candidate"] = candidate_signal & cluster_size.ge(min_cluster_size)
 
     out["sse_role"] = np.select(
         [
@@ -376,9 +406,19 @@ def categorise_sse_nodes(
     out["sse_onward_dynamic"] = np.select(
         [
             out_strength == 0,
-            death | ((out_degree <= 1) & low_col("downstream_expansion_proxy_pct_window_lifecycle", 0.25)),
-            (out_degree >= 1) & low_entropy,
-            (out_degree >= 2) & high_entropy & high_downstream_expansion & spatially_broad,
+            death
+            | (
+                (out_degree <= 1)
+                & low_col("downstream_expansion_proxy_pct_window", 0.25)
+            ),
+            out_degree == 1,
+            dominant_branch,
+            (
+                (out_degree >= 2)
+                & high_entropy
+                & high_downstream_expansion
+                & diverse_population
+            ),
             (out_degree >= 2) & high_entropy & high_downstream_expansion,
             (out_degree >= 2) & high_entropy,
             (out_degree >= 2) & high_out_strength,
@@ -386,8 +426,9 @@ def categorise_sse_nodes(
         [
             "no_observed_onward_spread",
             "contained_burst",
-            "single_dominant_chain",
-            "diffuse_spatial_broadcaster",
+            "single_successor_chain",
+            "dominant_branch",
+            "diverse_population_broadcaster",
             "multi_branch_expander",
             "multi_branch_seeder",
             "high_volume_onward_spread",
