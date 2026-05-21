@@ -497,7 +497,7 @@ def plot_composite_distributions(
         if col == "cluster_size":
             ax.set_xlabel("log(cluster size)")
         if col == "mixing_score":
-            ax.set_xlabel("Socio-geodemographic mixing")
+            ax.set_xlabel("Observed socio-geodemographic entropy")
         ax.set_ylabel("density")
     axes[0].legend(loc="best", frameon=False)
     plt.close(fig)

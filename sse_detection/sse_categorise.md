@@ -29,7 +29,7 @@ Rows labelled `not_sse_like` did not pass the amplification screen.
 | `dominant_branch` | Candidate has multiple successors, but one branch dominates. | At least two outgoing successors plus low downstream entropy or high `dominant_successor_frac`. |
 | `multi_branch_seeder` | Candidate seeds multiple successor clusters without necessarily producing high total onward burden. | Multiple outgoing edges and high downstream entropy. |
 | `multi_branch_expander` | Candidate seeds multiple substantial successor branches. | High downstream entropy plus high downstream expansion. |
-| `diverse_population_broadcaster` | Candidate branches onward into a socio-geodemographically diverse population. | High downstream entropy, high downstream expansion, and high absolute `mixing_score`. |
+| `diverse_population_broadcaster` | Candidate branches onward into a socio-geodemographically diverse population. | High downstream entropy, high downstream expansion, and high observed-normalised `mixing_score`. |
 | `high_volume_onward_spread` | Candidate has high outgoing burden but not enough entropy evidence for a branching label. | High `out_strength` with multiple successors, but downstream evenness is ambiguous. |
 | `weak_or_ambiguous_onward_spread` | Candidate passes the amplification screen, but onward evidence is weak or conflicting. | Some onward continuity, but no clear concentration, branching, or broadcaster signature. |
 
@@ -42,13 +42,13 @@ Rows labelled `not_sse_like` did not pass the amplification screen.
 | `putative_birth__dominant_branch` | New burst with multiple successors but one dominant branch. | High novelty, multiple outgoing successors, high `dominant_successor_frac`. |
 | `putative_birth__multi_branch_seeder` | New burst that seeds several successor clusters. | High novelty, multiple outgoing edges, high downstream entropy. |
 | `putative_birth__multi_branch_expander` | New burst that seeds multiple substantial onward branches. | High novelty, high `out_strength`, high downstream entropy and expansion. |
-| `putative_birth__diverse_population_broadcaster` | New burst followed by diverse onward dissemination. | High novelty, high downstream entropy, high absolute `mixing_score`. |
+| `putative_birth__diverse_population_broadcaster` | New burst followed by diverse onward dissemination. | High novelty, high downstream entropy, high observed-normalised `mixing_score`. |
 | `relay_amplifier__contained_burst` | Secondary amplification with limited onward spread. | Incoming overlap, high net amplification, weak downstream expansion. |
 | `relay_amplifier__single_successor_chain` | Secondary amplification that feeds one continuing chain. | Incoming overlap, high net amplification, exactly one observed successor. |
 | `relay_amplifier__dominant_branch` | Secondary amplification with multiple successors but one dominant branch. | Incoming overlap, high net amplification, high `dominant_successor_frac`. |
 | `relay_amplifier__multi_branch_seeder` | Secondary amplification that splits into several successors. | Incoming overlap, high amplification, high downstream entropy. |
 | `relay_amplifier__multi_branch_expander` | High-impact secondary amplifier with substantial branching. | Incoming overlap, high `out_strength`, high downstream expansion. |
-| `relay_amplifier__diverse_population_broadcaster` | Secondary amplifier with diverse onward dissemination. | High net amplification, high downstream entropy, high absolute `mixing_score`. |
+| `relay_amplifier__diverse_population_broadcaster` | Secondary amplifier with diverse onward dissemination. | High net amplification, high downstream entropy, high observed-normalised `mixing_score`. |
 | `merged_relay__multi_branch_expander` | Multiple incoming sources merge and then expand onward. | High `in_degree`, high `out_degree`, high `out_strength`. |
 | `merged_relay__single_successor_chain` | Merged node continues through one successor. | High `in_degree`, exactly one observed outgoing successor. |
 | `merged_relay__dominant_branch` | Merged node continues through multiple successors but one branch dominates. | High `in_degree`, low downstream entropy, high `dominant_successor_frac`. |
