@@ -1,4 +1,4 @@
-"""Publication-grade plotting defaults for the Scotland clustering papers.
+"""Publication-grade plotting defaults.
 
 The style is deliberately conservative: a sans-serif body font at ~8-9 pt,
 thin axes, no top/right spines, and a single-column width tuned to *Lancet*
@@ -14,12 +14,26 @@ Usage
 
 from __future__ import annotations
 
-from typing import Literal, Sequence
+from typing import Literal, Sequence, Any
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap, to_rgb
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
+from matplotlib.colors import to_rgb
 import seaborn as sns
+
+__all__ = [
+    "set_theme",
+    "save_figure",
+    "add_panel_labels",
+    "new_figure",
+    "lighten",
+    "FIG_WIDTHS_IN",
+    "WIDTHS",
+    "CONTEXTS",
+    "DEFAULT_HEIGHT_IN",
+]
 
 # ---------------------------------------------------------------------------
 # Figure size presets (inches). Aligned with utils journal guidance.
@@ -32,53 +46,10 @@ FIG_WIDTHS_IN = {
     "slide": 10.0,       # for talks
 }
 
+WIDTHS = Literal["single", "onehalf", "double", "slide"]
+CONTEXTS = Literal["paper", "talk", "poster", "notebook"]
+
 DEFAULT_HEIGHT_IN = 2.6
-
-# ---------------------------------------------------------------------------
-# Categorical palettes
-# ---------------------------------------------------------------------------
-
-# SIMD quintile: 1 = most deprived (red) -> 5 = least (blue).
-SIMD_QUINTILE_PALETTE: dict[int, str] = {
-    1: "#d7191c",
-    2: "#fdae61",
-    3: "#ffffbf",
-    4: "#abdda4",
-    5: "#2b83ba",
-}
-
-# WHO variants of concern. Order follows emergence in Scotland.
-WHO_VOC_PALETTE: dict[str, str] = {
-    "None":        "#cccccc",
-    "Alpha":       "#4e79a7",
-    "Beta":        "#f28e2b",
-    "Eta":         "#e15759",
-    "Gamma":       "#59a14f",
-    "Omicron":     "#edc948",
-    "Kappa":       "#b07aa1",
-    "Delta":       "#ff9da7",
-    "Theta":       "#9c755f",
-    "Mu":          "#af2d2d",
-    "recombinant": "#bab0ac",
-}
-
-
-# Leiden resolution: monotonic palette from low -> high.
-RESOLUTION_CMAP = LinearSegmentedColormap.from_list(
-    "resolution", ["#4b0082", "#9e2f8f", "#d94b76", "#ee7b4c", "#f0c300"]
-)
-
-# SIMD-domain palette (seven domains plus overall). Qualitative but stable.
-SIMD_DOMAIN_PALETTE: dict[str, str] = {
-    "overall":    "#2b2b2b",
-    "income":     "#4e79a7",
-    "employment": "#f28e2b",
-    "education":  "#59a14f",
-    "health":     "#e15759",
-    "access":     "#b07aa1",
-    "crime":      "#edc948",
-    "housing":    "#9c755f",
-}
 
 # ---------------------------------------------------------------------------
 # Theme
@@ -86,7 +57,7 @@ SIMD_DOMAIN_PALETTE: dict[str, str] = {
 
 
 def set_theme(
-    context: Literal["paper", "talk", "poster", "notebook"] = "paper",
+    context: CONTEXTS = "paper",
     font_scale: float = 1.0,
 ) -> None:
     # Seaborn's context scaling factors relative to "paper"
@@ -138,9 +109,9 @@ def set_theme(
 
 
 def save_figure(
-    fig: plt.Figure,
+    fig: Figure,
     out_path: Path,
-    width: Literal["single", "onehalf", "double", "slide"] = "single",
+    width: WIDTHS = "single",
     *,
     width_in: float | None = None,
     height_in: float | None = None,
@@ -207,7 +178,7 @@ def save_figure(
 
 
 def add_panel_labels(
-    axes: Sequence[plt.Axes],
+    axes: Sequence[Axes],
     *,
     x: float = 0,
     y: float = 1.1,
@@ -229,15 +200,15 @@ def add_panel_labels(
 
 
 def new_figure(
-    width: Literal["single", "onehalf", "double", "slide"] = "single",
+    width: WIDTHS = "single",
     height_in: float | None = None,
     width_in: float | None = None,
     nrows: int = 1,
     ncols: int = 1,
-    context: Literal["paper", "talk", "poster", "notebook"] = "paper",
+    context: CONTEXTS = "paper",
     font_scale: float = 1.0,
     **subplots_kwargs,
-) -> tuple[plt.Figure, plt.Axes]:
+) -> tuple[Figure, Any]:
     """Create a figure with one of the paper-width presets.
 
     Parameters
@@ -258,13 +229,13 @@ def new_figure(
         Seaborn context to set for the figure.
         This controls the base scaling of fonts and lines.
         The default is ``"paper"``, but for talks or posters, you may want
-         to use ``"talk"`` or ``"poster"`` for larger text.
+        to use ``"talk"`` or ``"poster"`` for larger text.
     font_scale:
         Additional scaling factor for fonts and lines.  This is applied on top
-         of the scaling from the *context* parameter, allowing for fine-tuning of
-         text size without changing the overall context.
-         The default is 1.0 (no additional scaling), but you can increase this for
-          larger figures or decrease it for smaller ones.
+        of the scaling from the *context* parameter, allowing for fine-tuning of
+        text size without changing the overall context.
+        The default is 1.0 (no additional scaling), but you can increase this for
+        larger figures or decrease it for smaller ones.
     **subplots_kwargs:
         Additional keyword arguments passed to ``plt.subplots``.  This allows you to customize the subplots further, for example by setting ``sharex=True`` or ``gridspec_kw={"width            _ratios": [1, 2]}`` for uneven panels.  Note that the figure size is determined by the *width* and *height_in* parameters, so you should not set the *figsize* argument in *subplots_kwargs* when using this function.
     """

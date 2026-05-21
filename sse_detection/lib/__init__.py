@@ -10,7 +10,7 @@ Sub-modules
 stats
     Statistical machinery for the SSE pipeline (entropy z-scores, downstream
     entropy, node-metric assembly, candidate categorisation, weekly growth
-    flag). These used to live in ``utils/stats.py``.
+    flag).
 io
     Loaders for the parquet outputs produced by ``sse_detection.ipynb``.
 palettes
@@ -26,17 +26,25 @@ subgraph
 
 from .stats import (
     add_sse_node_metrics,
-    attach_entropy_zscore,
     categorise_sse_nodes,
-    downstream_entropy_fast,
-    downstream_spread_entropy,
     test_category_distribution,
     flag_sse,
+    frequencies,
+    safe_mode,
 )
+
+from .entropy import (
+    max_entropy, 
+    shannon_entropy, 
+    shannon_entropy_grouped,
+    cluster_socio_demo_entropy,
+    downstream_edge_entropy,
+    )
+
 from .io import SseOutputs, load_sse_outputs, load_weekly_growth
 from .palettes import (
-    DYNAMIC_PALETTE,
     DYNAMIC_ORDER,
+    DYNAMIC_PALETTE,
     LIFECYCLE_PALETTE,
     ROLE_ORDER,
     ROLE_PALETTE,
@@ -56,12 +64,16 @@ from .subgraph import plot_meta_cluster_subgraph
 
 __all__ = [
     "add_sse_node_metrics",
-    "attach_entropy_zscore",
     "categorise_sse_nodes",
-    "downstream_entropy_fast",
-    "downstream_spread_entropy",
     "test_category_distribution",
     "flag_sse",
+    "frequencies",
+    "safe_mode",
+    "max_entropy",
+    "shannon_entropy",
+    "shannon_entropy_grouped",
+    "cluster_socio_demo_entropy",
+    "downstream_edge_entropy",
     "SseOutputs",
     "load_sse_outputs",
     "load_weekly_growth",

@@ -1,36 +1,21 @@
 """Statistical machinery for the superspreading-signature detection pipeline.
-
-Functions
----------
-* :func:`attach_entropy_zscore` -- within-window entropy z-score against a
-  multinomial null. Powers Layer 1's mixing-score components.
-* :func:`downstream_entropy_fast` -- per-source-node outgoing-edge entropy
-  metrics on the cluster-transition graph.
-* :func:`downstream_spread_entropy` -- permutation null for downstream
-  entropy.
-* :func:`add_sse_node_metrics` -- lifecycle flags, amplification metrics,
-  and within-window percentiles/z-scores for each node.
-* :func:`categorise_sse_nodes` -- combines the metrics into
-  ``sse_candidate`` / ``sse_role`` / ``sse_onward_dynamic`` /
-  ``sse_category`` / ``sse_censoring_note`` labels.
-* :func:`flag_sse` -- Layer 2 weekly meta-cluster growth burst detector.
 """
+from __future__ import annotations
 
-__all__ = [
-    "attach_entropy_zscore",
-    "downstream_entropy_fast",
-    "downstream_spread_entropy",
-    "add_sse_node_metrics",
-    "categorise_sse_nodes",
-    "flag_sse",
-    "join_top",
-    "safe_mode",
-    "test_category_distribution",
-]
-
+from typing import Any
 
 import numpy as np
 import pandas as pd
+
+
+__all__ = [
+    "add_sse_node_metrics",
+    "categorise_sse_nodes",
+    "flag_sse",
+    "frequencies",
+    "safe_mode",
+    "test_category_distribution",
+]
 
 
 def safe_divide(numerator, denominator):
@@ -48,18 +33,18 @@ def log1p_ratio(numerator, denominator):
 def add_window_percentile(
     df: pd.DataFrame,
     col: str,
-    groupby_cols="window_idx",
+    groupby_cols: Any ="window_idx",
 ) -> pd.Series:
-    """Percentile-rank a column within temporal windows or window strata."""
+    """Percentile-rank a column within temporal windows"""
     return df.groupby(groupby_cols)[col].rank(pct=True, method="average")
 
 
 def add_window_zscore(
     df: pd.DataFrame,
     col: str,
-    groupby_cols="window_idx",
+    groupby_cols: Any = "window_idx",
 ) -> pd.Series:
-    """Z-score a column within temporal windows or window strata."""
+    """Z-score a column within temporal windows"""
     grouped = df.groupby(groupby_cols)[col]
     mean = grouped.transform("mean")
     std = grouped.transform("std", ddof=0).replace(0, np.nan)
@@ -78,9 +63,9 @@ def mean_with_count(
     return sub.mean(axis=1, skipna=skipna), sub.notna().sum(axis=1)
 
 
-def join_top(values: pd.Series, n: int = 5) -> str:
+def frequencies(values: pd.Series) -> str:
     counts = values.dropna().astype(str).value_counts()
-    return "; ".join(f"{name} ({count})" for name, count in counts.head(n).items())
+    return "; ".join(f"{name} ({count})" for name, count in counts.items())
 
 
 def safe_mode(values: pd.Series):
@@ -88,426 +73,6 @@ def safe_mode(values: pd.Series):
     if values.empty:
         return np.nan
     return values.mode().iloc[0]
-
-
-def attach_entropy_zscore(
-    df: pd.DataFrame,
-    cluster_col: str,
-    category_col: str,
-    window_col: str,
-    *,
-    n_random: int = 1000,
-    normalise: bool = True,
-    entropy_base: float = 2,
-    random_state: int = 42,
-    prefix: str = "cluster",
-) -> pd.DataFrame:
-    """
-    Attach entropy-based cluster statistics and z-scores to ``df``.
-
-    The null distribution is generated within each window stratum and cached
-    by cluster size, so clusters with the same size in the same window reuse the
-    same null mean and standard deviation.
-
-    Parameters
-    ----------
-    df:
-        Input dataframe.
-    cluster_col:
-        Column identifying clusters.
-    category_col:
-        Column containing the categorical variable used to compute entropy.
-    window_col:
-        Column identifying the temporal/window stratum for the null model.
-    n_random:
-        Number of random draws for each window-size null distribution.
-    normalise:
-        If True, entropy is divided by the global maximum entropy.
-    entropy_base:
-        Logarithm base for entropy.
-    random_state:
-        Random seed.
-    prefix:
-        Prefix for output columns.
-
-    Returns
-    -------
-    pd.DataFrame
-        Original dataframe with entropy statistics merged back on.
-
-    Notes
-    -----
-    Singletons are retained:
-        - observed entropy = 0
-        - null mean = 0
-        - null SD = 0
-        - z-score = NaN
-    """
-
-    required_cols = [cluster_col, category_col, window_col]
-    missing_cols = [col for col in required_cols if col not in df.columns]
-    if missing_cols:
-        raise ValueError(f"Missing columns in dataframe: {missing_cols}")
-
-    if n_random < 2:
-        raise ValueError("n_random must be at least 2 to estimate a null standard deviation.")
-
-    if entropy_base <= 0 or entropy_base == 1:
-        raise ValueError("entropy_base must be positive and not equal to 1.")
-
-    out = df.copy()
-    rng = np.random.default_rng(random_state)
-
-    # Encode categories globally. Missing category values receive code -1.
-    codes, categories = pd.factorize(out[category_col], sort=False)
-    k_global = len(categories)
-
-    if k_global <= 1:
-        raise ValueError("Cannot compute entropy for a single category level.")
-
-    log_base = np.log(entropy_base)
-    max_entropy = np.log(k_global) / log_base if normalise else 1.0
-
-    valid = codes >= 0
-
-    work = pd.DataFrame(
-        {
-            window_col: out.loc[valid, window_col].to_numpy(),
-            cluster_col: out.loc[valid, cluster_col].to_numpy(),
-            "_cat_code": codes[valid],
-        }
-    )
-
-    # If all category values are missing, return empty statistic columns.
-    if work.empty:
-        for col in [
-            "n",
-            "entropy_obs",
-            "entropy_null_mean",
-            "entropy_null_sd",
-            "entropy_z",
-            "is_singleton",
-        ]:
-            out[f"{prefix}_{col}"] = np.nan
-        return out
-
-    def entropy_from_counts(counts: np.ndarray) -> np.ndarray:
-        """
-        Compute entropy row-wise from a count matrix.
-
-        Parameters
-        ----------
-        counts:
-            Array of shape (n_rows, k_global), where each row contains category counts.
-
-        Returns
-        -------
-        np.ndarray
-            Entropy value for each row.
-        """
-        counts = counts.astype(float, copy=False)
-        totals = counts.sum(axis=1, keepdims=True)
-
-        probs = np.divide(
-            counts,
-            totals,
-            out=np.zeros_like(counts, dtype=float),
-            where=totals > 0,
-        )
-
-        log_probs = np.zeros_like(probs, dtype=float)
-        mask = probs > 0
-        log_probs[mask] = np.log(probs[mask])
-
-        entropy = -(probs * log_probs).sum(axis=1) / log_base
-
-        if normalise:
-            entropy = entropy / max_entropy
-
-        return entropy
-
-    # Observed category-count matrix for each window-cluster pair.
-    cluster_counts = (
-        work.groupby([window_col, cluster_col, "_cat_code"], dropna=False, observed=True)
-        .size()
-        .unstack("_cat_code", fill_value=0)
-    )
-
-    # Ensure every global category code exists as a column.
-    cluster_counts = cluster_counts.reindex(columns=np.arange(k_global), fill_value=0)
-
-    count_matrix = cluster_counts.to_numpy()
-    cluster_n = count_matrix.sum(axis=1).astype(int)
-    observed_entropy = entropy_from_counts(count_matrix)
-
-    stats = pd.DataFrame(
-        {
-            f"{prefix}_n": cluster_n,
-            f"{prefix}_entropy_obs": observed_entropy,
-            f"{prefix}_entropy_null_mean": np.nan,
-            f"{prefix}_entropy_null_sd": np.nan,
-            f"{prefix}_entropy_z": np.nan,
-            f"{prefix}_is_singleton": cluster_n == 1,
-        },
-        index=cluster_counts.index,
-    )
-
-    # Generate null distributions once per window and cluster size.
-    for window_id, window_cluster_counts in cluster_counts.groupby(
-        level=0,
-        dropna=False,
-        sort=False,
-    ):
-        window_category_counts = window_cluster_counts.sum(axis=0).to_numpy(dtype=float)
-        window_total = window_category_counts.sum()
-
-        if window_total == 0:
-            continue
-
-        window_probs = window_category_counts / window_total
-
-        window_index = window_cluster_counts.index
-        window_sizes = window_cluster_counts.sum(axis=1).to_numpy(dtype=int)
-
-        for size in np.unique(window_sizes):
-            matching_index = window_index[window_sizes == size]
-
-            if size <= 0:
-                continue
-
-            # Singletons have entropy 0 and a degenerate null distribution.
-            # Their z-score is structurally undefined.
-            if size == 1:
-                stats.loc[matching_index, f"{prefix}_entropy_null_mean"] = 0.0
-                stats.loc[matching_index, f"{prefix}_entropy_null_sd"] = 0.0
-                stats.loc[matching_index, f"{prefix}_entropy_z"] = np.nan
-                continue
-
-            sampled_counts = rng.multinomial(
-                n=size,
-                pvals=window_probs,
-                size=n_random,
-            )
-
-            null_entropies = entropy_from_counts(sampled_counts)
-
-            null_mean = np.nanmean(null_entropies)
-            null_sd = np.nanstd(null_entropies, ddof=1)
-
-            stats.loc[matching_index, f"{prefix}_entropy_null_mean"] = null_mean
-            stats.loc[matching_index, f"{prefix}_entropy_null_sd"] = null_sd
-
-    # Compute z-scores. Singletons remain NaN because their null SD is 0.
-    null_sd = stats[f"{prefix}_entropy_null_sd"].to_numpy()
-    obs = stats[f"{prefix}_entropy_obs"].to_numpy()
-    null_mean = stats[f"{prefix}_entropy_null_mean"].to_numpy()
-
-    z = np.divide(
-        obs - null_mean,
-        null_sd,
-        out=np.full_like(obs, np.nan, dtype=float),
-        where=(null_sd > 0) & ~np.isnan(null_sd),
-    )
-
-    stats[f"{prefix}_entropy_z"] = z
-
-    stats = stats.reset_index()
-
-    out = out.merge(
-        stats,
-        on=[window_col, cluster_col],
-        how="left",
-    )
-
-    return out
-
-
-def downstream_entropy_fast(
-    edge_df: pd.DataFrame,
-    source_col: str,
-    weight_col: str,
-) -> pd.DataFrame:
-    """
-    Summarise how evenly each source node distributes shared sequences downstream.
-
-    The entropy is computed over outgoing edge weights. A node with one observed
-    successor has undefined downstream entropy because there is no branching
-    pattern to measure.
-    """
-    required_cols = [source_col, weight_col]
-    missing_cols = [col for col in required_cols if col not in edge_df.columns]
-    if missing_cols:
-        raise ValueError(f"Missing columns in edge dataframe: {missing_cols}")
-
-    df = edge_df[[source_col, weight_col]].copy()
-    df[weight_col] = pd.to_numeric(df[weight_col], errors="coerce")
-    df = df.dropna()
-    df = df[df[weight_col] > 0]
-
-    out_cols = [
-        "out_degree",
-        "out_strength",
-        "downstream_entropy",
-        "downstream_entropy_norm",
-        "effective_successors",
-        "dominant_successor_frac",
-    ]
-    if df.empty:
-        return pd.DataFrame(columns=out_cols, index=pd.Index([], name=source_col))
-
-    codes, nodes = pd.factorize(df[source_col], sort=False)
-    order = np.argsort(codes, kind="mergesort")
-
-    codes = codes[order]
-    weights = df[weight_col].to_numpy(float)[order]
-
-    starts = np.r_[0, np.flatnonzero(np.diff(codes)) + 1]
-    counts = np.diff(np.r_[starts, len(weights)])
-
-    strength = np.add.reduceat(weights, starts)
-    wlogw = np.add.reduceat(weights * np.log(weights), starts)
-
-    entropy = np.log(strength) - (wlogw / strength)
-    entropy[counts <= 1] = np.nan
-
-    entropy_norm = np.full(len(counts), np.nan, dtype=float)
-    multi_successor = counts > 1
-    entropy_norm[multi_successor] = (
-        entropy[multi_successor] / np.log(counts[multi_successor])
-    )
-
-    dominant_frac = np.maximum.reduceat(weights, starts) / strength
-
-    return pd.DataFrame(
-        {
-            "out_degree": counts,
-            "out_strength": strength,
-            "downstream_entropy": entropy,
-            "downstream_entropy_norm": entropy_norm,
-            "effective_successors": np.exp(entropy),
-            "dominant_successor_frac": dominant_frac,
-        },
-        index=pd.Index(nodes, name=source_col),
-    )
-
-
-def downstream_spread_entropy(
-    edge_df: pd.DataFrame,
-    source_col: str,
-    weight_col: str,
-    *,
-    n_perm: int = 199,
-    seed: int = 42,
-    metric_col: str = "downstream_entropy_norm",
-) -> pd.DataFrame:
-    """
-    Attach a permutation null for the downstream entropy metric.
-
-    The null preserves the observed outgoing degree of each source node and the
-    global set of outgoing edge weights, then repeatedly permutes the weights
-    across source-edge slots. This asks whether a node's downstream distribution
-    is unusually even or unusually concentrated relative to contemporaneous edge
-    weight heterogeneity.
-    """
-    if n_perm < 1:
-        raise ValueError("n_perm must be at least 1.")
-
-    df = edge_df[[source_col, weight_col]].copy()
-    df[weight_col] = pd.to_numeric(df[weight_col], errors="coerce")
-    df = df.dropna()
-    df = df[df[weight_col] > 0]
-
-    observed = downstream_entropy_fast(df, source_col, weight_col)
-    null_cols = [
-        f"{metric_col}_null_mean",
-        f"{metric_col}_null_sd",
-        f"{metric_col}_z",
-        f"{metric_col}_p_high",
-        f"{metric_col}_p_low",
-    ]
-    if observed.empty:
-        for col in null_cols:
-            observed[col] = pd.Series(dtype=float)
-        return observed
-
-    if metric_col not in observed.columns:
-        raise ValueError(f"Unknown metric_col {metric_col!r}.")
-
-    obs = observed[metric_col].to_numpy()
-    obs_finite = np.isfinite(obs)
-
-    codes, nodes = pd.factorize(df[source_col], sort=False)
-    order = np.argsort(codes, kind="mergesort")
-
-    codes = codes[order]
-    weights = df[weight_col].to_numpy(float)[order]
-
-    starts = np.r_[0, np.flatnonzero(np.diff(codes)) + 1]
-    counts = np.diff(np.r_[starts, len(weights)])
-
-    rng = np.random.default_rng(seed)
-
-    n = np.zeros(len(nodes), dtype=int)
-    mean = np.zeros(len(nodes), dtype=float)
-    m2 = np.zeros(len(nodes), dtype=float)
-    ge_obs = np.zeros(len(nodes), dtype=int)
-    le_obs = np.zeros(len(nodes), dtype=int)
-
-    for _ in range(n_perm):
-        permuted_weights = rng.permutation(weights)
-
-        strength = np.add.reduceat(permuted_weights, starts)
-        wlogw = np.add.reduceat(permuted_weights * np.log(permuted_weights), starts)
-
-        entropy = np.log(strength) - (wlogw / strength)
-        entropy[counts <= 1] = np.nan
-
-        vals = np.full(len(counts), np.nan, dtype=float)
-        multi_successor = counts > 1
-        vals[multi_successor] = (
-            entropy[multi_successor] / np.log(counts[multi_successor])
-        )
-
-        finite = np.isfinite(vals)
-
-        n[finite] += 1
-        delta = vals[finite] - mean[finite]
-        mean[finite] += delta / n[finite]
-        m2[finite] += delta * (vals[finite] - mean[finite])
-
-        comparable = finite & obs_finite
-        ge_obs[comparable] += vals[comparable] >= obs[comparable]
-        le_obs[comparable] += vals[comparable] <= obs[comparable]
-
-    sd = np.full(len(nodes), np.nan)
-    ok = n > 1
-    sd[ok] = np.sqrt(m2[ok] / (n[ok] - 1))
-
-    z = np.divide(
-        obs - mean,
-        sd,
-        out=np.full(len(nodes), np.nan, dtype=float),
-        where=(sd > 0) & np.isfinite(sd),
-    )
-
-    p_high = np.full(len(nodes), np.nan)
-    p_low = np.full(len(nodes), np.nan)
-    ok = n > 0
-    p_high[ok] = (ge_obs[ok] + 1) / (n[ok] + 1)
-    p_low[ok] = (le_obs[ok] + 1) / (n[ok] + 1)
-
-    null = pd.DataFrame(
-        {
-            f"{metric_col}_null_mean": mean,
-            f"{metric_col}_null_sd": sd,
-            f"{metric_col}_z": z,
-            f"{metric_col}_p_high": p_high,
-            f"{metric_col}_p_low": p_low,
-        },
-        index=pd.Index(nodes, name=source_col),
-    )
-
-    return observed.join(null)
 
 
 def add_sse_node_metrics(
@@ -612,6 +177,8 @@ def add_sse_node_metrics(
         "upstream_novelty_proxy",
         "downstream_retention_ratio",
         "downstream_expansion_proxy",
+        "n_health_boards",
+        "health_board_density",
         "n_local_authorities",
         "local_authority_density",
     ]
@@ -638,6 +205,7 @@ def add_sse_node_metrics(
         "upstream_novelty_proxy",
         "downstream_expansion_proxy",
         "n_local_authorities",
+        "n_health_boards",
     ]
 
     for col in zscore_cols:
@@ -666,17 +234,17 @@ def add_sse_node_metrics(
         "downstream_expansion_proxy_pct_window",
         "downstream_retention_ratio_pct_window",
     ]
-    (
-        df["onward_dissemination_score"],
-        df["onward_dissemination_n"],
-    ) = mean_with_count(df, onward_components, skipna=False)
+    df["onward_dissemination_score"], df["onward_dissemination_n"] = mean_with_count(df, onward_components, skipna=False)
+
 
     mixing_components = [
+        "sex_entropy_z",
+        "age_entropy_z",
         "simd_entropy_z",
         "health_board_entropy_z",
-        "age_entropy_z",
-        "sex_entropy_z",
+        "urban_rural_entropy_z",
     ]
+
     df["mixing_score"], df["mixing_score_n"] = mean_with_count(
         df,
         mixing_components,
@@ -754,19 +322,10 @@ def categorise_sse_nodes(
     in_strength = num_col("in_strength", default=0).fillna(0)
 
     entropy_norm = num_col("downstream_entropy_norm")
-    entropy_z = num_col("downstream_entropy_norm_z")
-    entropy_p_high = num_col("downstream_entropy_norm_p_high")
-    entropy_p_low = num_col("downstream_entropy_norm_p_low")
     dominant_frac = num_col("dominant_successor_frac")
-
-    high_entropy = (
-        (entropy_norm >= entropy_high)
-        | ((entropy_z >= 1.96) & (entropy_p_high <= 0.05))
-    )
+    high_entropy = entropy_norm >= entropy_high
     low_entropy = (
-        (entropy_norm <= entropy_low)
-        | (dominant_frac >= dominant_high)
-        | ((entropy_z <= -1.96) & (entropy_p_low <= 0.05))
+        (entropy_norm <= entropy_low) | (dominant_frac >= dominant_high)
     )
 
     high_core_amp = high_col("core_amplification_score", high_q)
@@ -1011,6 +570,7 @@ def flag_sse(
     weekly["is_sse"] = weekly["norm_change"] > threshold
 
     return weekly
+
 
 def test_category_distribution(df):
     from scipy.stats import chi2_contingency, fisher_exact

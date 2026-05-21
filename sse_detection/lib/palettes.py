@@ -11,10 +11,10 @@ The strategy used here is:
 
 * ``ROLE_PALETTE`` assigns a colourblind-friendly base hue per role.
 * ``DYNAMIC_PALETTE`` assigns stable colours for plots that encode only
-  onward dynamics.
+onward dynamics.
 * ``sse_category`` colours are derived from the role's hue, with lightness
-  modulated by the onward-dynamic so categories that share a role read as a
-  family. ``not_sse_like`` is always neutral grey.
+modulated by the onward-dynamic so categories that share a role read as a
+family. ``not_sse_like`` is always neutral grey.
 
 Anything that needs the role colour directly (e.g. the role x onward-dynamic
 heatmap, the metric-space scatter) reads from ``ROLE_PALETTE``. Anything that
@@ -29,6 +29,18 @@ from typing import Iterable
 from typing import Callable
 
 from matplotlib.colors import to_rgb
+
+__all__ = [
+    "sse_category_palette_from",
+    "SSE_CATEGORY_PALETTE",
+    "ROLE_ORDER",
+    "ROLE_PALETTE",
+    "DYNAMIC_ORDER",
+    "DYNAMIC_PALETTE",
+    "LIFECYCLE_PALETTE",
+    "WAVE_GROUPS",
+    "WAVE_GROUP_PALETTE",
+]
 
 NOT_SSE_COLOR = "#D0D3D8"
 

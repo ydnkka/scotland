@@ -1,14 +1,24 @@
 from __future__ import annotations
 
 import re
+from typing import Any, Sequence
 
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 from matplotlib.lines import Line2D
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from utils import style
+from utils.style import (
+    set_theme,
+    WIDTHS,
+    CONTEXTS,
+    new_figure,
+    add_panel_labels,
+    lighten
+)
 
 from .palettes import (
     DYNAMIC_ORDER,
@@ -25,17 +35,17 @@ from .palettes import (
 
 def plot_cluster_size_distribution(
     df: pd.DataFrame,
-    size_col="cluster_size",
+    size_col: str = "cluster_size",
     *,
-    by ="pango_lineage",
-    min_size=1,
-    width="double",
-    width_in =None,
-    height_in =3.5,
-    context="paper",
-    font_scale=1,
-    complementary = True,
-) -> plt.Figure:
+    by: str | None = "pango_lineage",
+    min_size: int = 1,
+    width: WIDTHS = "double",
+    width_in: float | None = None,
+    height_in: float = 3.5,
+    context: CONTEXTS = "paper",
+    font_scale: float = 1.0,
+    complementary: bool = True,
+) -> Figure:
     """Two-panel plot of cluster-size distributions.
 
     Left panel:
@@ -53,7 +63,7 @@ def plot_cluster_size_distribution(
         & (df[size_col] > 0)
     ].copy()
 
-    def _assign_wave_group(lineage: object) -> str:
+    def _assign_wave_group(lineage: Any) -> str:
         if pd.isna(lineage):
             return "Other"
 
@@ -122,7 +132,7 @@ def plot_cluster_size_distribution(
     # ------------------------------------------------------------------
     # Figure
     # ------------------------------------------------------------------
-    fig, axes = style.new_figure(
+    fig, axes = new_figure(
         nrows = 1,
         ncols = 2,
         gridspec_kw={"width_ratios": [1.15, 1.0]},
@@ -133,7 +143,8 @@ def plot_cluster_size_distribution(
         context=context,
         font_scale=font_scale
     )
-    ax_ecdf =axes[0]
+
+    ax_ecdf = axes[0]
     ax_violin = axes[1]
 
     # ------------------------------------------------------------------
@@ -197,7 +208,7 @@ def plot_cluster_size_distribution(
     ax_ecdf.set_xticks(size_ticks)
     ax_ecdf.set_xticklabels([f"{int(t):g}" for t in size_ticks])
 
-    style.add_panel_labels([ax_ecdf, ax_violin])
+    add_panel_labels([ax_ecdf, ax_violin])
     plt.close(fig)
 
     return fig
@@ -211,12 +222,12 @@ def plot_cluster_size_distribution(
 def plot_role_dynamic_heatmap(
     candidates: pd.DataFrame,
     *,
-    width="double",
-    width_in=None,
-    height_in=5,
-    context="paper",
-    font_scale= 1,
-) -> plt.Figure:
+    width: WIDTHS = "double",
+    width_in: float | None = None,
+    height_in: float = 5.0,
+    context: CONTEXTS = "paper",
+    font_scale: float = 1.0,
+) -> Figure:
     """Counts of ``sse_role`` x ``sse_onward_dynamic`` for SSE candidates.
 
     Cells are coloured on a log scale and annotated with raw counts.
@@ -228,7 +239,7 @@ def plot_role_dynamic_heatmap(
         .reindex(index=role_order, columns=dyn_order, fill_value=0)
     ).T
 
-    fig, ax = style.new_figure(
+    fig, ax = new_figure(
         width=width,
         width_in=width_in,
         height_in=height_in,
@@ -257,12 +268,12 @@ def plot_role_dynamic_heatmap(
 def plot_candidate_rate_over_time(
     node_stats: pd.DataFrame,
     *,
-    width="double",
-    width_in=None,
-    height_in=5,
-    context="paper",
-    font_scale=1,
-) -> plt.Figure:
+    width: WIDTHS = "double",
+    width_in: float | None = None,
+    height_in: float = 5.0,
+    context: CONTEXTS = "paper",
+    font_scale: float = 1.0,
+) -> Figure:
     """Per-window candidate rate, with role composition stacked underneath.
 
     Top panel: % of nodes flagged ``sse_candidate`` per window, with the
@@ -297,7 +308,7 @@ def plot_candidate_rate_over_time(
         fill_value=0,
     )
 
-    fig, axes = style.new_figure(
+    fig, axes = new_figure(
         width=width,
         width_in=width_in,
         height_in=height_in,
@@ -312,7 +323,7 @@ def plot_candidate_rate_over_time(
         summary["wn_mid_date"],
         summary["n_candidates"],
         width=5,
-        color=style.lighten("#C75C2C", 0.2),
+        color=lighten("#C75C2C", 0.2),
         alpha=0.85,
         label="candidate nodes",
     )
@@ -345,7 +356,7 @@ def plot_candidate_rate_over_time(
     ax.set_xlabel("window midpoint")
     fig.autofmt_xdate()
 
-    style.add_panel_labels(list(axes))
+    add_panel_labels(list(axes))
 
     plt.close(fig)
     return fig
@@ -354,13 +365,13 @@ def plot_candidate_rate_over_time(
 def plot_core_metric_space(
     node_stats: pd.DataFrame,
     *,
-    height_in=3.5,
-    context="paper",
-    font_scale=1,
-    min_size=1
-) -> plt.Figure:
+    height_in: float = 5.0,
+    context: CONTEXTS = "paper",
+    font_scale: float = 1.0,
+    min_size: int = 1,
+) -> Figure:
     """Scatter of core amplification vs onward dissemination, faceted by SSE candidate."""
-    style.set_theme(
+    set_theme(
         context=context,
         font_scale=font_scale,
     )
@@ -385,13 +396,11 @@ def plot_core_metric_space(
         sizes=(12, 220),
         height=height_in,
         facet_kws={"sharex": True, "sharey": True},
+        legend=False,
     )
 
     g.set_axis_labels("Core amplification score", "Onward dissemination score")
     g.set_titles("SSE candidate: {col_name}")
-
-    if g._legend is not None:
-        g._legend.remove()
 
     handles = [
         Line2D(
@@ -417,7 +426,7 @@ def plot_core_metric_space(
         frameon=False,
     )
 
-    style.add_panel_labels(g.axes.flat)
+    add_panel_labels(list(g.axes.flat))
 
     plt.close(g.figure)
     return g.figure
@@ -426,20 +435,21 @@ def plot_core_metric_space(
 def plot_composite_distributions(
     node_stats: pd.DataFrame,
     *,
-    columns=(
+    columns: Sequence[str] = (
             "cluster_size",
             "core_amplification_score",
             "onward_dissemination_score",
+            "mixing_score",
     ),
-    nrows=1,
-    ncols=3,
-    width="double",
-    width_in=None,
-    height_in=2.5,
-    context="paper",
-    font_scale=1,
-    min_size=1
-) -> plt.Figure:
+    nrows: int = 2,
+    ncols: int = 2,
+    width: WIDTHS = "double",
+    width_in: float | None = None,
+    height_in: float = 2.5,
+    context: CONTEXTS = "paper",
+    font_scale: float = 1.0,
+    min_size: int = 1,
+) -> Figure:
     """Overlaid KDE of each composite score for candidates vs background.
 
     Visualises whether each component genuinely separates the two groups
@@ -456,7 +466,7 @@ def plot_composite_distributions(
         node_stats = node_stats.copy()
         node_stats["cluster_size"] = np.log(node_stats["cluster_size"])
 
-    fig, axes = style.new_figure(
+    fig, axes = new_figure(
         nrows=nrows,
         ncols=ncols,
         layout="constrained",
@@ -471,11 +481,12 @@ def plot_composite_distributions(
 
     for ax, col in zip(axes, columns):
         for label, color, mask in [
-            ("background", "#8C8C8C", (~node_stats["sse_candidate"] &
-                                       node_stats["cluster_size"].gt(min_size))),
+            ("background", "#8C8C8C", (
+                ~node_stats["sse_candidate"] & node_stats["cluster_size"].gt(min_size))
+                ),
             ("candidate", "#C75C2C", node_stats["sse_candidate"]),
         ]:
-            values = node_stats.loc[mask, col].dropna().to_numpy()
+            values = node_stats[mask][col].dropna().to_numpy()
             if len(values) < 5:
                 continue
             sns.kdeplot(
@@ -485,6 +496,8 @@ def plot_composite_distributions(
         ax.set_xlabel(col.replace("_", " "))
         if col == "cluster_size":
             ax.set_xlabel("log(cluster size)")
+        if col == "mixing_score":
+            ax.set_xlabel("Socio-geodemographic mixing")
         ax.set_ylabel("density")
     axes[0].legend(loc="best", frameon=False)
     plt.close(fig)
@@ -493,23 +506,23 @@ def plot_composite_distributions(
 
 def plot_socio_demo_breakdown(
     node_stats: pd.DataFrame,
-    col="top_simd_quintiles",
-    score="simd_entropy_obs",
-    xlabels=("Deprivation mixing", "SIMD quintile (1 = most deprived)"),
+    col: str = "top_simd_quintiles",
+    score: str = "simd_entropy_obs",
+    xlabels: tuple[str, str] = ("Deprivation mixing", "SIMD quintile (1 = most deprived)"),
     *,
-    width="double",
-    width_in=None,
-    height_in=4,
-    context="paper",
-    font_scale=1,
-    min_size=1
-) -> tuple[plt.Figure, pd.DataFrame]:
+    width: WIDTHS = "double",
+    width_in: float | None = None,
+    height_in: float = 4.0,
+    context: CONTEXTS = "paper",
+    font_scale: float = 1.0,
+    min_size: int = 1,
+) -> tuple[Figure, pd.DataFrame]:
     """
     Plot the distribution of mixing scores for candidate vs background nodes,
     and the distribution of class-label frequencies for candidate vs background nodes.
     """
 
-    fig, axes = style.new_figure(
+    fig, axes = new_figure(
         ncols=2,
         width=width,
         width_in=width_in,
@@ -536,7 +549,7 @@ def plot_socio_demo_breakdown(
             node_stats["sse_candidate"],
         ),
     ]:
-        values = node_stats.loc[mask, score].dropna().to_numpy()
+        values = node_stats[mask][score].dropna().to_numpy()
 
         if len(values) < 5:
             continue
@@ -641,7 +654,7 @@ def plot_socio_demo_breakdown(
     ax.set_ylabel(xlabels[1])
     ax.set_xlabel("Fraction of nodes")
 
-    style.add_panel_labels(axes)
+    add_panel_labels(axes)
 
     plt.close(fig)
     return fig, pd.DataFrame(records)
@@ -656,12 +669,12 @@ def plot_socio_demo_candidate_background_diff(
     xlabel: str = "Candidate − background fraction",
     ylabel: str = "Age band",
     title: str | None = None,
-    order: str = "age",
-    ax=None,
+    order: str | list[str] = "age",
+    ax: Axes | None = None,
     annotate: bool = True,
     as_percent: bool = True,
     sig_alpha: float = 0.05,
-) -> plt.Axes | plt.Figure:
+) -> Axes | Figure:
     """
     Plot signed percentage-point differences between candidate and background distributions.
 
