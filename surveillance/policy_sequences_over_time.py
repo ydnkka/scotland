@@ -2,25 +2,26 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 from typing import Callable
 
-import os
+import matplotlib.dates as mdates
+import matplotlib.patheffects as pe
+import matplotlib.pyplot as plt
+import pandas as pd
+import polars as pl
+from matplotlib import colors
+from matplotlib.lines import Line2D
+from matplotlib.ticker import PercentFormatter
+
+from utils import data, policy, style
 
 os.environ.setdefault("MPLCONFIGDIR", "/private/tmp/scotland-mplconfig")
 os.environ.setdefault("XDG_CACHE_HOME", "/private/tmp/scotland-xdg-cache")
 Path(os.environ["MPLCONFIGDIR"]).mkdir(parents=True, exist_ok=True)
 Path(os.environ["XDG_CACHE_HOME"]).mkdir(parents=True, exist_ok=True)
-
-import matplotlib.dates as mdates
-import matplotlib.pyplot as plt
-from matplotlib import colors
-from matplotlib.lines import Line2D
-from matplotlib.ticker import PercentFormatter
-import matplotlib.patheffects as pe
-import pandas as pd
-import polars as pl
 
 
 def _bootstrap_repo_root_for_utils() -> Path:
@@ -36,8 +37,6 @@ def _bootstrap_repo_root_for_utils() -> Path:
 
 
 ROOT = _bootstrap_repo_root_for_utils()
-
-from utils import data, policy, style
 
 
 WAVE_GROUPS: dict[str, Callable[[str], bool]] = {
