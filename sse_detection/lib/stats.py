@@ -14,7 +14,6 @@ __all__ = [
     "flag_sse",
     "frequencies",
     "safe_mode",
-    "test_category_distribution",
 ]
 
 
@@ -611,87 +610,3 @@ def flag_sse(
     weekly["is_sse"] = weekly["norm_change"] > threshold
 
     return weekly
-
-
-def test_category_distribution(df):
-    from scipy.stats import chi2_contingency, fisher_exact
-    from statsmodels.stats.multitest import multipletests
-
-    df = df.copy()
-
-    table = (
-        df
-        .pivot_table(
-            index="q",
-            columns="candidate",
-            values="n",
-            aggfunc="sum",
-            fill_value=0,
-        )
-        .rename(columns={False: "background", True: "candidate"})
-    )
-
-    chi2, p, dof, expected = chi2_contingency(table)
-
-    expected_df = pd.DataFrame(
-        expected,
-        index=table.index,
-        columns=table.columns,
-    )
-
-    std_resid = (table - expected_df) / np.sqrt(expected_df)
-
-    props = table.div(table.sum(axis=0), axis=1)
-    props["diff_candidate_minus_background"] = (
-        props["candidate"] - props["background"]
-    )
-
-    total_background = table["background"].sum()
-    total_candidate = table["candidate"].sum()
-
-    per_category = []
-
-    for q, row in table.iterrows():
-        candidate_in_q = row["candidate"]
-        background_in_q = row["background"]
-
-        test_table = np.array([
-            [candidate_in_q, total_candidate - candidate_in_q],
-            [background_in_q, total_background - background_in_q],
-        ])
-
-        odds_ratio, p_value = fisher_exact(test_table)
-
-        per_category.append({
-            "q": q,
-            "candidate_n": candidate_in_q,
-            "background_n": background_in_q,
-            "candidate_frac": candidate_in_q / total_candidate,
-            "background_frac": background_in_q / total_background,
-            "diff_candidate_minus_background": (
-                candidate_in_q / total_candidate
-                - background_in_q / total_background
-            ),
-            "odds_ratio": odds_ratio,
-            "p_value": p_value,
-        })
-
-    per_category = pd.DataFrame(per_category)
-
-    per_category["p_adj_bh"] = multipletests(
-        per_category["p_value"],
-        method="fdr_bh",
-    )[1]
-
-    per_category = per_category.sort_values("p_adj_bh")
-
-    return {
-        "table": table,
-        "chi2": chi2,
-        "p_value": p,
-        "dof": dof,
-        "expected": expected_df,
-        "standardized_residuals": std_resid,
-        "proportions": props,
-        "per_category_tests": per_category,
-    }

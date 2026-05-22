@@ -30,7 +30,6 @@ regression
 from .stats import (
     add_sse_node_metrics,
     categorise_sse_nodes,
-    test_category_distribution,
     flag_sse,
     frequencies,
     safe_mode,
@@ -83,7 +82,6 @@ from .subgraph import plot_meta_cluster_subgraph
 __all__ = [
     "add_sse_node_metrics",
     "categorise_sse_nodes",
-    "test_category_distribution",
     "flag_sse",
     "frequencies",
     "safe_mode",
