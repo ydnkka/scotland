@@ -4,7 +4,6 @@ import re
 from typing import Any, Mapping, Sequence
 
 from matplotlib.figure import Figure
-from matplotlib.axes import Axes
 from matplotlib.lines import Line2D
 from matplotlib.ticker import FuncFormatter
 import matplotlib.pyplot as plt
@@ -30,9 +29,52 @@ from .palettes import (
 )
 
 
-# ---------------------------------------------------------------------------
-# Cluster sizes
-# ---------------------------------------------------------------------------
+__all__ = [
+    "plot_cluster_size_distribution",
+    "plot_role_dynamic_heatmap",
+    "plot_candidate_rate_over_time",
+    "plot_core_metric_space",
+    "plot_composite_distributions",
+    "plot_socio_demo_breakdown",
+    "plot_regression_wald_heatmap",
+    "plot_regression_odds_ratio_forest",
+    "make_regression_wald_table",
+    "make_regression_odds_ratio_table",
+    "make_regression_fit_table",
+
+]
+
+
+_ROLE_DYNAMIC_LABELS = {
+    "putative_birth": "Putative birth",
+    "relay_amplifier": "Relay amplifier",
+    "merged_relay": "Merged relay",
+    "terminal_sink": "Terminal sink",
+    "isolated_burst": "Isolated burst",
+    "unclear_origin": "Unclear origin",
+    "no_observed_onward_spread": "No observed onward spread",
+    "contained_burst": "Contained burst",
+    "single_successor_chain": "Single-successor chain",
+    "dominant_branch": "Dominant branch",
+    "high_volume_onward_spread": "High-volume onward spread",
+    "multi_branch_seeder": "Multi-branch seeder",
+    "multi_branch_expander": "Multi-branch expander",
+    "diverse_population_broadcaster": "Diverse population broadcaster",
+    "weak_or_ambiguous_onward_spread": "Weak/ambiguous onward spread",
+}
+
+
+def _pretty_role_dynamic(value: Any, label_map: Mapping[str, str] | None = None) -> str:
+    if pd.isna(value):
+        return ""
+    text = str(value)
+    if label_map and text in label_map:
+        return label_map[text]
+    if text in _ROLE_DYNAMIC_LABELS:
+        return _ROLE_DYNAMIC_LABELS[text]
+    return text.replace("_", " ").strip().capitalize()
+
+
 
 def plot_cluster_size_distribution(
     df: pd.DataFrame,
@@ -165,8 +207,8 @@ def plot_cluster_size_distribution(
 
     ax_ecdf.set_xscale("log")
     ax_ecdf.set_yscale("log")
-    ax_ecdf.set_xlabel("Cluster size")
-    ax_ecdf.set_ylabel("P(X ≥ cluster size)")
+    ax_ecdf.set_xlabel("Cluster Size")
+    ax_ecdf.set_ylabel("P(X ≥ Cluster Size)")
 
     leg = ax_ecdf.get_legend()
     if leg is not None:
@@ -190,7 +232,7 @@ def plot_cluster_size_distribution(
     )
 
     ax_violin.set_xlabel("")
-    ax_violin.set_ylabel("Cluster size")
+    ax_violin.set_ylabel("Cluster Size")
     ax_violin.tick_params(axis="x", rotation=45)
 
 
@@ -215,14 +257,10 @@ def plot_cluster_size_distribution(
     return fig
 
 
-# ---------------------------------------------------------------------------
-# Layer 1
-# ---------------------------------------------------------------------------
-
-
 def plot_role_dynamic_heatmap(
     candidates: pd.DataFrame,
     *,
+    label_map: Mapping[str, str] | None = None,
     width: WIDTHS = "double",
     width_in: float | None = None,
     height_in: float = 5.0,
@@ -239,6 +277,12 @@ def plot_role_dynamic_heatmap(
         pd.crosstab(candidates["sse_role"], candidates["sse_onward_dynamic"])
         .reindex(index=role_order, columns=dyn_order, fill_value=0)
     ).T
+    heat_plot = np.log10(heat + 1)
+    heat_plot.index = [_pretty_role_dynamic(v, label_map) for v in heat_plot.index] # type: ignore
+    heat_plot.columns = [_pretty_role_dynamic(v, label_map) for v in heat_plot.columns] # type: ignore
+    annot = heat.copy()
+    annot.index = heat_plot.index # type: ignore
+    annot.columns = heat_plot.columns # type: ignore
 
     fig, ax = new_figure(
         width=width,
@@ -248,8 +292,8 @@ def plot_role_dynamic_heatmap(
         font_scale=font_scale
     )
     sns.heatmap(
-        np.log10(heat + 1),
-        annot=heat,
+        heat_plot,
+        annot=annot,
         fmt="d",
         cmap="YlGnBu",
         linewidths=0.5,
@@ -257,8 +301,8 @@ def plot_role_dynamic_heatmap(
         cbar_kws={"label": "log10(n + 1)"},
         ax=ax,
     )
-    ax.set_ylabel("Onward dynamic")
-    ax.set_xlabel("Node role")
+    ax.set_ylabel("Onward Dynamic")
+    ax.set_xlabel("Node Role")
     ax.tick_params(axis="x", rotation=35)
     ax.tick_params(axis="y", rotation=0)
 
@@ -336,8 +380,8 @@ def plot_candidate_rate_over_time(
         linewidth=1.8,
         label="candidate share",
     )
-    ax.set_ylabel("candidates (n)")
-    ax2.set_ylabel("candidate share (%)")
+    ax.set_ylabel("Candidates (n)")
+    ax2.set_ylabel("Candidate share (%)")
     handles1, labels1 = ax.get_legend_handles_labels()
     handles2, labels2 = ax2.get_legend_handles_labels()
     ax.legend(handles1 + handles2, labels1 + labels2, loc="best", ncol=1, frameon=False)
@@ -353,8 +397,8 @@ def plot_candidate_rate_over_time(
             alpha=0.86,
         )
         ax.legend(loc="upper left", ncol=3, frameon=False)
-    ax.set_ylabel("candidates by role")
-    ax.set_xlabel("window midpoint")
+    ax.set_ylabel("Candidates by role")
+    ax.set_xlabel("Window Midpoint")
     fig.autofmt_xdate()
 
     add_panel_labels(list(axes))
@@ -494,13 +538,14 @@ def plot_composite_distributions(
                 values, ax=ax, fill=True, color=color, alpha=0.35,
                 linewidth=1.2, label=label, common_norm=False,
             )
-        ax.set_xlabel(col.replace("_", " "))
+        ax.set_xlabel(col.replace("_", " ").title())
         if col == "cluster_size":
-            ax.set_xlabel("log(cluster size)")
+            ax.set_xlabel("log(Cluster Size)")
         if col == "mixing_score":
-            ax.set_xlabel("Observed socio-geodemographic entropy")
-        ax.set_ylabel("density")
+            ax.set_xlabel("Observed Socio-geodemographic Entropy")
+        ax.set_ylabel("Density")
     axes[0].legend(loc="best", frameon=False)
+    add_panel_labels(axes)
     plt.close(fig)
     return fig
 
@@ -509,7 +554,7 @@ def plot_socio_demo_breakdown(
     node_stats: pd.DataFrame,
     col: str = "top_simd_quintiles",
     score: str = "simd_entropy_obs",
-    xlabels: tuple[str, str] = ("Deprivation mixing", "SIMD quintile (1 = most deprived)"),
+    xlabels: tuple[str, str] = ("Deprivation Mixing", "SIMD Quintile (1 = most deprived)"),
     *,
     width: WIDTHS = "double",
     width_in: float | None = None,
@@ -567,7 +612,7 @@ def plot_socio_demo_breakdown(
         )
 
     ax.set_xlabel(xlabels[0])
-    ax.set_ylabel("density")
+    ax.set_ylabel("Density")
     ax.legend(loc="best", frameon=False)
 
     ax = axes[1]
@@ -653,132 +698,12 @@ def plot_socio_demo_breakdown(
         ax.set_yticklabels(order)
 
     ax.set_ylabel(xlabels[1])
-    ax.set_xlabel("Fraction of nodes")
+    ax.set_xlabel("Fraction of Nodes")
 
     add_panel_labels(axes)
 
     plt.close(fig)
     return fig, pd.DataFrame(records)
-
-
-def plot_socio_demo_candidate_background_diff(
-    results_df: pd.DataFrame,
-    *,
-    q_col: str = "q",
-    diff_col: str = "diff_candidate_minus_background",
-    p_col: str | None = "p_adj_bh",
-    xlabel: str = "Candidate − background fraction",
-    ylabel: str = "Age band",
-    title: str | None = None,
-    order: str | list[str] = "age",
-    ax: Axes | None = None,
-    annotate: bool = True,
-    as_percent: bool = True,
-    sig_alpha: float = 0.05,
-) -> Axes | Figure:
-    """
-    Plot signed percentage-point differences between candidate and background distributions.
-
-    Positive values mean over-represented among candidates.
-    Negative values mean under-represented among candidates.
-    """
-
-    df = results_df.copy()
-
-    if q_col not in df or diff_col not in df:
-        raise ValueError(f"`results_df` must contain `{q_col}` and `{diff_col}`.")
-
-    df = df.dropna(subset=[q_col, diff_col])
-
-    def _age_sort_key(label):
-        label = str(label)
-
-        if label.endswith("+"):
-            return int(label.replace("+", ""))
-
-        match = re.match(r"^(\d+)-(\d+)$", label)
-        if match:
-            return int(match.group(1))
-
-        return label
-
-    if order == "age":
-        df = df.sort_values(q_col, key=lambda s: s.map(_age_sort_key))
-    elif order == "effect":
-        df = df.sort_values(diff_col)
-    elif order == "abs_effect":
-        df = df.sort_values(diff_col, key=lambda s: s.abs())
-    elif isinstance(order, list):
-        df[q_col] = pd.Categorical(df[q_col], categories=order, ordered=True)
-        df = df.sort_values(q_col)
-    else:
-        raise ValueError("`order` must be 'age', 'effect', 'abs_effect', or a list.")
-
-    plot_values = df[diff_col].to_numpy()
-
-    if as_percent:
-        plot_values = plot_values * 100
-        if xlabel:
-            xlabel = xlabel + " percentage points"
-
-    y = np.arange(len(df))
-
-    if ax is None:
-        fig, ax = plt.subplots(figsize=(6, max(3, 0.35 * len(df))))
-    else:
-        fig = ax.figure
-
-    colors = np.where(plot_values >= 0, "#C75C2C", "#8C8C8C")
-
-    ax.barh(
-        y,
-        plot_values,
-        color=colors,
-        height=0.75,
-    )
-
-    ax.axvline(0, color="black", linewidth=0.8)
-
-    ax.set_yticks(y)
-    ax.set_yticklabels(df[q_col].astype(str))
-
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-
-    if title is not None:
-        ax.set_title(title)
-
-    if annotate:
-        x_pad = max(abs(plot_values).max() * 0.03, 0.05)
-
-        for i, value in enumerate(plot_values):
-            ha = "left" if value >= 0 else "right"
-            x = value + x_pad if value >= 0 else value - x_pad
-
-            label = f"{value:+.1f}"
-
-            if p_col is not None and p_col in df.columns:
-                p = df.iloc[i][p_col]
-                if pd.notna(p) and p < sig_alpha:
-                    label += "*"
-
-            ax.text(
-                x,
-                i,
-                label,
-                va="center",
-                ha=ha,
-                fontsize=8,
-            )
-
-    max_abs = max(abs(plot_values).max(), 0.01)
-    ax.set_xlim(-max_abs * 1.2, max_abs * 1.2)
-
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-    plt.close()
-
-    return ax if ax is not None else fig
 
 
 # ---------------------------------------------------------------------------
@@ -835,6 +760,30 @@ _PRETTY_LABELS = {
 }
 
 
+_REGRESSION_PANEL_GROUPS = {
+    "sex": "Sociodemographic",
+    "age_band": "Sociodemographic",
+    "simd_quintile": "Sociodemographic",
+    "dz_simd_quintile": "Sociodemographic",
+    "sex_entropy_obs": "Sociodemographic",
+    "age_entropy_obs": "Sociodemographic",
+    "simd_entropy_obs": "Sociodemographic",
+    "sex_entropy_z": "Sociodemographic",
+    "age_entropy_z": "Sociodemographic",
+    "simd_entropy_z": "Sociodemographic",
+    "urban_rural_class": "Geographic",
+    "health_board": "Geographic",
+    "dz_urban_rural_class": "Geographic",
+    "dz_health_board": "Geographic",
+    "urban_rural_entropy_obs": "Geographic",
+    "health_board_entropy_obs": "Geographic",
+    "urban_rural_entropy_z": "Geographic",
+    "health_board_entropy_z": "Geographic",
+}
+
+_REGRESSION_PANEL_ORDER = ["Sociodemographic", "Geographic"]
+
+
 def _pretty_text(value: Any, label_map: Mapping[str, str] | None = None) -> str:
     """Human-readable label with conservative project-specific replacements."""
     if pd.isna(value):
@@ -868,6 +817,7 @@ def _filter_regression_table(
 ) -> pd.DataFrame:
     """Filter a regression output table without mutating the caller's data."""
     df = table.copy()
+    df.columns = [str(col).strip() for col in df.columns]
     string_cols = df.select_dtypes(include=["object", "string"]).columns
     for col in string_cols:
         df[col] = df[col].map(lambda x: x.strip() if isinstance(x, str) else x)
@@ -968,6 +918,11 @@ def _regression_sort_source(df: pd.DataFrame) -> pd.Series:
     return source
 
 
+def _regression_panel_group(values: pd.Series) -> pd.Series:
+    """Group regression predictors into compact figure panels where possible."""
+    return values.astype(str).map(_REGRESSION_PANEL_GROUPS).fillna("Other")
+
+
 def _format_p_value(
     value: Any,
     *,
@@ -1046,14 +1001,14 @@ def plot_regression_wald_heatmap(
 
     df = _with_regression_display_labels(df, label_map=label_map)
     if row_col is None:
-        row_col = "term" if "term" in df.columns else "predictor"
-    if row_col not in df.columns:
+        df["_row_id"] = _regression_sort_source(df)
+    elif row_col not in df.columns:
         raise ValueError(f"`wald_df` does not contain row column `{row_col}`.")
+    else:
+        df["_row_id"] = df[row_col].astype(str)
 
-    df["_row_id"] = df[row_col].astype(str)
     row_labels = (
-        df.assign(_sort_source=_regression_sort_source(df))
-        .sort_values("_sort_source", key=_predictor_sort_key)
+        df.sort_values("_row_id", key=_predictor_sort_key)
         .drop_duplicates("_row_id")
         .set_index("_row_id")["_predictor_label"]
     )
@@ -1160,12 +1115,13 @@ def plot_regression_odds_ratio_forest(
     max_rows: int | None = 40,
     sig_alpha: float = 0.05,
     title: str | None = None,
-    xlabel: str = "Odds ratio for candidate-node membership",
+    xlabel: str = "Odds Ratio for Candidate-Node Membership",
     width: WIDTHS = "double",
     width_in: float | None = None,
     height_in: float | None = None,
     context: CONTEXTS = "paper",
     font_scale: float = 1.0,
+    split_panels: bool = True,
 ) -> Figure:
     """Forest plot of odds ratios and 95% confidence intervals."""
     required = {"odds_ratio", "or_low", "or_high", "term"}
@@ -1211,7 +1167,7 @@ def plot_regression_odds_ratio_forest(
     elif sort_by == "odds_ratio":
         df = df.sort_values("odds_ratio")
     elif sort_by == "abs_log_or":
-        df = df.assign(_abs_log_or=np.log(df["odds_ratio"]).abs()).sort_values("_abs_log_or")
+        df = df.assign(_abs_log_or=np.abs(np.log(df["odds_ratio"]))).sort_values("_abs_log_or")
     elif sort_by == "p_value":
         if p_col not in df.columns:
             raise ValueError(f"`odds_df` does not contain `{p_col}`.")
@@ -1223,57 +1179,76 @@ def plot_regression_odds_ratio_forest(
         df = df.tail(max_rows) if sort_by == "abs_log_or" else df.head(max_rows)
 
     df = df.reset_index(drop=True)
-    y = np.arange(len(df))
+    domains = set(df["domain"].astype(str)) if "domain" in df.columns else set()
+    split_this_plot = split_panels and domains != {"node_mixing"}
+    df["_panel_group"] = _regression_panel_group(_regression_sort_source(df))
+    panel_names = [
+        name
+        for name in [*_REGRESSION_PANEL_ORDER, "Other"]
+        if name in set(df["_panel_group"])
+    ]
+    if not split_this_plot or len(panel_names) <= 1:
+        panel_names = ["All"]
+        df["_panel_group"] = "All"
+
     colors = np.full(len(df), "#6C6F73", dtype=object)
     if p_col in df.columns:
         colors = np.where(pd.to_numeric(df[p_col], errors="coerce") < sig_alpha, "#C75C2C", "#6C6F73")
+    df["_color"] = colors
 
     if height_in is None:
-        height_in = max(3.0, 0.28 * len(df) + 1.4)
+        max_panel_rows = max(int(df["_panel_group"].eq(name).sum()) for name in panel_names)
+        height_in = max(3.0, 0.28 * max_panel_rows + 1.7)
 
-    fig, ax = new_figure(
+    fig, axes = new_figure(
         width=width,
         width_in=width_in,
         height_in=height_in,
+        nrows=len(panel_names),
         context=context,
         font_scale=font_scale,
+        layout="constrained",
     )
-
-    xerr = np.vstack([
-        df["odds_ratio"].to_numpy() - df["or_low"].to_numpy(),
-        df["or_high"].to_numpy() - df["odds_ratio"].to_numpy(),
-    ])
-    ax.errorbar(
-        df["odds_ratio"],
-        y,
-        xerr=xerr,
-        fmt="none",
-        ecolor="#5B5F66",
-        elinewidth=1.0,
-        capsize=2,
-        zorder=1,
-    )
-    ax.scatter(df["odds_ratio"], y, c=colors, s=28, zorder=2)
-
-    ax.axvline(1, color="black", linewidth=0.8)
-    ax.set_xscale("log")
-    ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:g}"))
-    ax.set_yticks(y)
-    ax.set_yticklabels(df["_contrast_label"])
-    ax.invert_yaxis()
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel("")
-    if title is not None:
-        ax.set_title(title)
+    axes = np.atleast_1d(axes).ravel()
 
     finite_values = df[["or_low", "or_high"]].to_numpy().ravel()
     finite_values = finite_values[np.isfinite(finite_values) & (finite_values > 0)]
-    if finite_values.size:
-        lo, hi = finite_values.min(), finite_values.max()
-        pad = np.exp(0.08 * (np.log(hi) - np.log(lo) if hi > lo else 1))
-        ax.set_xlim(lo / pad, hi * pad)
 
-    ax.grid(axis="x", color="#D9DDE3", linewidth=0.5)
+    for ax, panel_name in zip(axes, panel_names):
+        panel = df.loc[df["_panel_group"].eq(panel_name)].reset_index(drop=True)
+        y = np.arange(len(panel))
+        xerr = np.vstack([
+            panel["odds_ratio"].to_numpy() - panel["or_low"].to_numpy(),
+            panel["or_high"].to_numpy() - panel["odds_ratio"].to_numpy(),
+        ])
+        ax.errorbar(
+            panel["odds_ratio"],
+            y,
+            xerr=xerr,
+            fmt="none",
+            ecolor="#5B5F66",
+            elinewidth=1.0,
+            capsize=2,
+            zorder=1,
+        )
+        ax.scatter(panel["odds_ratio"], y, c=panel["_color"], s=28, zorder=2)
+        ax.axvline(1, color="black", linewidth=0.8)
+        ax.set_xscale("log")
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:g}"))
+        ax.set_yticks(y)
+        ax.set_yticklabels(panel["_contrast_label"])
+        ax.invert_yaxis()
+        ax.set_ylabel("")
+        ax.set_xlabel("")
+        ax.grid(axis="x", color="#D9DDE3", linewidth=0.5)
+
+    axes[-1].set_xlabel(xlabel)
+
+    if len(panel_names) > 1:
+        add_panel_labels([ax for ax in axes])
+
+    if title is not None:
+        fig.suptitle(title)
     plt.close(fig)
     return fig
 
@@ -1292,8 +1267,8 @@ def make_regression_wald_table(
 ) -> pd.DataFrame:
     """Return a manuscript-facing omnibus Wald table.
 
-    The table keeps model identifiers and sample sizes explicit while adding
-    formatted chi-square, raw p, and BH-adjusted p columns for display.
+    The table keeps the publication-facing model identifiers, test statistic,
+    adjusted p-value, and interpretable sample sizes.
     """
     df = _filter_regression_table(
         wald_df,
@@ -1313,8 +1288,6 @@ def make_regression_wald_table(
     )
 
     out = pd.DataFrame(index=df.index)
-    if "domain" in df.columns:
-        out["Domain"] = df["domain"].map(lambda x: _pretty_text(x, label_map))
     if "model_set" in df.columns:
         out["Model set"] = df["model_set"].map(lambda x: _pretty_text(x, label_map))
     if "predictor_set" in df.columns:
@@ -1326,12 +1299,11 @@ def make_regression_wald_table(
         out["df"] = df["df"].map(_format_int)
     if "chi2" in df.columns:
         out["Wald chi-square"] = df["chi2"].map(lambda x: _format_number(x, digits=digits))
-    if p_col in df.columns:
-        out["P value"] = df[p_col].map(_format_p_value)
     if p_adj_col in df.columns:
-        out["BH-adjusted P value"] = df[p_adj_col].map(_format_p_value)
+        out["FDR-adjusted P value"] = df[p_adj_col].map(_format_p_value)
+    elif p_col in df.columns:
+        out["P value"] = df[p_col].map(_format_p_value)
     for source, target in [
-        ("n_model_rows", "Model rows"),
         ("n_sequences", "Sequences"),
         ("n_nodes", "Nodes"),
     ]:
@@ -1374,8 +1346,6 @@ def make_regression_odds_ratio_table(
         )
 
     out = pd.DataFrame(index=df.index)
-    if "domain" in df.columns:
-        out["Domain"] = df["domain"].map(lambda x: _pretty_text(x, label_map))
     if "model_set" in df.columns:
         out["Model set"] = df["model_set"].map(lambda x: _pretty_text(x, label_map))
     if "predictor_set" in df.columns:
@@ -1388,7 +1358,6 @@ def make_regression_odds_ratio_table(
     if p_col in df.columns:
         out["P value"] = df[p_col].map(_format_p_value)
     for source, target in [
-        ("n_model_rows", "Model rows"),
         ("n_sequences", "Sequences"),
         ("n_nodes", "Nodes"),
     ]:
@@ -1427,8 +1396,6 @@ def make_regression_fit_table(
         )
 
     out = pd.DataFrame(index=df.index)
-    if "domain" in df.columns:
-        out["Domain"] = df["domain"].map(lambda x: _pretty_text(x, label_map))
     if "model_set" in df.columns:
         out["Model set"] = df["model_set"].map(lambda x: _pretty_text(x, label_map))
     if "predictor_set" in df.columns:
@@ -1444,7 +1411,6 @@ def make_regression_fit_table(
         if source in df.columns:
             out[target] = df[source].map(lambda x: _format_number(x, digits=1))
     for source, target in [
-        ("n_model_rows", "Model rows"),
         ("n_sequences", "Sequences"),
         ("n_nodes", "Nodes"),
     ]:

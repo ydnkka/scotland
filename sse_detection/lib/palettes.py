@@ -25,8 +25,7 @@ from ``SSE_CATEGORY_PALETTE`` or calls
 
 from __future__ import annotations
 
-from typing import Iterable
-from typing import Callable
+from typing import Iterable, Callable, Any
 
 from matplotlib.colors import to_rgb
 
@@ -137,7 +136,7 @@ def sse_category_palette_from(
     *,
     role_palette: dict[str, str] | None = None,
     dynamic_lightness: dict[str, float] | None = None,
-) -> dict[str, tuple[float, float, float] | str]:
+) -> Any:
     """Build an ``sse_category`` colour map for the categories provided.
 
     Categories follow the ``role__dynamic`` schema. The role contributes the

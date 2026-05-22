@@ -1,30 +1,4 @@
 """Utilities for the SSE-detection pipeline and its output notebook.
-
-The module is organised so each figure is a single function that takes
-ready-to-plot dataframes and returns a matplotlib ``Figure``. The notebook
-``sse_detection_plots.ipynb`` is intended to be a thin orchestrator
-on top of these functions.
-
-Sub-modules
------------
-stats
-    Statistical machinery for the SSE pipeline (entropy z-scores, downstream
-    entropy, node-metric assembly, candidate categorisation, weekly growth
-    flag).
-io
-    Loaders for the parquet outputs produced by ``sse_detection.ipynb``.
-palettes
-    Stable categorical colour maps for the SSE label space.
-plots
-    Figure functions matching the suggested figure list (overview,
-    Layer 1, Layer 2, Layer 1 x Layer 2 concordance, spatial /
-    demographic, sensitivity).
-subgraph
-    Meta-cluster subgraph plotter (colour = ``sse_category``,
-    size proportional to ``log1p(cluster_size)``).
-regression
-    Reusable regression helpers for association notebooks. These functions
-    expect already-prepared model frames and do not perform data cleaning.
 """
 
 from .stats import (
@@ -44,6 +18,7 @@ from .entropy import (
     )
 
 from .io import SseOutputs, load_sse_outputs, load_weekly_growth
+
 from .regression import (
     AssociationModel,
     bh_adjust,
@@ -59,6 +34,7 @@ from .regression import (
     tidy_odds_ratios,
     tidy_single_parameter_wald,
 )
+
 from .palettes import (
     DYNAMIC_ORDER,
     DYNAMIC_PALETTE,
@@ -81,8 +57,6 @@ from .plots import (
     plot_regression_wald_heatmap,
     plot_role_dynamic_heatmap,
     plot_socio_demo_breakdown,
-    plot_socio_demo_candidate_background_diff,
-
 ) 
 
 from .subgraph import plot_meta_cluster_subgraph
@@ -133,5 +107,4 @@ __all__ = [
     "plot_regression_wald_heatmap",
     "plot_role_dynamic_heatmap",
     "plot_socio_demo_breakdown",
-    "plot_socio_demo_candidate_background_diff",
 ]

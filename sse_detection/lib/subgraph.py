@@ -15,7 +15,7 @@ is retained as a compatibility alias for ``layout="dot"``.
 Encodings
 ---------
 * Node colour: ``sse_category`` (the role-derived palette in
-  :mod:`palettes`). Also accepts ``"sse_role"`` and ``"sse_onward_dynamic"``.
+:mod:`palettes`). Also accepts ``"sse_role"`` and ``"sse_onward_dynamic"``.
 * Node size: proportional to ``log1p(cluster_size)``.
 * Edge width: proportional to ``log1p(n_shared_sequences)``.
 """
@@ -27,11 +27,17 @@ from typing import Iterable
 
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 import numpy as np
 import pandas as pd
 from matplotlib.patches import FancyArrowPatch
 
-from utils import style
+from utils.style import (
+    new_figure,
+    WIDTHS,
+    CONTEXTS,
+)
 
 from .palettes import (
     DYNAMIC_ORDER,
@@ -180,7 +186,7 @@ def _dot_layout(
     edges: pd.DataFrame,
     *,
     rankdir: str = "LR",
-) -> tuple[dict[str, tuple[float, float]], str]:
+) -> dict[str, tuple[float, float]]:
     """Compute dot-style positions for the subgraph.
 
     Returns
@@ -265,7 +271,7 @@ def _resolve_colours(
         cats = _ordered_categories(
             set(layout["sse_category"].dropna().unique()) | {"not_sse_like"}
         )
-        palette = sse_category_palette_from(cats)
+        palette  = sse_category_palette_from(cats)
         colours = layout["sse_category"].map(palette).fillna(NOT_SSE_COLOR)
     elif color_by == "sse_role":
         _require_columns(layout, {"sse_role", "sse_candidate"}, "node_stats")
@@ -275,11 +281,12 @@ def _resolve_colours(
     elif color_by == "sse_onward_dynamic":
         _require_columns(layout, {"sse_onward_dynamic", "sse_candidate"}, "node_stats")
         uniq = _ordered_values(layout["sse_onward_dynamic"].dropna().unique(), DYNAMIC_ORDER)
-        palette = {v: DYNAMIC_PALETTE[v] for v in uniq if v in DYNAMIC_PALETTE}
+        palette: dict[str, object] = {v: DYNAMIC_PALETTE[v] for v in uniq if v in DYNAMIC_PALETTE}
         unknown = [v for v in uniq if v not in palette]
         if unknown:
             cmap = plt.get_cmap("tab20")
-            palette.update({v: cmap(i % 20) for i, v in enumerate(unknown)})
+            for i, v in enumerate(unknown):
+                palette[v] = cmap(i % 20)
         palette["not_sse_like"] = NOT_SSE_COLOR
         dyn = layout["sse_onward_dynamic"].where(_candidate_mask(layout), "not_sse_like")
         colours = dyn.map(palette).fillna(NOT_SSE_COLOR)
@@ -308,13 +315,12 @@ def plot_meta_cluster_subgraph(
     curvature: float = 0.18,
     show_arrows: bool = True,
     show_window_axis: bool = True,
-    width= "double",
-    width_in = None,
-    height_in= 5,
-    context= "paper",
-    font_scale= 1,
-    ax: plt.Axes | None = None,
-) -> plt.Figure:
+    width: WIDTHS = "double",
+    width_in: float | None = None,
+    height_in: float = 5,
+    context: CONTEXTS = "paper",
+    font_scale: float = 1,
+) -> Figure:
     """Draw the induced subgraph of a single meta-cluster in a dot-tree layout.
 
     Parameters
@@ -381,20 +387,16 @@ def plot_meta_cluster_subgraph(
     colours, palette = _resolve_colours(nodes, color_by)
     sizes = pd.Series(_node_sizes(nodes["cluster_size"].to_numpy()), index=nodes.index)
 
-    if ax is None:
-        if height_in is None:
-            # Scale height by the widest layer so dense layers stay legible.
-            widest = nodes.groupby("window_idx")["cluster_id"].count().max()
-            height_in = float(np.clip(3.5 + 0.18 * widest, 4.0, 9.0))
-        fig, ax = style.new_figure(
-            width=width,
-            width_in=width_in,
-            height_in=height_in,
-            context=context,
-            font_scale=font_scale,
-        )
-    else:
-        fig = ax.figure
+    # Scale height by the widest layer so dense layers stay legible.
+    widest = nodes.groupby("window_idx")["cluster_id"].count().max()
+    height_in = float(np.clip(3.5 + 0.18 * widest, 4.0, 9.0)) if height_in is None else height_in
+    fig, ax = new_figure(
+    width=width,
+    width_in=width_in,
+    height_in=height_in,
+    context=context,
+    font_scale=font_scale
+    )
 
     # ----- Edges -----
     if not edges.empty:
@@ -448,7 +450,7 @@ def plot_meta_cluster_subgraph(
     if annotate_top_n > 0 and annotate_col in nodes.columns:
         top = nodes.nlargest(annotate_top_n, annotate_col)
         for row in top.itertuples(index=False):
-            label = row.cluster_id.split("|")[-1]
+            label = str(row.cluster_id).split("|")[-1]
             ax.annotate(
                 label,
                 xy=(row.x_pos, row.y_pos),
@@ -482,7 +484,7 @@ def plot_meta_cluster_subgraph(
 
 
 def _format_axes(
-    ax: plt.Axes,
+    ax: Axes,
     nodes: pd.DataFrame,
     rankdir: str,
     show_window_axis: bool,
@@ -558,7 +560,7 @@ def _format_axes(
 
 def _legend_text_parts(category: str) -> list[str]:
     return [
-        part.replace("_", " ")
+        part.replace("_", " ").capitalize()
         for part in str(category).split("__", 1)
     ]
 
@@ -634,7 +636,7 @@ def _legend_margin(
 
 
 def _add_color_legend(
-    ax: plt.Axes,
+    ax: Axes,
     color_by: str,
     layout: pd.DataFrame,
     palette: dict,
@@ -662,7 +664,7 @@ def _add_color_legend(
             cats.append("not_sse_like")
 
     cats = list(cats)
-    fig_width_in, fig_height_in = ax.figure.get_size_inches()
+    fig_width_in, fig_height_in = ax.figure.get_size_inches() # type: ignore
     ncol = _legend_column_count(cats, fig_width_in)
     line_width = _legend_line_width(fig_width_in, ncol)
     labels = [_legend_label(c, line_width=line_width) for c in cats]

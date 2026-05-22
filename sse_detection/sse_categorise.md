@@ -11,7 +11,7 @@ Rows labelled `not_sse_like` did not pass the amplification screen.
 ## Role Labels
 
 | Role | Interpretation | Typical evidence |
-|---|---|---|
+| --- | --- | --- |
 | `putative_birth` | A newly observed or near-new node that may represent the start of a visible burst. | Little or no incoming overlap, high novelty, high amplification. |
 | `relay_amplifier` | A node with inherited upstream overlap that appears to amplify before continuing onward. | Incoming and outgoing overlap present, high net amplification. |
 | `merged_relay` | A node where multiple upstream sources converge and then continue onward. | Multiple incoming edges, outgoing overlap present. |
@@ -22,7 +22,7 @@ Rows labelled `not_sse_like` did not pass the amplification screen.
 ## Onward Dynamic Labels
 
 | Onward dynamic | Interpretation | Typical evidence |
-|---|---|---|
+| --- | --- | --- |
 | `no_observed_onward_spread` | No successor node is observed in the adjacent-window graph. | Zero `out_strength`; interpret carefully if right-censored. |
 | `contained_burst` | Candidate is large or unusual but has weak onward continuity. | Low `out_degree`, low downstream expansion, or terminal lifecycle. |
 | `single_successor_chain` | Candidate continues through one observed successor. | Exactly one outgoing successor; no branching choice is observed. |
@@ -36,7 +36,7 @@ Rows labelled `not_sse_like` did not pass the amplification screen.
 ## Common Composite Categories
 
 | Category | Short description | Typical signature |
-|---|---|---|
+| --- | --- | --- |
 | `putative_birth__contained_burst` | New large cluster with limited observed onward spread. | High amplification, high novelty, weak downstream expansion. |
 | `putative_birth__single_successor_chain` | New burst that continues through one successor lineage. | High novelty, exactly one observed outgoing successor. |
 | `putative_birth__dominant_branch` | New burst with multiple successors but one dominant branch. | High novelty, multiple outgoing successors, high `dominant_successor_frac`. |
@@ -59,7 +59,7 @@ Rows labelled `not_sse_like` did not pass the amplification screen.
 ## Family-Level Grouping
 
 | Family | Includes | Interpretation |
-|---|---|---|
+| --- | --- | --- |
 | Contained SSE | `*__contained_burst`, `*__no_observed_onward_spread` | Large short-lived burst with limited detected onward transmission. |
 | Chain SSE | `*__single_successor_chain` | Event seeded a persistent but narrow transmission chain. |
 | Dominant-branch SSE | `*__dominant_branch` | Event seeded multiple successors but most onward continuity is concentrated in one branch. |
@@ -71,7 +71,7 @@ Rows labelled `not_sse_like` did not pass the amplification screen.
 ## Censoring Notes
 
 | Note | Meaning |
-|---|---|
+| --- | --- |
 | `not_censored` | Node is not at the full-dataset or VOC-epoch boundary. |
 | `left_censored_origin_uncertain` | Origin may have occurred before the observed dataset or VOC epoch. |
 | `right_censored_onward_uncertain` | Onward spread may continue beyond the observed dataset or VOC epoch. |
