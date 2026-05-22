@@ -300,6 +300,7 @@ def model_fit_stats(
     else:
         r2_mcfadden = np.nan
 
+    bic_llf = getattr(result, "bic_llf", np.nan)
     row = {
         "nobs": getattr(result, "nobs", np.nan),
         "df_model": getattr(result, "df_model", np.nan),
@@ -308,8 +309,8 @@ def model_fit_stats(
         "ll_null": llnull,
         "r2_mcfadden": r2_mcfadden,
         "aic": getattr(result, "aic", np.nan),
-        "bic": getattr(result, "bic", np.nan),
-        "bic_llf": getattr(result, "bic_llf", np.nan),
+        "bic": bic_llf,
+        "bic_llf": bic_llf,
         "converged": getattr(result, "converged", np.nan),
     }
     if model_name is not None:
