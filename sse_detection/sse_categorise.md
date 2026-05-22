@@ -8,6 +8,27 @@ events. Each candidate label has the form:
 
 Rows labelled `not_sse_like` did not pass the amplification screen.
 
+## Windowing and Burden Screen
+
+Node-clusters are built in overlapping 3-week windows advanced in 1-week
+increments in the upstream clustering dataset. This detection notebook keeps
+every other original window after construction, so retained node windows are
+2 weeks apart but still arise from overlapping 3-week sequence windows.
+
+Edges connect adjacent retained windows when sequences are shared across
+node-clusters. Because the underlying windows overlap, `in_strength`,
+`out_strength`, and adjacency edges partly measure window carry-over and
+sampling continuity rather than pure onward transmission. They are therefore
+used as SSE-like signatures for review, not as confirmed epidemiological
+transmission events.
+
+The candidate screen requires at least 6 sampled sequences in a node-cluster.
+This modest absolute burden floor is a deliberate scientific choice: clusters
+of only 3-5 sampled sequences can be high-novelty introductions in molecular
+data, but they are too small to label as candidate SSE-like nodes by default.
+Their novelty and amplification metrics remain available for sensitivity
+review.
+
 ## Role Labels
 
 | Role | Interpretation | Typical evidence |
@@ -24,7 +45,7 @@ Rows labelled `not_sse_like` did not pass the amplification screen.
 | Onward dynamic | Interpretation | Typical evidence |
 | --- | --- | --- |
 | `no_observed_onward_spread` | No successor node is observed in the adjacent-window graph. | Zero `out_strength`; interpret carefully if right-censored. |
-| `contained_burst` | Candidate is large or unusual but has weak onward continuity. | Low `out_degree`, low downstream expansion, or terminal lifecycle. |
+| `contained_burst` | Candidate is large or unusual but has weak onward continuity. | Terminal node with incoming burden, or low downstream expansion ranked among nodes with observed onward spread. |
 | `single_successor_chain` | Candidate continues through one observed successor. | Exactly one outgoing successor; no branching choice is observed. |
 | `dominant_branch` | Candidate has multiple successors, but one branch dominates. | At least two outgoing successors plus low downstream entropy or high `dominant_successor_frac`. |
 | `multi_branch_seeder` | Candidate seeds multiple successor clusters without necessarily producing high total onward burden. | Multiple outgoing edges and high downstream entropy. |
@@ -54,19 +75,20 @@ Rows labelled `not_sse_like` did not pass the amplification screen.
 | `merged_relay__dominant_branch` | Merged node continues through multiple successors but one branch dominates. | High `in_degree`, low downstream entropy, high `dominant_successor_frac`. |
 | `isolated_burst__no_observed_onward_spread` | Large or unusual node with no observed graph continuity. | No incoming or outgoing overlap; check sampling and temporal boundaries. |
 | `terminal_sink__no_observed_onward_spread` | Upstream cluster continuity ends at this node. | Nonzero `in_strength`, zero `out_strength`; often right-censored or dying out. |
+| `terminal_sink__contained_burst` | Upstream cluster continuity reaches a terminal candidate node with enough burden to review as contained. | Nonzero `in_strength`, zero `out_strength`, and candidate-level amplification or burden. |
 | `unclear_origin__weak_or_ambiguous_onward_spread` | Amplification signal exists but origin and onward dynamics are unclear. | Candidate score is high, but lifecycle and downstream features conflict. |
 
 ## Family-Level Grouping
 
 | Family | Includes | Interpretation |
 | --- | --- | --- |
-| Contained SSE | `*__contained_burst`, `*__no_observed_onward_spread` | Large short-lived burst with limited detected onward transmission. |
-| Chain SSE | `*__single_successor_chain` | Event seeded a persistent but narrow transmission chain. |
-| Dominant-branch SSE | `*__dominant_branch` | Event seeded multiple successors but most onward continuity is concentrated in one branch. |
-| Branching SSE | `*__multi_branch_seeder`, `*__multi_branch_expander` | Event seeded multiple descendant clusters. |
-| Diverse-population broadcaster SSE | `*__diverse_population_broadcaster` | Event associated with onward spread into a socio-geodemographically diverse population. |
-| Relay SSE | `relay_amplifier__*`, `merged_relay__*` | Not necessarily the original introduction, but important secondary amplification. |
-| Ambiguous SSE | `unclear_origin__*`, `*__weak_or_ambiguous_onward_spread`, `*__high_volume_onward_spread` | Candidate merits review, but evidence does not support a narrower label. |
+| Contained SSE-like | `*__contained_burst`, `*__no_observed_onward_spread` | Large short-lived burst with limited detected onward transmission. |
+| Chain SSE-like | `*__single_successor_chain` | Candidate seeded a persistent but narrow observed continuity chain. |
+| Dominant-branch SSE-like | `*__dominant_branch` | Candidate seeded multiple successors but most observed onward continuity is concentrated in one branch. |
+| Branching SSE-like | `*__multi_branch_seeder`, `*__multi_branch_expander` | Candidate seeded multiple descendant clusters. |
+| Diverse-population broadcaster SSE-like | `*__diverse_population_broadcaster` | Candidate associated with onward spread into a socio-geodemographically diverse population. |
+| Relay SSE-like | `relay_amplifier__*`, `merged_relay__*` | Not necessarily the original introduction, but important secondary amplification. |
+| Ambiguous SSE-like | `unclear_origin__*`, `*__weak_or_ambiguous_onward_spread`, `*__high_volume_onward_spread` | Candidate merits review, but evidence does not support a narrower label. |
 
 ## Censoring Notes
 

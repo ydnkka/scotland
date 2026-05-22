@@ -38,6 +38,33 @@ def add_window_percentile(
     return df.groupby(groupby_cols)[col].rank(pct=True, method="average")
 
 
+def add_scoped_percentile(
+    df: pd.DataFrame,
+    col: str,
+    *,
+    groupby_cols: Any = "window_idx",
+    mask: pd.Series | None = None,
+) -> pd.Series:
+    """Percentile-rank a column within a scope, optionally among eligible rows.
+
+    Rows outside ``mask`` receive ``NaN``. This is useful for onward-spread
+    metrics: terminal nodes with zero outgoing burden should not define the
+    lower tail of expansion among nodes that actually have observed onward
+    continuity.
+    """
+    if mask is None:
+        mask = pd.Series(True, index=df.index)
+    else:
+        mask = pd.Series(mask, index=df.index).fillna(False).astype(bool)
+
+    out = pd.Series(np.nan, index=df.index, dtype=float)
+    out.loc[mask] = df.loc[mask].groupby(groupby_cols)[col].rank(
+        pct=True,
+        method="average",
+    )
+    return out
+
+
 def add_window_zscore(
     df: pd.DataFrame,
     col: str,
@@ -54,7 +81,7 @@ def mean_with_count(
     df: pd.DataFrame,
     cols: list[str],
     *,
-    skipna: bool = False,
+    skipna: bool = True,
 ) -> tuple[pd.Series, pd.Series]:
     """Compute a row-wise mean and a companion count of valid components."""
     existing_cols = [col for col in cols if col in df.columns]
@@ -145,7 +172,6 @@ def add_sse_node_metrics(
     df["strength_ratio"] = safe_divide(df["out_strength"], df["in_strength"])
 
     df["net_amplification"] = df["cluster_size"] - df["in_strength"]
-    df["upstream_novelty_proxy"] = df["cluster_size"] / (1 + df["in_strength"])
     df["log_cluster_size"] = np.log1p(df["cluster_size"])
     df["log_excess_over_upstream"] = log1p_ratio(
         df["cluster_size"],
@@ -188,7 +214,6 @@ def add_sse_node_metrics(
         "log_excess_over_upstream",
         "novelty_fraction",
         "net_amplification",
-        "upstream_novelty_proxy",
         "downstream_retention_ratio",
         "downstream_expansion_proxy",
         "n_health_boards",
@@ -219,7 +244,6 @@ def add_sse_node_metrics(
         "in_strength",
         "out_strength",
         "net_amplification",
-        "upstream_novelty_proxy",
         "downstream_expansion_proxy",
         "n_local_authorities",
         "n_health_boards",
@@ -237,12 +261,12 @@ def add_sse_node_metrics(
     core_components = [
         "log_cluster_size_pct_window",
         "log_excess_over_upstream_pct_window",
-        "novelty_fraction",
+        "novelty_fraction_pct_window",
     ]
-    df["core_amplification_score"], df["core_amplification_n"] = mean_with_count(
+    df["local_amplification_score"], df["core_amplification_n"] = mean_with_count(
         df,
         core_components,
-        skipna=False,
+        skipna=True,
     )
 
     onward_components = [
@@ -254,7 +278,25 @@ def add_sse_node_metrics(
     df["onward_dissemination_score"], df["onward_dissemination_n"] = mean_with_count(
         df,
         onward_components,
-        skipna=False,
+        skipna=True,
+    )
+
+    for score_col in [
+        "local_amplification_score",
+        "onward_dissemination_score",
+    ]:
+        df[f"{score_col}_pct_window"] = add_window_percentile(
+            df,
+            score_col,
+            groupby_cols=window_col,
+        )
+
+    onward_mask = df["out_strength"].gt(0)
+    df["downstream_expansion_proxy_pct_onward_window"] = add_scoped_percentile(
+        df,
+        "downstream_expansion_proxy",
+        groupby_cols=window_col,
+        mask=onward_mask,
     )
 
 
@@ -269,7 +311,12 @@ def add_sse_node_metrics(
     df["mixing_score"], df["mixing_score_n"] = mean_with_count(
         df,
         mixing_components,
-        skipna=False,
+        skipna=True,
+    )
+    df["mixing_score_pct_window"] = add_window_percentile(
+        df,
+        "mixing_score",
+        groupby_cols=window_col,
     )
 
     return df
@@ -284,8 +331,7 @@ def categorise_sse_nodes(
     entropy_low: float = 0.35,
     dominant_high: float = 0.75,
     novelty_high: float = 0.80,
-    min_mixing_components: int = 2,
-    min_cluster_size: int = 3,
+    min_cluster_size: int = 6,
 ) -> pd.DataFrame:
     """
     Assign interpretable superspreading-signature categories to node metrics.
@@ -309,25 +355,41 @@ def categorise_sse_nodes(
             return pd.to_numeric(out[col], errors="coerce")
         return pd.Series(default, index=out.index, dtype=float)
 
-    def high_col(col, q=high_q):
+    def high_col(col, q=high_q, window_col="window_idx"):
         if not has(col):
             return pd.Series(False, index=out.index)
 
         x = num_col(col)
-        if col.endswith("_pct_window") or col.endswith("_pct_window_lifecycle"):
+        if (
+            col.endswith("_pct_window")
+            or col.endswith("_pct_window_lifecycle")
+            or col.endswith("_pct_onward_window")
+        ):
             return x >= q
+
+        if window_col in out.columns:
+            ranks = out.groupby(window_col)[col].rank(pct=True, method="average")
+            return ranks >= q
 
         cutoff = x.quantile(q)
         return x >= cutoff
 
-    def low_col(col, q=None):
+    def low_col(col, q=None, window_col="window_idx"):
         if not has(col):
             return pd.Series(False, index=out.index)
 
         q = 1 - high_q if q is None else q
         x = num_col(col)
-        if col.endswith("_pct_window") or col.endswith("_pct_window_lifecycle"):
+        if (
+            col.endswith("_pct_window")
+            or col.endswith("_pct_window_lifecycle")
+            or col.endswith("_pct_onward_window")
+        ):
             return x <= q
+
+        if window_col in out.columns:
+            ranks = out.groupby(window_col)[col].rank(pct=True, method="average")
+            return ranks <= q
 
         cutoff = x.quantile(q)
         return x <= cutoff
@@ -357,20 +419,21 @@ def categorise_sse_nodes(
         )
     )
 
-    high_core_amp = high_col("core_amplification_score", high_q)
+    high_core_amp = high_col("local_amplification_score_pct_window", high_q)
     very_large = high_col("cluster_size_pct_window", very_high_q)
-    high_novelty = num_col("novelty_fraction").ge(novelty_high)
+    high_novelty = num_col("novelty_fraction_pct_window").ge(novelty_high)
     high_net_amp = high_col("log_excess_over_upstream_pct_window", high_q)
     high_downstream_expansion = high_col(
         "downstream_expansion_proxy_pct_window",
         high_q,
     )
     high_out_strength = high_col("out_strength_pct_window", high_q)
-
-    diverse_population = (
-        num_col("mixing_score_n", default=0).fillna(0).ge(min_mixing_components)
-        & num_col("mixing_score").ge(entropy_high)
+    low_onward_expansion = low_col(
+        "downstream_expansion_proxy_pct_onward_window",
+        0.25,
     )
+
+    diverse_population = num_col("mixing_score").ge(entropy_high)
     out["diverse_population"] = diverse_population
 
     candidate_signal = (
@@ -382,6 +445,10 @@ def categorise_sse_nodes(
             & num_col("log_excess_over_upstream_z_window").ge(1)
         )
     )
+    # The absolute burden floor is intentionally modest because the molecular
+    # data are incompletely sampled, but clusters of only 3-5 sampled sequences
+    # are treated as novelty/introduction signals rather than SSE-like
+    # candidates.
     out["sse_candidate"] = candidate_signal & cluster_size.ge(min_cluster_size)
 
     out["sse_role"] = np.select(
@@ -404,12 +471,18 @@ def categorise_sse_nodes(
 
     out["sse_onward_dynamic"] = np.select(
         [
-            out_strength == 0,
-            death
-            | (
-                (out_degree <= 1)
-                & low_col("downstream_expansion_proxy_pct_window", 0.25)
+            (
+                out["sse_candidate"]
+                & (
+                    (death & in_strength.gt(0))
+                    | (
+                        out_strength.gt(0)
+                        & (out_degree <= 1)
+                        & low_onward_expansion
+                    )
+                )
             ),
+            out_strength == 0,
             out_degree == 1,
             dominant_branch,
             (
@@ -423,8 +496,8 @@ def categorise_sse_nodes(
             (out_degree >= 2) & high_out_strength,
         ],
         [
-            "no_observed_onward_spread",
             "contained_burst",
+            "no_observed_onward_spread",
             "single_successor_chain",
             "dominant_branch",
             "diverse_population_broadcaster",
@@ -476,7 +549,11 @@ def flag_sse(
         Input metadata containing sequence_id, collection_date, meta_cluster_id, and clade.
 
     threshold : float, default 9.0
-        Threshold used to define SSE weeks from normalised change.
+        Threshold used to define weekly SSE-like alerts. For clusters already
+        under observation, this is applied to normalised growth
+        ``new_sequences / sqrt(previous cumulative size)``. For first-observed
+        weeks, it is applied to the raw first observed sequence count because
+        there is no previous cumulative denominator.
 
     drop_incomplete_first_week : bool, default False
         Whether to remove the first week if the dataset starts after Monday.
@@ -536,7 +613,10 @@ def flag_sse(
             "cc_size",
             "cc_size_prev",
             "norm_change",
+            "first_observed_burst",
+            "growth_burst",
             "is_sse",
+            "sse_flag_type",
         ]
     )
 
@@ -568,10 +648,11 @@ def flag_sse(
     def reindex_cluster(g: pd.DataFrame) -> pd.DataFrame:
         cluster_id = g.name
         clade_val = g["clade"].iloc[0]
+        cluster_weeks = all_weeks[all_weeks >= g["week"].min()]
 
         out = (
             g.set_index("week")[["new_sequences"]]
-            .reindex(all_weeks, fill_value=0)
+            .reindex(cluster_weeks, fill_value=0)
         )
 
         out["meta_cluster_id"] = cluster_id
@@ -607,6 +688,27 @@ def flag_sse(
         np.sqrt(weekly["cc_size_prev"].clip(lower=1))
     )
 
-    weekly["is_sse"] = weekly["norm_change"] > threshold
+    weekly["first_observed_burst"] = (
+        weekly["cc_size_prev"].eq(0)
+        & weekly["new_sequences"].gt(threshold)
+    )
+    weekly["growth_burst"] = (
+        weekly["cc_size_prev"].gt(0)
+        & weekly["norm_change"].gt(threshold)
+    )
+    # Compatibility alias for older notebooks. Interpret with ``sse_flag_type``;
+    # first-observed bursts are raw-count alerts, not growth-rate estimates.
+    weekly["is_sse"] = weekly["first_observed_burst"] | weekly["growth_burst"]
+    weekly["sse_flag_type"] = np.select(
+        [
+            weekly["first_observed_burst"],
+            weekly["growth_burst"],
+        ],
+        [
+            "first_observed_burst",
+            "growth_burst",
+        ],
+        default="not_flagged",
+    )
 
     return weekly

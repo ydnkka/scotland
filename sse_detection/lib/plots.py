@@ -430,7 +430,7 @@ def plot_core_metric_space(
 
     g = sns.relplot(
         data=plot_df,
-        x="core_amplification_score",
+        x="local_amplification_score",
         y="onward_dissemination_score",
         size="marker_size",
         hue="sse_role",
@@ -444,7 +444,7 @@ def plot_core_metric_space(
         legend=False,
     )
 
-    g.set_axis_labels("Core amplification score", "Onward dissemination score")
+    g.set_axis_labels("Local amplification score", "Onward dissemination score")
     g.set_titles("SSE candidate: {col_name}")
 
     handles = [
@@ -482,7 +482,7 @@ def plot_composite_distributions(
     *,
     columns: Sequence[str] = (
             "cluster_size",
-            "core_amplification_score",
+            "local_amplification_score",
             "onward_dissemination_score",
             "mixing_score",
     ),

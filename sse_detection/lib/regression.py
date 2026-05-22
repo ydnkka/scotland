@@ -10,14 +10,18 @@ silently dropped by patsy/statsmodels.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from types import SimpleNamespace
 import re
 from typing import Iterable, Sequence
 
 import numpy as np
 import pandas as pd
-from scipy.stats import chi2
+import patsy
+from scipy.special import expit
+from scipy.stats import chi2, norm
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
+from statsmodels.discrete.conditional_models import ConditionalLogit
 
 
 __all__ = [
@@ -25,11 +29,15 @@ __all__ = [
     "bh_adjust",
     "bounded_exp",
     "categorical_term",
+    "cluster_se_diagnostics",
     "fit_binomial_glm",
+    "fit_conditional_logit",
     "fit_exposure_model",
+    "fit_firth_logit",
     "make_formula",
     "model_fit_stats",
     "model_variables_from_terms",
+    "parameter_names_for_term",
     "robust_wald_for_params",
     "robust_wald_for_prefix",
     "tidy_odds_ratios",
@@ -45,6 +53,39 @@ class AssociationModel:
     odds_ratios: pd.DataFrame
     wald: pd.DataFrame
     formula: str
+
+
+@dataclass
+class FirthLogitResult:
+    """Minimal statsmodels-like result for Firth-penalised logistic fits."""
+
+    params: pd.Series
+    bse: pd.Series
+    pvalues: pd.Series
+    cov: pd.DataFrame
+    model: object
+    nobs: int
+    df_model: int
+    df_resid: int
+    llf: float
+    llnull: float
+    aic: float
+    bic_llf: float
+    converged: bool
+    fit_history: dict[str, object]
+
+    def cov_params(self) -> pd.DataFrame:
+        return self.cov
+
+    def conf_int(self, alpha: float = 0.05) -> pd.DataFrame:
+        z = norm.ppf(1 - alpha / 2)
+        return pd.DataFrame(
+            {
+                0: self.params - z * self.bse,
+                1: self.params + z * self.bse,
+            },
+            index=self.params.index,
+        )
 
 
 def categorical_term(variable: str, reference: str | int | float | None = None) -> str:
@@ -102,8 +143,293 @@ def fit_binomial_glm(
 
     return model.fit(
         cov_type="cluster",
-        cov_kwds={"groups": data[cluster_col]},
+        cov_kwds={
+            "groups": data[cluster_col],
+            "use_correction": True,
+            "df_correction": True,
+        },
     )
+
+
+def _design_term_slices(result) -> dict[str, slice]:
+    """Return Patsy term slices for supported statsmodels result objects."""
+    custom = getattr(result, "_patsy_term_name_slices", None)
+    if custom is not None:
+        return dict(custom)
+
+    model = getattr(result, "model", None)
+    data = getattr(model, "data", None)
+    design_info = getattr(data, "design_info", None)
+    if design_info is None:
+        return {}
+    return dict(design_info.term_name_slices)
+
+
+def _param_index(result) -> pd.Index:
+    params = getattr(result, "params")
+    if isinstance(params, pd.Series):
+        return params.index
+    names = getattr(getattr(result, "model", None), "exog_names", None)
+    if names is None:
+        names = [f"x{i}" for i in range(len(params))]
+    return pd.Index(names)
+
+
+def _matching_design_terms(term_name_slices: dict[str, slice], term: str) -> list[str]:
+    if term in term_name_slices:
+        return [term]
+
+    # Backwards-compatible handling for older callers that passed "C(var"
+    # after splitting a treatment-coded term at the comma. Match only the Patsy
+    # factor token boundary so C(age, ...) cannot also collect C(age_band, ...).
+    if term.startswith("C(") and not term.endswith(")"):
+        return [
+            name for name in term_name_slices
+            if name.startswith(f"{term},") or name == f"{term})"
+        ]
+
+    return []
+
+
+def parameter_names_for_term(result, term: str) -> list[str]:
+    """Return fitted parameter names belonging to one full Patsy term.
+
+    Prefer this over prefix or substring matching. It uses Patsy's
+    ``term_name_slices`` when available, then falls back to exact parameter
+    names and categorical-token boundaries.
+    """
+    params = _param_index(result)
+    term_name_slices = _design_term_slices(result)
+    matched_terms = _matching_design_terms(term_name_slices, term)
+
+    if matched_terms:
+        names: list[str] = []
+        for matched in matched_terms:
+            term_slice = term_name_slices[matched]
+            names.extend(params[term_slice].tolist())
+        return [name for name in names if name in params]
+
+    if term in params:
+        return [term]
+
+    categorical_token = f"{term}["
+    return [name for name in params if name.startswith(categorical_token)]
+
+
+def fit_conditional_logit(
+    data: pd.DataFrame,
+    formula: str,
+    *,
+    strata_col: str,
+    maxiter: int = 100,
+    disp: bool = False,
+):
+    """Fit a conditional logistic model stratified by ``strata_col``.
+
+    This is intended as the association-analysis primary model when window
+    strata are nuisance parameters. Strata without outcome variation are
+    dropped before fitting and reported on the result as
+    ``_sse_diagnostics``.
+    """
+    y, x = patsy.dmatrices(
+        formula,
+        data=data,
+        return_type="dataframe",
+        NA_action="raise",
+    )
+    design_info = x.design_info
+    original_columns = list(x.columns)
+    if "Intercept" in x.columns:
+        x = x.drop(columns="Intercept")
+    term_name_slices = {}
+    for term_name, term_slice in design_info.term_name_slices.items():
+        columns = [
+            col for col in original_columns[term_slice]
+            if col in x.columns
+        ]
+        if not columns:
+            continue
+        positions = [x.columns.get_loc(col) for col in columns]
+        term_name_slices[term_name] = slice(min(positions), max(positions) + 1)
+
+    groups = data.loc[x.index, strata_col]
+    outcome = y.iloc[:, 0]
+    varying = outcome.groupby(groups, dropna=False).transform("nunique").gt(1)
+    dropped_rows = int((~varying).sum())
+    dropped_strata = int(groups.loc[~varying].nunique(dropna=False))
+
+    y_fit = outcome.loc[varying]
+    x_fit = x.loc[varying]
+    groups_fit = groups.loc[varying]
+
+    model = ConditionalLogit(
+        y_fit,
+        x_fit,
+        groups=groups_fit,
+        missing="raise",
+    )
+    result = model.fit(maxiter=maxiter, disp=disp)
+    result._patsy_term_name_slices = term_name_slices
+    result._sse_diagnostics = {
+        "strata_col": strata_col,
+        "input_rows": int(len(data)),
+        "model_rows": int(len(y_fit)),
+        "dropped_nonvarying_rows": dropped_rows,
+        "dropped_nonvarying_strata": dropped_strata,
+        "n_strata": int(groups_fit.nunique(dropna=False)),
+    }
+    return result
+
+
+def _logistic_loglike(y: np.ndarray, x: np.ndarray, beta: np.ndarray) -> float:
+    eta = np.clip(x @ beta, -35, 35)
+    return float(np.sum(y * eta - np.logaddexp(0, eta)))
+
+
+def _firth_penalized_loglike(
+    y: np.ndarray,
+    x: np.ndarray,
+    beta: np.ndarray,
+) -> float:
+    eta = np.clip(x @ beta, -35, 35)
+    mu = expit(eta)
+    w = np.clip(mu * (1 - mu), 1e-9, None)
+    info = (x.T * w) @ x
+    sign, logdet = np.linalg.slogdet(info)
+    if sign <= 0:
+        return -np.inf
+    return _logistic_loglike(y, x, beta) + 0.5 * float(logdet)
+
+
+def fit_firth_logit(
+    data: pd.DataFrame,
+    formula: str,
+    *,
+    maxiter: int = 100,
+    tol: float = 1e-6,
+    max_step_halving: int = 25,
+) -> FirthLogitResult:
+    """Fit Firth's bias-reduced logistic regression for sparse binary data.
+
+    The implementation follows the standard adjusted-score iteration for
+    logistic regression. It is intended for the association notebook's sparse
+    fixed-effect models when exact conditional logistic regression is
+    computationally infeasible for very large window strata.
+    """
+    y_df, x_df = patsy.dmatrices(
+        formula,
+        data=data,
+        return_type="dataframe",
+        NA_action="raise",
+    )
+    y = y_df.iloc[:, 0].to_numpy(dtype=float)
+    x = x_df.to_numpy(dtype=float)
+    param_names = pd.Index(x_df.columns)
+    beta = np.zeros(x.shape[1], dtype=float)
+    converged = False
+    pll = _firth_penalized_loglike(y, x, beta)
+
+    for iteration in range(1, maxiter + 1):
+        eta = np.clip(x @ beta, -35, 35)
+        mu = expit(eta)
+        w = np.clip(mu * (1 - mu), 1e-9, None)
+        info = (x.T * w) @ x
+        info_inv = np.linalg.pinv(info)
+        leverage = w * np.einsum("ij,jk,ik->i", x, info_inv, x, optimize=True)
+        adjusted_residual = y - mu + leverage * (0.5 - mu)
+        score = x.T @ adjusted_residual
+        step = info_inv @ score
+
+        if not np.all(np.isfinite(step)):
+            break
+
+        step_scale = 1.0
+        accepted = False
+        for _ in range(max_step_halving + 1):
+            candidate = beta + step_scale * step
+            candidate_pll = _firth_penalized_loglike(y, x, candidate)
+            if np.isfinite(candidate_pll) and candidate_pll >= pll:
+                accepted = True
+                break
+            step_scale *= 0.5
+
+        if not accepted:
+            break
+
+        delta = np.max(np.abs(candidate - beta))
+        beta = candidate
+        pll = candidate_pll
+        if delta < tol:
+            converged = True
+            break
+
+    eta = np.clip(x @ beta, -35, 35)
+    mu = expit(eta)
+    w = np.clip(mu * (1 - mu), 1e-9, None)
+    info = (x.T * w) @ x
+    cov = pd.DataFrame(np.linalg.pinv(info), index=param_names, columns=param_names)
+    params = pd.Series(beta, index=param_names)
+    bse = pd.Series(np.sqrt(np.diag(cov)), index=param_names)
+    z_values = params / bse.replace(0, np.nan)
+    pvalues = pd.Series(2 * norm.sf(np.abs(z_values)), index=param_names)
+    llf = _logistic_loglike(y, x, beta)
+    df_model = int(x.shape[1] - 1)
+    nobs = int(x.shape[0])
+
+    model = SimpleNamespace(
+        data=SimpleNamespace(design_info=x_df.design_info),
+        exog_names=list(param_names),
+    )
+    return FirthLogitResult(
+        params=params,
+        bse=bse,
+        pvalues=pvalues,
+        cov=cov,
+        model=model,
+        nobs=nobs,
+        df_model=df_model,
+        df_resid=int(nobs - x.shape[1]),
+        llf=llf,
+        llnull=np.nan,
+        aic=float(-2 * llf + 2 * x.shape[1]),
+        bic_llf=np.nan,
+        converged=converged,
+        fit_history={
+            "iterations": iteration if "iteration" in locals() else 0,
+            "penalized_loglike": pll,
+        },
+    )
+
+
+def cluster_se_diagnostics(
+    data: pd.DataFrame,
+    cluster_col: str,
+    *,
+    outcome: str | None = None,
+) -> pd.DataFrame:
+    """Summarise cluster-robust SE support for an analysis frame."""
+    if cluster_col not in data.columns:
+        raise KeyError(f"{cluster_col!r} is not present in the analysis frame")
+
+    clusters = data[cluster_col].dropna()
+    row = {
+        "cluster_col": cluster_col,
+        "n_rows": int(len(data)),
+        "n_clusters": int(clusters.nunique()),
+        "min_rows_per_cluster": int(clusters.value_counts().min()) if not clusters.empty else 0,
+        "median_rows_per_cluster": (
+            float(clusters.value_counts().median()) if not clusters.empty else np.nan
+        ),
+    }
+
+    if outcome is not None:
+        if outcome not in data.columns:
+            raise KeyError(f"{outcome!r} is not present in the analysis frame")
+        by_cluster = data.groupby(cluster_col, dropna=False)[outcome]
+        row["outcome_positive_clusters"] = int(by_cluster.max().fillna(0).gt(0).sum())
+        row["outcome_varying_clusters"] = int(by_cluster.nunique(dropna=True).gt(1).sum())
+
+    return pd.DataFrame([row])
 
 
 def bounded_exp(values) -> np.ndarray:
@@ -141,7 +467,8 @@ def tidy_odds_ratios(
     out["or_high"] = bounded_exp(out["conf_high"])
 
     if term_filter is not None:
-        out = out.loc[out["term"].str.contains(term_filter, regex=False)].copy()
+        term_names = parameter_names_for_term(result, term_filter)
+        out = out.loc[out["term"].isin(term_names)].copy()
 
     return out
 
@@ -199,8 +526,12 @@ def robust_wald_for_prefix(
     model_name: str | None = None,
     term: str | None = None,
 ) -> pd.DataFrame:
-    """Manual Wald test for all fitted parameters with a shared name prefix."""
-    param_names = [p for p in result.params.index if p.startswith(term_prefix)]
+    """Manual Wald test for all fitted parameters belonging to one term.
+
+    The historical name is retained for notebook compatibility, but matching
+    now uses Patsy factor tokens rather than raw string prefixes.
+    """
+    param_names = parameter_names_for_term(result, term_prefix)
     return robust_wald_for_params(
         result,
         param_names,

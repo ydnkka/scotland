@@ -359,9 +359,6 @@ def plot_meta_cluster_subgraph(
         ``window_idx`` values and ``wn_mid_date`` underneath.
     width, width_in, height_in, context, font_scale
         Forwarded to ``utils.style.new_figure``.
-    ax
-        Pre-existing axis to draw onto. If provided, ``width``/``height_in``
-        are ignored.
 
     Returns
     -------

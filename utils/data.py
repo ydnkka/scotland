@@ -67,12 +67,65 @@ def _normalise_qc(qc: QCStatus | Iterable[QCStatus] | None) -> list[str] | None:
     return qc_values
 
 
+def select_window_stride(
+    windows: Iterable[int],
+    stride: int = 1,
+    *,
+    offset: int = 0,
+) -> list[int]:
+    """Select rolling-window indices by position from sorted unique windows.
+
+    Examples
+    --------
+    ``select_window_stride(range(1, 25), 2)`` returns windows
+    ``[1, 3, 5, ...]``. This is intentionally position-based, equivalent to
+    ``sorted_windows[offset::stride]``, so notebooks do not need to assume that
+    retained windows can be described by a modulo rule.
+    """
+    if stride < 1:
+        raise ValueError("stride must be a positive integer")
+    if offset < 0:
+        raise ValueError("offset must be non-negative")
+    if offset >= stride:
+        raise ValueError("offset must be less than stride")
+
+    sorted_windows = sorted(pd.Series(list(windows)).dropna().astype(int).unique())
+    return sorted_windows[offset::stride]
+
+
+def apply_window_stride(
+    df: pd.DataFrame,
+    stride: int = 1,
+    *,
+    offset: int = 0,
+    window_col: str = "window_idx",
+    window_id_col: str = "window_id",
+    renumber: bool = True,
+) -> pd.DataFrame:
+    """Filter to a rolling-window stride and optionally renumber retained windows."""
+    if window_col not in df.columns:
+        raise KeyError(f"{window_col!r} is required for window stride filtering")
+
+    retained = select_window_stride(df[window_col], stride=stride, offset=offset)
+    old_to_new = {old: new + 1 for new, old in enumerate(retained)}
+
+    out = df.loc[df[window_col].isin(retained)].copy()
+    if renumber:
+        out[window_col] = out[window_col].map(old_to_new)
+        if window_id_col in out.columns:
+            out[window_id_col] = out[window_col].apply(lambda x: f"W{x:03d}")
+    return out.reset_index(drop=True)
+
+
 def load_analysis_columns(
     columns: Iterable[str] | None = None,
     all_cols: bool = False,
     resolution: float | None = PRIMARY_RESOLUTION,
     qc: QCStatus | Iterable[QCStatus] | None = "good",
     add_policy: bool = False,
+    window_stride: int | None = None,
+    window_offset: int = 0,
+    renumber_windows: bool = True,
 ) -> pd.DataFrame:
     """Read a narrow slice of the master sequence-level parquet.
 
@@ -94,6 +147,16 @@ def load_analysis_columns(
         If True, attach policy period labels ``policy_period``,
         ``policy_period_label``, and ``policy_intensity`` using the configured
         policy periods.
+    window_stride:
+        If provided, retain sorted unique ``window_idx`` values by positional
+        stride using ``windows[window_offset::window_stride]``. For example,
+        ``window_stride=2`` keeps original windows 1, 3, 5, ... when the source
+        windows are numbered consecutively from 1.
+    window_offset:
+        Positional offset into the sorted unique windows before striding.
+    renumber_windows:
+        If True with ``window_stride``, renumber retained ``window_idx`` values
+        to 1..N and rebuild ``window_id`` where present.
 
     Notes
     -----
@@ -139,9 +202,15 @@ def load_analysis_columns(
     qc_values = _normalise_qc(qc)
 
     need = {"sequence_id", "collection_date", "pango_lineage"}
+    requested = set(columns or [])
 
     if columns is not None:
-        need.update(columns)
+        need.update(requested)
+
+    if window_stride is not None:
+        need.add("window_idx")
+        if "window_id" in requested:
+            need.add("window_id")
 
     if resolution is not None:
         need.add("resolution")
@@ -158,6 +227,14 @@ def load_analysis_columns(
 
     if qc_values is not None:
         df = df.loc[df["nextclade_qc"].isin(qc_values)]
+
+    if window_stride is not None:
+        df = apply_window_stride(
+            df,
+            stride=window_stride,
+            offset=window_offset,
+            renumber=renumber_windows,
+        )
 
     df = df.reset_index(drop=True)
 
