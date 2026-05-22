@@ -410,7 +410,7 @@ def plot_candidate_rate_over_time(
 def plot_core_metric_space(
     node_stats: pd.DataFrame,
     *,
-    height_in: float = 5.0,
+    height_in: float = 4,
     context: CONTEXTS = "paper",
     font_scale: float = 1.0,
     min_size: int = 1,
@@ -467,7 +467,7 @@ def plot_core_metric_space(
         handles=handles,
         title="SSE role",
         loc="center right",
-        bbox_to_anchor=(0.65, 0.5),
+        bbox_to_anchor=(0.7, 0.5),
         frameon=False,
     )
 
