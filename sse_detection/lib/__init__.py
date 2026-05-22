@@ -22,6 +22,9 @@ plots
 subgraph
     Meta-cluster subgraph plotter (colour = ``sse_category``,
     size proportional to ``log1p(cluster_size)``).
+regression
+    Reusable regression helpers for association notebooks. These functions
+    expect already-prepared model frames and do not perform data cleaning.
 """
 
 from .stats import (
@@ -42,6 +45,21 @@ from .entropy import (
     )
 
 from .io import SseOutputs, load_sse_outputs, load_weekly_growth
+from .regression import (
+    AssociationModel,
+    bh_adjust,
+    bounded_exp,
+    categorical_term,
+    fit_binomial_glm,
+    fit_exposure_model,
+    make_formula,
+    model_fit_stats,
+    model_variables_from_terms,
+    robust_wald_for_params,
+    robust_wald_for_prefix,
+    tidy_odds_ratios,
+    tidy_single_parameter_wald,
+)
 from .palettes import (
     DYNAMIC_ORDER,
     DYNAMIC_PALETTE,
@@ -77,6 +95,19 @@ __all__ = [
     "SseOutputs",
     "load_sse_outputs",
     "load_weekly_growth",
+    "AssociationModel",
+    "bh_adjust",
+    "bounded_exp",
+    "categorical_term",
+    "fit_binomial_glm",
+    "fit_exposure_model",
+    "make_formula",
+    "model_fit_stats",
+    "model_variables_from_terms",
+    "robust_wald_for_params",
+    "robust_wald_for_prefix",
+    "tidy_odds_ratios",
+    "tidy_single_parameter_wald",
     "DYNAMIC_PALETTE",
     "DYNAMIC_ORDER",
     "LIFECYCLE_PALETTE",

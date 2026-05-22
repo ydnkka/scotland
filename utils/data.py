@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict
-from datetime import date
 from pathlib import Path
 from typing import Iterable, Literal, Sequence
 
@@ -127,8 +126,8 @@ def load_analysis_columns(
         Pass ``None`` to skip QC filtering entirely.
     add_policy:
         If True, attach policy period labels ``policy_period``,
-         ``policy_period_label``,  and ``policy_intensity``
-         using the configured policy periods.
+        ``policy_period_label``,  and ``policy_intensity``
+        using the configured policy periods.
 
     Notes
     -----
@@ -242,25 +241,6 @@ def load_simd_columns_pandas(
 ) -> pd.DataFrame:
     """Pandas wrapper around ``load_simd_columns``."""
     return load_simd_columns(columns=columns, all_cols=all_cols).to_pandas()
-
-
-def cluster_table_path(
-    root: Path | None = None,
-    cache_dir: Path | None = None,
-) -> Path:
-    """Return the default cluster-cache parquet path."""
-    root = (root or repo_root()).resolve()
-    if cache_dir is not None:
-        return cache_dir / "cluster_table.parquet"
-    return root / "part1" / "cache" / "cluster_table.parquet"
-
-
-def load_cluster_table(
-    root: Path | None = None,
-    cache_dir: Path | None = None,
-) -> pd.DataFrame:
-    """Load the cached Part 1  cluster table."""
-    return pd.read_parquet(cluster_table_path(root=root, cache_dir=cache_dir))
 
 
 def load_datazone_info(columns: Iterable[str]) -> gpd.GeoDataFrame:
