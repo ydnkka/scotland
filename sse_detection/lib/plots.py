@@ -795,6 +795,11 @@ _COMPOSITION_ORDER = [
 ]
 
 _MIXING_ORDER = [
+    "sex_entropy_z",
+    "age_entropy_z",
+    "simd_entropy_z",
+    "urban_rural_entropy_z",
+    "health_board_entropy_z",
     "sex_entropy_obs",
     "age_entropy_obs",
     "simd_entropy_obs",
@@ -816,6 +821,11 @@ _PRETTY_LABELS = {
     "simd_entropy_obs": "SIMD entropy",
     "urban_rural_entropy_obs": "Urban/rural entropy",
     "health_board_entropy_obs": "Health-board entropy",
+    "sex_entropy_z": "Sex entropy z-score",
+    "age_entropy_z": "Age entropy z-score",
+    "simd_entropy_z": "SIMD entropy z-score",
+    "urban_rural_entropy_z": "Urban/rural entropy z-score",
+    "health_board_entropy_z": "Health-board entropy z-score",
     "primary": "Primary",
     "expanded": "Expanded",
     "single": "Single predictor",

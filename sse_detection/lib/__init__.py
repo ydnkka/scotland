@@ -68,6 +68,7 @@ from .palettes import (
     SSE_CATEGORY_PALETTE,
     sse_category_palette_from,
 )
+
 from .plots import (
     make_regression_fit_table,
     make_regression_odds_ratio_table,
@@ -81,7 +82,9 @@ from .plots import (
     plot_role_dynamic_heatmap,
     plot_socio_demo_breakdown,
     plot_socio_demo_candidate_background_diff,
-)
+
+) 
+
 from .subgraph import plot_meta_cluster_subgraph
 
 __all__ = [
