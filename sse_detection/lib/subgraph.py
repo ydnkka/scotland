@@ -14,8 +14,9 @@ is retained as a compatibility alias for ``layout="dot"``.
 
 Encodings
 ---------
-* Node colour: ``sse_category`` (the role-derived palette in
-:mod:`palettes`). Also accepts ``"sse_role"`` and ``"sse_onward_dynamic"``.
+* Node colour: ``sse_category`` (the compact epidemiological category in
+:mod:`palettes`). Also accepts ``"sse_graph_category"``, ``"sse_role"``, and
+``"sse_onward_dynamic"``.
 * Node size: proportional to ``log1p(cluster_size)``.
 * Edge width: proportional to ``log1p(n_shared_sequences)``.
 """
@@ -45,7 +46,9 @@ from .palettes import (
     NOT_SSE_COLOR,
     ROLE_ORDER,
     ROLE_PALETTE,
+    SSE_CATEGORY_ORDER,
     sse_category_palette_from,
+    sse_graph_category_palette_from,
 )
 
 
@@ -244,6 +247,10 @@ def _ordered_values(values: Iterable[str], order: Iterable[str]) -> list[str]:
 
 
 def _ordered_categories(values: Iterable[str]) -> list[str]:
+    return _ordered_values(values, SSE_CATEGORY_ORDER)
+
+
+def _ordered_graph_categories(values: Iterable[str]) -> list[str]:
     role_index = {role: i for i, role in enumerate(ROLE_ORDER)}
     dynamic_index = {dyn: i for i, dyn in enumerate(DYNAMIC_ORDER)}
 
@@ -273,6 +280,13 @@ def _resolve_colours(
         )
         palette  = sse_category_palette_from(cats)
         colours = layout["sse_category"].map(palette).fillna(NOT_SSE_COLOR)
+    elif color_by == "sse_graph_category":
+        _require_columns(layout, {"sse_graph_category"}, "node_stats")
+        cats = _ordered_graph_categories(
+            set(layout["sse_graph_category"].dropna().unique()) | {"not_sse_like"}
+        )
+        palette = sse_graph_category_palette_from(cats)
+        colours = layout["sse_graph_category"].map(palette).fillna(NOT_SSE_COLOR)
     elif color_by == "sse_role":
         _require_columns(layout, {"sse_role", "sse_candidate"}, "node_stats")
         palette = {**ROLE_PALETTE, "not_sse_like": NOT_SSE_COLOR}
@@ -292,7 +306,8 @@ def _resolve_colours(
         colours = dyn.map(palette).fillna(NOT_SSE_COLOR)
     else:
         raise ValueError(
-            "color_by must be one of {'sse_category','sse_role','sse_onward_dynamic'}"
+            "color_by must be one of "
+            "{'sse_category','sse_graph_category','sse_role','sse_onward_dynamic'}"
         )
     return colours, palette
 
@@ -338,7 +353,8 @@ def plot_meta_cluster_subgraph(
         several.
     color_by
         Node attribute used to colour points. ``"sse_category"`` (default),
-        ``"sse_role"``, or ``"sse_onward_dynamic"``.
+        ``"sse_graph_category"``, ``"sse_role"``, or
+        ``"sse_onward_dynamic"``.
     annotate_top_n
         Number of largest nodes to label with their ``cluster_id`` suffix.
     annotate_col
@@ -643,6 +659,8 @@ def _add_color_legend(
 ) -> None:
     if color_by == "sse_category":
         cats: Iterable[str] = _ordered_categories(layout["sse_category"].dropna().unique())
+    elif color_by == "sse_graph_category":
+        cats = _ordered_graph_categories(layout["sse_graph_category"].dropna().unique())
         cats = list(cats)[:14]  # cap legend size
     elif color_by == "sse_role":
         cats = [

@@ -24,6 +24,8 @@ from .palettes import (
     DYNAMIC_ORDER,
     ROLE_ORDER,
     ROLE_PALETTE,
+    SSE_CATEGORY_ORDER,
+    SSE_CATEGORY_PALETTE,
     WAVE_GROUPS,
     WAVE_GROUP_PALETTE,
 )
@@ -61,6 +63,16 @@ _ROLE_DYNAMIC_LABELS = {
     "multi_branch_expander": "Multi-branch expander",
     "diverse_population_broadcaster": "Diverse population broadcaster",
     "weak_or_ambiguous_onward_spread": "Weak/ambiguous onward spread",
+    "not_sse_like": "Not SSE-like",
+    "mixed_population_dissemination": "Mixed-population dissemination",
+    "putative_introduction_burst": "Putative introduction burst",
+    "secondary_relay_amplification": "Secondary relay amplification",
+    "diffuse_branching_transmission": "Diffuse branching transmission",
+    "focused_branching_transmission": "Focused branching transmission",
+    "sustained_single_chain": "Sustained single chain",
+    "contained_local_burst": "Contained local burst",
+    "high_volume_onward_transmission": "High-volume onward transmission",
+    "ambiguous_amplification_signal": "Ambiguous amplification signal",
 }
 
 
@@ -319,11 +331,11 @@ def plot_candidate_rate_over_time(
     context: CONTEXTS = "paper",
     font_scale: float = 1.0,
 ) -> Figure:
-    """Per-window candidate rate, with role composition stacked underneath.
+    """Per-window candidate rate, with category composition stacked underneath.
 
     Top panel: % of nodes flagged ``sse_candidate`` per window, with the
     raw candidate count as a light bar in the background.
-    Bottom panel: stacked counts of candidates by ``sse_role`` per window.
+    Bottom panel: stacked counts of candidates by compact ``sse_category``.
     """
     if "window_idx" not in node_stats.columns:
         raise KeyError("node_stats needs 'window_idx'")
@@ -337,19 +349,23 @@ def plot_candidate_rate_over_time(
     )
     summary["candidate_share"] = summary["n_candidates"] / summary["n_nodes"]
 
-    role_counts = (
+    category_counts = (
         node_stats.loc[node_stats["sse_candidate"]]
-        .groupby(["wn_mid_date", "sse_role"], as_index=False)
+        .groupby(["wn_mid_date", "sse_category"], as_index=False)
         .size()
         .rename(columns={"size": "n"})
     )
-    role_pivot = (
-        role_counts.pivot(index="wn_mid_date", columns="sse_role", values="n")
+    category_pivot = (
+        category_counts.pivot(index="wn_mid_date", columns="sse_category", values="n")
         .fillna(0)
         .sort_index()
     )
-    role_pivot = role_pivot.reindex(
-        columns=[r for r in ROLE_ORDER if r in role_pivot.columns],
+    category_pivot = category_pivot.reindex(
+        columns=[
+            c
+            for c in SSE_CATEGORY_ORDER
+            if c != "not_sse_like" and c in category_pivot.columns
+        ],
         fill_value=0,
     )
 
@@ -387,17 +403,20 @@ def plot_candidate_rate_over_time(
     ax.legend(handles1 + handles2, labels1 + labels2, loc="best", ncol=1, frameon=False)
 
     ax = axes[1]
-    if len(role_pivot.columns):
-        colors = [ROLE_PALETTE.get(r, "#8C8C8C") for r in role_pivot.columns]
+    if len(category_pivot.columns):
+        colors = [
+            SSE_CATEGORY_PALETTE.get(category, "#8C8C8C")
+            for category in category_pivot.columns
+        ]
         ax.stackplot(
-            role_pivot.index,
-            [role_pivot[c].to_numpy() for c in role_pivot.columns],
-            labels=list(role_pivot.columns),
+            category_pivot.index,
+            [category_pivot[c].to_numpy() for c in category_pivot.columns],
+            labels=[_pretty_role_dynamic(c) for c in category_pivot.columns],
             colors=colors,
             alpha=0.86,
         )
         ax.legend(loc="upper left", ncol=3, frameon=False)
-    ax.set_ylabel("Candidates by role")
+    ax.set_ylabel("Candidates by category")
     ax.set_xlabel("Window Midpoint")
     fig.autofmt_xdate()
 

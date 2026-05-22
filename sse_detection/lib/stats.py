@@ -130,7 +130,6 @@ def add_sse_node_metrics(
     df["cluster_size"] = pd.to_numeric(df["cluster_size"], errors="coerce")
 
     df["birth"] = df["in_degree"].eq(0)
-    df["birth_like"] = df["in_strength"].le(1)
     df["death"] = df["out_degree"].eq(0)
     df["continuation"] = df["in_degree"].gt(0) & df["out_degree"].gt(0)
     df["branching"] = df["out_degree"].gt(1)
@@ -337,8 +336,9 @@ def categorise_sse_nodes(
     Assign interpretable superspreading-signature categories to node metrics.
 
     The labels are heuristic signatures, not confirmed epidemiological events.
-    They combine local amplification, graph lifecycle, downstream branching,
-    and population-diversity evidence.
+    ``sse_category`` is a compact epidemiological transmission phenotype.
+    ``sse_graph_category`` retains the more granular graph-diagnostic
+    ``<role>__<onward_dynamic>`` label.
     """
     out = df.copy()
 
@@ -394,7 +394,7 @@ def categorise_sse_nodes(
         cutoff = x.quantile(q)
         return x <= cutoff
 
-    birth_like = bool_col("birth_like")
+    birth = bool_col("birth")
     death = bool_col("death")
     continuation = bool_col("continuation")
     merging = bool_col("merging")
@@ -457,7 +457,7 @@ def categorise_sse_nodes(
             (in_strength > 0) & (out_strength == 0),
             merging & (in_degree >= 2) & (out_strength > 0),
             continuation & (in_strength > 0) & (out_strength > 0) & high_net_amp,
-            birth_like & high_novelty,
+            birth & high_novelty & (out_degree >= 1),
         ],
         [
             "isolated_burst",
@@ -508,11 +508,41 @@ def categorise_sse_nodes(
         default="weak_or_ambiguous_onward_spread",
     )
 
-    out["sse_category"] = np.where(
+    out["sse_graph_category"] = np.where(
         ~out["sse_candidate"],
         "not_sse_like",
         out["sse_role"] + "__" + out["sse_onward_dynamic"],
     )
+
+    candidate = out["sse_candidate"]
+    dynamic = out["sse_onward_dynamic"]
+    role = out["sse_role"]
+    out["sse_category"] = np.select(
+        [
+            candidate & dynamic.eq("diverse_population_broadcaster"),
+            candidate & role.eq("putative_birth"),
+            candidate & role.isin(["relay_amplifier", "merged_relay"]),
+            candidate & dynamic.isin(["multi_branch_seeder", "multi_branch_expander"]),
+            candidate & dynamic.eq("dominant_branch"),
+            candidate & dynamic.eq("single_successor_chain"),
+            candidate & dynamic.isin(
+                ["contained_burst", "no_observed_onward_spread"]
+            ),
+            candidate & dynamic.eq("high_volume_onward_spread"),
+        ],
+        [
+            "mixed_population_dissemination",
+            "putative_introduction_burst",
+            "secondary_relay_amplification",
+            "diffuse_branching_transmission",
+            "focused_branching_transmission",
+            "sustained_single_chain",
+            "contained_local_burst",
+            "high_volume_onward_transmission",
+        ],
+        default="ambiguous_amplification_signal",
+    )
+    out.loc[~candidate, "sse_category"] = "not_sse_like"
 
     out["sse_censoring_note"] = np.select(
         [

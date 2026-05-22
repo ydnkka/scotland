@@ -1,26 +1,8 @@
 """Categorical colour maps for the SSE-detection label space.
 
-Colour decisions
-----------------
-The label space has two principal axes: ``sse_role`` (origin / continuation
-character of the node) and ``sse_onward_dynamic`` (what happens downstream).
-There are six roles and eight onward-dynamics, so the joint ``sse_category``
-space has up to 48 cells — too many for a flat categorical palette.
-
-The strategy used here is:
-
-* ``ROLE_PALETTE`` assigns a colourblind-friendly base hue per role.
-* ``DYNAMIC_PALETTE`` assigns stable colours for plots that encode only
-onward dynamics.
-* ``sse_category`` colours are derived from the role's hue, with lightness
-modulated by the onward-dynamic so categories that share a role read as a
-family. ``not_sse_like`` is always neutral grey.
-
-Anything that needs the role colour directly (e.g. the role x onward-dynamic
-heatmap, the metric-space scatter) reads from ``ROLE_PALETTE``. Anything that
-needs the full category granularity (e.g. the meta-cluster subgraph) reads
-from ``SSE_CATEGORY_PALETTE`` or calls
-:func:`sse_category_palette_from` to build a palette for the subset present.
+``sse_category`` is the compact epidemiological transmission-phenotype label.
+The graph-diagnostic ``sse_graph_category`` preserves the more granular
+``sse_role`` x ``sse_onward_dynamic`` composite.
 """
 
 from __future__ import annotations
@@ -31,7 +13,10 @@ from matplotlib.colors import to_rgb
 
 __all__ = [
     "sse_category_palette_from",
+    "sse_graph_category_palette_from",
+    "SSE_CATEGORY_ORDER",
     "SSE_CATEGORY_PALETTE",
+    "SSE_GRAPH_CATEGORY_PALETTE",
     "ROLE_ORDER",
     "ROLE_PALETTE",
     "DYNAMIC_ORDER",
@@ -89,6 +74,32 @@ DYNAMIC_PALETTE: dict[str, str] = {
     "weak_or_ambiguous_onward_spread": "#A6ACB3",
 }
 
+SSE_CATEGORY_ORDER: list[str] = [
+    "not_sse_like",
+    "mixed_population_dissemination",
+    "putative_introduction_burst",
+    "secondary_relay_amplification",
+    "diffuse_branching_transmission",
+    "focused_branching_transmission",
+    "sustained_single_chain",
+    "contained_local_burst",
+    "high_volume_onward_transmission",
+    "ambiguous_amplification_signal",
+]
+
+SSE_CATEGORY_PALETTE: dict[str, str] = {
+    "not_sse_like": NOT_SSE_COLOR,
+    "mixed_population_dissemination": "#009E73",
+    "putative_introduction_burst": "#56B4E9",
+    "secondary_relay_amplification": "#D55E00",
+    "diffuse_branching_transmission": "#E69F00",
+    "focused_branching_transmission": "#332288",
+    "sustained_single_chain": "#0072B2",
+    "contained_local_burst": "#8A7B3F",
+    "high_volume_onward_transmission": "#CC79A7",
+    "ambiguous_amplification_signal": "#A6ACB3",
+}
+
 # Lightness multipliers per onward-dynamic. 0 = base hue, 1 = white.
 # Order roughly: most "muted" outcomes are darker, most "active" outcomes
 # are kept close to the base hue.
@@ -134,25 +145,44 @@ def _split_category(category: str) -> tuple[str, str] | None:
 def sse_category_palette_from(
     categories: Iterable[str],
     *,
-    role_palette: dict[str, str] | None = None,
-    dynamic_lightness: dict[str, float] | None = None,
+    category_palette: dict[str, str] | None = None,
 ) -> Any:
     """Build an ``sse_category`` colour map for the categories provided.
 
-    Categories follow the ``role__dynamic`` schema. The role contributes the
-    hue and the dynamic contributes the lightness modulation, so two
-    categories that share a role read as a colour family.
+    Unknown labels map to neutral grey. Legacy ``role__dynamic`` labels are
+    accepted as a compatibility fallback and coloured as graph categories.
 
     Parameters
     ----------
     categories
         Iterable of category labels (including any of ``"not_sse_like"``,
         ``None``, or unknown strings, which all map to the neutral grey).
-    role_palette
-        Optional override of the role hue map.
-    dynamic_lightness
-        Optional override of the per-dynamic lightness multipliers.
+    category_palette
+        Optional override of the compact category colour map.
     """
+    category_colours = category_palette or SSE_CATEGORY_PALETTE
+
+    palette: dict[str, tuple[float, float, float] | str] = {}
+    graph_palette = sse_graph_category_palette_from(categories)
+    for cat in categories:
+        if cat is None or cat == "not_sse_like" or cat != cat:  # NaN check
+            palette[cat] = NOT_SSE_COLOR
+        elif cat in category_colours:
+            palette[cat] = category_colours[cat]
+        elif isinstance(cat, str) and "__" in cat:
+            palette[cat] = graph_palette.get(cat, NOT_SSE_COLOR)
+        else:
+            palette[cat] = NOT_SSE_COLOR
+    return palette
+
+
+def sse_graph_category_palette_from(
+    categories: Iterable[str],
+    *,
+    role_palette: dict[str, str] | None = None,
+    dynamic_lightness: dict[str, float] | None = None,
+) -> Any:
+    """Build a palette for ``sse_graph_category`` composite labels."""
     roles = role_palette or ROLE_PALETTE
     lightness = dynamic_lightness or _DYNAMIC_LIGHTNESS
 
@@ -171,16 +201,16 @@ def sse_category_palette_from(
     return palette
 
 
-def _build_full_category_palette() -> dict[str, tuple[float, float, float] | str]:
+def _build_full_graph_category_palette() -> dict[str, tuple[float, float, float] | str]:
     cats = {"not_sse_like"}
     for role in ROLE_ORDER:
         for dyn in DYNAMIC_ORDER:
             cats.add(f"{role}__{dyn}")
-    return sse_category_palette_from(sorted(cats))
+    return sse_graph_category_palette_from(sorted(cats))
 
 
-SSE_CATEGORY_PALETTE: dict[str, tuple[float, float, float] | str] = (
-    _build_full_category_palette()
+SSE_GRAPH_CATEGORY_PALETTE: dict[str, tuple[float, float, float] | str] = (
+    _build_full_graph_category_palette()
 )
 
 

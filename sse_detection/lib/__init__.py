@@ -45,8 +45,11 @@ from .palettes import (
     LIFECYCLE_PALETTE,
     ROLE_ORDER,
     ROLE_PALETTE,
+    SSE_CATEGORY_ORDER,
     SSE_CATEGORY_PALETTE,
+    SSE_GRAPH_CATEGORY_PALETTE,
     sse_category_palette_from,
+    sse_graph_category_palette_from,
 )
 
 from .plots import (
@@ -101,8 +104,11 @@ __all__ = [
     "LIFECYCLE_PALETTE",
     "ROLE_ORDER",
     "ROLE_PALETTE",
+    "SSE_CATEGORY_ORDER",
     "SSE_CATEGORY_PALETTE",
+    "SSE_GRAPH_CATEGORY_PALETTE",
     "sse_category_palette_from",
+    "sse_graph_category_palette_from",
     "make_regression_fit_table",
     "make_regression_odds_ratio_table",
     "make_regression_wald_table",
