@@ -4,10 +4,9 @@
 **/.DS_Store
 **/.ipynb_checkpoints
 **/.pytest_cache
-**/assets
 **/data
 **/figures
 **/tables
-**/outputs
-**/sse_outputs
-**/association_outputs
+**/*outputs
+**/*sensitivity
+assets/
