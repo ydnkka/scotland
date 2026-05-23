@@ -18,18 +18,18 @@ Steps:
 
 Output columns (~80 total):
 
-  Window-level:
+Window-level:
     window_idx, window_id, wn_start_date, wn_mid_date, wn_end_date,
     wn_no_sequences, wn_positive_tests, wn_prop_sequenced
 
-  Sequence / cluster identifiers:
+Sequence / cluster identifiers:
     sequence_id, patient_id, resolution, cluster_id
 
-  Cluster descriptors:
+Cluster descriptors:
     cluster_size, cluster_n_datazones, cluster_start_date, cluster_end_date,
     cluster_duration_days
 
-  Sample-level:
+Sample-level:
     collection_date, datazone, dz_xcoord, dz_ycoord,
     sex, is_female, age_band, age_midpoint,
     is_vaccinated, vacc_dose_number, vacc_date_prior,
@@ -37,7 +37,7 @@ Output columns (~80 total):
     test_type, test_reason, s_gene_status,
     pango_lineage, clade, who_voc, nextclade_qc
 
-  Datazone sociodemographic:
+Datazone sociodemographic:
     dz_population, dz_working_age_population,
     dz_simd_rank, dz_simd_quintile, dz_simd_decile, dz_simd_vigintile,
     dz_simd_income_rank, dz_simd_employment_rank, dz_simd_education_rank,
@@ -46,27 +46,27 @@ Output columns (~80 total):
     dz_urban_rural_class, dz_local_authority, dz_local_authority_code,
     dz_health_board, dz_health_board_code
 
-  Datazone daily testing (on collection_date):
+Datazone daily testing (on collection_date):
     dz_total_tests, dz_positive_tests, dz_negative_tests,
     dz_pcr_positive_tests, dz_lfd_positive_tests, dz_care_home_tests,
     dz_test_positivity, dz_7d_test_positivity
 
-  Datazone vaccination (daily new + cumulative):
+Datazone vaccination (daily new + cumulative):
     dz_total_vaccinated, dz_cum_vaccinated, dz_cum_prop_vaccinated
 
-  Datazone cumulative surveillance:
+Datazone cumulative surveillance:
     dz_cum_sequences, dz_cum_positive_tests, dz_cum_prop_sequenced,
     dz_cum_incidence_per_capita
 
-  Health-board daily trends (on or before collection_date):
+Health-board daily trends (on or before collection_date):
     hb_daily_positive, hb_cumulative_positive,
     hb_hospital_admissions, hb_hospital_occupancy,
     hb_icu_admissions, hb_icu_occupancy_lt28d, hb_icu_occupancy_ge28d,
     hb_daily_reinfections, hb_reinfection_rate
 
 Usage:
-  python3 method/05_consolidate.py
-  python3 method/05_consolidate.py --config config.yaml --root /path/to/repo
+    python3 method/05_consolidate.py
+    python3 method/05_consolidate.py --config config.yaml --root /path/to/repo
 """
 
 from __future__ import annotations
@@ -82,6 +82,7 @@ import yaml
 
 
 def setup_logging(level: str = "INFO") -> None:
+    """Configure timestamped console logging for consolidation."""
     logging.basicConfig(
         level=getattr(logging, level.upper(), logging.INFO),
         format="%(asctime)s [%(levelname)s] %(message)s",
@@ -90,14 +91,18 @@ def setup_logging(level: str = "INFO") -> None:
 
 
 def load_config(path: Path) -> dict:
+    """Load the YAML pipeline configuration file."""
     with open(path) as f:
         return yaml.safe_load(f)
 
 
 def build_windows(
-    min_date: pd.Timestamp, max_date: pd.Timestamp,
-    window_size: timedelta, step: timedelta,
+    min_date: pd.Timestamp,
+    max_date: pd.Timestamp,
+    window_size: timedelta,
+    step: timedelta,
 ) -> list[tuple[pd.Timestamp, pd.Timestamp]]:
+    """Build half-open rolling windows from minimum to maximum date."""
     if max_date < min_date + window_size:
         return []
     starts = pd.date_range(start=min_date, end=max_date - window_size, freq=step)
@@ -105,6 +110,7 @@ def build_windows(
 
 
 def load_cluster_parquets(cluster_long_dir: Path) -> pd.DataFrame:
+    """Load and concatenate all per-group cluster assignment parquet files."""
     files = sorted(cluster_long_dir.glob("*.parquet"))
     if not files:
         raise FileNotFoundError(f"No parquet files in {cluster_long_dir}")
@@ -117,20 +123,25 @@ def build_singletons(
     windows: list[tuple[pd.Timestamp, pd.Timestamp]],
     resolutions: list[float],
 ) -> pd.DataFrame:
+    """Assign lineage-window groups of size one to singleton clusters."""
     rows = []
     for i, (start, end) in enumerate(windows, start=1):
         window_id = f"W{str(i).zfill(3)}"
-        wdf = metadata[(metadata["collection_date"] >= start) & (metadata["collection_date"] < end)]
+        wdf = metadata[
+            (metadata["collection_date"] >= start) & (metadata["collection_date"] < end)
+        ]
         for lin, gdf in wdf.groupby("pango_lineage", sort=False):
             if gdf["sequence_id"].nunique() == 1:
                 sid = gdf["sequence_id"].iloc[0]
                 for res in resolutions:
-                    rows.append({
-                        "sequence_id": sid,
-                        "window_id": window_id,
-                        "resolution": res,
-                        "cluster_id": f"{window_id}|{lin}|R{res}|S0",
-                    })
+                    rows.append(
+                        {
+                            "sequence_id": sid,
+                            "window_id": window_id,
+                            "resolution": res,
+                            "cluster_id": f"{window_id}|{lin}|R{res}|S0",
+                        }
+                    )
     return pd.DataFrame(rows)
 
 
@@ -139,18 +150,27 @@ def build_window_info(
     testing: pd.DataFrame,
     windows: list[tuple[pd.Timestamp, pd.Timestamp]],
 ) -> pd.DataFrame:
+    """Compute per-window sequence counts and sequencing fractions."""
     rows = []
     for i, (start, end) in enumerate(windows, start=1):
         window_id = f"W{str(i).zfill(3)}"
-        wdf = metadata[(metadata["collection_date"] >= start) & (metadata["collection_date"] < end)]
-        tdf = testing[(testing["collection_date"] >= start) & (testing["collection_date"] < end)]
+        wdf = metadata[
+            (metadata["collection_date"] >= start) & (metadata["collection_date"] < end)
+        ]
+        tdf = testing[
+            (testing["collection_date"] >= start) & (testing["collection_date"] < end)
+        ]
         pos_tests = tdf["dz_positive_tests"].sum()
-        rows.append({
-            "window_id": window_id,
-            "wn_no_sequences": wdf["sequence_id"].nunique(),
-            "wn_positive_tests": pos_tests,
-            "wn_prop_sequenced": wdf["sequence_id"].nunique() / pos_tests if pos_tests > 0 else float("nan"),
-        })
+        rows.append(
+            {
+                "window_id": window_id,
+                "wn_no_sequences": wdf["sequence_id"].nunique(),
+                "wn_positive_tests": pos_tests,
+                "wn_prop_sequenced": wdf["sequence_id"].nunique() / pos_tests
+                if pos_tests > 0
+                else float("nan"),
+            }
+        )
     return pd.DataFrame(rows)
 
 
@@ -162,13 +182,13 @@ def build_dz_cumulative_sequencing(
 
     For each row in the final dataset the returned frame provides:
 
-      dz_cum_sequences
-          Total unique genomes collected from that datazone on or before this date.
-      dz_cum_positive_tests
-          Total positive PCR/LFD tests recorded in that datazone on or before this date.
-      dz_cum_prop_sequenced
-          dz_cum_sequences / dz_cum_positive_tests — the fraction of the local epidemic
-          that has been genomically characterised by the time this sample was taken.
+    dz_cum_sequences
+        Total unique genomes collected from that datazone on or before this date.
+    dz_cum_positive_tests
+        Total positive PCR/LFD tests recorded in that datazone on or before this date.
+    dz_cum_prop_sequenced
+        dz_cum_sequences / dz_cum_positive_tests — the fraction of the local epidemic
+        that has been genomically characterised by the time this sample was taken.
 
     The two sources (metadata and testing) may record disjoint date sets for a given
     datazone, so an outer join followed by per-datazone forward-fill is used to build
@@ -184,9 +204,7 @@ def build_dz_cumulative_sequencing(
         .reset_index(name="_new_seqs")
         .sort_values(["datazone", "collection_date"])
     )
-    seq_daily["dz_cum_sequences"] = (
-        seq_daily.groupby("datazone")["_new_seqs"].cumsum()
-    )
+    seq_daily["dz_cum_sequences"] = seq_daily.groupby("datazone")["_new_seqs"].cumsum()
     seq_daily = seq_daily.drop(columns=["_new_seqs"])
 
     tests_daily = (
@@ -194,32 +212,34 @@ def build_dz_cumulative_sequencing(
         .sort_values(["datazone", "collection_date"])
         .copy()
     )
-    tests_daily["dz_cum_positive_tests"] = (
-        tests_daily.groupby("datazone")["dz_positive_tests"].cumsum()
-    )
+    tests_daily["dz_cum_positive_tests"] = tests_daily.groupby("datazone")[
+        "dz_positive_tests"
+    ].cumsum()
     tests_daily = tests_daily.drop(columns=["dz_positive_tests"])
 
     # Outer-join to cover dates present in either source, then forward-fill so every
     # date inherits the most recent cumulative count from earlier in the timeline.
-    combined = (
-        seq_daily
-        .merge(tests_daily, on=["datazone", "collection_date"], how="outer")
-        .sort_values(["datazone", "collection_date"])
-    )
+    combined = seq_daily.merge(
+        tests_daily, on=["datazone", "collection_date"], how="outer"
+    ).sort_values(["datazone", "collection_date"])
     combined["dz_cum_sequences"] = (
         combined.groupby("datazone")["dz_cum_sequences"].ffill().fillna(0)
     )
     combined["dz_cum_positive_tests"] = (
         combined.groupby("datazone")["dz_cum_positive_tests"].ffill().fillna(0)
     )
-    combined["dz_cum_prop_sequenced"] = (
-        combined["dz_cum_sequences"]
-        / combined["dz_cum_positive_tests"].replace(0.0, float("nan"))
-    )
-    return combined[[
-        "datazone", "collection_date",
-        "dz_cum_sequences", "dz_cum_positive_tests", "dz_cum_prop_sequenced",
-    ]]
+    combined["dz_cum_prop_sequenced"] = combined["dz_cum_sequences"] / combined[
+        "dz_cum_positive_tests"
+    ].replace(0.0, float("nan"))
+    return combined[
+        [
+            "datazone",
+            "collection_date",
+            "dz_cum_sequences",
+            "dz_cum_positive_tests",
+            "dz_cum_prop_sequenced",
+        ]
+    ]
 
 
 def build_dz_cumulative_vaccination(
@@ -251,8 +271,12 @@ def build_dz_cumulative_vaccination(
         .copy()
     )
     vacc["dz_cum_vaccinated"] = vacc.groupby("datazone")["dz_total_vaccinated"].cumsum()
-    vacc["dz_cum_prop_vaccinated"] = vacc["dz_cum_vaccinated"] / vacc["datazone"].map(pop)
-    return vacc[["datazone", "vaccination_date", "dz_cum_vaccinated", "dz_cum_prop_vaccinated"]]
+    vacc["dz_cum_prop_vaccinated"] = vacc["dz_cum_vaccinated"] / vacc["datazone"].map(
+        pop
+    )
+    return vacc[
+        ["datazone", "vaccination_date", "dz_cum_vaccinated", "dz_cum_prop_vaccinated"]
+    ]
 
 
 def build_dz_rolling_positivity(testing: pd.DataFrame) -> pd.DataFrame:
@@ -292,16 +316,16 @@ def build_cluster_descriptors(ds: pd.DataFrame) -> pd.DataFrame:
     (e.g. ``W042|BA.2|R0.3|C017``), so grouping on it yields counts that are
     resolution-specific.
 
-      cluster_size
-          Number of unique sequences assigned to this cluster.
-      cluster_n_datazones
-          Number of distinct datazones represented in the cluster — a coarse
-          geographic spread metric.
-      cluster_start_date / cluster_end_date
-          Earliest and latest collection dates of sequences in the cluster.
-      cluster_duration_days
-          cluster_end_date − cluster_start_date in whole days.  Zero for clusters
-          where all sequences were collected on the same day (including singletons).
+    cluster_size
+        Number of unique sequences assigned to this cluster.
+    cluster_n_datazones
+        Number of distinct datazones represented in the cluster — a coarse
+        geographic spread metric.
+    cluster_start_date / cluster_end_date
+        Earliest and latest collection dates of sequences in the cluster.
+    cluster_duration_days
+        cluster_end_date − cluster_start_date in whole days.  Zero for clusters
+        where all sequences were collected on the same day (including singletons).
 
     The returned frame is merged back into ``ds`` on ``cluster_id``.
     """
@@ -316,16 +340,25 @@ def build_cluster_descriptors(ds: pd.DataFrame) -> pd.DataFrame:
         .reset_index()
     )
     agg["cluster_duration_days"] = (
-        (agg["cluster_end_date"] - agg["cluster_start_date"]).dt.days
-    )
-    return agg[[
-        "cluster_id", "cluster_size", "cluster_n_datazones",
-        "cluster_start_date", "cluster_end_date", "cluster_duration_days",
-    ]]
+        agg["cluster_end_date"] - agg["cluster_start_date"]
+    ).dt.days
+    return agg[
+        [
+            "cluster_id",
+            "cluster_size",
+            "cluster_n_datazones",
+            "cluster_start_date",
+            "cluster_end_date",
+            "cluster_duration_days",
+        ]
+    ]
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Consolidate cluster parquets into analysis dataset.")
+    """Run consolidation and write the final clustering analysis dataset."""
+    ap = argparse.ArgumentParser(
+        description="Consolidate cluster parquets into analysis dataset."
+    )
     ap.add_argument("--config", type=Path, default=Path("config.yaml"))
     ap.add_argument("--root", type=Path, default=Path("."))
     ap.add_argument("--log-level", default="INFO")
@@ -356,7 +389,10 @@ def main() -> int:
     hb_trends["date"] = pd.to_datetime(hb_trends["date"])
 
     windows = build_windows(
-        metadata["collection_date"].min(), metadata["collection_date"].max(), window_size, step
+        metadata["collection_date"].min(),
+        metadata["collection_date"].max(),
+        window_size,
+        step,
     )
     logging.info("%d time windows", len(windows))
 
@@ -378,7 +414,9 @@ def main() -> int:
     singletons = build_singletons(metadata, windows, resolutions)
     logging.info(
         "Cluster rows: %d + %d singletons = %d total",
-        len(clustering), len(singletons), len(clustering) + len(singletons),
+        len(clustering),
+        len(singletons),
+        len(clustering) + len(singletons),
     )
     clustering = pd.concat([clustering, singletons], ignore_index=True)
 
@@ -394,7 +432,9 @@ def main() -> int:
         logging.warning(
             "SIMD inner join dropped %d/%d sequences (%.1f%%) from datazones "
             "absent in SIMD.",
-            n_dropped, n_meta_before, 100.0 * n_dropped / n_meta_before,
+            n_dropped,
+            n_meta_before,
+            100.0 * n_dropped / n_meta_before,
         )
 
     # Retain the per-patient most-recent-prior-vaccination date in the final dataset
@@ -404,8 +444,7 @@ def main() -> int:
 
     # ── Main wide join ────────────────────────────────────────────────────────
     ds = (
-        clustering
-        .merge(full_meta, on="sequence_id", how="inner")
+        clustering.merge(full_meta, on="sequence_id", how="inner")
         .merge(window_info, on="window_id", how="inner")
         .merge(testing, on=["collection_date", "datazone"], how="left")
         .merge(
@@ -413,7 +452,8 @@ def main() -> int:
             # aggregate joins on sample collection date, adding dz_total_vaccinated
             # and the mean/median age/dose columns for that specific day.
             vaccination.rename(columns={"vaccination_date": "collection_date"}),
-            on=["collection_date", "datazone"], how="left",
+            on=["collection_date", "datazone"],
+            how="left",
         )
     )
 
@@ -423,15 +463,17 @@ def main() -> int:
     # Use *theoretical* window boundaries rather than the empirical min/max of sample
     # dates within each window; the latter produces narrower apparent ranges when a
     # window has sparse data and is confusing to interpret.
-    win_bounds = pd.DataFrame([
-        {
-            "window_id": f"W{str(i).zfill(3)}",
-            "wn_start_date": start,
-            "wn_end_date": end,
-            "wn_mid_date": start + (end - start) / 2,
-        }
-        for i, (start, end) in enumerate(windows, start=1)
-    ])
+    win_bounds = pd.DataFrame(
+        [
+            {
+                "window_id": f"W{str(i).zfill(3)}",
+                "wn_start_date": start,
+                "wn_end_date": end,
+                "wn_mid_date": start + (end - start) / 2,
+            }
+            for i, (start, end) in enumerate(windows, start=1)
+        ]
+    )
     ds = ds.merge(win_bounds, on="window_id", how="left")
 
     # ── Cumulative vaccination coverage (merge_asof, backward-looking) ────────
@@ -440,15 +482,20 @@ def main() -> int:
     # dz_cum_prop_vaccinated: dz_cum_vaccinated / dz_population.
     # merge_asof requires both frames sorted by the join key (collection_date).
     vacc_cum = build_dz_cumulative_vaccination(vaccination, simd)
-    vacc_cum_for_merge = (
-        vacc_cum
-        .rename(columns={"vaccination_date": "collection_date"})
-        .sort_values("collection_date")
-    )
+    vacc_cum_for_merge = vacc_cum.rename(
+        columns={"vaccination_date": "collection_date"}
+    ).sort_values("collection_date")
     ds = ds.sort_values("collection_date").reset_index(drop=True)
     ds = pd.merge_asof(
         ds,
-        vacc_cum_for_merge[["datazone", "collection_date", "dz_cum_vaccinated", "dz_cum_prop_vaccinated"]],
+        vacc_cum_for_merge[
+            [
+                "datazone",
+                "collection_date",
+                "dz_cum_vaccinated",
+                "dz_cum_prop_vaccinated",
+            ]
+        ],
         on="collection_date",
         by="datazone",
         direction="backward",
@@ -491,8 +538,8 @@ def main() -> int:
     # ── Derived area-level variables ──────────────────────────────────────────
     # dz_test_positivity: same-day positivity rate in the datazone. Uses the
     # dz_positive_tests and dz_total_tests columns already joined from testing.
-    ds["dz_test_positivity"] = (
-        ds["dz_positive_tests"] / ds["dz_total_tests"].replace(0.0, float("nan"))
+    ds["dz_test_positivity"] = ds["dz_positive_tests"] / ds["dz_total_tests"].replace(
+        0.0, float("nan")
     )
 
     # dz_cum_incidence_per_capita: cumulative positive tests per head of
@@ -517,11 +564,10 @@ def main() -> int:
     # with a warning if the column is absent.
     if "dz_health_board_code" in ds.columns:
         hb_cols = [c for c in hb_trends.columns if c not in ("date", "hb_code")]
-        hb_for_merge = (
-            hb_trends
-            .rename(columns={"date": "collection_date", "hb_code": "dz_health_board_code"})
-            [["collection_date", "dz_health_board_code"] + hb_cols]
-            .sort_values("collection_date")
+        hb_for_merge = hb_trends.rename(
+            columns={"date": "collection_date", "hb_code": "dz_health_board_code"}
+        )[["collection_date", "dz_health_board_code"] + hb_cols].sort_values(
+            "collection_date"
         )
         ds = ds.sort_values("collection_date").reset_index(drop=True)
         ds = pd.merge_asof(
@@ -546,45 +592,97 @@ def main() -> int:
     # ── Column order ──────────────────────────────────────────────────────────
     column_order = [
         # Window-level identifiers and summary stats
-        "window_idx", "window_id", "wn_start_date", "wn_mid_date", "wn_end_date",
-        "wn_no_sequences", "wn_positive_tests", "wn_prop_sequenced",
+        "window_idx",
+        "window_id",
+        "wn_start_date",
+        "wn_mid_date",
+        "wn_end_date",
+        "wn_no_sequences",
+        "wn_positive_tests",
+        "wn_prop_sequenced",
         # Sequence / cluster identifiers
-        "sequence_id", "patient_id", "resolution", "cluster_id",
+        "sequence_id",
+        "patient_id",
+        "resolution",
+        "cluster_id",
         # Cluster descriptors
-        "cluster_size", "cluster_n_datazones",
-        "cluster_start_date", "cluster_end_date", "cluster_duration_days",
+        "cluster_size",
+        "cluster_n_datazones",
+        "cluster_start_date",
+        "cluster_end_date",
+        "cluster_duration_days",
         # Sample-level fields
-        "collection_date", "datazone", "dz_xcoord", "dz_ycoord",
-        "sex", "is_female", "age_band", "age_midpoint",
-        "is_vaccinated", "vacc_dose_number", "vacc_date_prior",
-        "vacc_product_name", "vacc_booster", "days_since_vaccination",
-        "test_type", "test_reason", "s_gene_status", "is_reinfection",
-        "pango_lineage", "clade", "who_voc", "nextclade_qc",
+        "collection_date",
+        "datazone",
+        "dz_xcoord",
+        "dz_ycoord",
+        "sex",
+        "is_female",
+        "age_band",
+        "age_midpoint",
+        "is_vaccinated",
+        "vacc_dose_number",
+        "vacc_date_prior",
+        "vacc_product_name",
+        "vacc_booster",
+        "days_since_vaccination",
+        "test_type",
+        "test_reason",
+        "s_gene_status",
+        "is_reinfection",
+        "pango_lineage",
+        "clade",
+        "who_voc",
+        "nextclade_qc",
         # Datazone sociodemographic attributes
-        "dz_population", "dz_working_age_population",
-        "dz_area_km2", "dz_population_density",
-        "dz_simd_rank", "dz_simd_quintile", "dz_simd_decile", "dz_simd_vigintile",
-        "dz_simd_income_rank", "dz_simd_employment_rank", "dz_simd_education_rank",
-        "dz_simd_health_rank", "dz_simd_access_rank", "dz_simd_crime_rank",
+        "dz_population",
+        "dz_working_age_population",
+        "dz_area_km2",
+        "dz_population_density",
+        "dz_simd_rank",
+        "dz_simd_quintile",
+        "dz_simd_decile",
+        "dz_simd_vigintile",
+        "dz_simd_income_rank",
+        "dz_simd_employment_rank",
+        "dz_simd_education_rank",
+        "dz_simd_health_rank",
+        "dz_simd_access_rank",
+        "dz_simd_crime_rank",
         "dz_simd_housing_rank",
         "dz_urban_rural_class",
-        "dz_local_authority", "dz_local_authority_code",
-        "dz_health_board", "dz_health_board_code",
+        "dz_local_authority",
+        "dz_local_authority_code",
+        "dz_health_board",
+        "dz_health_board_code",
         # Datazone daily testing counts (on collection_date)
-        "dz_total_tests", "dz_positive_tests", "dz_negative_tests",
-        "dz_pcr_positive_tests", "dz_lfd_positive_tests", "dz_care_home_tests",
-        "dz_test_positivity", "dz_7d_test_positivity",
+        "dz_total_tests",
+        "dz_positive_tests",
+        "dz_negative_tests",
+        "dz_pcr_positive_tests",
+        "dz_lfd_positive_tests",
+        "dz_care_home_tests",
+        "dz_test_positivity",
+        "dz_7d_test_positivity",
         # Datazone vaccination: daily new + cumulative coverage
         "dz_total_vaccinated",
-        "dz_cum_vaccinated", "dz_cum_prop_vaccinated",
+        "dz_cum_vaccinated",
+        "dz_cum_prop_vaccinated",
         # Datazone cumulative surveillance
-        "dz_cum_sequences", "dz_cum_positive_tests", "dz_cum_prop_sequenced",
+        "dz_cum_sequences",
+        "dz_cum_positive_tests",
+        "dz_cum_prop_sequenced",
         "dz_cum_incidence_per_capita",
         # Health-board daily trends (most-recent report on or before collection_date)
-        "hb_daily_positive", "hb_cumulative_positive",
-        "hb_hospital_admissions", "hb_hospital_occupancy",
-        "hb_icu_admissions", "hb_icu_occupancy_lt28d", "hb_icu_occupancy_ge28d",
-        "hb_daily_reinfections", "hb_reinfection_rate",
+        "hb_daily_positive",
+        "hb_cumulative_positive",
+        "hb_hospital_admissions",
+        "hb_hospital_occupancy",
+        "hb_icu_admissions",
+        "hb_icu_occupancy_lt28d",
+        "hb_icu_occupancy_ge28d",
+        "hb_daily_reinfections",
+        "hb_reinfection_rate",
     ]
     required_columns = {"test_type", "test_reason"}
     missing_required = sorted(required_columns - set(ds.columns))
@@ -598,7 +696,9 @@ def main() -> int:
     out_path: Path = proc["analysis_dataset"]
     out_path.parent.mkdir(parents=True, exist_ok=True)
     ds.to_parquet(out_path, index=False, compression="zstd")
-    logging.info("Analysis dataset: %d rows × %d cols → %s", len(ds), len(ds.columns), out_path)
+    logging.info(
+        "Analysis dataset: %d rows × %d cols → %s", len(ds), len(ds.columns), out_path
+    )
     return 0
 
 

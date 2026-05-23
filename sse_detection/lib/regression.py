@@ -184,7 +184,8 @@ def _matching_design_terms(term_name_slices: dict[str, slice], term: str) -> lis
     # factor token boundary so C(age, ...) cannot also collect C(age_band, ...).
     if term.startswith("C(") and not term.endswith(")"):
         return [
-            name for name in term_name_slices
+            name
+            for name in term_name_slices
             if name.startswith(f"{term},") or name == f"{term})"
         ]
 
@@ -231,7 +232,7 @@ def fit_conditional_logit(
     dropped before fitting and reported on the result as
     ``_sse_diagnostics``.
     """
-    y, x = patsy.dmatrices(
+    y, x = patsy.dmatrices(  # type: ignore
         formula,
         data=data,
         return_type="dataframe",
@@ -243,20 +244,17 @@ def fit_conditional_logit(
         x = x.drop(columns="Intercept")
     term_name_slices = {}
     for term_name, term_slice in design_info.term_name_slices.items():
-        columns = [
-            col for col in original_columns[term_slice]
-            if col in x.columns
-        ]
+        columns = [col for col in original_columns[term_slice] if col in x.columns]
         if not columns:
             continue
         positions = [x.columns.get_loc(col) for col in columns]
         term_name_slices[term_name] = slice(min(positions), max(positions) + 1)
 
-    groups = data.loc[x.index, strata_col]
+    groups = pd.Series(data.loc[x.index, strata_col], index=x.index)
     outcome = y.iloc[:, 0]
     varying = outcome.groupby(groups, dropna=False).transform("nunique").gt(1)
     dropped_rows = int((~varying).sum())
-    dropped_strata = int(groups.loc[~varying].nunique(dropna=False))
+    dropped_strata = int(groups[~varying].nunique(dropna=False))
 
     y_fit = outcome.loc[varying]
     x_fit = x.loc[varying]
@@ -269,8 +267,8 @@ def fit_conditional_logit(
         missing="raise",
     )
     result = model.fit(maxiter=maxiter, disp=disp)
-    result._patsy_term_name_slices = term_name_slices
-    result._sse_diagnostics = {
+    result._patsy_term_name_slices = term_name_slices  # type: ignore
+    result._sse_diagnostics = {  # type: ignore
         "strata_col": strata_col,
         "input_rows": int(len(data)),
         "model_rows": int(len(y_fit)),
@@ -316,7 +314,7 @@ def fit_firth_logit(
     fixed-effect models when exact conditional logistic regression is
     computationally infeasible for very large window strata.
     """
-    y_df, x_df = patsy.dmatrices(
+    y_df, x_df = patsy.dmatrices(  # type: ignore
         formula,
         data=data,
         return_type="dataframe",
@@ -416,7 +414,9 @@ def cluster_se_diagnostics(
         "cluster_col": cluster_col,
         "n_rows": int(len(data)),
         "n_clusters": int(clusters.nunique()),
-        "min_rows_per_cluster": int(clusters.value_counts().min()) if not clusters.empty else 0,
+        "min_rows_per_cluster": int(clusters.value_counts().min())
+        if not clusters.empty
+        else 0,
         "median_rows_per_cluster": (
             float(clusters.value_counts().median()) if not clusters.empty else np.nan
         ),
@@ -427,7 +427,9 @@ def cluster_se_diagnostics(
             raise KeyError(f"{outcome!r} is not present in the analysis frame")
         by_cluster = data.groupby(cluster_col, dropna=False)[outcome]
         row["outcome_positive_clusters"] = int(by_cluster.max().fillna(0).gt(0).sum())
-        row["outcome_varying_clusters"] = int(by_cluster.nunique(dropna=True).gt(1).sum())
+        row["outcome_varying_clusters"] = int(
+            by_cluster.nunique(dropna=True).gt(1).sum()
+        )
 
     return pd.DataFrame([row])
 
@@ -496,7 +498,9 @@ def robust_wald_for_params(
 
     beta = result.params.loc[param_names].to_numpy(dtype=float)
     cov = result.cov_params().loc[param_names, param_names].to_numpy(dtype=float)
-    finite = np.isfinite(beta) & np.isfinite(cov).all(axis=0) & np.isfinite(cov).all(axis=1)
+    finite = (
+        np.isfinite(beta) & np.isfinite(cov).all(axis=0) & np.isfinite(cov).all(axis=1)
+    )
     beta = beta[finite]
     cov = cov[np.ix_(finite, finite)]
 
@@ -576,9 +580,7 @@ def fit_exposure_model(
     reference-level choice, and removal of non-identifiable strata.
     """
     exposure_term = (
-        categorical_term(exposure, reference=reference)
-        if categorical
-        else exposure
+        categorical_term(exposure, reference=reference) if categorical else exposure
     )
     formula = make_formula(outcome, exposure_term, adjusters)
     result = fit_binomial_glm(data, formula, cluster_col=cluster_col)

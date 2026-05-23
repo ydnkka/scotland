@@ -10,7 +10,7 @@ All paths are declared in `config.yaml` (repo root).
 
 ## Execution order
 
-```
+```bash
 Step 1  python3 method/01_prep_metadata.py
 Step 2  python3 method/02_gen_tn93_commands.py
 Step 3  ./method/parallel_run.sh -c <tn93_commands_file>
@@ -41,6 +41,7 @@ Central configuration for the entire pipeline. Contains three top-level sections
 **Role:** Reads all raw data sources and writes five cleaned parquet files used by all downstream steps.
 
 **Inputs (from `data.raw`):**
+
 - `metadata_csv` — PHS sequenced-case records (demographics, specimen IDs, datazones)
 - `nextclade_tsv` — Nextclade QC calls, Pango lineage, WHO VOC label, clade
 - `vaccination_csv` — individual vaccination events (patient ID, dose number, date, datazone)
@@ -49,15 +50,17 @@ Central configuration for the entire pipeline. Contains three top-level sections
 - `geography_shp` — datazone boundary shapefile (OSGB36/EPSG:27700)
 
 **Outputs (to `data.processed`):**
-| Key | Content |
-|---|---|
-| `metadata` | One row per sequenced case: sequence ID, collection date, demographics, Pango lineage, Nextclade QC, datazone centroid coordinates, and the patient's most-recent prior vaccination dose/date at time of sampling. |
-| `testing` | Daily positive/negative/total test counts aggregated to datazone level. |
-| `vaccination` | Daily vaccination counts and age/dose statistics aggregated to datazone level. |
-| `simd` | One row per datazone: population, SIMD rank/quintile/decile/vigintile, and all seven domain ranks. |
-| `geography` | Geoparquet with datazone centroids (easting/northing) and SIMD attributes. |
+
+| Key           | Content                                                                                                                                                                                                            |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `metadata`    | One row per sequenced case: sequence ID, collection date, demographics, Pango lineage, Nextclade QC, datazone centroid coordinates, and the patient's most-recent prior vaccination dose/date at time of sampling. |
+| `testing`     | Daily positive/negative/total test counts aggregated to datazone level.                                                                                                                                            |
+| `vaccination` | Daily vaccination counts and age/dose statistics aggregated to datazone level.                                                                                                                                     |
+| `simd`        | One row per datazone: population, SIMD rank/quintile/decile/vigintile, and all seven domain ranks.                                                                                                                 |
+| `geography`   | Geoparquet with datazone centroids (easting/northing) and SIMD attributes.                                                                                                                                         |
 
 **Key logic:**
+
 - Age-band strings (e.g. `30-34`, `85+`) are converted to numeric midpoints.
 - Vaccination history: for each sequenced specimen the most-recent prior dose on or before the collection date is looked up by patient ID, producing `vacc_dose_number` and `vaccination_date`.
 - SIMD null values are dropped with a logged warning rather than raising a hard error.
@@ -71,9 +74,11 @@ Central configuration for the entire pipeline. Contains three top-level sections
 **Inputs:** `data.processed.metadata` parquet.
 
 **Outputs:**
+
 - One `.ids` text file per group inside `group_fasta_dir` — each line is a `sequence_id` (FASTA header) belonging to that group.
 - `tn93_commands_file` — one shell command per group of the form:
-  ```
+
+  ```bash
   samtools faidx -o <group>.fasta <all_seqs>.fasta.gz -r <group>.ids && \
   tn93 -q -t <threshold> -a <ambig> -o <group>.csv <group>.fasta
   ```
@@ -91,6 +96,7 @@ Central configuration for the entire pipeline. Contains three top-level sections
 **Tmpdir note:** the wrapper writes GNU parallel's per-job buffers to a writable scratch directory, preferring `$TMPDIR`, then `/var/tmp`, then `/tmp`, and finally a project-local `.parallel-tmp` beside the joblog. For long batches, set `TMPDIR` or pass `--tmpdir <scratch_dir>` yourself to keep buffers off a cramped filesystem.
 
 **Usage:**
+
 ```bash
 ./method/parallel_run.sh -c <commands_file> [options]
 
@@ -112,6 +118,7 @@ Used twice: once for TN93 distance computation (Step 3) and once for cluster inf
 **Role:** Thin module-level wrapper around the `EpiLink` scorer. Called by `03_process_group.py` to convert (SNP distance, temporal distance) pairs into epidemiological compatibility weights in [0, 1].
 
 **EpiLink model parameters** (all in `NATURAL_HISTORY`):
+
 - Incubation-period gamma distribution (shape 5.807, scale 0.948)
 - Latent-period shape 3.38; symptomatic rate 37%
 - Transmission rate ratio 2.29 (pre-symptomatic vs symptomatic)
@@ -130,12 +137,14 @@ The EpiLink instance is constructed once per process (module-level singleton) so
 **Role:** Processes a single (window × lineage) group end-to-end: TN93 distances → EpiLink weights → Leiden clusters. Designed to be called in parallel via `parallel_run.sh`.
 
 **Inputs (all passed as CLI arguments generated by `04_gen_cluster_commands.py`):**
+
 - `--tn93-csv` — CSV with columns `ID1`, `ID2`, `Distance` (proportional, not SNP count)
 - `--seq-ids` — `.ids` file listing all sequence IDs in this group
 - `--metadata` — processed metadata parquet (used only to look up collection dates)
 - `--out-long-dir` — directory where the output parquet is written
 
 **Processing steps:**
+
 1. Load and clean TN93 distances; deduplicate undirected pairs.
 2. Convert proportional distances to SNP counts: `round(Distance × alignment_length)`.
 3. Look up collection dates from metadata; compute absolute temporal distances in days.
@@ -170,6 +179,7 @@ Supports `--include` and `--exclude` regex flags for reprocessing subsets of gro
 **Inputs:** all `data.processed` parquets produced by Steps 1–5.
 
 **Processing steps:**
+
 1. Concatenate all per-group long parquets from `cluster_long_dir`.
 2. Add singleton assignments for lineage/window groups with exactly one sequence (skipped by TN93 step when `min_group_size ≥ 2`).
 3. Inner-join with SIMD (logs sequences dropped from datazones absent in SIMD).
@@ -191,7 +201,7 @@ Supports `--include` and `--exclude` regex flags for reprocessing subsets of gro
 
 ## Data flow diagram
 
-```
+```text
 config.yaml
     │
     ▼
@@ -230,7 +240,7 @@ config.yaml
 ## Dependencies
 
 | Package                    | Use                                                                        |
-|----------------------------|----------------------------------------------------------------------------|
+| -------------------------- | -------------------------------------------------------------------------- |
 | `pandas`, `numpy`          | Data manipulation throughout                                               |
 | `geopandas`                | Datazone shapefile reading and centroid computation (`01`)                 |
 | `pyarrow` / `fastparquet`  | Parquet I/O                                                                |

@@ -40,10 +40,10 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 FIG_WIDTHS_IN = {
-    "single": 3.5,       # single column
-    "onehalf": 5.2,      # 1.5-column
-    "double": 7.2,       # full-page double column
-    "slide": 10.0,       # for talks
+    "single": 3.5,  # single column
+    "onehalf": 5.2,  # 1.5-column
+    "double": 7.2,  # full-page double column
+    "slide": 10.0,  # for talks
 }
 
 WIDTHS = Literal["single", "onehalf", "double", "slide"]
@@ -60,33 +60,34 @@ def set_theme(
     context: CONTEXTS = "paper",
     font_scale: float = 1.0,
 ) -> None:
+    """Apply the project matplotlib/seaborn theme for figures."""
     # Seaborn's context scaling factors relative to "paper"
     _context_scales = {"paper": 1.0, "notebook": 1.0, "talk": 1.3, "poster": 1.6}
     scale = _context_scales.get(context, 1.0) * font_scale
 
     sns.set_theme(
         style="white",
-        context=context,   # still sets line/marker base scaling via seaborn internals
+        context=context,  # still sets line/marker base scaling via seaborn internals
         font_scale=font_scale,
         rc={
             "font.family": "sans-serif",
             "font.sans-serif": ["Arial", "Arial", "Liberation Sans", "DejaVu Sans"],
             # --- everything below now scales ---
-            "font.size":              9  * scale,
-            "axes.titlesize":         10 * scale,
-            "axes.labelsize":         9  * scale,
-            "xtick.labelsize":        8  * scale,
-            "ytick.labelsize":        8  * scale,
-            "legend.fontsize":        8  * scale,
-            "legend.title_fontsize":  8  * scale,
-            "axes.linewidth":         0.8 * scale,
-            "lines.linewidth":        1.5 * scale,
-            "lines.markersize":       5   * scale,
-            "patch.linewidth":        0.8 * scale,
-            "xtick.major.width":      0.8 * scale,
-            "ytick.major.width":      0.8 * scale,
-            "xtick.major.size":       3.5 * scale,
-            "ytick.major.size":       3.5 * scale,
+            "font.size": 9 * scale,
+            "axes.titlesize": 10 * scale,
+            "axes.labelsize": 9 * scale,
+            "xtick.labelsize": 8 * scale,
+            "ytick.labelsize": 8 * scale,
+            "legend.fontsize": 8 * scale,
+            "legend.title_fontsize": 8 * scale,
+            "axes.linewidth": 0.8 * scale,
+            "lines.linewidth": 1.5 * scale,
+            "lines.markersize": 5 * scale,
+            "patch.linewidth": 0.8 * scale,
+            "xtick.major.width": 0.8 * scale,
+            "ytick.major.width": 0.8 * scale,
+            "xtick.major.size": 3.5 * scale,
+            "ytick.major.size": 3.5 * scale,
             # --- these are booleans/strings, don't scale ---
             "mathtext.fontset": "dejavusans",
             "figure.facecolor": "white",
@@ -120,8 +121,9 @@ def save_figure(
     save_png: bool = False,
     save_tiff: bool = False,
     save_eps: bool = False,
-    save_svg: bool = False
+    save_svg: bool = False,
 ) -> dict[str, Path]:
+    """Save a figure to the requested raster/vector formats."""
     if not (300 <= dpi <= 600):
         raise ValueError("dpi should usually be between 300 and 600 for PLOS scripts.")
     if height_in is not None and height_in <= 0:
@@ -147,7 +149,7 @@ def save_figure(
         saved_paths["pdf"] = pdf_path
 
     if save_png:
-        png_path =out_path.with_suffix(".png")
+        png_path = out_path.with_suffix(".png")
         fig.savefig(png_path, dpi=dpi, transparent=False)
         saved_paths["png"] = png_path
 
@@ -155,7 +157,7 @@ def save_figure(
         eps_path = out_path.with_suffix(".eps")
         fig.savefig(eps_path, format="eps", dpi=dpi, transparent=False)
         saved_paths["eps"] = eps_path
-        
+
     if save_svg:
         svg_path = out_path.with_suffix(".svg")
         fig.savefig(svg_path, format="eps", dpi=dpi, transparent=False)
@@ -184,7 +186,9 @@ def add_panel_labels(
     y: float = 1.1,
     size: float | str = "medium",
 ) -> None:
+    """Place sequential panel labels on a list of axes."""
     import string
+
     labels = list(string.ascii_uppercase)
     for ax, label in zip(axes, labels):
         ax.text(
@@ -196,7 +200,6 @@ def add_panel_labels(
             fontweight="bold",
             va="top",
         )
-
 
 
 def new_figure(

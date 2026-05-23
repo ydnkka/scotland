@@ -1,5 +1,10 @@
-"""Statistical machinery for the superspreading-signature detection pipeline.
+"""Statistical helpers for superspreading-signature detection.
+
+This module adds node-level lifecycle, amplification, onward-spread, mixing,
+and candidate-label columns to temporal cluster-transition graph tables. It
+also contains the separate weekly meta-cluster growth alert helper.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -32,7 +37,7 @@ def log1p_ratio(numerator, denominator):
 def add_window_percentile(
     df: pd.DataFrame,
     col: str,
-    groupby_cols: Any ="window_idx",
+    groupby_cols: Any = "window_idx",
 ) -> pd.Series:
     """Percentile-rank a column within temporal windows"""
     return df.groupby(groupby_cols)[col].rank(pct=True, method="average")
@@ -58,9 +63,13 @@ def add_scoped_percentile(
         mask = pd.Series(mask, index=df.index).fillna(False).astype(bool)
 
     out = pd.Series(np.nan, index=df.index, dtype=float)
-    out.loc[mask] = df.loc[mask].groupby(groupby_cols)[col].rank(
-        pct=True,
-        method="average",
+    out.loc[mask] = (
+        df.loc[mask]
+        .groupby(groupby_cols)[col]
+        .rank(
+            pct=True,
+            method="average",
+        )
     )
     return out
 
@@ -90,11 +99,13 @@ def mean_with_count(
 
 
 def frequencies(values: pd.Series) -> str:
+    """Return value counts as a compact semicolon-separated summary string."""
     counts = values.dropna().astype(str).value_counts()
     return "; ".join(f"{name} ({count})" for name, count in counts.items())
 
 
 def safe_mode(values: pd.Series):
+    """Return the first modal non-missing value, or NaN when none exists."""
     values = values.dropna()
     if values.empty:
         return np.nan
@@ -195,7 +206,11 @@ def add_sse_node_metrics(
 
     for area_col, density_col, mean_col in [
         ("cluster_n_datazones", "datazone_density", "mean_sequences_per_datazone"),
-        ("n_local_authorities", "local_authority_density", "mean_sequences_per_local_authority"),
+        (
+            "n_local_authorities",
+            "local_authority_density",
+            "mean_sequences_per_local_authority",
+        ),
         ("n_health_boards", "health_board_density", "mean_sequences_per_health_board"),
     ]:
         if area_col in df.columns:
@@ -297,7 +312,6 @@ def add_sse_node_metrics(
         groupby_cols=window_col,
         mask=onward_mask,
     )
-
 
     mixing_components = [
         "sex_entropy_obs",
@@ -411,12 +425,8 @@ def categorise_sse_nodes(
     entropy_norm = num_col("downstream_entropy_norm")
     dominant_frac = num_col("dominant_successor_frac")
     high_entropy = entropy_norm >= entropy_high
-    dominant_branch = (
-        (out_degree >= 2)
-        & (
-            (entropy_norm <= entropy_low)
-            | (dominant_frac >= dominant_high)
-        )
+    dominant_branch = (out_degree >= 2) & (
+        (entropy_norm <= entropy_low) | (dominant_frac >= dominant_high)
     )
 
     high_core_amp = high_col("local_amplification_score_pct_window", high_q)
@@ -475,11 +485,7 @@ def categorise_sse_nodes(
                 out["sse_candidate"]
                 & (
                     (death & in_strength.gt(0))
-                    | (
-                        out_strength.gt(0)
-                        & (out_degree <= 1)
-                        & low_onward_expansion
-                    )
+                    | (out_strength.gt(0) & (out_degree <= 1) & low_onward_expansion)
                 )
             ),
             out_strength == 0,
@@ -525,9 +531,7 @@ def categorise_sse_nodes(
             candidate & dynamic.isin(["multi_branch_seeder", "multi_branch_expander"]),
             candidate & dynamic.eq("dominant_branch"),
             candidate & dynamic.eq("single_successor_chain"),
-            candidate & dynamic.isin(
-                ["contained_burst", "no_observed_onward_spread"]
-            ),
+            candidate & dynamic.isin(["contained_burst", "no_observed_onward_spread"]),
             candidate & dynamic.eq("high_volume_onward_spread"),
         ],
         [
@@ -607,11 +611,7 @@ def flag_sse(
     df = df.copy()
 
     # Monday-starting weeks: Monday to Sunday.
-    df["week"] = (
-        df["collection_date"]
-        .dt.to_period("W-SUN")
-        .dt.start_time
-    )
+    df["week"] = df["collection_date"].dt.to_period("W-SUN").dt.start_time
 
     min_date = df["collection_date"].min().normalize()
     max_date = df["collection_date"].max().normalize()
@@ -654,9 +654,7 @@ def flag_sse(
         return empty_weekly
 
     all_weeks = pd.date_range(
-        start=first_complete_week_start,
-        end=last_complete_week_start,
-        freq="W-MON"
+        start=first_complete_week_start, end=last_complete_week_start, freq="W-MON"
     )
 
     # Keep only full weeks included in all_weeks.
@@ -666,8 +664,7 @@ def flag_sse(
         return empty_weekly
 
     weekly_observed = (
-        df
-        .groupby(["meta_cluster_id", "week"], as_index=False)
+        df.groupby(["meta_cluster_id", "week"], as_index=False)
         .agg(
             new_sequences=("sequence_id", "nunique"),
             clade=("clade", "first"),
@@ -680,9 +677,8 @@ def flag_sse(
         clade_val = g["clade"].iloc[0]
         cluster_weeks = all_weeks[all_weeks >= g["week"].min()]
 
-        out = (
-            g.set_index("week")[["new_sequences"]]
-            .reindex(cluster_weeks, fill_value=0)
+        out = g.set_index("week")[["new_sequences"]].reindex(
+            cluster_weeks, fill_value=0
         )
 
         out["meta_cluster_id"] = cluster_id
@@ -691,8 +687,7 @@ def flag_sse(
         return out
 
     weekly = (
-        weekly_observed
-        .groupby("meta_cluster_id", group_keys=False)
+        weekly_observed.groupby("meta_cluster_id", group_keys=False)
         .apply(reindex_cluster)
         .reset_index()
         .rename(columns={"index": "week"})
@@ -700,31 +695,21 @@ def flag_sse(
 
     weekly = weekly.sort_values(["meta_cluster_id", "week"]).reset_index(drop=True)
 
-    weekly["cc_size"] = (
-        weekly
-        .groupby("meta_cluster_id")["new_sequences"]
-        .cumsum()
-    )
+    weekly["cc_size"] = weekly.groupby("meta_cluster_id")["new_sequences"].cumsum()
 
     weekly["cc_size_prev"] = (
-        weekly
-        .groupby("meta_cluster_id")["cc_size"]
-        .shift(1)
-        .fillna(0)
+        weekly.groupby("meta_cluster_id")["cc_size"].shift(1).fillna(0)
     )
 
-    weekly["norm_change"] = (
-        weekly["new_sequences"] /
-        np.sqrt(weekly["cc_size_prev"].clip(lower=1))
+    weekly["norm_change"] = weekly["new_sequences"] / np.sqrt(
+        weekly["cc_size_prev"].clip(lower=1)
     )
 
-    weekly["first_observed_burst"] = (
-        weekly["cc_size_prev"].eq(0)
-        & weekly["new_sequences"].gt(threshold)
-    )
-    weekly["growth_burst"] = (
-        weekly["cc_size_prev"].gt(0)
-        & weekly["norm_change"].gt(threshold)
+    weekly["first_observed_burst"] = weekly["cc_size_prev"].eq(0) & weekly[
+        "new_sequences"
+    ].gt(threshold)
+    weekly["growth_burst"] = weekly["cc_size_prev"].gt(0) & weekly["norm_change"].gt(
+        threshold
     )
     # Compatibility alias for older notebooks. Interpret with ``sse_flag_type``;
     # first-observed bursts are raw-count alerts, not growth-rate estimates.

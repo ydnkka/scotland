@@ -59,14 +59,14 @@ def shannon_entropy(
     -------
     np.ndarray
         Entropy per slice. Slices summing to zero return 0.
-    
+
     Notes
     -----
     Follows the ``0 * log(0) = 0`` convention.
     """
     if base <= 0 or base == 1:
         raise ValueError("base must be positive and not equal to 1.")
-    
+
     counts = np.asarray(counts, dtype=float)
     totals = counts.sum(axis=axis, keepdims=True)
 
@@ -125,7 +125,7 @@ def shannon_entropy_grouped(
         )
     if values.ndim != 1:
         raise ValueError("values and group_codes must be 1-D.")
-    
+
     order = np.argsort(group_codes, kind="mergesort")
     g_sorted = group_codes[order]
     w_sorted = values[order].astype(float, copy=False)
@@ -215,7 +215,7 @@ def cluster_socio_demo_entropy(
         raise ValueError("n_random must be >= 2 to estimate null SD.")
     if base <= 0 or base == 1:
         raise ValueError("base must be positive and not equal to 1.")
-    
+
     out = df.copy()
     rng = np.random.default_rng(random_state)
 
@@ -223,7 +223,7 @@ def cluster_socio_demo_entropy(
     k_global = len(categories)
     if k_global <= 1:
         raise ValueError("Cannot compute entropy for a single category level.")
-    
+
     norm_factor = max_entropy(k_global, base=base) if normalise else 1.0
 
     stat_cols = [
@@ -235,17 +235,19 @@ def cluster_socio_demo_entropy(
     ]
 
     valid = codes >= 0
-    work = pd.DataFrame({
-        window_col: out.loc[valid, window_col].to_numpy(),
-        cluster_col: out.loc[valid, cluster_col].to_numpy(),
-        "_cat_code": codes[valid],
-    })
+    work = pd.DataFrame(
+        {
+            window_col: out.loc[valid, window_col].to_numpy(),
+            cluster_col: out.loc[valid, cluster_col].to_numpy(),
+            "_cat_code": codes[valid],
+        }
+    )
 
     if work.empty:
         for col in stat_cols:
             out[col] = np.nan
         return out
-    
+
     # Observed counts: rows = (window, cluster), columns = category codes.
     cluster_counts = (
         work.groupby(
@@ -366,7 +368,7 @@ def downstream_edge_entropy(
         raise ValueError(f"Missing columns in edge dataframe: {missing}")
     if base <= 0 or base == 1:
         raise ValueError("base must be positive and not equal to 1.")
-    
+
     df = edge_df[[source_col, weight_col]].copy()
     df[weight_col] = pd.to_numeric(df[weight_col], errors="coerce")
     df = df.dropna()
@@ -382,7 +384,7 @@ def downstream_edge_entropy(
     ]
     if df.empty:
         return pd.DataFrame(columns=out_cols, index=pd.Index([], name=source_col))
-    
+
     codes, nodes = pd.factorize(df[source_col].to_numpy(), sort=False)
 
     agg = shannon_entropy_grouped(

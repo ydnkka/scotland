@@ -71,9 +71,7 @@ def load_sse_outputs(
     """
     output_dir = Path(output_dir)
     if not output_dir.is_dir():
-        raise FileNotFoundError(
-            f"SSE output directory not found: {output_dir}"
-        )
+        raise FileNotFoundError(f"SSE output directory not found: {output_dir}")
 
     found: dict[str, pd.DataFrame] = {}
     missing: list[str] = []
@@ -87,8 +85,7 @@ def load_sse_outputs(
 
     if missing:
         raise FileNotFoundError(
-            "Missing expected SSE output parquet files: "
-            + ", ".join(missing)
+            "Missing expected SSE output parquet files: " + ", ".join(missing)
         )
 
     node_stats = found["node_stats"]

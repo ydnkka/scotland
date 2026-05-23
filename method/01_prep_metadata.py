@@ -3,16 +3,16 @@
 Prepare all processed metadata files from raw PHS and COG-UK data.
 
 Outputs (parquet, relative to repo root unless --root is given):
-  data/processed/scotland_sequence_metadata.parquet
-  data/processed/scotland_testing.parquet
-  data/processed/scotland_datazone_vaccinations.parquet
-  data/processed/scotland_datazone_simd_data.parquet
-  data/processed/scotland_geography.parquet
-  data/processed/scotland_hb_daily_trends.parquet
+    data/processed/scotland_sequence_metadata.parquet
+    data/processed/scotland_testing.parquet
+    data/processed/scotland_datazone_vaccinations.parquet
+    data/processed/scotland_datazone_simd_data.parquet
+    data/processed/scotland_geography.parquet
+    data/processed/scotland_hb_daily_trends.parquet
 
 Usage:
-  python3 method/01_prep_metadata.py
-  python3 method/01_prep_metadata.py --config config.yaml --root /path/to/repo
+    python3 method/01_prep_metadata.py
+    python3 method/01_prep_metadata.py --config config.yaml --root /path/to/repo
 """
 
 from __future__ import annotations
@@ -34,6 +34,7 @@ os.environ.setdefault("PROJ_LIB", os.path.join(_conda, "share", "proj"))
 
 
 def setup_logging(level: str = "INFO") -> None:
+    """Configure timestamped console logging for the metadata prep script."""
     logging.basicConfig(
         level=getattr(logging, level.upper(), logging.INFO),
         format="%(asctime)s [%(levelname)s] %(message)s",
@@ -42,6 +43,7 @@ def setup_logging(level: str = "INFO") -> None:
 
 
 def load_config(path: Path) -> dict:
+    """Load the YAML pipeline configuration file."""
     with open(path) as f:
         return yaml.safe_load(f)
 
@@ -60,7 +62,7 @@ def get_age_midpoints(bands: pd.Series) -> np.ndarray:
     upper = np.where(open_ended, lower + 5.0, upper)
     with np.errstate(invalid="ignore"):
         mid = (lower + upper) / 2.0
-    return pd.to_numeric(pd.Series(mid, index=bands.index), errors="coerce")
+    return pd.to_numeric(pd.Series(mid, index=bands.index), errors="coerce").to_numpy()
 
 
 def prep_testing(csv_path: Path, out_path: Path) -> pd.DataFrame:
@@ -74,32 +76,59 @@ def prep_testing(csv_path: Path, out_path: Path) -> pd.DataFrame:
       dz_lfd_positive_tests   — LFD-only positives (test_type == ANTIGEN)
       dz_care_home_tests      — tests linked to a care home facility (care_home_id not null)
     """
-    df = pd.read_csv(csv_path, parse_dates=["date_ecoss_specimen"], date_format="%Y%m%d")
-    df.rename(columns={
-        "date_ecoss_specimen": "collection_date",
-        "PatientID": "patient_id",
-        "datazone2011": "datazone",
-    }, inplace=True)
+    df = pd.read_csv(
+        csv_path, parse_dates=["date_ecoss_specimen"], date_format="%Y%m%d"
+    )
+    df.rename(
+        columns={
+            "date_ecoss_specimen": "collection_date",
+            "PatientID": "patient_id",
+            "datazone2011": "datazone",
+        },
+        inplace=True,
+    )
     df.sort_values("collection_date", inplace=True)
 
     # Drop duplicate records for the same patient/specimen/datazone on the same day,
     # keeping the first occurrence after sorting by date.
-    df.drop_duplicates(subset=["patient_id", "specimen_id", "datazone"], keep="first", inplace=True)
+    df.drop_duplicates(
+        subset=["patient_id", "specimen_id", "datazone"], keep="first", inplace=True
+    )
 
     # Aggregate separately then merge so that zeros are preserved for
     # datazones that had tests but no positives/negatives on a given day.
     grp = ["collection_date", "datazone"]
-    total    = df.groupby(grp).size().reset_index(name="dz_total_tests")
-    pos      = (df[df["test_result"] == "POSITIVE"]
-                .groupby(grp).size().reset_index(name="dz_positive_tests"))
-    neg      = (df[df["test_result"] == "NEGATIVE"]
-                .groupby(grp).size().reset_index(name="dz_negative_tests"))
-    pcr_pos  = (df[(df["test_result"] == "POSITIVE") & (df["test_type"] == "PCR")]
-                .groupby(grp).size().reset_index(name="dz_pcr_positive_tests"))
-    lfd_pos  = (df[(df["test_result"] == "POSITIVE") & (df["test_type"] == "ANTIGEN")]
-                .groupby(grp).size().reset_index(name="dz_lfd_positive_tests"))
-    care_hm  = (df[df["care_home_id"].notna()]
-                .groupby(grp).size().reset_index(name="dz_care_home_tests"))
+    total = df.groupby(grp).size().reset_index(name="dz_total_tests")
+    pos = (
+        df[df["test_result"] == "POSITIVE"]
+        .groupby(grp)
+        .size()
+        .reset_index(name="dz_positive_tests")
+    )
+    neg = (
+        df[df["test_result"] == "NEGATIVE"]
+        .groupby(grp)
+        .size()
+        .reset_index(name="dz_negative_tests")
+    )
+    pcr_pos = (
+        df[(df["test_result"] == "POSITIVE") & (df["test_type"] == "PCR")]
+        .groupby(grp)
+        .size()
+        .reset_index(name="dz_pcr_positive_tests")
+    )
+    lfd_pos = (
+        df[(df["test_result"] == "POSITIVE") & (df["test_type"] == "ANTIGEN")]
+        .groupby(grp)
+        .size()
+        .reset_index(name="dz_lfd_positive_tests")
+    )
+    care_hm = (
+        df[df["care_home_id"].notna()]
+        .groupby(grp)
+        .size()
+        .reset_index(name="dz_care_home_tests")
+    )
 
     out = total
     for part in (pos, neg, pcr_pos, lfd_pos, care_hm):
@@ -164,12 +193,14 @@ def prep_simd(csv_path: Path, out_path: Path) -> pd.DataFrame:
         )
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(out_path, index=False, compression="zstd")
+    df.to_parquet(out_path, index=False)
     logging.info("SIMD data: %d datazones → %s", len(df), out_path)
     return df
 
 
-def prep_geography(shp_path: Path, simd: pd.DataFrame, out_path: Path) -> gpd.GeoDataFrame:
+def prep_geography(
+    shp_path: Path, simd: pd.DataFrame, out_path: Path
+) -> gpd.GeoDataFrame:
     """Compute datazone centroids and join SIMD attributes; retain geometry for geoparquet output."""
     gdf = gpd.read_file(shp_path).set_index("DataZone")
     gdf.index.name = "datazone"
@@ -188,7 +219,7 @@ def prep_geography(shp_path: Path, simd: pd.DataFrame, out_path: Path) -> gpd.Ge
     )
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    gdf.to_parquet(out_path, index=True, compression="zstd")
+    gdf.to_parquet(out_path, index=True)
     logging.info("Geography: %d datazones → %s", len(gdf), out_path)
     return gdf
 
@@ -196,13 +227,18 @@ def prep_geography(shp_path: Path, simd: pd.DataFrame, out_path: Path) -> gpd.Ge
 def prep_vaccination(csv_path: Path, out_path: Path) -> pd.DataFrame:
     """Aggregate raw vaccination records to daily datazone-level summary statistics."""
     df = pd.read_csv(csv_path, low_memory=False)
-    df["vacc_occurence_time"] = pd.to_datetime(df["vacc_occurence_time"], format="%Y%m%d", errors="coerce")
+    df["vacc_occurence_time"] = pd.to_datetime(
+        df["vacc_occurence_time"], format="%Y%m%d", errors="coerce"
+    )
     df.dropna(subset=["vacc_occurence_time", "age_band"], inplace=True)
-    df.rename(columns={
-        "PatientID": "patient_id",
-        "vacc_occurence_time": "vaccination_date",
-        "datazone2011": "datazone",
-    }, inplace=True)
+    df.rename(
+        columns={
+            "PatientID": "patient_id",
+            "vacc_occurence_time": "vaccination_date",
+            "datazone2011": "datazone",
+        },
+        inplace=True,
+    )
 
     df["age_midpoint"] = get_age_midpoints(df["age_band"])
 
@@ -240,7 +276,9 @@ def prep_hb_trends(csv_path: Path, out_path: Path) -> pd.DataFrame:
       hb_total_tests, hb_positive_tests
     """
     df = pd.read_csv(csv_path, low_memory=False)
-    df["Date"] = pd.to_datetime(df["Date"].astype(str), format="%Y%m%d", errors="coerce")
+    df["Date"] = pd.to_datetime(
+        df["Date"].astype(str), format="%Y%m%d", errors="coerce"
+    )
     df.dropna(subset=["Date", "HB"], inplace=True)
 
     # Drop Scotland-wide aggregate
@@ -261,7 +299,9 @@ def prep_hb_trends(csv_path: Path, out_path: Path) -> pd.DataFrame:
         "TotalTests": "hb_total_tests",
         "PositiveTests": "hb_positive_tests",
     }
-    df.rename(columns={k: v for k, v in rename.items() if k in df.columns}, inplace=True)
+    df.rename(
+        columns={k: v for k, v in rename.items() if k in df.columns}, inplace=True
+    )
 
     keep = [v for v in rename.values() if v in df.columns]
     df = df[keep].copy()
@@ -292,30 +332,38 @@ def prep_sequence_metadata(
 
     # --- Nextclade annotations ---
     nextclade = pd.read_table(nextclade_tsv, low_memory=False)
-    assert not nextclade["seqName"].duplicated(keep=False).any(), "Duplicate seqName in nextclade TSV"
+    assert not nextclade["seqName"].duplicated(keep=False).any(), (
+        "Duplicate seqName in nextclade TSV"
+    )
     # Extract the numeric PHS sequence ID from the COGUK seqName (e.g. 'Scotland/LIVE-XXXXX/2021')
     nextclade["seq_id"] = nextclade["seqName"].str.split("/").apply(lambda x: x[1])
     nextclade = nextclade.set_index("seq_id")
 
     # --- Core sequence metadata ---
     meta = pd.read_csv(metadata_csv, parse_dates=["Collection_Date"])
-    meta.rename(columns={
-        "Collection_Date": "collection_date",
-        "subject_sex": "sex",
-        "SequenceID": "seq_id",
-        "PatientID": "patient_id",
-        "datazone2011": "datazone",
-    }, inplace=True)
+    meta.rename(
+        columns={
+            "Collection_Date": "collection_date",
+            "subject_sex": "sex",
+            "SequenceID": "seq_id",
+            "PatientID": "patient_id",
+            "datazone2011": "datazone",
+        },
+        inplace=True,
+    )
     meta["specimen_id"] = meta["specimen_id"].astype("string").str.strip()
 
-    assert set(meta["seq_id"]).issubset(set(nextclade.index)), "seq_ids not in nextclade"
+    assert set(meta["seq_id"]).issubset(set(nextclade.index)), (
+        "seq_ids not in nextclade"
+    )
 
     # Attach Nextclade fields using seq_id as the alignment key
-    meta["sequence_id"] = nextclade.loc[meta["seq_id"].values, "seqName"].values
-    meta["clade"] = nextclade.loc[meta["seq_id"].values, "clade"].values
-    meta["who_voc"] = nextclade.loc[meta["seq_id"].values, "clade_who"].values
-    meta["pango_lineage"] = nextclade.loc[meta["seq_id"].values, "Nextclade_pango"].values
-    meta["nextclade_qc"] = nextclade.loc[meta["seq_id"].values, "qc.overallStatus"].values
+    nextclade_aligned = nextclade.reindex(meta["seq_id"])
+    meta["sequence_id"] = nextclade_aligned["seqName"].to_numpy()
+    meta["clade"] = nextclade_aligned["clade"].to_numpy()
+    meta["who_voc"] = nextclade_aligned["clade_who"].to_numpy()
+    meta["pango_lineage"] = nextclade_aligned["Nextclade_pango"].to_numpy()
+    meta["nextclade_qc"] = nextclade_aligned["qc.overallStatus"].to_numpy()
     meta["age_midpoint"] = get_age_midpoints(meta["age_band"])
 
     meta.sort_values("collection_date", inplace=True)
@@ -333,30 +381,41 @@ def prep_sequence_metadata(
     # per-patient/date fields needed to derive an individual-level reinfection indicator.
     tests_raw = pd.read_csv(
         testing_csv,
-        usecols=["specimen_id", "PatientID", "date_ecoss_specimen", "test_result",
-                 "test_type", "test_reason", "test_result_s_gene_status"],
+        usecols=[
+            "specimen_id",
+            "PatientID",
+            "date_ecoss_specimen",
+            "test_result",
+            "test_type",
+            "test_reason",
+            "test_result_s_gene_status",
+        ],
         low_memory=False,
     )
     tests_raw["date_ecoss_specimen"] = pd.to_datetime(
         tests_raw["date_ecoss_specimen"], format="%Y%m%d", errors="coerce"
     )
-    tests_raw.rename(columns={
-        "PatientID": "patient_id",
-        "date_ecoss_specimen": "collection_date",
-        "test_result_s_gene_status": "s_gene_status",
-    }, inplace=True)
+    tests_raw.rename(
+        columns={
+            "PatientID": "patient_id",
+            "date_ecoss_specimen": "collection_date",
+            "test_result_s_gene_status": "s_gene_status",
+        },
+        inplace=True,
+    )
     tests_raw["specimen_id"] = tests_raw["specimen_id"].astype("string").str.strip()
 
     # Specimen-level attributes: one row per specimen (keep earliest if duplicates).
     test_attr_cols = ["test_type", "test_reason", "s_gene_status"]
-    specimen_attrs = (
-        tests_raw[["specimen_id"] + test_attr_cols]
-        .drop_duplicates("specimen_id", keep="first")
+    specimen_attrs = tests_raw[["specimen_id"] + test_attr_cols].drop_duplicates(
+        "specimen_id", keep="first"
     )
     # The raw sequence metadata can already carry test_type/test_reason, which would
     # otherwise force pandas to suffix the testing-derived columns and silently drop
     # them from the final output schema.
-    meta = meta.merge(specimen_attrs, on="specimen_id", how="left", suffixes=("", "_testing"))
+    meta = meta.merge(
+        specimen_attrs, on="specimen_id", how="left", suffixes=("", "_testing")
+    )
     for col in test_attr_cols:
         testing_col = f"{col}_testing"
         if testing_col in meta.columns:
@@ -371,7 +430,9 @@ def prep_sequence_metadata(
     # negative/void tests receive 0.  The 90-day threshold follows standard PHS/ECDC
     # definitions for SARS-CoV-2 reinfection.
     positives = (
-        tests_raw[tests_raw["test_result"] == "POSITIVE"][["patient_id", "collection_date"]]
+        tests_raw[tests_raw["test_result"] == "POSITIVE"][
+            ["patient_id", "collection_date"]
+        ]
         .dropna()
         .drop_duplicates()
         .sort_values(["patient_id", "collection_date"])
@@ -386,16 +447,25 @@ def prep_sequence_metadata(
 
     # --- Vaccination history: find the most recent dose before each collection date ---
     vacc = pd.read_csv(vaccination_csv, low_memory=False)
-    vacc["vacc_occurence_time"] = pd.to_datetime(vacc["vacc_occurence_time"], format="%Y%m%d", errors="coerce")
+    vacc["vacc_occurence_time"] = pd.to_datetime(
+        vacc["vacc_occurence_time"], format="%Y%m%d", errors="coerce"
+    )
     vacc.dropna(subset=["vacc_occurence_time", "age_band"], inplace=True)
-    vacc.rename(columns={"PatientID": "patient_id", "vacc_occurence_time": "vaccination_date"}, inplace=True)
+    vacc.rename(
+        columns={"PatientID": "patient_id", "vacc_occurence_time": "vaccination_date"},
+        inplace=True,
+    )
     vacc["vacc_booster"] = np.where(vacc["vacc_booster"] == "TRUE", 1, 0)
 
     # Cross-join sequences with vaccination records for the same patient, then
     # keep only vaccinations that occurred on or before the sequence collection date.
     # This produces one row per (sequence, prior vaccination) combination.
     vacc_cols = [
-        "patient_id", "vaccination_date", "vacc_dose_number", "vacc_product_name", "vacc_booster"
+        "patient_id",
+        "vaccination_date",
+        "vacc_dose_number",
+        "vacc_product_name",
+        "vacc_booster",
     ]
     seq_vacc = meta.merge(vacc[vacc_cols], on="patient_id", how="left")
     seq_vacc = seq_vacc[seq_vacc["vaccination_date"] <= seq_vacc["collection_date"]]
@@ -403,7 +473,12 @@ def prep_sequence_metadata(
     # Group by both patient_id AND collection_date so that patients with
     # multiple sequenced specimens each get the correct latest-prior-dose for
     # their own collection date.
-    latest_vacc_cols = ["patient_id", "collection_date", "vaccination_date", "vacc_dose_number"]
+    latest_vacc_cols = [
+        "patient_id",
+        "collection_date",
+        "vaccination_date",
+        "vacc_dose_number",
+    ]
     for extra in ("vacc_product_name", "vacc_booster"):
         if extra in seq_vacc.columns:
             latest_vacc_cols.append(extra)
@@ -420,19 +495,46 @@ def prep_sequence_metadata(
     meta["is_vaccinated"] = (meta["vacc_dose_number"] > 0).astype(float)
 
     # Drop rows missing any field required for downstream modelling
-    required = ["datazone", "collection_date", "patient_id", "sex", "age_band",
-                "sequence_id", "clade", "pango_lineage", "nextclade_qc"]
+    required = [
+        "datazone",
+        "collection_date",
+        "patient_id",
+        "sex",
+        "age_band",
+        "sequence_id",
+        "clade",
+        "pango_lineage",
+        "nextclade_qc",
+    ]
     meta.dropna(subset=required, inplace=True)
     assert meta[required].notna().all().all()
 
     output_cols = [
-        "datazone", "dz_xcoord", "dz_ycoord", "dz_area_km2",
-        "collection_date", "patient_id", "sex", "is_female",
-        "age_band", "age_midpoint", "specimen_id", "sequence_id",
-        "clade", "who_voc", "pango_lineage", "nextclade_qc",
-        "test_type", "test_reason", "s_gene_status", "is_reinfection",
-        "vaccination_date", "vacc_dose_number", "is_vaccinated",
-        "vacc_product_name", "vacc_booster",
+        "datazone",
+        "dz_xcoord",
+        "dz_ycoord",
+        "dz_area_km2",
+        "collection_date",
+        "patient_id",
+        "sex",
+        "is_female",
+        "age_band",
+        "age_midpoint",
+        "specimen_id",
+        "sequence_id",
+        "clade",
+        "who_voc",
+        "pango_lineage",
+        "nextclade_qc",
+        "test_type",
+        "test_reason",
+        "s_gene_status",
+        "is_reinfection",
+        "vaccination_date",
+        "vacc_dose_number",
+        "is_vaccinated",
+        "vacc_product_name",
+        "vacc_booster",
     ]
     meta = meta[[c for c in output_cols if c in meta.columns]].copy()
 
@@ -443,10 +545,17 @@ def prep_sequence_metadata(
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Prepare all processed metadata from raw inputs.")
+    """Run all raw-to-processed metadata preparation steps."""
+    ap = argparse.ArgumentParser(
+        description="Prepare all processed metadata from raw inputs."
+    )
     ap.add_argument("--config", type=Path, default=Path("config.yaml"))
-    ap.add_argument("--root", type=Path, default=Path("."),
-                    help="Repo root (paths in config.yaml are relative to this)")
+    ap.add_argument(
+        "--root",
+        type=Path,
+        default=Path("."),
+        help="Repo root (paths in config.yaml are relative to this)",
+    )
     ap.add_argument("--log-level", default="INFO")
     args = ap.parse_args()
 
@@ -461,8 +570,12 @@ def main() -> int:
     geography = prep_geography(raw["geography_shp"], simd, proc["geography"])
     _ = prep_hb_trends(raw["daily_hb_trends_csv"], proc["hb_trends"])
     _ = prep_sequence_metadata(
-        raw["metadata_csv"], raw["nextclade_tsv"], raw["vaccination_csv"],
-        raw["testing_csv"], geography, proc["metadata"],
+        raw["metadata_csv"],
+        raw["nextclade_tsv"],
+        raw["vaccination_csv"],
+        raw["testing_csv"],
+        geography,
+        proc["metadata"],
     )
     return 0
 

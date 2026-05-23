@@ -100,4 +100,3 @@ def estimate_epilink_compatibility(
         genetic_distance=genetic,
     )
     return np.asarray(scores, dtype=float)
-

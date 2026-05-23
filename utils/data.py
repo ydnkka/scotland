@@ -1,3 +1,10 @@
+"""Shared data-loading helpers for the Scotland clustering analysis.
+
+The functions in this module resolve repository paths from ``config.yaml``,
+load selected columns from the processed analysis dataset, and apply the
+rolling-window stride used by the notebooks.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -11,10 +18,55 @@ import yaml
 from .policy import attach_period
 
 
+__all__ = [
+    "QCStatus",
+    "CLADES",
+    "CLADE_PALETTE",
+    "VALID_QC_STATUSES",
+    "load_analysis_columns",
+    "load_datazone_info",
+]
+
+
 PRIMARY_RESOLUTION: float = 0.3
 
 QCStatus = Literal["good", "mediocre", "bad"]
 VALID_QC_STATUSES: set[str] = {"good", "mediocre", "bad"}
+
+CLADES : dict[str, str] = {
+    "20B": "20B",
+    "20A": "20A",
+    "20E": "20E (EU1)",
+    "20I": "20I (Alpha)",
+    "21K": "21K (Omicron)",
+    "21J": "21J (Delta)",
+    "21I": "21I (Delta)",
+    "21L": "21L (Omicron)",
+    "22B": "22B (Omicron)",
+    "22A": "22A (Omicron)",
+    "22C": "22C (Omicron)",
+    "22E": "22E (Omicron)"
+}
+
+CLADE_PALETTE: dict[str, str] = {
+    "20A": "#4477AA",
+    "20B": "#66CCEE",
+    "20E (EU1)": "#EE6677",
+    "20I (Alpha)": "#117733",
+
+    "21I (Delta)": "#AA3377",
+    "21J (Delta)": "#CCBB44",
+
+    "21K (Omicron)": "#63A227",
+    "21L (Omicron)": "#BBBBBB",
+
+    "22A (Omicron)": "#777777",
+    "22B (Omicron)": "#EE7733",
+    "22C (Omicron)": "#882255",
+    "22E (Omicron)": "#332288",
+
+    "Other": "#DDDDDD",
+}
 
 
 def repo_root(start: Path | None = None) -> Path:
@@ -30,6 +82,8 @@ def repo_root(start: Path | None = None) -> Path:
 
 @dataclass(frozen=True)
 class Paths:
+    """Resolved paths to commonly used processed data files."""
+
     root: Path
     analysis_dataset: Path
     geography: Path
@@ -67,7 +121,7 @@ def _normalise_qc(qc: QCStatus | Iterable[QCStatus] | None) -> list[str] | None:
     return qc_values
 
 
-def select_window_stride(
+def _select_window_stride(
     windows: Iterable[int],
     stride: int = 1,
     *,
@@ -93,7 +147,7 @@ def select_window_stride(
     return sorted_windows[offset::stride]
 
 
-def apply_window_stride(
+def _apply_window_stride(
     df: pd.DataFrame,
     stride: int = 1,
     *,
@@ -106,7 +160,7 @@ def apply_window_stride(
     if window_col not in df.columns:
         raise KeyError(f"{window_col!r} is required for window stride filtering")
 
-    retained = select_window_stride(df[window_col], stride=stride, offset=offset)
+    retained = _select_window_stride(df[window_col], stride=stride, offset=offset)
     old_to_new = {old: new + 1 for new, old in enumerate(retained)}
 
     out = df.loc[df[window_col].isin(retained)].copy()
@@ -229,7 +283,7 @@ def load_analysis_columns(
         df = df.loc[df["nextclade_qc"].isin(qc_values)]
 
     if window_stride is not None:
-        df = apply_window_stride(
+        df = _apply_window_stride(
             df,
             stride=window_stride,
             offset=window_offset,

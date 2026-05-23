@@ -6,8 +6,8 @@ Pairs each <stem>.csv in tn93_results_dir with its <stem>.ids in group_fasta_dir
 emits one python3 command per group into a command file for parallel_run.sh.
 
 Usage:
-  python3 method/04_gen_cluster_commands.py
-  python3 method/04_gen_cluster_commands.py --config config.yaml --root /path/to/repo
+    python3 method/04_gen_cluster_commands.py
+    python3 method/04_gen_cluster_commands.py --config config.yaml --root /path/to/repo
 """
 
 from __future__ import annotations
@@ -22,16 +22,24 @@ import yaml
 
 
 def load_config(path: Path) -> dict:
+    """Load the YAML pipeline configuration file."""
     with open(path) as f:
         return yaml.safe_load(f)
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Generate cluster processing command file.")
+    """Generate the command file for per-group Leiden clustering jobs."""
+    ap = argparse.ArgumentParser(
+        description="Generate cluster processing command file."
+    )
     ap.add_argument("--config", type=Path, default=Path("config.yaml"))
     ap.add_argument("--root", type=Path, default=Path("."))
-    ap.add_argument("--include", type=str, default=None, help="Regex to filter group names")
-    ap.add_argument("--exclude", type=str, default=None, help="Regex to exclude group names")
+    ap.add_argument(
+        "--include", type=str, default=None, help="Regex to filter group names"
+    )
+    ap.add_argument(
+        "--exclude", type=str, default=None, help="Regex to exclude group names"
+    )
     args = ap.parse_args()
 
     cfg = load_config(args.root / args.config)

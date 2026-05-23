@@ -17,14 +17,60 @@ policy
     Ordered policy-period helpers for Scotland COVID-19 restriction phases.
 """
 
-from importlib import import_module
+from . import data, policy, style
+from .data import (
+    QCStatus,
+    VALID_QC_STATUSES,
+    load_analysis_columns,
+    load_datazone_info,
+    CLADES,
+    CLADE_PALETTE,
+    PRIMARY_RESOLUTION
+)
+from .policy import (
+    PERIOD_ORDER,
+    POLICY_PERIODS,
+    PERIOD_LABELS,
+    PERIOD_INTENSITY,
+    assign_period,
+    attach_period,
+)
+from .style import (
+    set_theme,
+    save_figure,
+    add_panel_labels,
+    new_figure,
+    lighten,
+    FIG_WIDTHS_IN,
+    WIDTHS,
+    CONTEXTS,
+    DEFAULT_HEIGHT_IN,
+)
 
-__all__ = ["data", "policy", "style"]
-
-
-def __getattr__(name: str):
-    if name in __all__:
-        module = import_module(f"{__name__}.{name}")
-        globals()[name] = module
-        return module
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+__all__ = [
+    "data",
+    "policy",
+    "style",
+    "QCStatus",
+    "VALID_QC_STATUSES",
+    "load_analysis_columns",
+    "load_datazone_info",
+    "PRIMARY_RESOLUTION",
+    "CLADES",
+    "CLADE_PALETTE",
+    "PERIOD_ORDER",
+    "POLICY_PERIODS",
+    "PERIOD_LABELS",
+    "PERIOD_INTENSITY",
+    "assign_period",
+    "attach_period",
+    "set_theme",
+    "save_figure",
+    "add_panel_labels",
+    "new_figure",
+    "lighten",
+    "FIG_WIDTHS_IN",
+    "WIDTHS",
+    "CONTEXTS",
+    "DEFAULT_HEIGHT_IN",
+]

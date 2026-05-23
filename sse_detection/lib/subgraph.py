@@ -73,7 +73,9 @@ def _select_subgraph(
         },
         "node_stats",
     )
-    _require_columns(edge_table, {"source", "target", "n_shared_sequences"}, "edge_table")
+    _require_columns(
+        edge_table, {"source", "target", "n_shared_sequences"}, "edge_table"
+    )
 
     nodes = node_stats.loc[node_stats["meta_cluster_id"] == meta_cluster_id].copy()
     if nodes.empty:
@@ -82,7 +84,9 @@ def _select_subgraph(
         raise ValueError("window_idx values must be non-null for subgraph layout")
     if nodes["cluster_id"].duplicated().any():
         duplicated = nodes.loc[nodes["cluster_id"].duplicated(), "cluster_id"].iloc[0]
-        raise ValueError(f"cluster_id values must be unique; found duplicate {duplicated!r}")
+        raise ValueError(
+            f"cluster_id values must be unique; found duplicate {duplicated!r}"
+        )
     node_ids = set(nodes["cluster_id"])
     edges = edge_table.loc[
         edge_table["source"].isin(node_ids) & edge_table["target"].isin(node_ids)
@@ -112,8 +116,7 @@ def _graphviz_ids(
     rank_col: str,
 ) -> tuple[dict[str, str], dict[int, str]]:
     id_by_cluster = {
-        cluster_id: f"n{i}"
-        for i, cluster_id in enumerate(nodes["cluster_id"])
+        cluster_id: f"n{i}" for i, cluster_id in enumerate(nodes["cluster_id"])
     }
     ranks = sorted(int(rank) for rank in nodes[rank_col].dropna().unique())
     anchor_by_rank = {rank: f"rank_anchor_{i}" for i, rank in enumerate(ranks)}
@@ -178,7 +181,9 @@ def _parse_pygraphviz_positions(
     for cluster_id, graph_id in id_by_cluster.items():
         raw = graph.get_node(graph_id).attr.get("pos")
         if not raw:
-            raise RuntimeError(f"Graphviz did not return a position for node {cluster_id!r}")
+            raise RuntimeError(
+                f"Graphviz did not return a position for node {cluster_id!r}"
+            )
         x, y = str(raw).strip('"').split(",", 1)
         pos[cluster_id] = (float(x), float(y.rstrip("!")))
     return pos
@@ -278,7 +283,7 @@ def _resolve_colours(
         cats = _ordered_categories(
             set(layout["sse_category"].dropna().unique()) | {"not_sse_like"}
         )
-        palette  = sse_category_palette_from(cats)
+        palette = sse_category_palette_from(cats)
         colours = layout["sse_category"].map(palette).fillna(NOT_SSE_COLOR)
     elif color_by == "sse_graph_category":
         _require_columns(layout, {"sse_graph_category"}, "node_stats")
@@ -290,19 +295,27 @@ def _resolve_colours(
     elif color_by == "sse_role":
         _require_columns(layout, {"sse_role", "sse_candidate"}, "node_stats")
         palette = {**ROLE_PALETTE, "not_sse_like": NOT_SSE_COLOR}
-        role_or_neutral = layout["sse_role"].where(_candidate_mask(layout), "not_sse_like")
+        role_or_neutral = layout["sse_role"].where(
+            _candidate_mask(layout), "not_sse_like"
+        )
         colours = role_or_neutral.map(palette).fillna(NOT_SSE_COLOR)
     elif color_by == "sse_onward_dynamic":
         _require_columns(layout, {"sse_onward_dynamic", "sse_candidate"}, "node_stats")
-        uniq = _ordered_values(layout["sse_onward_dynamic"].dropna().unique(), DYNAMIC_ORDER)
-        palette: dict[str, object] = {v: DYNAMIC_PALETTE[v] for v in uniq if v in DYNAMIC_PALETTE}
+        uniq = _ordered_values(
+            layout["sse_onward_dynamic"].dropna().unique(), DYNAMIC_ORDER
+        )
+        palette: dict[str, object] = {
+            v: DYNAMIC_PALETTE[v] for v in uniq if v in DYNAMIC_PALETTE
+        }
         unknown = [v for v in uniq if v not in palette]
         if unknown:
             cmap = plt.get_cmap("tab20")
             for i, v in enumerate(unknown):
                 palette[v] = cmap(i % 20)
         palette["not_sse_like"] = NOT_SSE_COLOR
-        dyn = layout["sse_onward_dynamic"].where(_candidate_mask(layout), "not_sse_like")
+        dyn = layout["sse_onward_dynamic"].where(
+            _candidate_mask(layout), "not_sse_like"
+        )
         colours = dyn.map(palette).fillna(NOT_SSE_COLOR)
     else:
         raise ValueError(
@@ -402,13 +415,17 @@ def plot_meta_cluster_subgraph(
 
     # Scale height by the widest layer so dense layers stay legible.
     widest = nodes.groupby("window_idx")["cluster_id"].count().max()
-    height_in = float(np.clip(3.5 + 0.18 * widest, 4.0, 9.0)) if height_in is None else height_in
+    height_in = (
+        float(np.clip(3.5 + 0.18 * widest, 4.0, 9.0))
+        if height_in is None
+        else height_in
+    )
     fig, ax = new_figure(
-    width=width,
-    width_in=width_in,
-    height_in=height_in,
-    context=context,
-    font_scale=font_scale
+        width=width,
+        width_in=width_in,
+        height_in=height_in,
+        context=context,
+        font_scale=font_scale,
     )
 
     # ----- Edges -----
@@ -436,7 +453,8 @@ def plot_meta_cluster_subgraph(
 
     # ----- Nodes -----
     ax.scatter(
-        nodes["x_pos"], nodes["y_pos"],
+        nodes["x_pos"],
+        nodes["y_pos"],
         s=sizes.to_numpy(),
         c=list(colours),
         alpha=0.94,
@@ -451,7 +469,8 @@ def plot_meta_cluster_subgraph(
         cand = nodes.loc[_candidate_mask(nodes)]
         if not cand.empty:
             ax.scatter(
-                cand["x_pos"], cand["y_pos"],
+                cand["x_pos"],
+                cand["y_pos"],
                 s=sizes.loc[cand.index].to_numpy(),
                 facecolor="none",
                 edgecolor="#14151F",
@@ -521,7 +540,9 @@ def _format_axes(
             if pd.isna(date):
                 return prefix
             date_label = pd.to_datetime(date).strftime("%Y-%m-%d")
-            return f"{prefix} {date_label}" if many_windows else f"{prefix}\n{date_label}"
+            return (
+                f"{prefix} {date_label}" if many_windows else f"{prefix}\n{date_label}"
+            )
 
         labels = [
             tick_label(w, d)
@@ -534,7 +555,7 @@ def _format_axes(
             ha="center",
             va="top",
         )
-        ax.set_xlabel("window index / midpoint")
+        ax.set_xlabel("Clustering window")
     elif show_window_axis and rankdir == "TB":
         # Y-axis becomes the rank axis under TB.
         per_rank = (
@@ -573,8 +594,7 @@ def _format_axes(
 
 def _legend_text_parts(category: str) -> list[str]:
     return [
-        part.replace("_", " ").capitalize()
-        for part in str(category).split("__", 1)
+        part.replace("_", " ").capitalize() for part in str(category).split("__", 1)
     ]
 
 
@@ -582,8 +602,7 @@ def _legend_label(category: str, *, line_width: int) -> str:
     lines: list[str] = []
     for part in _legend_text_parts(category):
         lines.extend(
-            textwrap.wrap(part, width=line_width, break_long_words=False)
-            or [part]
+            textwrap.wrap(part, width=line_width, break_long_words=False) or [part]
         )
     return "\n".join(lines)
 
@@ -592,9 +611,7 @@ def _legend_column_count(categories: list[str], fig_width_in: float) -> int:
     if not categories:
         return 1
     longest_line = max(
-        len(part)
-        for category in categories
-        for part in _legend_text_parts(category)
+        len(part) for category in categories for part in _legend_text_parts(category)
     )
     target_col_width = min(2.0, max(1.3, 0.06 * longest_line + 0.35))
     width_limited_cols = max(1, int(fig_width_in // target_col_width))
@@ -619,15 +636,12 @@ def _legend_margin(
     fig_height_in: float,
     has_bottom_axis: bool,
     many_windows: bool,
-    font_size: float,
 ) -> tuple[float, float]:
     rows = (len(labels) + ncol - 1) // ncol
     max_lines = max(label.count("\n") + 1 for label in labels)
-    line_height_in = font_size * 1.25 / 72.0
+    line_height_in = 8 * 1.25 / 72.0
     legend_height_in = (
-        rows * max_lines * line_height_in
-        + 0.05 * max(0, rows - 1)
-        + 0.12
+        rows * max_lines * line_height_in + 0.05 * max(0, rows - 1) + 0.12
     )
     legend_bottom_in = 0.05
     axis_space_in = 0.3
@@ -635,11 +649,9 @@ def _legend_margin(
         legend_bottom_in = 0.08
         axis_space_in = 1.18 if many_windows else 0.72
 
-    bottom = (
-        legend_bottom_in
-        + legend_height_in
-        + axis_space_in
-    ) / max(fig_height_in, 1.0)
+    bottom = (legend_bottom_in + legend_height_in + axis_space_in) / max(
+        fig_height_in, 1.0
+    )
     bottom = min(max(bottom, 0.2), 0.62)
     legend_top = max(
         0.02,
@@ -658,16 +670,14 @@ def _add_color_legend(
     show_window_axis: bool,
 ) -> None:
     if color_by == "sse_category":
-        cats: Iterable[str] = _ordered_categories(layout["sse_category"].dropna().unique())
+        cats: Iterable[str] = _ordered_categories(
+            layout["sse_category"].dropna().unique()
+        )
     elif color_by == "sse_graph_category":
         cats = _ordered_graph_categories(layout["sse_graph_category"].dropna().unique())
         cats = list(cats)[:14]  # cap legend size
     elif color_by == "sse_role":
-        cats = [
-            r
-            for r in ROLE_ORDER
-            if r in set(layout["sse_role"].dropna().unique())
-        ]
+        cats = [r for r in ROLE_ORDER if r in set(layout["sse_role"].dropna().unique())]
         if (~_candidate_mask(layout)).any():
             cats.append("not_sse_like")
     else:
@@ -679,7 +689,7 @@ def _add_color_legend(
             cats.append("not_sse_like")
 
     cats = list(cats)
-    fig_width_in, fig_height_in = ax.figure.get_size_inches() # type: ignore
+    fig_width_in, fig_height_in = ax.figure.get_size_inches()  # type: ignore
     ncol = _legend_column_count(cats, fig_width_in)
     line_width = _legend_line_width(fig_width_in, ncol)
     labels = [_legend_label(c, line_width=line_width) for c in cats]
@@ -698,7 +708,6 @@ def _add_color_legend(
         fig_height_in=fig_height_in,
         has_bottom_axis=has_bottom_axis,
         many_windows=many_windows,
-        font_size=7,
     )
 
     if len(ax.figure.axes) == 1:
@@ -716,7 +725,6 @@ def _add_color_legend(
         bbox_transform=bbox_transform,
         ncol=ncol,
         frameon=False,
-        fontsize=7,
         columnspacing=0.9,
         handlelength=1.0,
         handletextpad=0.35,

@@ -1,5 +1,4 @@
-"""Utilities for the SSE-detection pipeline and its output notebook.
-"""
+"""Utilities for the SSE-detection pipeline and its output notebook."""
 
 from .stats import (
     add_sse_node_metrics,
@@ -10,12 +9,12 @@ from .stats import (
 )
 
 from .entropy import (
-    max_entropy, 
-    shannon_entropy, 
+    max_entropy,
+    shannon_entropy,
     shannon_entropy_grouped,
     cluster_socio_demo_entropy,
     downstream_edge_entropy,
-    )
+)
 
 from .io import SseOutputs, load_sse_outputs, load_weekly_growth
 
@@ -64,7 +63,7 @@ from .plots import (
     plot_regression_wald_heatmap,
     plot_role_dynamic_heatmap,
     plot_socio_demo_breakdown,
-) 
+)
 
 from .subgraph import plot_meta_cluster_subgraph
 

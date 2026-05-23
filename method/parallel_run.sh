@@ -33,17 +33,17 @@ Required:
   -c, --commands FILE    Path to commands file (one command per line)
 
 Options:
-  -j, --jobs N           Parallel workers (default: CPU count)
-      --joblog FILE      GNU parallel joblog path (default: <commands>.joblog.tsv)
-      --retries N        Retry failed jobs N times (default: 0)
-      --timeout SECS     Per-job timeout in seconds
-      --progress         Show live progress bar
-      --resume-failed    Re-run only previously failed jobs from joblog
-      --tmpdir DIR       Parallel per-job buffer dir (default: \$TMPDIR,
-                         then /var/tmp, then /tmp, then next to joblog)
-      --no-compress      Disable parallel --compress (on by default)
-      --dry-run          Print first 5 commands and exit
-  -h, --help             Show this message
+  -j, --jobs N            Parallel workers (default: CPU count)
+      --joblog FILE       GNU parallel joblog path (default: <commands>.joblog.tsv)
+      --retries N         Retry failed jobs N times (default: 0)
+      --timeout SECS      Per-job timeout in seconds
+      --progress          Show live progress bar
+      --resume-failed     Re-run only previously failed jobs from joblog
+      --tmpdir DIR        Parallel per-job buffer dir (default: \$TMPDIR, 
+                            then /var/tmp, then /tmp, then next to joblog)
+      --no-compress       Disable parallel --compress (on by default)
+      --dry-run           Print first 5 commands and exit
+  -h, --help              Show this message
 EOF
 }
 

@@ -2,161 +2,109 @@
 
 from __future__ import annotations
 
-import os
-import sys
-from pathlib import Path
-from typing import Callable
-
 import matplotlib.dates as mdates
 import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 import pandas as pd
-import polars as pl
 from matplotlib import colors
-from matplotlib.lines import Line2D
 from matplotlib.ticker import PercentFormatter
 
-from utils import data, policy, style
+from pathlib import Path
+import sys
 
-os.environ.setdefault("MPLCONFIGDIR", "/private/tmp/scotland-mplconfig")
-os.environ.setdefault("XDG_CACHE_HOME", "/private/tmp/scotland-xdg-cache")
-Path(os.environ["MPLCONFIGDIR"]).mkdir(parents=True, exist_ok=True)
-Path(os.environ["XDG_CACHE_HOME"]).mkdir(parents=True, exist_ok=True)
+PROJECT_ROOT = Path.cwd().resolve()
+if not (PROJECT_ROOT / "config.yaml").exists():
+    PROJECT_ROOT = PROJECT_ROOT.parent
 
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-def _bootstrap_repo_root_for_utils() -> Path:
-    """Ensure the repository root is importable for direct script execution."""
-    here = Path(__file__).resolve()
-    for candidate in [here, *here.parents]:
-        if (candidate / "config.yaml").exists():
-            root_str = str(candidate)
-            if root_str not in sys.path:
-                sys.path.insert(0, root_str)
-            return candidate
-    raise FileNotFoundError("Could not locate config.yaml.")
-
-
-ROOT = _bootstrap_repo_root_for_utils()
-
-
-WAVE_GROUPS: dict[str, Callable[[str], bool]] = {
-    "B.1.177": lambda lineage: lineage.startswith("B.1.177"),
-    "Alpha": lambda lineage: lineage == "B.1.1.7" or lineage.startswith("B.1.1.7."),
-    "Delta": lambda lineage: lineage.startswith("AY.") or lineage == "B.1.617.2",
-    "BA.1": lambda lineage: lineage.startswith("BA.1"),
-    "BA.2": lambda lineage: lineage.startswith("BA.2"),
-    "BA.4": lambda lineage: lineage.startswith("BA.4"),
-    "BA.5": lambda lineage: lineage.startswith("BA.5") or lineage.startswith("BE."),
-    "BQ.1": lambda lineage: lineage.startswith("BQ."),
-    "XBB": lambda lineage: lineage.startswith("XBB"),
-}
-
-WAVE_GROUP_PALETTE: dict[str, str] = {
-    "B.1.177": "#4e79a7",
-    "Alpha": "#f28e2b",
-    "Delta": "#e15759",
-    "BA.1": "#76b7b2",
-    "BA.2": "#59a14f",
-    "BA.4": "#edc948",
-    "BA.5": "#b07aa1",
-    "BQ.1": "#ff9da7",
-    "XBB": "#9c755f",
-}
+from utils import (  # noqa: E402
+    POLICY_PERIODS,
+    CLADES,
+    CLADE_PALETTE,
+    attach_period,
+    set_theme,
+    load_analysis_columns,
+    add_panel_labels,
+    new_figure,
+    save_figure,
+)
 
 POLICY_INTENSITY_CMAP = plt.get_cmap("RdYlGn_r")
 POLICY_INTENSITY_NORM = colors.Normalize(
-    vmin=policy.POLICY_PERIODS_PD["intensity"].min(),
-    vmax=policy.POLICY_PERIODS_PD["intensity"].max(),
+    vmin=POLICY_PERIODS["intensity"].min(),
+    vmax=POLICY_PERIODS["intensity"].max(),
 )
 
 
-def assign_wave_group(lineage: str | None) -> str | None:
-    """Map a Pango lineage to one of the selected wave groups."""
-    if lineage is None:
-        return None
-
-    lineage = str(lineage).strip()
-    if not lineage:
-        return None
-
-    for group_name, matcher in WAVE_GROUPS.items():
-        if matcher(lineage):
-            return group_name
-
-    return None
-
-
 def build_daily_sequence_counts(
-    sequences: pl.DataFrame,
+    sequences: pd.DataFrame,
     *,
     smooth_window: int = 7,
-) -> pl.DataFrame:
+) -> pd.DataFrame:
     """Return gap-filled daily counts with a centered rolling mean."""
-    sequences = sequences.with_columns(pl.col("collection_date").cast(pl.Date))
-
     daily_counts = (
-        sequences
-        .group_by("collection_date")
-        .agg(pl.col("sequence_id").n_unique().alias("count"))
-        .sort("collection_date")
+        sequences.groupby("collection_date")["sequence_id"]
+        .nunique()
+        .rename("count")
+        .reset_index()
+        .sort_values("collection_date")
     )
 
-    all_dates = pl.DataFrame({
-        "collection_date": pl.date_range(
-            daily_counts["collection_date"].min(),
-            daily_counts["collection_date"].max(),
-            interval="1d",
-            eager=True,
-        )
-    })
+    if daily_counts.empty:
+        return pd.DataFrame(columns=["collection_date", "count", "smoothed_count"])
 
-    df_full = (
-        all_dates
-        .join(daily_counts, on="collection_date", how="left")
-        .with_columns(pl.col("count").fill_null(0))
+    all_dates = pd.DataFrame(
+        {
+            "collection_date": pd.date_range(
+                daily_counts["collection_date"].min(),
+                daily_counts["collection_date"].max(),
+                freq="D",
+            )
+        }
     )
 
-    half_window = smooth_window // 2
-    return (
-        df_full
-        .with_columns(
-            pl.col("count")
-            .cast(pl.Float64)
-            .rolling_mean(window_size=smooth_window, min_samples=1)
-            .shift(-half_window)
-            .alias("smoothed_count")
-        )
-        .with_columns(pl.col("smoothed_count").forward_fill().backward_fill())
+    df_full = all_dates.merge(daily_counts, on="collection_date", how="left")
+    df_full["count"] = df_full["count"].fillna(0).astype(int)
+    df_full["smoothed_count"] = (
+        df_full["count"]
+        .astype(float)
+        .rolling(window=smooth_window, min_periods=1, center=True)
+        .mean()
     )
+    return df_full
 
 
-def attach_policy_timeline(df_full: pl.DataFrame) -> pl.DataFrame:
+def attach_policy_timeline(df_full: pd.DataFrame) -> pd.DataFrame:
     """Attach policy metadata for each daily date."""
     period_lookup = (
-        policy.POLICY_PERIODS
-        .select(pl.col("period_code").alias("policy_period"))
-        .with_row_index("policy_level")
+        POLICY_PERIODS[["period_code"]]
+        .reset_index()
+        .rename(columns={"index": "policy_level", "period_code": "policy_period"})
     )
 
-    return (
-        policy.attach_period(df_full, "collection_date")
-        .join(period_lookup, on="policy_period", how="left")
+    return attach_period(df_full, "collection_date").merge(
+        period_lookup,
+        on="policy_period",
+        how="left",
     )
 
 
-def configure_date_axis(ax: plt.Axes, dates: object) -> None:
+def configure_date_axis(ax: Axes, dates: pd.Series):
     """Use quarterly date ticks with month above year."""
-    date_index = pd.to_datetime(pd.Index(dates)).dropna()
-    if date_index.empty:
+    dates = dates.dropna()
+    if dates.empty:
         return
 
-    start = date_index.min()
-    end = date_index.max()
+    start = dates.min()
+    end = dates.max()
     span_days = (end - start).days
-
     ax.set_xlim(
-        (start - pd.Timedelta(days=7)).to_pydatetime(),
-        (end + pd.Timedelta(days=7)).to_pydatetime(),
+        (start - pd.Timedelta(days=7)),
+        (end + pd.Timedelta(days=7)),
     )
 
     if span_days <= 365 * 4:
@@ -165,46 +113,39 @@ def configure_date_axis(ax: plt.Axes, dates: object) -> None:
         ax.xaxis.set_minor_locator(mdates.MonthLocator())
         ax.tick_params(axis="x")
         for label in ax.get_xticklabels():
-            label.set_ha("center")
+            label.set_horizontalalignment("center")
     else:
         ax.xaxis.set_major_locator(mdates.YearLocator())
         ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
         ax.xaxis.set_minor_locator(mdates.MonthLocator(interval=3))
 
 
-def policy_intensity_color(intensity: float) -> tuple[float, float, float, float]:
+def policy_intensity_color(intensity) -> tuple[float, float, float, float]:
     """Map policy intensity to the shared policy strip colour scale."""
     return POLICY_INTENSITY_CMAP(POLICY_INTENSITY_NORM(float(intensity)))
 
 
 def add_policy_background(
-    ax: plt.Axes,
-    dates: object,
-    *,
-    show_labels: bool = False,
-    color_by_intensity: bool = False,
+    ax: Axes,
+    dates: pd.Series,
 ) -> None:
     """Shade policy periods behind plotted data."""
-    date_index = pd.to_datetime(pd.Index(dates)).dropna()
-    if date_index.empty:
+    dates = dates.dropna()
+    if dates.empty:
         return
 
-    plot_start = date_index.min().normalize()
-    plot_end = date_index.max().normalize()
-    policy_periods = policy.POLICY_PERIODS.sort("start_date").to_pandas()
+    plot_start = dates.min().normalize()
+    plot_end = dates.max().normalize()
+    policy_periods = POLICY_PERIODS.sort_values("start_date")
 
-    for idx, row in policy_periods.iterrows():
-        start = max(pd.Timestamp(row["start_date"]), plot_start)
-        end = min(pd.Timestamp(row["end_date"]), plot_end)
+    for _, row in enumerate(policy_periods.itertuples(index=False)):
+        start = max(row.start_date, plot_start)
+        end = min(row.end_date, plot_end)
         if start > end:
             continue
 
-        if color_by_intensity:
-            shade_color = policy_intensity_color(row["intensity"])
-            shade_alpha = 0.1
-        else:
-            shade_color = "#000000"
-            shade_alpha = 0.035 if idx % 2 == 0 else 0
+        shade_color = policy_intensity_color(row.intensity)
+        shade_alpha = 0.25
 
         if shade_alpha > 0:
             ax.axvspan(
@@ -218,31 +159,16 @@ def add_policy_background(
 
         ax.axvline(start, color="#b3b3b3", lw=0.45, alpha=0.3, zorder=-10)
 
-        if show_labels:
-            midpoint = start + (end - start) / 2
-            ax.text(
-                midpoint,
-                1.01,
-                str(row["period_code"]),
-                transform=ax.get_xaxis_transform(),
-                ha="center",
-                va="bottom",
-                fontsize=6.5,
-                color="#666666",
-                clip_on=False,
-                zorder=4,
-            )
 
-
-def add_policy_strip(ax: plt.Axes, dates: object) -> None:
+def add_policy_strip(ax: Axes, dates: pd.Series):
     """Draw a horizontal policy-period strip with intensity-coloured segments."""
-    date_index = pd.to_datetime(pd.Index(dates)).dropna()
-    if date_index.empty:
+    dates = dates.dropna()
+    if dates.empty:
         return
 
-    plot_start = date_index.min().normalize()
-    plot_end = date_index.max().normalize()
-    policy_periods = policy.POLICY_PERIODS.sort("start_date").to_pandas()
+    plot_start = dates.min().normalize()
+    plot_end = dates.max().normalize()
+    policy_periods = POLICY_PERIODS.sort_values("start_date")
 
     ax.set_ylim(0, 1)
     ax.set_yticks([])
@@ -251,14 +177,14 @@ def add_policy_strip(ax: plt.Axes, dates: object) -> None:
         spine.set_visible(False)
 
     for _, row in policy_periods.iterrows():
-        start = max(pd.Timestamp(row["start_date"]), plot_start)
-        end = min(pd.Timestamp(row["end_date"]), plot_end)
+        start = max(row.start_date, plot_start)
+        end = min(row.end_date, plot_end)
         if start > end:
             continue
 
         width_days = (end - start).days + 1
         ax.broken_barh(
-            [(mdates.date2num(start), width_days)],
+            [(float(mdates.date2num(start)), float(width_days))],
             (0.08, 0.84),
             facecolors=[policy_intensity_color(row["intensity"])],
             edgecolors="white",
@@ -277,9 +203,7 @@ def add_policy_strip(ax: plt.Axes, dates: object) -> None:
                 fontsize=5.5,
                 fontweight="bold",
                 clip_on=True,
-                path_effects=[
-                    pe.withStroke(linewidth=0.9, foreground="#333333")
-                ]
+                path_effects=[pe.withStroke(linewidth=0.9, foreground="#333333")],
             )
 
     ax.set_xlim(
@@ -290,22 +214,24 @@ def add_policy_strip(ax: plt.Axes, dates: object) -> None:
 
 
 def add_policy_intensity_colorbar(
-    fig: plt.Figure,
-    ax_policy: plt.Axes,
-    ax_top: plt.Axes,
-) -> plt.Axes:
+    fig: Figure,
+    ax_policy: Axes,
+    ax_top: Axes,
+) -> Axes:
     """Add a slim intensity colour bar spanning the policy strip and panel A."""
     policy_box = ax_policy.get_position()
     top_box = ax_top.get_position()
     full_height = policy_box.y1 - top_box.y0
     bar_height = full_height * 0.95
     bar_bottom = top_box.y0 + (full_height - bar_height) / 2
-    cax = fig.add_axes([
-        policy_box.x1 + 0.006,
-        bar_bottom,
-        0.010,
-        bar_height,
-    ])
+    cax = fig.add_axes(
+        (
+            policy_box.x1 + 0.006,
+            bar_bottom,
+            0.010,
+            bar_height,
+        )
+    )
 
     scalar = plt.cm.ScalarMappable(
         norm=POLICY_INTENSITY_NORM,
@@ -316,13 +242,22 @@ def add_policy_intensity_colorbar(
     cbar.set_label("Restriction intensity", fontsize=7, labelpad=5)
     cbar.set_ticks([10, 30, 55, 75, 95])
     cbar.ax.tick_params(labelsize=6.5, length=2.2, width=0.6, pad=1.5)
-    cbar.outline.set_linewidth(0.4)
+    outline = getattr(cbar, "outline", None)
+    if outline is not None:
+        try:
+            outline.set_linewidth(0.4)
+        except TypeError:
+            try:
+                outline.set_lw(0.4)
+            except Exception:
+                # best-effort: ignore if neither method exists
+                pass
     return cax
 
 
 def place_policy_strip_flush(
-    ax_policy: plt.Axes,
-    ax_top: plt.Axes,
+    ax_policy: Axes,
+    ax_top: Axes,
 ) -> None:
     """Make the policy strip nearly flush with panel A."""
     policy_box = ax_policy.get_position()
@@ -330,35 +265,34 @@ def place_policy_strip_flush(
 
     policy_gap = 0.006
 
-    new_policy = [
-        top_box.x0,
-        top_box.y1 + policy_gap,
-        top_box.width,
-        policy_box.height,
-    ]
-
-    ax_policy.set_position(new_policy)
+    ax_policy.set_position(
+        (
+            top_box.x0,
+            top_box.y1 + policy_gap,
+            top_box.width,
+            policy_box.height,
+        )
+    )
 
 
 def plot_sequences_with_policy(
-    timeline: pl.DataFrame,
+    timeline: pd.DataFrame,
     *,
-    ax: plt.Axes,
+    ax: Axes,
     show_xlabel: bool = True,
-) -> tuple[plt.Figure, plt.Axes]:
+):
     """Plot daily sequences with subtle policy-period shading."""
-    fig = ax.figure
 
-    dates = timeline["collection_date"].to_list()
-    counts = timeline["count"].to_list()
-    smoothed = timeline["smoothed_count"].to_list()
-    add_policy_background(ax, dates, color_by_intensity=True)
+    dates = timeline["collection_date"]
+    counts = timeline["count"]
+    smoothed = timeline["smoothed_count"]
+    add_policy_background(ax, dates)
 
     ax.bar(
         dates,
         counts,
         width=1.0,
-        color="#d9e2ec",
+        color="#b8b9ba",
         edgecolor="none",
         alpha=0.95,
         label="Daily sequences",
@@ -383,47 +317,44 @@ def plot_sequences_with_policy(
     configure_date_axis(ax, dates)
     ax.legend(loc="upper left", ncol=2, frameon=False)
 
-    return fig, ax
 
 def plot_lineage_frequency_and_overtakes(
-    df: pl.DataFrame,
+    df: pd.DataFrame,
     *,
     date_col: str = "collection_date",
-    clade_col: str = "wave_group",
+    clade_col: str = "variant",
     sequence_col: str = "sequence_id",
     prop_sequenced_col: str = "wn_prop_sequenced",
     time_freq: str = "W",
     smooth_window: int | None = 3,
     min_sequences_per_period: int = 1,
-    ax: plt.Axes,
-    legend_ax: plt.Axes | None = None,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, plt.Axes]:
+    ax: Axes,
+    legend_ax: Axes | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, Axes]:
     """Plot selected lineage-group frequency and sequencing coverage over time.
 
     Returns
     -------
-    lineage_freq
-        Unsmoothed lineage-group frequency table.
+    clade_freq
+        Unsmoothed clade frequency table.
     plot_freq
-        Smoothed lineage-group frequency table used for plotting.
+        Smoothed clade frequency table used for plotting.
     dominance_df
-        Dominant lineage group per period.
+        Dominant clade group per period.
     overtakes
-        Periods where the dominant lineage group changed.
+        Periods where the dominant clade group changed.
     sampling_df
         Proportion of cases sequenced per period.
     ax2
         Twin y-axis for proportion of cases sequenced.
     """
-    dd = df.to_pandas()
+    dd = df.copy()
 
     required_cols = {date_col, clade_col, sequence_col, prop_sequenced_col}
     missing_cols = required_cols - set(dd.columns)
     if missing_cols:
         raise ValueError(f"Missing required columns: {missing_cols}")
 
-    dd[date_col] = pd.to_datetime(dd[date_col], errors="coerce")
-    dd[prop_sequenced_col] = pd.to_numeric(dd[prop_sequenced_col], errors="coerce")
     dd = dd.dropna(subset=[date_col, clade_col])
 
     if time_freq == "W":
@@ -439,26 +370,25 @@ def plot_lineage_frequency_and_overtakes(
         .reset_index(name="n")
     )
 
-    totals = (
-        counts.groupby("time_period")["n"]
-        .sum()
-        .reset_index(name="total")
-    )
+    totals = counts.groupby("time_period")["n"].sum().reset_index(name="total")
 
     counts = counts.merge(totals, on="time_period")
     counts["frequency"] = counts["n"] / counts["total"]
     counts = counts[counts["total"] >= min_sequences_per_period]
 
-    lineage_freq = (
+    clade_freq = (
         counts.pivot(index="time_period", columns=clade_col, values="frequency")
         .fillna(0)
         .sort_index()
     )
-    lineage_order = [group for group in WAVE_GROUPS if group in lineage_freq.columns]
-    lineage_freq = lineage_freq.reindex(columns=lineage_order)
+    clade_order = [
+        clade for clade in CLADE_PALETTE if clade in clade_freq.columns
+    ]
 
-    if lineage_freq.empty or not lineage_order:
-        raise ValueError("No sequences matched the selected lineage groups.")
+    clade_freq = clade_freq.reindex(columns=clade_order)
+
+    if clade_freq.empty or not clade_order:
+        raise ValueError("No sequences matched the selected clade groups.")
 
     sampling_df = (
         dd.groupby("time_period")[prop_sequenced_col]
@@ -469,42 +399,45 @@ def plot_lineage_frequency_and_overtakes(
     )
 
     # Keep sampling data aligned to periods that pass the sequence-count threshold.
-    sampling_df = sampling_df.reindex(lineage_freq.index)
+    sampling_df = sampling_df.reindex(clade_freq.index)
 
     if smooth_window is not None:
-        plot_freq = lineage_freq.rolling(window=smooth_window, min_periods=1).mean()
+        plot_freq = clade_freq.rolling(window=smooth_window, min_periods=1).mean()
         plot_sampling = (
             sampling_df["prop_cases_sequenced"]
             .rolling(window=smooth_window, min_periods=1)
             .mean()
         )
     else:
-        plot_freq = lineage_freq.copy()
+        plot_freq = clade_freq.copy()
         plot_sampling = sampling_df["prop_cases_sequenced"].copy()
 
     sampling_df = sampling_df.copy()
     sampling_df["plot_prop_cases_sequenced"] = plot_sampling
 
-    dominance_df = pd.DataFrame({
-        "time_period": plot_freq.index,
-        "dominant_lineage_group": plot_freq.idxmax(axis=1).values,
-        "dominant_frequency": plot_freq.max(axis=1).values,
-    })
-    dominance_df["previous_dominant_lineage_group"] = (
-        dominance_df["dominant_lineage_group"].shift()
+    dominance_df = pd.DataFrame(
+        {
+            "time_period": plot_freq.index,
+            "dominant_clade": plot_freq.idxmax(axis=1).values,
+            "dominant_frequency": plot_freq.max(axis=1).values,
+        }
+    )
+    dominance_df["previous_dominant_clade"] = dominance_df["dominant_clade"].shift()
+
+    overtakes = (
+        dominance_df[
+            dominance_df["dominant_clade"] != dominance_df["previous_dominant_clade"]
+        ]
+        .dropna(subset=["previous_dominant_clade"])
+        .copy()
     )
 
-    overtakes = dominance_df[
-        dominance_df["dominant_lineage_group"]
-        != dominance_df["previous_dominant_lineage_group"]
-    ].dropna(subset=["previous_dominant_lineage_group"]).copy()
-
     ax.set_facecolor("white")
-    stack_colors = [WAVE_GROUP_PALETTE.get(group, "#999999") for group in lineage_order]
+    stack_colors = [CLADE_PALETTE.get(clade, "#999999") for clade in clade_order]
     stack_handles = ax.stackplot(
         plot_freq.index,
-        *[plot_freq[group].values for group in lineage_order],
-        labels=lineage_order,
+        *[plot_freq[clade].to_numpy() for clade in clade_order],
+        labels=clade_order,
         colors=stack_colors,
         alpha=0.92,
         linewidth=0.5,
@@ -513,15 +446,15 @@ def plot_lineage_frequency_and_overtakes(
     )
 
     ax2 = ax.twinx()
-    ax2.plot(
+    coverage_line = ax2.plot(
         plot_sampling.index,
-        plot_sampling.values,
+        plot_sampling.to_numpy(),
         linestyle=":",
         linewidth=1.6,
         alpha=0.85,
         color="#303030",
-        label="Sequenced",
-    )
+        label="Sequenced cases",
+    )[0]
     ax2.set_ylabel("Proportion of cases sequenced")
     ax2.set_ylim(0, 1)
     ax2.yaxis.set_major_formatter(PercentFormatter(xmax=1, decimals=0))
@@ -529,7 +462,7 @@ def plot_lineage_frequency_and_overtakes(
     ax2.grid(False)
 
     ax.set_xlabel("Collection date", labelpad=3)
-    ax.set_ylabel("Lineage-group frequency")
+    ax.set_ylabel("Clade frequency")
     ax.set_ylim(0, 1)
     ax.yaxis.set_major_formatter(PercentFormatter(xmax=1, decimals=0))
     ax.grid(axis="y", color="#d9d9d9", linewidth=0.6, alpha=0.5)
@@ -537,15 +470,8 @@ def plot_lineage_frequency_and_overtakes(
 
     configure_date_axis(ax, dd[date_col])
 
-    coverage_handle = Line2D(
-        [0], [0],
-        color="#303030",
-        linestyle=":",
-        linewidth=1.6,
-        label="Sequenced",
-    )
-    legend_handles = [*stack_handles, coverage_handle]
-    legend_labels = [*lineage_order, "Sequenced"]
+    legend_handles = [*stack_handles, coverage_line]
+    legend_labels = [*clade_order, "Sequenced cases"]
     if legend_ax is not None:
         legend_ax.axis("off")
         legend_ax.legend(
@@ -571,45 +497,33 @@ def plot_lineage_frequency_and_overtakes(
             borderaxespad=0.0,
         )
 
-    return lineage_freq, plot_freq, dominance_df, overtakes, sampling_df, ax2
+    return clade_freq, plot_freq, dominance_df, overtakes, sampling_df, ax2
 
 
 def main() -> None:
-    style.set_theme(context="paper")
-    out_dir = ROOT / "surveillance" / "figures"
-    table_dir = ROOT / "surveillance" / "tables"
+    """Load processed metadata and write policy/clade surveillance outputs."""
+    set_theme(context="paper")
+    out_dir = PROJECT_ROOT / "surveillance" / "figures"
+    table_dir = PROJECT_ROOT / "surveillance" / "tables"
     table_dir.mkdir(parents=True, exist_ok=True)
 
-    qc_statuses: list[data.QCStatus] = ["good", "mediocre", "bad"]
-
-    sequences = data.load_analysis_columns(
-        ["sequence_id", "collection_date", "pango_lineage", "wn_prop_sequenced"],
-        resolution=data.PRIMARY_RESOLUTION,
-        qc=qc_statuses,
+    sequences = load_analysis_columns(
+        ["sequence_id", "collection_date", "clade", "wn_prop_sequenced"],
+        window_stride=3,
     )
-
-    sequences = (
-        sequences.group_by("sequence_id")
-        .agg([
-            pl.first("collection_date").alias("collection_date"),
-            pl.first("pango_lineage").alias("pango_lineage"),
-            pl.mean("wn_prop_sequenced").alias("wn_prop_sequenced"),
-        ])
-        .with_columns(
-            pl.col("pango_lineage")
-            .map_elements(assign_wave_group, return_dtype=pl.Utf8)
-            .alias("wave_group")
-        )
+    sequences["variant"] = (
+        sequences["clade"].map(CLADES).fillna("Other")
     )
 
     timeline = attach_policy_timeline(
         build_daily_sequence_counts(sequences, smooth_window=7)
     )
 
-    fig, axes = style.new_figure(
+    fig, axes = new_figure(
         width="double",
         height_in=6.9,
-        nrows=4, ncols=1,
+        nrows=4,
+        ncols=1,
         gridspec_kw={"height_ratios": [0.16, 2.35, 0.42, 2.55]},
     )
 
@@ -622,31 +536,32 @@ def main() -> None:
     ax_legend = axes[2]
     ax_bottom = axes[3]
 
-    add_policy_strip(ax_policy, timeline["collection_date"].to_list())
-    fig, _ = plot_sequences_with_policy(timeline, ax=ax_top, show_xlabel=False)
+    add_policy_strip(ax_policy, timeline["collection_date"])
+    plot_sequences_with_policy(timeline, ax=ax_top, show_xlabel=False)
     ax_top.tick_params(axis="x", labelbottom=False)
     # place_policy_strip_flush(ax_legend, ax_bottom)
     place_policy_strip_flush(ax_policy, ax_top)
     add_policy_intensity_colorbar(fig, ax_policy, ax_top)
 
-    lineage_freq, plot_freq, dominance_df, overtakes, sampling_df, _ = (
+    clade_freq, plot_freq, dominance_df, overtakes, sampling_df, _ = (
         plot_lineage_frequency_and_overtakes(
             sequences,
             ax=ax_bottom,
             legend_ax=ax_legend,
+            clade_col="variant",
         )
     )
 
-    lineage_freq.to_csv(table_dir / "lineage_frequency_by_period.csv")
-    plot_freq.to_csv(table_dir / "lineage_frequency_by_period_smoothed.csv")
-    dominance_df.to_csv(table_dir / "lineage_dominance_by_period.csv", index=False)
-    overtakes.to_csv(table_dir / "lineage_overtake_events.csv", index=False)
+    clade_freq.to_csv(table_dir / "clade_frequency_by_period.csv")
+    plot_freq.to_csv(table_dir / "clade_frequency_by_period_smoothed.csv")
+    dominance_df.to_csv(table_dir / "clade_dominance_by_period.csv", index=False)
+    overtakes.to_csv(table_dir / "clade_overtake_events.csv", index=False)
     sampling_df.to_csv(table_dir / "sequencing_proportion_by_period.csv")
 
     fig.align_ylabels([ax_top, ax_bottom])
-    style.add_panel_labels([ax_top, ax_bottom], x=-0.1, y=1.1)
+    add_panel_labels([ax_top, ax_bottom], x=-0.1, y=1.1)
 
-    _ = style.save_figure(
+    _ = save_figure(
         fig,
         out_dir / "policy_sequences_over_time",
         width="double",
