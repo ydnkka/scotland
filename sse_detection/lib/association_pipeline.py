@@ -35,6 +35,8 @@ __all__ = [
     "COMPOSITION_SPECS",
     "DEFAULT_MIXING_FEATURES",
     "OBSERVED_MIXING_FEATURES",
+    "OBSERVED_MIXING_FEATURES_X10",
+    "OBSERVED_MIXING_REFERENCE_X10",
     "WINDOW_SURVEILLANCE_ADJUSTERS",
     "EXPANDED_CONTEXT_ADJUSTERS",
     "TABLE_DISPLAY_COLUMNS",
@@ -110,6 +112,10 @@ OBSERVED_MIXING_FEATURES = [
     "urban_rural_entropy_obs",
     "health_board_entropy_obs",
 ]
+OBSERVED_MIXING_FEATURES_X10 = [
+    f"{feature}_x10" for feature in OBSERVED_MIXING_FEATURES
+]
+OBSERVED_MIXING_REFERENCE_X10 = "per 0.1 increase in observed normalised entropy"
 
 STANDARDISE_SPECS = {
     "z_wn_prop_sequenced": "wn_prop_sequenced",
@@ -270,6 +276,12 @@ def add_clade_group(
 def add_standardised_adjusters(data: pd.DataFrame) -> pd.DataFrame:
     """Add standardised surveillance and context adjusters used by notebooks."""
     out = data.copy()
+    for feature, scaled_feature in zip(
+        OBSERVED_MIXING_FEATURES,
+        OBSERVED_MIXING_FEATURES_X10,
+    ):
+        if feature in out.columns:
+            out[scaled_feature] = out[feature].astype(float) * 10
     if "wn_positive_tests" in out.columns:
         out["log1p_wn_positive_tests"] = np.log1p(out["wn_positive_tests"])
     if "dz_cum_positive_tests" in out.columns:
@@ -1238,7 +1250,7 @@ def run_association_pipeline(
     composition_model_sets: Mapping[str, Sequence[str]] | None = None,
     mixing_model_sets: Mapping[str, Sequence[str]] | None = None,
     mixing_features: Sequence[str] = DEFAULT_MIXING_FEATURES,
-    mixing_reference: str = "per 1 SD entropy null-model z-score",
+    mixing_reference: str = "per 1 null-model SD increase in entropy",
     group_by_clade: bool = False,
     clade_group_col: str = "clade_group",
     clade_group_values: Sequence[object] | None = None,

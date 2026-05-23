@@ -61,9 +61,13 @@ Mixing models use node-level entropy features from `node_stats`. The default mai
 - `urban_rural_entropy_z`
 - `health_board_entropy_z`
 
-These coefficients describe differences in candidate odds per one-unit increase in the entropy z-score. A higher z-score means the node is more internally mixed than expected for its size and window under the null model. The observed-entropy sensitivity notebook instead uses `*_entropy_obs` features.
+These coefficients describe differences in candidate odds per one null-model SD increase in entropy. In practice, the fitted feature is a z-score:
 
-Do not adjust the main mixing models for candidate-defining graph quantities such as `cluster_size`, `core_amplification_score`, `out_strength`, or `onward_dissemination_score`, because that conditions on variables used to define the outcome.
+`entropy_z = (observed entropy - null mean entropy) / null SD entropy`
+
+where the null mean and SD are estimated for nodes of the same size within the same window. A higher z-score means the node is more internally mixed than expected for its size and window under the null model. The observed-entropy sensitivity notebook instead uses `*_entropy_obs_x10` features, so odds ratios are per 0.1 increase in observed normalised entropy.
+
+Do not adjust the main mixing models for candidate-defining graph quantities such as `cluster_size`, `local_amplification_score`, `out_strength`, or `onward_dissemination_score`, because that conditions on variables used to define the outcome.
 
 ## Adjustment Sets
 
