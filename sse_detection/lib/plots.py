@@ -434,10 +434,10 @@ def plot_candidate_rate_over_time(
         100 * summary["candidate_share"],
         color="#14151F",
         linewidth=1.8,
-        label="candidate share",
+        label="candidate-node share",
     )
-    ax.set_ylabel("Candidates (n)")
-    ax2.set_ylabel("Candidate share (%)")
+    ax.set_ylabel("Candidate nodes per window")
+    ax2.set_ylabel("Candidate-node share of all clusters (%)")
     handles1, labels1 = ax.get_legend_handles_labels()
     handles2, labels2 = ax2.get_legend_handles_labels()
     ax.legend(handles1 + handles2, labels1 + labels2, loc="best", ncol=1, frameon=False)
@@ -456,8 +456,8 @@ def plot_candidate_rate_over_time(
             alpha=0.86,
         )
         ax.legend(loc="upper left", ncol=3, frameon=False)
-    ax.set_ylabel("Candidates by category")
-    ax.set_xlabel("Window Midpoint")
+    ax.set_ylabel("Candidate nodes by signature type")
+    ax.set_xlabel("Window midpoint date")
     fig.autofmt_xdate()
 
     add_panel_labels(list(axes))
@@ -474,13 +474,18 @@ def plot_core_metric_space(
     font_scale: float = 1.0,
     min_size: int = 1,
 ) -> Figure:
-    """Scatter of core amplification vs onward dissemination, faceted by SSE candidate."""
+    """Scatter of core growth/novelty vs onward spread, faceted by candidate screen."""
     set_theme(
         context=context,
         font_scale=font_scale,
     )
 
     plot_df = node_stats.loc[node_stats["cluster_size"].ge(min_size)].copy()
+    plot_df["candidate_screen"] = np.where(
+        plot_df["sse_candidate"].fillna(False).astype(bool),
+        "yes",
+        "no",
+    )
 
     clip_hi = plot_df["cluster_size"].quantile(0.995)
     plot_df["marker_size"] = np.sqrt(
@@ -494,7 +499,8 @@ def plot_core_metric_space(
         size="marker_size",
         hue="sse_role",
         palette=ROLE_PALETTE,
-        col="sse_candidate",
+        col="candidate_screen",
+        col_order=["no", "yes"],
         kind="scatter",
         alpha=0.3,
         sizes=(12, 220),
@@ -503,8 +509,8 @@ def plot_core_metric_space(
         legend=False,
     )
 
-    g.set_axis_labels("Local amplification score", "Onward dissemination score")
-    g.set_titles("SSE candidate: {col_name}")
+    g.set_axis_labels("Local growth/novelty score", "Onward spread score")
+    g.set_titles("Candidate screen: {col_name}")
 
     handles = [
         Line2D(
@@ -524,7 +530,7 @@ def plot_core_metric_space(
 
     g.figure.legend(
         handles=handles,
-        title="SSE role",
+        title="Graph role",
         loc="center right",
         bbox_to_anchor=(0.7, 0.5),
         frameon=False,
@@ -1059,7 +1065,7 @@ def plot_health_board_enrichment_map(
     cb.ax.tick_params(labelsize="small", length=2)
     cb.outline.set_visible(False)  # type: ignore
     cb.set_label(
-        f"Odds ratio vs {reference_board}",
+        f"Candidate-node odds ratio vs {reference_board}",
         fontsize="small",
         color=GRAY,
         labelpad=3,
@@ -1126,7 +1132,7 @@ def plot_health_board_enrichment_map(
     x_max = max(1.12, max(finite_urban_or, default=1.0) + 0.02)
     ax_or.set_xlim(x_min, x_max)
     ax_or.set_ylim(-0.6, len(urban_order) - 0.25)
-    ax_or.set_xlabel("Odds ratio vs large urban areas")
+    ax_or.set_xlabel("Candidate-node odds ratio vs large urban areas")
     ax_or.spines["left"].set_visible(False)
     ax_or.tick_params(axis="y", length=0)
     ax_or.grid(axis="x", color=GRID, lw=0.8, zorder=0)
@@ -1395,7 +1401,7 @@ def plot_sensitivity_matrix(
     ax.text(
         left - 0.4,
         mix_top + 0.30,
-        "MIXING - entropy",
+        "INTERNAL CONCENTRATION (entropy)",
         ha="right",
         va="bottom",
         fontsize="medium",
@@ -1426,7 +1432,7 @@ def plot_sensitivity_matrix(
     cb.ax.tick_params(labelsize="x-small", length=2)
     cb.outline.set_visible(False)  # type: ignore
     cb.set_label(
-        f"Model variants with BH-adjusted p < {alpha:g}",
+        f"Share of sensitivity models with FDR-adjusted p < {alpha:g}",
         fontsize="x-small",
         color=GRAY,
         labelpad=4,
@@ -1826,7 +1832,7 @@ def plot_regression_wald_heatmap(
         vmax=cap_neg_log10_p,
         linewidths=0.5,
         linecolor="white",
-        cbar_kws={"label": "-log10(FDR-adjusted p)"},
+        cbar_kws={"label": "Evidence strength (-log10 FDR-adjusted p)"},
         annot=annot,
         fmt="" if annotate_p else ".2f",
     )
@@ -1855,7 +1861,7 @@ def plot_regression_odds_ratio_forest(
     max_rows: int | None = 40,
     sig_alpha: float = 0.05,
     title: str | None = None,
-    xlabel: str = "Odds Ratio for Candidate-Node Membership",
+    xlabel: str = "Candidate-node odds ratio",
     width: WIDTHS = "double",
     width_in: float | None = None,
     height_in: float | None = None,

@@ -555,7 +555,7 @@ def _format_axes(
             ha="center",
             va="top",
         )
-        ax.set_xlabel("Clustering window")
+        ax.set_xlabel("Three-week clustering window")
     elif show_window_axis and rankdir == "TB":
         # Y-axis becomes the rank axis under TB.
         per_rank = (
