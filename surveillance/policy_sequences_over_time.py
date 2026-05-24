@@ -521,10 +521,10 @@ def main() -> None:
 
     fig, axes = new_figure(
         width="double",
-        height_in=6.9,
+        height_in=7,
         nrows=4,
         ncols=1,
-        gridspec_kw={"height_ratios": [0.16, 2.35, 0.42, 2.55]},
+        gridspec_kw={"height_ratios": [0.16, 2.5, 0.5, 2.5]},
     )
 
     fig.subplots_adjust(hspace=0.04)
@@ -565,7 +565,7 @@ def main() -> None:
         fig,
         out_dir / "policy_sequences_over_time",
         width="double",
-        height_in=6.9,
+        height_in=7,
         save_png=True,
         save_pdf=True,
         save_tiff=True,
