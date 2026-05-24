@@ -7,7 +7,6 @@
 **/data
 **/figures
 **/tables
-**/*outputs
-**/*sensitivity
+**/results
 assets/
 presentation/

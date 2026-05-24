@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Iterable, Literal
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 import yaml
 
@@ -32,6 +33,13 @@ PRIMARY_RESOLUTION: float = 0.3
 
 QCStatus = Literal["good", "mediocre", "bad"]
 VALID_QC_STATUSES: set[str] = {"good", "mediocre", "bad"}
+
+SIMD_GROUP_COLUMNS: dict[str, int] = {
+    "dz_simd_quintile": 5,
+    "dz_simd_decile": 10,
+    "dz_simd_vigintile": 20,
+}
+SIMD_WEIGHTING_COLUMNS: set[str] = {"datazone", "dz_simd_rank", "dz_population"}
 
 CLADES : dict[str, str] = {
     "20B": "20B",
@@ -171,6 +179,103 @@ def _apply_window_stride(
     return out.reset_index(drop=True)
 
 
+def _requested_simd_group_columns(
+    columns: Iterable[str] | None,
+    *,
+    all_cols: bool = False,
+) -> set[str]:
+    """Return requested SIMD grouping columns that support population weighting."""
+    if all_cols:
+        return set(SIMD_GROUP_COLUMNS)
+    if columns is None:
+        return set()
+    return set(columns) & set(SIMD_GROUP_COLUMNS)
+
+
+def _apply_weighted_simd_groups(
+    df: pd.DataFrame,
+    simd_cols: Iterable[str],
+    *,
+    rank_col: str = "dz_simd_rank",
+    pop_col: str = "dz_population",
+) -> pd.DataFrame:
+    """Replace requested SIMD group columns with population-weighted groups.
+
+    The ranking itself is unchanged: Data Zones are sorted by the Scottish
+    Government SIMD rank, then split into equal population shares.
+    """
+    simd_cols = list(simd_cols)
+    if not simd_cols:
+        return df
+
+    missing = ({rank_col, pop_col} | set(simd_cols)) - set(df.columns)
+    if missing:
+        raise KeyError(
+            "Population-weighted SIMD grouping requires columns: "
+            f"{sorted(missing)}"
+        )
+
+    out = df.copy()
+    valid = out[rank_col].notna() & out[pop_col].notna()
+
+    if not valid.all():
+        missing_n = int((~valid).sum())
+        raise ValueError(
+            f"Cannot compute population-weighted SIMD groups with {missing_n} "
+            "missing rank/population row(s)."
+        )
+
+    if (out[pop_col] < 0).any():
+        raise ValueError(f"Negative values found in {pop_col}")
+
+    total_pop = out[pop_col].sum()
+    if total_pop <= 0:
+        raise ValueError("Total population must be greater than zero")
+
+    ordered = out.sort_values(rank_col, ascending=True)
+    cum_prop = ordered[pop_col].cumsum() / total_pop
+
+    for col in simd_cols:
+        n_groups = SIMD_GROUP_COLUMNS[col]
+        weighted = np.ceil(cum_prop * n_groups).astype(int).clip(1, n_groups)
+        out.loc[ordered.index, col] = weighted.to_numpy()
+
+    return out
+
+
+def _weighted_simd_lookup(paths: Paths, simd_cols: Iterable[str]) -> pd.DataFrame:
+    """Build a datazone lookup with requested SIMD groups population-weighted."""
+    simd_cols = list(simd_cols)
+    lookup = pd.read_parquet(
+        paths.geography,
+        columns=list({"dz_population", "dz_simd_rank", *simd_cols}),
+    )
+    lookup = _apply_weighted_simd_groups(lookup, simd_cols)
+    return lookup.reset_index()[["datazone", *simd_cols]]
+
+
+def _attach_weighted_simd_groups(
+    df: pd.DataFrame,
+    simd_cols: Iterable[str],
+    *,
+    paths: Paths,
+) -> pd.DataFrame:
+    """Overwrite SIMD group columns in an analysis frame using a datazone lookup."""
+    simd_cols = list(simd_cols)
+    if not simd_cols:
+        return df
+    if "datazone" not in df.columns:
+        raise KeyError("'datazone' is required to attach weighted SIMD groups")
+
+    out = df.copy()
+    lookup = _weighted_simd_lookup(paths, simd_cols).set_index("datazone")
+
+    for col in simd_cols:
+        out[col] = out["datazone"].map(lookup[col])
+
+    return out
+
+
 def load_analysis_columns(
     columns: Iterable[str] | None = None,
     all_cols: bool = False,
@@ -180,6 +285,7 @@ def load_analysis_columns(
     window_stride: int | None = None,
     window_offset: int = 0,
     renumber_windows: bool = True,
+    weighted_simd: bool = True,
 ) -> pd.DataFrame:
     """Read a narrow slice of the master sequence-level parquet.
 
@@ -211,6 +317,12 @@ def load_analysis_columns(
     renumber_windows:
         If True with ``window_stride``, renumber retained ``window_idx`` values
         to 1..N and rebuild ``window_id`` where present.
+    weighted_simd:
+        If True, replace any requested SIMD grouping columns
+        ``dz_simd_quintile``, ``dz_simd_decile``, or ``dz_simd_vigintile``
+        with population-weighted groups while retaining the same column names.
+        The weighting uses all datazones in the configured geography parquet,
+        not just rows retained after sequence-level filters.
 
     Notes
     -----
@@ -257,6 +369,7 @@ def load_analysis_columns(
 
     need = {"sequence_id", "collection_date", "pango_lineage"}
     requested = set(columns or [])
+    simd_cols = _requested_simd_group_columns(requested, all_cols=all_cols)
 
     if columns is not None:
         need.update(requested)
@@ -271,6 +384,10 @@ def load_analysis_columns(
 
     if qc_values is not None:
         need.add("nextclade_qc")
+
+    output_columns = set(need)
+    if weighted_simd and simd_cols:
+        need.update(SIMD_WEIGHTING_COLUMNS)
 
     read_columns = None if all_cols else list(need)
 
@@ -292,13 +409,22 @@ def load_analysis_columns(
 
     df = df.reset_index(drop=True)
 
+    if weighted_simd and simd_cols:
+        df = _attach_weighted_simd_groups(df, simd_cols, paths=paths)
+        if not all_cols:
+            drop_cols = SIMD_WEIGHTING_COLUMNS - output_columns
+            df = df.drop(columns=[c for c in drop_cols if c in df.columns])
+
     if add_policy:
         df = attach_period(df, "collection_date")
 
     return df
 
 
-def load_datazone_info(columns: Iterable[str]) -> gpd.GeoDataFrame:
+def load_datazone_info(
+    columns: Iterable[str],
+    weighted_simd: bool = True,
+) -> gpd.GeoDataFrame:
     """Read a narrow slice of the datazone information parquet.
 
     Parameters
@@ -306,6 +432,10 @@ def load_datazone_info(columns: Iterable[str]) -> gpd.GeoDataFrame:
     columns:
         Names of columns to read. ``datazone`` and ``geometry`` are added
         automatically.
+    weighted_simd:
+        If True, replace any requested SIMD grouping columns
+        ``dz_simd_quintile``, ``dz_simd_decile``, or ``dz_simd_vigintile``
+        with population-weighted groups while retaining the same column names.
 
     Notes
     -----
@@ -325,6 +455,19 @@ def load_datazone_info(columns: Iterable[str]) -> gpd.GeoDataFrame:
     paths = Paths.from_config()
 
     need = {"datazone", "geometry"}
-    need.update(columns)
+    requested = set(columns)
+    need.update(requested)
+    simd_cols = _requested_simd_group_columns(requested)
 
-    return gpd.read_parquet(paths.geography, columns=list(need))
+    output_columns = set(need)
+    if weighted_simd and simd_cols:
+        need.update(SIMD_WEIGHTING_COLUMNS)
+
+    df = gpd.read_parquet(paths.geography, columns=list(need))
+
+    if weighted_simd and simd_cols:
+        df = _apply_weighted_simd_groups(df, simd_cols)
+        drop_cols = SIMD_WEIGHTING_COLUMNS - output_columns
+        df = df.drop(columns=[c for c in drop_cols if c in df.columns])
+
+    return df  # type: ignore[return-value]

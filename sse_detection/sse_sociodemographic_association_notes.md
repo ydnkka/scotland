@@ -8,7 +8,7 @@ The main notebook is intentionally light. It configures and runs `sse_detection.
 
 ## Inputs
 
-- `sse_detection/sse_outputs/node_stats.parquet`: node-level candidate labels, cluster summaries, entropy metrics, window metadata, and variant labels.
+- `sse_detection/results/sse_outputs/node_stats.parquet`: node-level candidate labels, cluster summaries, entropy metrics, window metadata, and variant labels.
 - `data/processed/scotland_clustering_analysis_dataset.parquet`: sequence-window rows used for the composition models.
 - `utils.data.CLADES`: curated top-clade mapping used by clade sensitivity analyses.
 - `sse_detection/lib/regression.py`: Firth logistic, GLM, conditional-logit, Wald, odds-ratio, and fit-stat helpers.
@@ -16,7 +16,7 @@ The main notebook is intentionally light. It configures and runs `sse_detection.
 
 ## Outputs
 
-The main analysis saves CSV tables to `sse_detection/association_outputs`:
+The main analysis saves CSV tables to `sse_detection/results/association_outputs`:
 
 - `composition_wald.csv`
 - `composition_odds_ratios.csv`
@@ -27,7 +27,7 @@ The main analysis saves CSV tables to `sse_detection/association_outputs`:
 - `cluster_diagnostics.csv`
 - `model_failures.csv`, only when one or more fits fail
 
-Sensitivity notebooks write equivalent tables to their own output directories, such as `clade_sensitivity` and `window_sensitivity`.
+Sensitivity notebooks write equivalent tables to their own output directories, such as `sse_detection/results/sensitivity_clade` and `sse_detection/results/sensitivity_window`.
 
 ## Eligible Analysis Set
 

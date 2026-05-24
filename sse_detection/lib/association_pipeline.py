@@ -333,7 +333,9 @@ def load_association_frames(
     """Load SSE outputs and construct complete model base frames."""
     root = _project_root(project_root)
     output_path = (
-        Path(output_dir) if output_dir else root / "sse_detection" / "sse_outputs"
+        Path(output_dir)
+        if output_dir
+        else root / "sse_detection" / "results" / "sse_outputs"
     )
     outs = load_sse_outputs(output_path)
     node_stats = outs.node_stats.copy()
@@ -1261,10 +1263,14 @@ def run_association_pipeline(
     """Run composition and/or mixing association models and export CSV tables."""
     root = _project_root(project_root)
     output_path = (
-        Path(output_dir) if output_dir else root / "sse_detection" / "sse_outputs"
+        Path(output_dir)
+        if output_dir
+        else root / "sse_detection" / "results" / "sse_outputs"
     )
     result_path = (
-        Path(result_dir) if result_dir else root / "sse_detection" / result_subdir
+        Path(result_dir)
+        if result_dir
+        else root / "sse_detection" / "results" / result_subdir
     )
     result_path.mkdir(parents=True, exist_ok=True)
 
@@ -1391,7 +1397,7 @@ def run_main_association_analysis(
     This is a thin preset around :func:`run_association_pipeline` for the main
     notebook: no clade stratification, primary and expanded model sets,
     sequence-level composition models, and node-level entropy z-score mixing
-    models saved under ``sse_detection/association_outputs`` by default.
+    models saved under ``sse_detection/results/association_outputs`` by default.
     """
     return run_association_pipeline(
         project_root=project_root,

@@ -65,7 +65,7 @@ def load_sse_outputs(
     ----------
     output_dir
         Directory containing the parquet files. Typically
-        ``<project_root>/sse_detection/outputs``.
+        ``<project_root>/sse_detection/results/sse_outputs``.
     tables
         Override which tables to load (mostly useful for testing).
     """

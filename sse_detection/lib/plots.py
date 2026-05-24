@@ -10,13 +10,20 @@ from __future__ import annotations
 import re
 from typing import Any, Mapping, Sequence
 
+from matplotlib.cm import ScalarMappable
+from matplotlib.collections import PolyCollection
+from matplotlib.colors import Normalize, TwoSlopeNorm, to_rgb
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
+from matplotlib.patches import Rectangle
 from matplotlib.ticker import FuncFormatter
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from shapely import wkb
+from shapely.geometry import MultiPolygon, Polygon
+from shapely.ops import unary_union
 
 from utils import (
     set_theme,
@@ -30,11 +37,21 @@ from utils import (
 )
 
 from .palettes import (
+    BORDER,
     DYNAMIC_ORDER,
+    GRAY,
+    GRAY_LIGHT,
+    GRID,
+    INK,
+    INK_SOFT,
     ROLE_ORDER,
     ROLE_PALETTE,
+    ORANGE_DARK,
+    OR_DIVERGING,
     SSE_CATEGORY_ORDER,
     SSE_CATEGORY_PALETTE,
+    TEAL_DARK,
+    WARM_SEQ,
 )
 
 
@@ -50,6 +67,10 @@ __all__ = [
     "make_regression_wald_table",
     "make_regression_odds_ratio_table",
     "make_regression_fit_table",
+    "load_health_board_geometries",
+    "plot_health_board_enrichment_map",
+    "collect_sensitivity_matrix_results",
+    "plot_sensitivity_matrix",
 ]
 
 
@@ -242,10 +263,7 @@ def plot_cluster_size_distribution(
     if by == "clade":
         clade_label_to_key = {label: key for key, label in CLADES.items()}
 
-        x_tick_labels = [
-            clade_label_to_key.get(group, group)
-            for group in group_order
-        ]
+        x_tick_labels = [clade_label_to_key.get(group, group) for group in group_order]
 
         ax_violin.set_xticks(np.arange(len(group_order)))
         ax_violin.set_xticklabels(x_tick_labels, rotation=45, ha="right")
@@ -756,6 +774,666 @@ def plot_socio_demo_breakdown(
 
     plt.close(fig)
     return fig, pd.DataFrame(records)
+
+
+def _read_table(table: pd.DataFrame | str | Any) -> pd.DataFrame:
+    """Return a dataframe from an in-memory table or a CSV/parquet path."""
+    if isinstance(table, pd.DataFrame):
+        return table.copy()
+    path = str(table)
+    if path.endswith(".parquet"):
+        return pd.read_parquet(path)
+    return pd.read_csv(path)
+
+
+def _coerce_shapely_geometry(value: Any):
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return wkb.loads(bytes(value))
+    return value
+
+
+def load_health_board_geometries(
+    geography: pd.DataFrame | str | Any,
+    *,
+    board_col: str = "dz_health_board",
+    geometry_col: str = "geometry",
+) -> dict[str, Any]:
+    """Dissolve data-zone geometries into health-board geometries.
+
+    ``geography`` may be a dataframe or a parquet path. Geometry values may
+    already be shapely objects or WKB bytes, as in the processed geography
+    parquet used by the project.
+    """
+    if isinstance(geography, pd.DataFrame):
+        df = geography[[geometry_col, board_col]].copy()
+    else:
+        df = pd.read_parquet(geography, columns=[geometry_col, board_col])
+
+    df = df.dropna(subset=[geometry_col, board_col])
+    geoms: dict[str, Any] = {}
+    for board, sub in df.groupby(board_col):
+        geoms[str(board)] = unary_union(
+            [_coerce_shapely_geometry(value) for value in sub[geometry_col]]
+        )
+    return geoms
+
+
+def _polygon_rings(geom: Any) -> list[np.ndarray]:
+    members = (
+        [geom]
+        if isinstance(geom, Polygon)
+        else list(geom.geoms)
+        if isinstance(geom, MultiPolygon)
+        else list(getattr(geom, "geoms", [geom]))
+    )
+    return [
+        np.asarray(poly.exterior.coords)
+        for poly in members
+        if isinstance(poly, Polygon)
+    ]
+
+
+def _text_on_fill(color: Any) -> str:
+    r, g, b = to_rgb(color)
+    luminance = 0.299 * r + 0.587 * g + 0.114 * b
+    return "#FFFFFF" if luminance < 0.55 else INK
+
+
+def _odds_ratio_lookup(
+    odds_df: pd.DataFrame,
+    term_token: str,
+    *,
+    reference: str,
+) -> tuple[dict[str, float], dict[str, float], dict[str, float]]:
+    subset = odds_df.loc[
+        odds_df["term"].astype(str).str.contains(term_token, regex=False)
+    ]
+    odds = dict(zip(subset["term"].map(_term_level), subset["odds_ratio"]))
+    low = dict(zip(subset["term"].map(_term_level), subset["or_low"]))
+    high = dict(zip(subset["term"].map(_term_level), subset["or_high"]))
+    odds[reference] = 1.0
+    low[reference] = 1.0
+    high[reference] = 1.0
+    return odds, low, high
+
+
+def plot_health_board_enrichment_map(
+    geography: pd.DataFrame | str | Any,
+    odds_ratios: pd.DataFrame | str | Any,
+    *,
+    board_col: str = "dz_health_board",
+    geometry_col: str = "geometry",
+    model_set: str = "primary",
+    predictor_set: str = "joint",
+    reference_board: str = "Greater Glasgow and Clyde",
+    reference_urban_rural: str = "Large Urban Areas",
+    board_or_limits: tuple[float, float, float] | None = None,
+    width: WIDTHS = "double",
+    width_in: float | None = None,
+    height_in: float = 4.2,
+    context: CONTEXTS = "paper",
+    font_scale: float = 1.0,
+) -> Figure:
+    """Manuscript map of health-board ORs with an urban/rural companion panel.
+
+    The health-board panel encodes the point estimate only; confidence
+    intervals are intentionally left for the accompanying results table.
+    """
+    geoms = load_health_board_geometries(
+        geography,
+        board_col=board_col,
+        geometry_col=geometry_col,
+    )
+    odds_df = _read_table(odds_ratios)
+    odds_df = _filter_regression_table(
+        odds_df,
+        domain="composition",
+        model_set=model_set,
+        predictor_set=predictor_set,
+    )
+    if odds_df.empty:
+        raise ValueError("No matching composition odds-ratio rows remain.")
+
+    if predictor_set == "joint" and "predictor" in odds_df.columns:
+        joint = odds_df.loc[odds_df["predictor"].eq("all_composition")]
+        if not joint.empty:
+            odds_df = joint
+
+    hb_or, _, _ = _odds_ratio_lookup(
+        odds_df,
+        "health_board",
+        reference=reference_board,
+    )
+    ur_or, ur_low, ur_high = _odds_ratio_lookup(
+        odds_df,
+        "urban_rural",
+        reference=reference_urban_rural,
+    )
+
+    if board_or_limits is None:
+        finite_board_or = np.asarray(
+            [value for value in hb_or.values() if np.isfinite(value)],
+            dtype=float,
+        )
+        if finite_board_or.size == 0:
+            finite_board_or = np.asarray([1.0])
+        vmin = min(float(finite_board_or.min()), 1.0)
+        vmax = max(float(finite_board_or.max()), 1.0)
+        pad = max((vmax - vmin) * 0.05, 0.02)
+        board_or_limits = (max(0.01, vmin - pad), 1.0, vmax + pad)
+
+    norm = TwoSlopeNorm(
+        vmin=board_or_limits[0],
+        vcenter=board_or_limits[1],
+        vmax=board_or_limits[2],
+    )
+    cmap = OR_DIVERGING
+
+    fig, axes = new_figure(
+        width=width,
+        width_in=width_in,
+        height_in=height_in,
+        nrows=1,
+        ncols=2,
+        context=context,
+        font_scale=font_scale,
+        gridspec_kw={"width_ratios": [1.12, 0.88], "wspace": 0.08},
+        layout="constrained",
+    )
+    ax_map, ax_or = np.ravel(axes)
+    ax_map.set_aspect("equal")
+    ax_map.axis("off")
+
+    reps = {}
+    reference_fill = GRAY
+    for board, geom in geoms.items():
+        fill = (
+            reference_fill
+            if board == reference_board
+            else cmap(norm(hb_or.get(board, 1.0)))
+        )
+        ax_map.add_collection(
+            PolyCollection(
+                _polygon_rings(geom),
+                facecolors=[fill],
+                edgecolors="#FFFFFF",
+                linewidths=0.6,
+                zorder=2,
+            )
+        )
+        reps[board] = geom.representative_point()
+
+    all_x = np.concatenate(
+        [ring[:, 0] for geom in geoms.values() for ring in _polygon_rings(geom)]
+    )
+    all_y = np.concatenate(
+        [ring[:, 1] for geom in geoms.values() for ring in _polygon_rings(geom)]
+    )
+    span_x = all_x.max() - all_x.min()
+    span_y = all_y.max() - all_y.min()
+    ax_map.set_xlim(all_x.min() - 0.05 * span_x, all_x.max() + 0.22 * span_x)
+    ax_map.set_ylim(all_y.min() - 0.03 * span_y, all_y.max() + 0.03 * span_y)
+
+    mainland_labels = [
+        "Greater Glasgow and Clyde",
+        "Lothian",
+        "Lanarkshire",
+        "Grampian",
+        "Highland",
+        "Tayside",
+        "Fife",
+        "Forth Valley",
+        "Ayrshire and Arran",
+        "Dumfries and Galloway",
+        "Borders",
+    ]
+    for board in mainland_labels:
+        if board not in reps:
+            continue
+        value = hb_or.get(board, 1.0)
+        fill = reference_fill if board == reference_board else cmap(norm(value))
+        text = "ref" if board == reference_board else f"{value:.2f}"
+        point = reps[board]
+        ax_map.text(
+            point.x,
+            point.y,
+            text,
+            ha="center",
+            va="center",
+            fontsize="small",
+            fontweight="bold",
+            color=_text_on_fill(fill),
+            zorder=4,
+        )
+
+    x_right = all_x.max()
+    island_labels = {
+        "Shetland": (x_right + 0.16 * span_x, all_y.min() + 0.97 * span_y, "left"),
+        "Orkney": (x_right + 0.16 * span_x, all_y.min() + 0.80 * span_y, "left"),
+        "Western Isles": (
+            all_x.min() + 0.02 * span_x,
+            all_y.min() + 0.74 * span_y,
+            "left",
+        ),
+    }
+    for board, (label_x, label_y, label_ha) in island_labels.items():
+        if board not in reps:
+            continue
+        point = reps[board]
+        ax_map.annotate(
+            f"{board}\nOR {hb_or.get(board, 1.0):.2f}",
+            xy=(point.x, point.y),
+            xytext=(label_x, label_y),
+            fontsize="small",
+            color=ORANGE_DARK,
+            fontweight="bold",
+            va="center",
+            ha=label_ha,
+            arrowprops=dict(
+                arrowstyle="-",
+                color=GRAY_LIGHT,
+                lw=0.9,
+                shrinkA=1,
+                shrinkB=2,
+            ),
+            zorder=5,
+        )
+
+    sm = ScalarMappable(norm=norm, cmap=cmap)
+    sm.set_array([])
+    cax = ax_map.inset_axes((0.5, 0.0, 0.42, 0.03))
+    upper_tick = board_or_limits[2]
+    board_ticks = [
+        board_or_limits[0],
+        1.0,
+        1.0 + (upper_tick - 1.0) / 2,
+        upper_tick,
+    ]
+    cb = fig.colorbar(
+        sm,
+        cax=cax,
+        orientation="horizontal",
+        ticks=board_ticks,
+    )
+    cb.ax.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.2g}"))
+    cb.ax.tick_params(labelsize="small", length=2)
+    cb.outline.set_visible(False)  # type: ignore
+    cb.set_label(
+        f"Odds ratio vs {reference_board}",
+        fontsize="small",
+        color=GRAY,
+        labelpad=3,
+    )
+
+    urban_order = [
+        "Large Urban Areas",
+        "Other Urban Areas",
+        "Accessible Small Towns",
+        "Remote Small Towns",
+        "Accessible Rural",
+        "Remote Rural",
+    ]
+    urban_short = {
+        "Large Urban Areas": "Large urban (ref)",
+        "Other Urban Areas": "Other urban",
+        "Accessible Small Towns": "Accessible towns",
+        "Remote Small Towns": "Remote towns",
+        "Accessible Rural": "Accessible rural",
+        "Remote Rural": "Remote rural",
+    }
+    y_positions = np.arange(len(urban_order))[::-1]
+    for y, key in zip(y_positions, urban_order):
+        odds = ur_or.get(key, np.nan)
+        if key == reference_urban_rural:
+            ax_or.plot(1, y, marker="o", ms=9, color=GRAY, zorder=3)
+            ax_or.annotate(
+                "1.00",
+                (1, y),
+                textcoords="offset points",
+                xytext=(0, 11),
+                ha="center",
+                fontsize="small",
+                color=GRAY,
+            )
+            continue
+        low = ur_low.get(key, odds)
+        high = ur_high.get(key, odds)
+        color = ORANGE_DARK if odds > 1 else TEAL_DARK
+        ax_or.plot([low, high], [y, y], color=color, lw=2.6, alpha=0.40, zorder=2)
+        ax_or.plot([1, odds], [y, y], color=color, lw=1.0, ls=":", alpha=0.6, zorder=1)
+        ax_or.plot(odds, y, marker="o", ms=9, color=color, zorder=3)
+        ax_or.annotate(
+            f"{odds:.2f}",
+            (odds, y),
+            textcoords="offset points",
+            xytext=(0, 11),
+            ha="center",
+            fontsize="small",
+            color=color,
+            fontweight="bold",
+        )
+
+    ax_or.axvline(1.0, color=GRAY_LIGHT, lw=1.0, ls="--", zorder=0)
+    ax_or.set_yticks(y_positions)
+    ax_or.set_yticklabels([urban_short[key] for key in urban_order])
+    finite_urban_or = [
+        value
+        for mapping in (ur_low, ur_or, ur_high)
+        for value in mapping.values()
+        if np.isfinite(value)
+    ]
+    x_min = min(0.98, min(finite_urban_or, default=1.0) - 0.01)
+    x_max = max(1.12, max(finite_urban_or, default=1.0) + 0.02)
+    ax_or.set_xlim(x_min, x_max)
+    ax_or.set_ylim(-0.6, len(urban_order) - 0.25)
+    ax_or.set_xlabel("Odds ratio vs large urban areas")
+    ax_or.spines["left"].set_visible(False)
+    ax_or.tick_params(axis="y", length=0)
+    ax_or.grid(axis="x", color=GRID, lw=0.8, zorder=0)
+    ax_or.set_axisbelow(True)
+
+    add_panel_labels([ax_map, ax_or])
+    plt.close(fig)
+    return fig
+
+
+_DEFAULT_SENSITIVITY_FAMILIES = [
+    ("Main", "association_outputs"),
+    ("Clade\ngrouped", "sensitivity_clade"),
+    ("Window\nadjusters", "sensitivity_window"),
+    ("Observed\nentropy", "sensitivity_observed_entropy"),
+]
+
+_SENSITIVITY_COMPOSITION_ROWS = [
+    ("health_board", "Health board"),
+    ("urban_rural_class", "Urban/rural class"),
+    ("simd_quintile", "SIMD quintile"),
+    ("age_band", "Age band"),
+    ("sex", "Sex"),
+]
+
+_SENSITIVITY_MIXING_ROWS = [
+    ("age", "Age entropy"),
+    ("health_board", "Health-board entropy"),
+    ("simd", "SIMD entropy"),
+    ("urban_rural", "Urban/rural entropy"),
+    ("sex", "Sex entropy"),
+]
+
+
+def _canonical_mixing_predictor(value: Any) -> str:
+    return (
+        str(value)
+        .replace("_entropy_z", "")
+        .replace("_entropy_obs_x10", "")
+        .replace("_entropy_obs", "")
+    )
+
+
+def collect_sensitivity_matrix_results(
+    results_root: str | Any,
+    *,
+    families: Sequence[tuple[str, str]] = _DEFAULT_SENSITIVITY_FAMILIES,
+    p_col: str = "p_adj_bh",
+    alpha: float = 0.05,
+) -> tuple[
+    dict[str, dict[str, tuple[int, int]] | None],
+    dict[str, dict[str, tuple[int, int]] | None],
+]:
+    """Collect significant-predictor counts for the sensitivity matrix."""
+    root = pd.io.common.stringify_path(results_root)  # type: ignore
+    composition: dict[str, dict[str, tuple[int, int]] | None] = {}
+    mixing: dict[str, dict[str, tuple[int, int]] | None] = {}
+
+    for family, subdir in families:
+        path = f"{root}/{subdir}"
+        comp_path = f"{path}/composition_wald.csv"
+        if pd.io.common.file_exists(comp_path):  # type: ignore
+            comp = pd.read_csv(comp_path)
+            comp = comp.loc[comp["predictor"].ne("all_composition")].copy()
+            composition[family] = {  # type: ignore
+                predictor: (int((group[p_col] < alpha).sum()), len(group))
+                for predictor, group in comp.groupby("predictor")
+            }
+        else:
+            composition[family] = None
+
+        mix_path = f"{path}/mixing_wald.csv"
+        if pd.io.common.file_exists(mix_path):  # type: ignore
+            mix = pd.read_csv(mix_path)
+            mix = mix.loc[mix["predictor"].ne("all_mixing")].copy()
+            mix["_canonical_predictor"] = mix["predictor"].map(
+                _canonical_mixing_predictor
+            )
+            mixing[family] = {  # type: ignore
+                predictor: (int((group[p_col] < alpha).sum()), len(group))
+                for predictor, group in mix.groupby("_canonical_predictor")
+            }
+        else:
+            mixing[family] = None
+
+    return composition, mixing
+
+
+def _draw_sensitivity_block(
+    ax,
+    rows: Sequence[tuple[str, str]],
+    data: Mapping[str, Mapping[str, tuple[int, int]] | None],
+    *,
+    families: Sequence[tuple[str, str]],
+    y_top: float,
+    row_h: float,
+    col_x: Sequence[float],
+    col_w: float,
+    cmap,
+    norm,
+    label_size: float | str,
+    cell_size: float | str,
+    percent_size: float | str,
+) -> None:
+    for row_idx, (key, label) in enumerate(rows):
+        y_center = y_top - (row_idx + 0.5) * row_h
+        ax.text(
+            col_x[0] - 0.4,
+            y_center,
+            label,
+            ha="right",
+            va="center",
+            fontsize=label_size,
+            color=INK_SOFT,
+        )
+        for col_idx, (family, _) in enumerate(families):
+            x = col_x[col_idx]
+            cell = data.get(family)
+            if cell is None or key not in cell:
+                ax.add_patch(
+                    Rectangle(
+                        (x, y_center - row_h / 2 + 0.06),
+                        col_w,
+                        row_h - 0.12,
+                        fc="#F1F3F5",
+                        ec=BORDER,
+                        lw=0.6,
+                        hatch="////",
+                        zorder=2,
+                    )
+                )
+                ax.text(
+                    x + col_w / 2,
+                    y_center,
+                    "n/a",
+                    ha="center",
+                    va="center",
+                    fontsize=percent_size,
+                    color=GRAY_LIGHT,
+                    zorder=3,
+                )
+                continue
+
+            n_sig, n_total = cell[key]
+            share = n_sig / n_total if n_total else 0
+            face = cmap(norm(share))
+            ax.add_patch(
+                Rectangle(
+                    (x, y_center - row_h / 2 + 0.06),
+                    col_w,
+                    row_h - 0.12,
+                    fc=face,
+                    ec="#FFFFFF",
+                    lw=1.2,
+                    zorder=2,
+                )
+            )
+            text_color = "#FFFFFF" if share > 0.5 else (GRAY if share == 0 else INK)
+            ax.text(
+                x + col_w / 2,
+                y_center + 0.10,
+                f"{n_sig}/{n_total}",
+                ha="center",
+                va="center",
+                fontsize=cell_size,
+                fontweight="bold",
+                color=text_color,
+                zorder=3,
+            )
+            ax.text(
+                x + col_w / 2,
+                y_center - row_h * 0.28,
+                f"{share * 100:.0f}%",
+                ha="center",
+                va="center",
+                fontsize=percent_size,
+                color=text_color,
+                alpha=0.9,
+                zorder=3,
+            )
+
+
+def plot_sensitivity_matrix(
+    results_root: str | Any,
+    *,
+    families: Sequence[tuple[str, str]] = _DEFAULT_SENSITIVITY_FAMILIES,
+    composition_rows: Sequence[tuple[str, str]] = _SENSITIVITY_COMPOSITION_ROWS,
+    mixing_rows: Sequence[tuple[str, str]] = _SENSITIVITY_MIXING_ROWS,
+    p_col: str = "p_adj_bh",
+    alpha: float = 0.05,
+    width: WIDTHS = "double",
+    width_in: float | None = None,
+    height_in: float = 4.8,
+    context: CONTEXTS = "paper",
+    font_scale: float = 1.0,
+) -> Figure:
+    """Supplementary manuscript matrix of sensitivity-analysis recurrence."""
+    composition, mixing = collect_sensitivity_matrix_results(
+        results_root,
+        families=families,
+        p_col=p_col,
+        alpha=alpha,
+    )
+    cmap = WARM_SEQ
+    norm = Normalize(0, 1)
+
+    fig, ax = new_figure(
+        width=width,
+        width_in=width_in,
+        height_in=height_in,
+        context=context,
+        font_scale=font_scale,
+        layout="constrained",
+    )
+    ax.set_xlim(2.0, 12)
+    ax.set_ylim(0, 12)
+    ax.axis("off")
+
+    left = 4.6
+    col_w = (12 - left - 0.2) / len(families)
+    col_x = [left + i * col_w for i in range(len(families))]
+    row_h = 0.92
+
+    for col_idx, (family, _) in enumerate(families):
+        ax.text(
+            col_x[col_idx] + col_w / 2,
+            11.35,
+            family,
+            ha="center",
+            va="center",
+            fontsize="medium",
+            fontweight="bold",
+            color=INK,
+            linespacing=1.0,
+        )
+
+    comp_top = 10.7
+    ax.text(
+        left - 0.4,
+        comp_top + 0.28,
+        "COMPOSITION",
+        ha="right",
+        va="bottom",
+        fontsize="medium",
+        fontweight="bold",
+        color=TEAL_DARK,
+    )
+    _draw_sensitivity_block(
+        ax,
+        composition_rows,
+        composition,
+        families=families,
+        y_top=comp_top,
+        row_h=row_h,
+        col_x=col_x,
+        col_w=col_w,
+        cmap=cmap,
+        norm=norm,
+        label_size="medium",
+        cell_size="small",
+        percent_size="x-small",
+    )
+
+    mix_top = comp_top - len(composition_rows) * row_h - 0.55
+    ax.plot([left - 0.1, 12], [mix_top + 0.30, mix_top + 0.30], color=BORDER, lw=1.0)
+    ax.text(
+        left - 0.4,
+        mix_top + 0.30,
+        "MIXING - entropy",
+        ha="right",
+        va="bottom",
+        fontsize="medium",
+        fontweight="bold",
+        color=TEAL_DARK,
+    )
+    _draw_sensitivity_block(
+        ax,
+        mixing_rows,
+        mixing,
+        families=families,
+        y_top=mix_top,
+        row_h=row_h,
+        col_x=col_x,
+        col_w=col_w,
+        cmap=cmap,
+        norm=norm,
+        label_size="medium",
+        cell_size="small",
+        percent_size="x-small",
+    )
+
+    sm = ScalarMappable(norm=norm, cmap=cmap)
+    sm.set_array([])
+    cax = ax.inset_axes((left / 12, 0.045, (12 - left) / 12 * 0.55, 0.022))
+    cb = fig.colorbar(sm, cax=cax, orientation="horizontal", ticks=[0, 0.5, 1.0])
+    cb.ax.set_xticklabels(["0%", "50%", "100%"])
+    cb.ax.tick_params(labelsize="x-small", length=2)
+    cb.outline.set_visible(False)  # type: ignore
+    cb.set_label(
+        f"Model variants with BH-adjusted p < {alpha:g}",
+        fontsize="x-small",
+        color=GRAY,
+        labelpad=4,
+    )
+
+    plt.close(fig)
+    return fig
 
 
 # ---------------------------------------------------------------------------

@@ -9,9 +9,29 @@ from __future__ import annotations
 
 from typing import Iterable, Any
 
+import matplotlib as mpl
+from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.colors import to_rgb
 
 __all__ = [
+    "INK",
+    "INK_SOFT",
+    "GRAY",
+    "GRAY_LIGHT",
+    "GRID",
+    "BORDER",
+    "BG",
+    "PANEL",
+    "TEAL",
+    "TEAL_DARK",
+    "TEAL_SOFT",
+    "TEAL_PALE",
+    "ORANGE",
+    "ORANGE_DARK",
+    "ORANGE_PALE",
+    "OR_DIVERGING",
+    "WARM_SEQ",
+    "apply_sse_plot_style",
     "sse_category_palette_from",
     "sse_graph_category_palette_from",
     "SSE_CATEGORY_ORDER",
@@ -25,6 +45,71 @@ __all__ = [
 ]
 
 NOT_SSE_COLOR = "#D0D3D8"
+
+# ---------------------------------------------------------------------------
+# General plotting style constants
+# ---------------------------------------------------------------------------
+
+INK = "#1F2937"
+INK_SOFT = "#374151"
+GRAY = "#64748B"
+GRAY_LIGHT = "#94A3B8"
+GRID = "#E5E8EC"
+BORDER = "#D9DEE4"
+BG = "#FBFBFA"
+PANEL = "#FFFFFF"
+
+TEAL = "#0F766E"
+TEAL_DARK = "#115E54"
+TEAL_SOFT = "#5EADA3"
+TEAL_PALE = "#E6F4F1"
+
+ORANGE = "#DD7A33"
+ORANGE_DARK = "#B45309"
+ORANGE_PALE = "#FDF0E3"
+
+OR_DIVERGING = LinearSegmentedColormap.from_list(
+    "sse_or_diverging",
+    ["#0F766E", "#5EADA3", "#CFE6E1", "#F4F4F2", "#FBE2C4", "#E8A55F", "#B45309"],
+)
+
+WARM_SEQ = LinearSegmentedColormap.from_list(
+    "sse_warm_seq",
+    ["#FDF0E3", "#F6C994", "#E8923F", "#B45309"],
+)
+
+
+def apply_sse_plot_style() -> None:
+    """Apply the lightweight SSE plotting style used by standalone figures."""
+    mpl.rcParams.update(
+        {
+            "figure.facecolor": PANEL,
+            "savefig.facecolor": PANEL,
+            "axes.facecolor": PANEL,
+            "font.family": "sans-serif",
+            "font.sans-serif": [
+                "Helvetica Neue",
+                "Helvetica",
+                "Arial",
+                "DejaVu Sans",
+            ],
+            "font.size": 13,
+            "text.color": INK,
+            "axes.edgecolor": BORDER,
+            "axes.labelcolor": INK_SOFT,
+            "axes.titlecolor": INK,
+            "axes.linewidth": 0.9,
+            "axes.grid": False,
+            "xtick.color": GRAY,
+            "ytick.color": GRAY,
+            "xtick.labelcolor": INK_SOFT,
+            "ytick.labelcolor": INK_SOFT,
+            "axes.spines.top": False,
+            "axes.spines.right": False,
+            "legend.frameon": False,
+            "figure.dpi": 100,
+        }
+    )
 
 # ---------------------------------------------------------------------------
 # Role / onward-dynamic ordering and base hues
