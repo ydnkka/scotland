@@ -330,7 +330,7 @@ def plot_lineage_frequency_and_overtakes(
     min_sequences_per_period: int = 1,
     ax: Axes,
     legend_ax: Axes | None = None,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, Axes]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, Axes, list, list]:
     """Plot selected lineage-group frequency and sequencing coverage over time.
 
     Returns
@@ -484,20 +484,8 @@ def plot_lineage_frequency_and_overtakes(
             handlelength=1.5,
             borderaxespad=0.0,
         )
-    else:
-        ax.legend(
-            legend_handles,
-            legend_labels,
-            ncol=5,
-            loc="upper center",
-            bbox_to_anchor=(0.5, -0.2),
-            frameon=False,
-            columnspacing=1.1,
-            handlelength=1.5,
-            borderaxespad=0.0,
-        )
 
-    return clade_freq, plot_freq, dominance_df, overtakes, sampling_df, ax2
+    return clade_freq, plot_freq, dominance_df, overtakes, sampling_df, ax2, legend_handles, legend_labels
 
 
 def main() -> None:
@@ -522,34 +510,45 @@ def main() -> None:
     fig, axes = new_figure(
         width="double",
         height_in=7,
-        nrows=4,
+        nrows=3,
         ncols=1,
-        gridspec_kw={"height_ratios": [0.16, 2.5, 0.5, 2.5]},
+        context="talk",
+        gridspec_kw={"height_ratios": [0.16, 2.5, 2.5]},
     )
 
-    fig.subplots_adjust(hspace=0.04)
+    fig.subplots_adjust(hspace=0.30)
 
     axes = list(axes)
 
     ax_policy = axes[0]
     ax_top = axes[1]
-    ax_legend = axes[2]
-    ax_bottom = axes[3]
+    ax_bottom = axes[2]
 
     add_policy_strip(ax_policy, timeline["collection_date"])
     plot_sequences_with_policy(timeline, ax=ax_top, show_xlabel=False)
     ax_top.tick_params(axis="x", labelbottom=False)
-    # place_policy_strip_flush(ax_legend, ax_bottom)
     place_policy_strip_flush(ax_policy, ax_top)
     add_policy_intensity_colorbar(fig, ax_policy, ax_top)
 
-    clade_freq, plot_freq, dominance_df, overtakes, sampling_df, _ = (
+    clade_freq, plot_freq, dominance_df, overtakes, sampling_df, _, legend_handles, legend_labels = (
         plot_lineage_frequency_and_overtakes(
             sequences,
             ax=ax_bottom,
-            legend_ax=ax_legend,
             clade_col="variant",
         )
+    )
+
+    fig.legend(
+        legend_handles,
+        legend_labels,
+        ncol=5,
+        loc="lower center",
+        bbox_to_anchor=(0.5, -0.1),
+        bbox_transform=fig.transFigure,
+        frameon=False,
+        columnspacing=1.1,
+        handlelength=1.5,
+        borderaxespad=0.0,
     )
 
     clade_freq.to_csv(table_dir / "clade_frequency_by_period.csv")

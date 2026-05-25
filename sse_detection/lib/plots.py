@@ -126,6 +126,7 @@ def plot_cluster_size_distribution(
     *,
     by: str | None = "clade",
     min_size: int = 1,
+    is_log1p: bool = True,
     width: WIDTHS = "double",
     width_in: float | None = None,
     height_in: float = 3.5,
@@ -133,37 +134,28 @@ def plot_cluster_size_distribution(
     font_scale: float = 1.0,
     complementary: bool = True,
 ) -> Figure:
-    """Two-panel plot of cluster-size distributions.
+    """Two-panel plot of cluster-size distributions."""
 
-    Left panel:
-        Complementary ECDF / CCDF of size_col on log-log axes.
+    df = df.copy()
+    transformed_min = np.log1p(min_size)
+    if not is_log1p:
+        df["_plot_size"] = np.log1p(df[size_col])
+    else:
+        df["_plot_size"] = df[size_col]
 
-    Right panel:
-        Violin plot of log10(size_col), stratified by group.
-
-    If ``by="clade"``, clades matching CLADES are shown as
-    individual clade groups and all remaining clades are pooled as "Other".
-    """
-
-    df = df.loc[(df[size_col] >= min_size) & (df[size_col] > 0)].copy()
+    df = df.loc[(df["_plot_size"] >= transformed_min) & (df["_plot_size"] > 0)]
 
     if by is None or by not in df.columns:
         df["_plot_group"] = "All clusters"
         group_order = ["All clusters"]
         palette = {"All clusters": "#000000"}
-
-    df["_plot_group"] = df[by].map(CLADES).fillna("Other")
-
-    observed_groups = set(df["_plot_group"])
-
-    group_order = [
-        group_label for group_label in CLADES.values() if group_label in observed_groups
-    ]
-
-    if "Other" in observed_groups:
-        group_order.append("Other")
-
-    palette = {group: CLADE_PALETTE.get(group, GRAY) for group in group_order}
+    else:
+        df["_plot_group"] = df[by].map(CLADES).fillna("Other")
+        observed_groups = set(df["_plot_group"])
+        group_order = [g for g in CLADES.values() if g in observed_groups]
+        if "Other" in observed_groups:
+            group_order.append("Other")
+        palette = {g: CLADE_PALETTE.get(g, GRAY) for g in group_order}
 
     fig, axes = new_figure(
         nrows=1,
@@ -175,16 +167,12 @@ def plot_cluster_size_distribution(
         context=context,
         font_scale=font_scale,
     )
+    ax_ecdf, ax_violin = axes[0], axes[1]
 
-    ax_ecdf = axes[0]
-    ax_violin = axes[1]
-
-    # ------------------------------------------------------------------
-    # Left: complementary ECDF / CCDF
-    # ------------------------------------------------------------------
+    # Left Panel: ECDF
     sns.ecdfplot(
         data=df,
-        x=size_col,
+        x="_plot_size",
         hue="_plot_group",
         hue_order=group_order,
         palette=palette,
@@ -193,27 +181,23 @@ def plot_cluster_size_distribution(
         linewidth=1.5,
         ax=ax_ecdf,
     )
-
     ax_ecdf.set_xlabel("Cluster size")
     ax_ecdf.set_ylabel("P(X ≥ Cluster size)")
 
-    # Extract legend entries from seaborn's legend object
     leg = ax_ecdf.get_legend()
-
-    if leg is not None:
-        handles = leg.legend_handles
-        labels = [text.get_text() for text in leg.get_texts()]
+    handles, labels = (
+        (leg.legend_handles, [t.get_text() for t in leg.get_texts()])
+        if leg
+        else ([], [])
+    )
+    if leg:
         leg.remove()
-    else:
-        handles, labels = [], []
 
-    # ------------------------------------------------------------------
-    # Right: violin plot on log10-transformed cluster size
-    # ------------------------------------------------------------------
+    # Right Panel: Violin
     sns.violinplot(
         data=df,
         x="_plot_group",
-        y="log_cluster_size",
+        y="_plot_size",
         hue="_plot_group",
         order=group_order,
         hue_order=group_order,
@@ -223,41 +207,32 @@ def plot_cluster_size_distribution(
         linewidth=0.8,
         ax=ax_violin,
     )
-
     ax_violin.set_xlabel("SARS-CoV-2 clade")
     ax_violin.set_ylabel("Cluster size")
 
-    # Replace violin x-axis labels with CLADES keys
+    # X-Ticks translation
     if by == "clade":
         clade_label_to_key = {label: key for key, label in CLADES.items()}
-
         x_tick_labels = [clade_label_to_key.get(group, group) for group in group_order]
-
         ax_violin.set_xticks(np.arange(len(group_order)))
         ax_violin.set_xticklabels(x_tick_labels, rotation=45, ha="right")
     else:
         ax_violin.tick_params(axis="x", rotation=45)
 
-    leg = ax_violin.get_legend()
-    if leg is not None:
-        leg.remove()
+    if ax_violin.get_legend():
+        ax_violin.get_legend().remove()
 
-    # Convert log10 tick labels back to original cluster sizes
-    smin = np.floor(df["log_cluster_size"].min())
-    smax = np.ceil(df["log_cluster_size"].max())
-
+    smin = np.floor(df["_plot_size"].min())
+    smax = np.ceil(df["_plot_size"].max())
     log_ticks = np.arange(smin, smax + 1)
-    size_ticks = np.exp(log_ticks) - 1
 
-    # Violin plot: axis is already log10(cluster_size)
+    size_ticks = np.expm1(log_ticks)
+
     ax_violin.set_yticks(log_ticks)
-    ax_violin.set_yticklabels([f"{int(t):g}" for t in size_ticks])
+    ax_violin.set_yticklabels([f"{int(round(t))}" for t in size_ticks])
+    ax_ecdf.set_xticks(log_ticks)
+    ax_ecdf.set_xticklabels([f"{int(round(t))}" for t in size_ticks])
 
-    # ECDF plot: axis is raw cluster_size, displayed on log scale
-    ax_ecdf.set_xticks(size_ticks)
-    ax_ecdf.set_xticklabels([f"{int(t):g}" for t in size_ticks])
-
-    # Shared legend on the right side of the figure
     fig.legend(
         handles=handles,
         labels=labels,
@@ -266,7 +241,6 @@ def plot_cluster_size_distribution(
         bbox_to_anchor=(1.02, 0.5),
         frameon=False,
     )
-
     add_panel_labels([ax_ecdf, ax_violin])
     plt.close(fig)
 
@@ -498,9 +472,10 @@ def plot_core_metric_space(
 
     g.figure.legend(
         handles=handles,
+        ncol=len(handles),
         title="Graph role",
-        loc="center right",
-        bbox_to_anchor=(0.7, 0.5),
+        loc="lower center",
+        bbox_to_anchor=(0.5, -0.1),
         frameon=False,
     )
 
@@ -1970,7 +1945,6 @@ def _draw_sensitivity_block(
     col_w: float,
     cmap,
     norm,
-    label_size: float | str,
     cell_size: float | str,
     percent_size: float | str,
 ) -> None:
@@ -1982,7 +1956,6 @@ def _draw_sensitivity_block(
             label,
             ha="right",
             va="center",
-            fontsize=label_size,
             color=INK_SOFT,
         )
         for col_idx, (family, _) in enumerate(families):
@@ -2100,7 +2073,6 @@ def plot_sensitivity_matrix(
             family,
             ha="center",
             va="center",
-            fontsize="medium",
             fontweight="bold",
             color=INK,
             linespacing=1.0,
@@ -2113,7 +2085,6 @@ def plot_sensitivity_matrix(
         "COMPOSITION",
         ha="right",
         va="bottom",
-        fontsize="medium",
         fontweight="bold",
         color=TEAL_DARK,
     )
@@ -2128,9 +2099,8 @@ def plot_sensitivity_matrix(
         col_w=col_w,
         cmap=cmap,
         norm=norm,
-        label_size="medium",
-        cell_size="small",
-        percent_size="x-small",
+        cell_size="medium",
+        percent_size="small",
     )
 
     mix_top = comp_top - len(composition_rows) * row_h - 0.55
@@ -2138,10 +2108,9 @@ def plot_sensitivity_matrix(
     ax.text(
         left - 0.4,
         mix_top + 0.30,
-        "INTERNAL CONCENTRATION (entropy)",
+        "INTERNAL CONCENTRATION",
         ha="right",
         va="bottom",
-        fontsize="medium",
         fontweight="bold",
         color=TEAL_DARK,
     )
@@ -2156,9 +2125,8 @@ def plot_sensitivity_matrix(
         col_w=col_w,
         cmap=cmap,
         norm=norm,
-        label_size="medium",
-        cell_size="small",
-        percent_size="x-small",
+        cell_size="medium",
+        percent_size="small",
     )
 
     sm = ScalarMappable(norm=norm, cmap=cmap)
@@ -2166,11 +2134,9 @@ def plot_sensitivity_matrix(
     cax = ax.inset_axes((left / 12, 0.045, (12 - left) / 12 * 0.55, 0.022))
     cb = fig.colorbar(sm, cax=cax, orientation="horizontal", ticks=[0, 0.5, 1.0])
     cb.ax.set_xticklabels(["0%", "50%", "100%"])
-    cb.ax.tick_params(labelsize="x-small", length=2)
     cb.outline.set_visible(False)  # type: ignore
     cb.set_label(
         f"Share of sensitivity models with FDR-adjusted p < {alpha:g}",
-        fontsize="x-small",
         color=GRAY,
         labelpad=4,
     )
