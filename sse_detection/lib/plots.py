@@ -31,7 +31,6 @@ from utils import (
     CONTEXTS,
     new_figure,
     add_panel_labels,
-    lighten,
     CLADES,
     CLADE_PALETTE,
 )
@@ -357,6 +356,7 @@ def plot_candidate_rate_over_time(
         height_in=height_in,
         nrows=2,
         sharex=True,
+        sharey=True,
         context=context,
         font_scale=font_scale,
         layout="constrained",
@@ -366,19 +366,20 @@ def plot_candidate_rate_over_time(
         summary["wn_mid_date"],
         summary["n_candidates"],
         width=5,
-        color=lighten(ORANGE, 0.2),
-        alpha=0.85,
+        color=ORANGE,
+        edgecolor=ORANGE_DARK,
+        alpha=0.86,
         label="candidate nodes",
     )
     ax2 = ax.twinx()
     ax2.plot(
         summary["wn_mid_date"],
         100 * summary["candidate_share"],
-        color="#14151F",
+        color=INK_SOFT,
         linewidth=1.8,
         label="candidate-node share",
     )
-    ax.set_ylabel("Candidate nodes per window")
+    ax.set_ylabel("Candidate nodes")
     ax2.set_ylabel("Candidate-node share\nof all clusters (%)")
     handles1, labels1 = ax.get_legend_handles_labels()
     handles2, labels2 = ax2.get_legend_handles_labels()
@@ -398,7 +399,7 @@ def plot_candidate_rate_over_time(
             alpha=0.86,
         )
         ax.legend(loc="upper left", ncol=3, frameon=False)
-    ax.set_ylabel("Candidate nodes by signature type")
+    ax.set_ylabel("Candidate nodes")
     ax.set_xlabel("Window midpoint date")
     fig.autofmt_xdate()
 
@@ -489,12 +490,12 @@ def plot_composite_distributions(
     node_stats: pd.DataFrame,
     *,
     columns: Iterable[tuple[str, str]] = (
-        ("log_cluster_size_pct_window", "Cluster size percentile"),
-        ("log_excess_over_upstream_pct_window", "Excess over upstream percentile"),
-        ("novelty_fraction_pct_window", "Novelty fraction percentile"),
-        ("out_degree_pct_window", "Outgoing branches percentile"),
-        ("out_strength_pct_window", "Outgoing burden percentile"),
-        ("onward_expansion_proxy_pct_window", "Onward expansion percentile"),
+        ("log_cluster_size_pct_window", "Cluster size"),
+        ("log_excess_over_upstream_pct_window", "Excess over upstream"),
+        ("novelty_fraction_pct_window", "Novelty fraction"),
+        ("out_degree_pct_window", "Outgoing branches"),
+        ("out_strength_pct_window", "Outgoing burden"),
+        ("onward_expansion_proxy_pct_window", "Onward expansion"),
     ),
     nrows: int = 2,
     ncols: int = 3,
@@ -528,7 +529,17 @@ def plot_composite_distributions(
         height_in=height_in,
         context=context,
         font_scale=font_scale,
+        sharex=True,
     )
+
+    background_label = (
+        f"Background (n≥{min_size} sequences, "
+        f"{len(node_stats[~node_stats['sse_candidate'] & node_stats['cluster_size'].ge(min_size)]):,} nodes)"
+    )
+
+    candidate_label = (
+        f"Candidate (n≥{min_size} sequences, "
+        f"{len(node_stats[node_stats['sse_candidate'] & node_stats['cluster_size'].ge(min_size)]):,} nodes)")
 
     axes = axes.flatten()
 
@@ -539,7 +550,7 @@ def plot_composite_distributions(
                 GRAY,
                 (
                     ~node_stats["sse_candidate"]
-                    & node_stats["cluster_size"].gt(min_size)
+                    & node_stats["cluster_size"].ge(min_size)
                 ),
             ),
             ("candidate", ORANGE, node_stats["sse_candidate"]),
@@ -557,13 +568,33 @@ def plot_composite_distributions(
                 label=label,
                 common_norm=False,
             )
-        ax.set_xlabel(col[1])
+        ax.set_title(col[1])
         ax.set_ylabel("Density")
         if col[0].endswith("_pct_window") or col[0].endswith("_pct_onward_window"):
             ax.set_xlim(0, 1)
     for ax in axes[len(columns) :]:
         ax.set_visible(False)
-    axes[0].legend(loc="best", frameon=False)
+
+    legend_handles = [
+        Line2D(
+            [0], [0], color=GRAY, linewidth=1.8, 
+            label=background_label
+            ),
+        Line2D(
+            [0], [0], color=ORANGE, linewidth=1.8, 
+            label=candidate_label
+            ),
+    ]
+    fig.legend(
+        handles=legend_handles,
+        loc="outside upper center",
+        bbox_to_anchor=(0.5, 1.1),
+        ncol=2,
+        frameon=False,
+        handlelength=1.8,
+        columnspacing=1.6,
+    )
+    fig.supxlabel("Within window percentile score (higher = more extreme)")
     add_panel_labels([ax for ax in axes[: len(columns)] if ax.get_visible()])
     plt.close(fig)
     return fig
@@ -606,7 +637,7 @@ def plot_socio_demo_breakdown(
         (
             "background",
             GRAY,
-            (~node_stats["sse_candidate"] & node_stats["cluster_size"].gt(min_size)),
+            (~node_stats["sse_candidate"] & node_stats["cluster_size"].ge(min_size)),
         ),
         (
             "candidate",
