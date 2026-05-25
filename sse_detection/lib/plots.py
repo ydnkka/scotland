@@ -472,10 +472,10 @@ def plot_core_metric_space(
 
     g.figure.legend(
         handles=handles,
-        ncol=len(handles),
+        ncol=3,
         title="Graph role",
         loc="lower center",
-        bbox_to_anchor=(0.5, -0.1),
+        bbox_to_anchor=(0.5, -0.15),
         frameon=False,
     )
 
@@ -489,24 +489,28 @@ def plot_composite_distributions(
     node_stats: pd.DataFrame,
     *,
     columns: Iterable[tuple[str, str]] = (
-        ("log_excess_over_upstream", "Log excess over upstream"),
-        ("local_amplification_score", "Local growth/novelty score"),
-        ("onward_dissemination_score", "Onward spread  score"),
-        ("mixing_score", "Socio-geodemographic entropy"),
+        ("log_cluster_size_pct_window", "Cluster size percentile"),
+        ("log_excess_over_upstream_pct_window", "Excess over upstream percentile"),
+        ("novelty_fraction_pct_window", "Novelty fraction percentile"),
+        ("out_degree_pct_window", "Outgoing branches percentile"),
+        ("out_strength_pct_window", "Outgoing burden percentile"),
+        ("onward_expansion_proxy_pct_window", "Onward expansion percentile"),
     ),
     nrows: int = 2,
-    ncols: int = 2,
+    ncols: int = 3,
     width: WIDTHS = "double",
     width_in: float | None = None,
-    height_in: float = 2.5,
+    height_in: float = 4.5,
     context: CONTEXTS = "paper",
     font_scale: float = 1.0,
     min_size: int = 1,
 ) -> Figure:
-    """Overlaid KDE of each composite score for candidates vs background.
+    """Overlaid KDE of score components for candidates vs background.
 
-    Visualises whether each component genuinely separates the two groups
-    rather than just shifting the mean.
+    By default, the top row shows the three percentile components of
+    ``local_amplification_score``. The bottom row shows three main percentile
+    components of ``onward_dissemination_score``: outgoing branch count,
+    outgoing burden, and onward expansion.
     """
     if "sse_candidate" not in node_stats.columns:
         raise KeyError("node_stats needs 'sse_candidate'")
@@ -555,8 +559,12 @@ def plot_composite_distributions(
             )
         ax.set_xlabel(col[1])
         ax.set_ylabel("Density")
+        if col[0].endswith("_pct_window") or col[0].endswith("_pct_onward_window"):
+            ax.set_xlim(0, 1)
+    for ax in axes[len(columns) :]:
+        ax.set_visible(False)
     axes[0].legend(loc="best", frameon=False)
-    add_panel_labels(axes)
+    add_panel_labels([ax for ax in axes[: len(columns)] if ax.get_visible()])
     plt.close(fig)
     return fig
 

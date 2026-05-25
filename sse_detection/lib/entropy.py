@@ -11,7 +11,7 @@ max_entropy
     log_base(k); the maximum entropy of a k-category distribution.
 cluster_socio_demo_entropy
     Cluster category-entropy with within-window null model and z-scores.
-downstream_edge_entropy
+onward_edge_entropy
     Per-source entropy of outgoing edge weights.
 
 All entropies use log base 2 by default (units: bits).
@@ -27,7 +27,7 @@ __all__ = [
     "shannon_entropy",
     "shannon_entropy_grouped",
     "cluster_socio_demo_entropy",
-    "downstream_edge_entropy",
+    "onward_edge_entropy",
 ]
 
 
@@ -323,7 +323,7 @@ def cluster_socio_demo_entropy(
     return out
 
 
-def downstream_edge_entropy(
+def onward_edge_entropy(
     edge_df: pd.DataFrame,
     source_col: str,
     weight_col: str,
@@ -351,13 +351,13 @@ def downstream_edge_entropy(
     -------
     pd.DataFrame
         Indexed by source node, with columns:
-        ``out_degree``, ``out_strength``, ``downstream_entropy``,
-        ``downstream_entropy_norm``, ``effective_successors``,
+        ``out_degree``, ``out_strength``, ``onward_entropy``,
+        ``onward_entropy_norm``, ``effective_successors``,
         ``dominant_successor_frac``.
 
     Notes
     -----
-    ``downstream_entropy_norm`` divides by ``log_base(out_degree)`` (a local
+    ``onward_entropy_norm`` divides by ``log_base(out_degree)`` (a local
     reference, in [0, 1] for nodes with >= 2 successors).
     ``effective_successors`` is the Hill number of order 1, equal to
     ``base ** entropy`` regardless of base.
@@ -377,8 +377,8 @@ def downstream_edge_entropy(
     out_cols = [
         "out_degree",
         "out_strength",
-        "downstream_entropy",
-        "downstream_entropy_norm",
+        "onward_entropy",
+        "onward_entropy_norm",
         "effective_successors",
         "dominant_successor_frac",
     ]
@@ -413,8 +413,8 @@ def downstream_edge_entropy(
         {
             "out_degree": sizes,
             "out_strength": agg["total"],
-            "downstream_entropy": H,
-            "downstream_entropy_norm": H_norm,
+            "onward_entropy": H,
+            "onward_entropy_norm": H_norm,
             "effective_successors": effective,
             "dominant_successor_frac": dominant,
         },

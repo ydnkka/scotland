@@ -192,17 +192,15 @@ def add_sse_node_metrics(
         df["cluster_size"],
     ).clip(lower=0, upper=1)
 
-    df["downstream_retention_ratio"] = safe_divide(
+    df["onward_retention_ratio"] = safe_divide(
         df["out_strength"],
         df["cluster_size"],
     )
-    df["log_downstream_retention_ratio"] = log1p_ratio(
+    df["log_onward_retention_ratio"] = log1p_ratio(
         df["out_strength"],
         df["cluster_size"],
     )
-    df["downstream_expansion_proxy"] = (
-        df["downstream_retention_ratio"] * df["out_degree"]
-    )
+    df["onward_expansion_proxy"] = df["onward_retention_ratio"] * df["out_degree"]
 
     for area_col, density_col, mean_col in [
         ("cluster_n_datazones", "datazone_density", "mean_sequences_per_datazone"),
@@ -228,8 +226,8 @@ def add_sse_node_metrics(
         "log_excess_over_upstream",
         "novelty_fraction",
         "net_amplification",
-        "downstream_retention_ratio",
-        "downstream_expansion_proxy",
+        "onward_retention_ratio",
+        "onward_expansion_proxy",
         "n_health_boards",
         "health_board_density",
         "n_local_authorities",
@@ -258,7 +256,7 @@ def add_sse_node_metrics(
         "in_strength",
         "out_strength",
         "net_amplification",
-        "downstream_expansion_proxy",
+        "onward_expansion_proxy",
         "n_local_authorities",
         "n_health_boards",
     ]
@@ -286,8 +284,8 @@ def add_sse_node_metrics(
     onward_components = [
         "out_degree_pct_window",
         "out_strength_pct_window",
-        "downstream_expansion_proxy_pct_window",
-        "downstream_retention_ratio_pct_window",
+        "onward_expansion_proxy_pct_window",
+        "onward_retention_ratio_pct_window",
     ]
     df["onward_dissemination_score"], df["onward_dissemination_n"] = mean_with_count(
         df,
@@ -306,9 +304,9 @@ def add_sse_node_metrics(
         )
 
     onward_mask = df["out_strength"].gt(0)
-    df["downstream_expansion_proxy_pct_onward_window"] = add_scoped_percentile(
+    df["onward_expansion_proxy_pct_onward_window"] = add_scoped_percentile(
         df,
-        "downstream_expansion_proxy",
+        "onward_expansion_proxy",
         groupby_cols=window_col,
         mask=onward_mask,
     )
@@ -422,7 +420,7 @@ def categorise_sse_nodes(
     in_strength = num_col("in_strength", default=0).fillna(0)
     cluster_size = num_col("cluster_size", default=0).fillna(0)
 
-    entropy_norm = num_col("downstream_entropy_norm")
+    entropy_norm = num_col("onward_entropy_norm")
     dominant_frac = num_col("dominant_successor_frac")
     high_entropy = entropy_norm >= entropy_high
     dominant_branch = (out_degree >= 2) & (
@@ -433,13 +431,13 @@ def categorise_sse_nodes(
     very_large = high_col("cluster_size_pct_window", very_high_q)
     high_novelty = num_col("novelty_fraction_pct_window").ge(novelty_high)
     high_net_amp = high_col("log_excess_over_upstream_pct_window", high_q)
-    high_downstream_expansion = high_col(
-        "downstream_expansion_proxy_pct_window",
+    high_onward_expansion = high_col(
+        "onward_expansion_proxy_pct_onward_window",
         high_q,
     )
     high_out_strength = high_col("out_strength_pct_window", high_q)
     low_onward_expansion = low_col(
-        "downstream_expansion_proxy_pct_onward_window",
+        "onward_expansion_proxy_pct_onward_window",
         0.25,
     )
 
@@ -449,7 +447,7 @@ def categorise_sse_nodes(
     candidate_signal = (
         high_core_amp
         | (very_large & (high_novelty | high_net_amp))
-        | (high_novelty & high_downstream_expansion)
+        | (high_novelty & high_onward_expansion)
         | (
             num_col("log_cluster_size_z_window").ge(2)
             & num_col("log_excess_over_upstream_z_window").ge(1)
@@ -494,10 +492,10 @@ def categorise_sse_nodes(
             (
                 (out_degree >= 2)
                 & high_entropy
-                & high_downstream_expansion
+                & high_onward_expansion
                 & diverse_population
             ),
-            (out_degree >= 2) & high_entropy & high_downstream_expansion,
+            (out_degree >= 2) & high_entropy & high_onward_expansion,
             (out_degree >= 2) & high_entropy,
             (out_degree >= 2) & high_out_strength,
         ],

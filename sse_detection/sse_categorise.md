@@ -71,13 +71,13 @@ candidate screen:
 | Onward dynamic | Interpretation | Typical evidence |
 | --- | --- | --- |
 | `no_observed_onward_spread` | No successor node is observed in the adjacent-window graph. | Zero `out_strength`; interpret carefully if right-censored. |
-| `contained_burst` | Candidate is large or unusual but has weak onward continuity. | Terminal node with incoming burden, or low downstream expansion ranked among nodes with observed onward spread. |
+| `contained_burst` | Candidate is large or unusual but has weak onward continuity. | Terminal node with incoming burden, or low onward expansion ranked among nodes with observed onward spread. |
 | `single_successor_chain` | Candidate continues through one observed successor. | Exactly one outgoing successor; no branching choice is observed. |
-| `dominant_branch` | Candidate has multiple successors, but one branch dominates. | At least two outgoing successors plus low downstream entropy or high `dominant_successor_frac`. |
-| `multi_branch_seeder` | Candidate seeds multiple successor clusters without necessarily producing high total onward burden. | Multiple outgoing edges and high downstream entropy. |
-| `multi_branch_expander` | Candidate seeds multiple substantial successor branches. | High downstream entropy plus high downstream expansion. |
-| `diverse_population_broadcaster` | Candidate branches onward into a socio-geodemographically diverse population. | High downstream entropy, high downstream expansion, and high observed-normalised `mixing_score`. |
-| `high_volume_onward_spread` | Candidate has high outgoing burden but not enough entropy evidence for a branching label. | High `out_strength` with multiple successors, but downstream evenness is ambiguous. |
+| `dominant_branch` | Candidate has multiple successors, but one branch dominates. | At least two outgoing successors plus low onward entropy or high `dominant_successor_frac`. |
+| `multi_branch_seeder` | Candidate seeds multiple successor clusters without necessarily producing high total onward burden. | Multiple outgoing edges and high onward entropy. |
+| `multi_branch_expander` | Candidate seeds multiple substantial successor branches. | High onward entropy plus high onward expansion. |
+| `diverse_population_broadcaster` | Candidate branches onward into a socio-geodemographically diverse population. | High onward entropy, high onward expansion, and high observed-normalised `mixing_score`. |
+| `high_volume_onward_spread` | Candidate has high outgoing burden but not enough entropy evidence for a branching label. | High `out_strength` with multiple successors, but onward evenness is ambiguous. |
 | `weak_or_ambiguous_onward_spread` | Candidate passes the amplification screen, but onward evidence is weak or conflicting. | Some onward continuity, but no clear concentration, branching, or broadcaster signature. |
 
 ## Censoring Notes

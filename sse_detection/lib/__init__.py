@@ -13,7 +13,7 @@ from .entropy import (
     shannon_entropy,
     shannon_entropy_grouped,
     cluster_socio_demo_entropy,
-    downstream_edge_entropy,
+    onward_edge_entropy,
 )
 
 from .io import SseOutputs, load_sse_outputs, load_weekly_growth
@@ -118,7 +118,7 @@ __all__ = [
     "shannon_entropy",
     "shannon_entropy_grouped",
     "cluster_socio_demo_entropy",
-    "downstream_edge_entropy",
+    "onward_edge_entropy",
     "SseOutputs",
     "load_sse_outputs",
     "load_weekly_growth",
