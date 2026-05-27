@@ -37,15 +37,15 @@ FONT = (
 FONT_SCALE = 1.25
 
 # ----------------------------------------------------------------- geometry
-VBW, VBH = 1240, 540
+VBW, VBH = 1240, 370
 
 # columns
-L_X, L_W, L_Y, L_H = 30, 322, 78, 360  # left card
-R_X, R_W = 808, 402  # right stack
-R_Y, R_H = 78, 360
+L_X, L_W, L_Y, L_H = 24, 322, 34, 300  # left card
+R_X, R_W = 790, 426  # right stack
+R_Y, R_H = 34, 300
 M_X0, M_X1 = L_X + L_W, R_X  # middle gap span
 CXM = (M_X0 + M_X1) / 2  # middle centre x
-YMID = 222  # bridge centre line
+YMID = 178  # bridge centre line
 
 CARD_R = 12
 HEADER_H = 38

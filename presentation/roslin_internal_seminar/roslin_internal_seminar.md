@@ -44,7 +44,11 @@ The Roslin Institute, University of Edinburgh<br>
 
 <!--
 Speaker notes:
-Good afternoon, everyone. I am Dominic, a final-year PhD student in the Kao cluster. Over the next 20 minutes I want to take you through work that asks whether whether Scotland's COVID-19 genome data can help us detect superspreading events — those situations where one person or one setting drives a disproportionately large fraction of onward transmission These events shaped the COVID-19 pandemic, and the challenge is identifying them from the data we have access to. Most importantly, the genomic diversity of the COVID-19 is quite low for the resolution analysis of interest.
+- Good afternoon everyone. I am Dominic, a final-year PhD student in the Kao Group.
+- Over the next 20 minutes, I will talk through work asking whether Scotland's COVID-19 genome data can help identify genomic signatures of superspreading.
+- By superspreading, I mean situations where one person, one setting, or one local network contributes a disproportionate amount of onward transmission.
+- These events shaped the COVID-19 pandemic, but they are difficult to identify directly from genome data alone.
+- The central challenge is resolution: SARS-CoV-2 has relatively low genetic diversity over short time scales, so the question is not whether genomes can prove an event occurred, but whether they can flag patterns worth investigating.
 -->
 
 ---
@@ -72,7 +76,12 @@ Good afternoon, everyone. I am Dominic, a final-year PhD student in the Kao clus
 
 <!--
 Speaker notes:
-The Kao cluster is interested in how population structure changes disease spread. By population structure I mean things like who comes in contact whom, how animals move between farms, how geographically connected communities are, and how those patterns change over time. The cluster works across both human and animal pathogens — SARS-CoV-2 and influenza on one side, foot-and-mouth disease and bovine TB on the other. Despite the very different biology, the conceptual questions are often the same. My project sits in the genomic epidemiology strand: using virus genome sequences as one source of evidence about how transmission unfolded. If any of those areas sound like something your work connects to — contact data, movement records, pathogen sequences, or surveillance modelling — and are interested in a collaborative project, please come and speak to us afterwards.
+- To place the project in context, the Kao Group studies how population structure shapes disease spread.
+- Population structure means the patterns that determine who can infect whom: contacts between people, animal movements between farms, geography, and how connected communities are over time.
+- The group works across human and animal pathogens, including SARS-CoV-2, influenza, foot-and-mouth disease, and bovine TB.
+- The biology differs, but the core questions often overlap: how does structure change transmission, and how can surveillance data reveal that structure?
+- My project sits in the genomic epidemiology part of that toolkit, using virus genomes as one source of evidence about how transmission unfolded.
+- If your work connects to contact data, movement records, pathogen sequences, spatial epidemiology, or surveillance modelling, I would be very happy to talk afterwards.
 -->
 
 ---
@@ -99,8 +108,13 @@ The Kao cluster is interested in how population structure changes disease spread
 
 <!--
 Speaker notes:
-The question I want to put on the table is what genome data can actually tell us about superspreading, and where that inference stops. A superspreading event in the strict epidemiological sense requires a setting and exposure links — something I do not have directly. What I do have is a very large set of virus genomes. Closely related genomes sampled close together in time suggest recent transmission, and some clusters of those genomes are unusually large, grow unusually quickly, or seed onward clusters. Those are the patterns worth flagging.
-The harder question is how to do this rigorously: how to define clusters, what null to compare against given uneven sampling and changing epidemic context, and how to be honest about the gap between a genomic candidate and a confirmed event. I will use the word "candidate" deliberately throughout — it means a genomic signal worth reviewing, not a confirmed event.
+- The main question is what virus genomes can tell us about superspreading, and where that inference stops.
+- A confirmed superspreading event requires epidemiological evidence: a setting, exposure links, and ideally supporting outbreak or contact tracing data.
+- I do not have those links directly, but I do have a very large set of virus genomes.
+- Closely related genomes sampled close together in time point to recent transmission.
+- Clusters that are unusually large, grow unusually quickly, or seed onward clusters are therefore useful signals to flag.
+- The methodological challenge is making those flags rigorous: defining clusters, choosing an appropriate null comparison, and accounting for uneven sampling and changing epidemic context.
+- I will use the word "candidate" deliberately throughout: it means a genomic signal worth reviewing, not a confirmed superspreading event.
 -->
 
 ---
@@ -122,9 +136,12 @@ SARS-CoV-2 genomic surveillance in Scotland, 2020–2023. (A) Daily sequence cou
 
 <!--
 Speaker notes:
-This work rests on a rich surveillance resource: PHS and COG-UK generated over 350,000 Scottish SARS-CoV-2 genomes between 2020 and 2023, covering every major variant wave and restriction regime.
-What matters as much as the volume is what each genome is linked to. PHS hold individual-level connections between every sequence and the patient's collection date, geography, age, sex, area-level deprivation, and vaccination history. That's what lets us ask not just whether a cluster is unusual, but who is involved and where, against which policy and variant background.
-One caveat to flag before the methods: sequencing intensity was not constant — any screen for unusual clusters has to be calibrated against varying sampling effort.
+- This work uses a rich national surveillance resource from Public Health Scotland and COG-UK.
+- Between 2020 and 2023, more than 350,000 Scottish SARS-CoV-2 genomes were generated, spanning the major variant waves and restriction regimes.
+- The volume matters, but the linked metadata are just as important.
+- Each sequence can be connected to collection date, geography, age, sex, area-level deprivation, and vaccination history.
+- That allows the analysis to ask not only whether a cluster is unusual, but who is involved, where it appears, and what policy and variant context it sits within.
+- The key caveat is that sequencing intensity changed through time, so any screen for unusual clusters must be calibrated against uneven sampling effort.
 -->
 
 ---
@@ -143,7 +160,11 @@ One caveat to flag before the methods: sequencing intensity was not constant —
 
 <!--
 Speaker notes:
-This is the methods slide I want people to remember. First, I split the epidemic into overlapping time windows and cluster together very similar genomes within each window. Second, I connect related clusters across neighbouring windows, so I can follow how a viral lineage appears to move through the sampled data. Third, I ask which clusters look unusually large or newly expanding compared with other clusters at the same time. The important idea is simple: connect genome clusters through time, then look for unusual bursts.
+- This is the methods slide I want people to remember.
+- First, I split the epidemic into overlapping time windows and cluster together very similar genomes within each window.
+- Second, I connect related clusters across neighbouring windows, so I can follow how a viral lineage appears to move through the sampled data.
+- Third, I ask which clusters look unusual compared with other clusters observed at the same time.
+- The important idea is simple: connect genome clusters through time, then look for unusual bursts in size, novelty, or onward spread.
 -->
 
 ---
@@ -174,9 +195,14 @@ This is the methods slide I want people to remember. First, I split the epidemic
 
 <!--
 Speaker notes:
-The screen does not try to prove why any cluster grew. It asks three practical questions, each one framed against contemporaries in the same time window.
-First: is it large — does it contain more sampled infections than other clusters from the same period? Second: is it new — what share of its sequences are genuinely newly observed, rather than carried over from an earlier cluster? Third: does it continue — does the signal die out, carry forward, or seed several later clusters?
-Clusters need at least six sequences to enter the screen; below that the comparisons are not reliable. A cluster that scores unusually on one or more of these questions becomes a candidate for review. That word matters: candidate, not confirmed event.
+- The screen does not try to prove why a cluster grew.
+- Instead, it asks three practical questions, each compared against clusters from the same time window.
+- First: is it large? Does it contain more sampled infections than other clusters from the same period?
+- Second: is it new? What share of its sequences are newly observed, rather than carried over from an earlier cluster?
+- Third: does it continue? Does the signal end, carry forward, or seed several later clusters?
+- Clusters need at least six sequences to enter the screen; below that, the comparisons are not reliable enough.
+- A cluster that scores unusually on one or more of these questions becomes a candidate for review.
+- Again, candidate means review flag, not confirmed event.
 -->
 
 ---
@@ -208,8 +234,12 @@ Clusters need at least six sequences to enter the screen; below that the compari
 
 <!--
 Speaker notes:
-This is what one flagged pattern looks like. The coloured circles are the clusters the screen flagged using the three questions from the previous slide — they are unusually large, unusually new, or sit at points where the lineage branches forward into several later clusters.
-What this picture is not: a map of a known outbreak setting, or a named event. What it is: the temporal shape of a viral lineage in sampled genome data — enough structure to say this part of the record deserves a closer look.
+- This is what one flagged pattern looks like.
+- The coloured circles are clusters flagged by the screen using the three questions from the previous slide.
+- They may be unusually large, unusually new, or positioned where the lineage branches forward into several later clusters.
+- The important point is what this figure is not: it is not a map of a known outbreak setting, and it is not a named event.
+- It is the temporal shape of a viral lineage in sampled genome data.
+- That is enough structure to say this part of the record deserves a closer look, but not enough to explain what happened on its own.
 -->
 
 ---
@@ -219,7 +249,7 @@ What this picture is not: a map of a known outbreak setting, or a named event. W
 
 ## Result 1
 
-# Flagged patterns rise and fall across pandemic periods
+# Varying proportion of sequences in candidate clusters
 
 <div class="figure-panel">
   <img src="images/fig05_candidate_rate_over_time.png"
@@ -230,7 +260,12 @@ What this picture is not: a map of a known outbreak setting, or a named event. W
 
 <!--
 Speaker notes:
-When the screen is applied across the surveillance period, the flagged patterns are not evenly distributed through time. Some periods contain more unusual genome clusters than others, and the kind of pattern changes as well. I would be cautious about over-interpreting the peaks. Variant replacement, testing policy, sequencing intensity, and restrictions all affect what appears in the genome data. The useful message is that the screen gives us a structured way to find unusual parts of the epidemic record at national scale.
+- When the screen is applied across the full surveillance period, the flagged patterns are not evenly distributed through time.
+- Some periods contain more unusual genome clusters than others, and the type of signal also changes.
+- I would be cautious about over-interpreting individual peaks.
+- Variant replacement, testing policy, sequencing intensity, and restrictions all affect what becomes visible in the genome data.
+- The useful message is that the screen gives us a structured way to identify unusual parts of the epidemic record at national scale.
+- The next step is to ask whether candidate membership is associated with socio-demographic or geographic factors.
 -->
 
 ---
@@ -253,9 +288,16 @@ Candidate-node odds ratios by health board (A) and urban–rural class (B); isla
 
 <!--
 Speaker notes:
-The strongest place signal in the analysis sits in the Scottish islands. Panel A maps the candidate-node odds ratio by health board against Greater Glasgow and Clyde — how much more or less likely sequences from each board are to sit in a flagged cluster. The island boards stand out most: Western Isles at 1.45, Orkney at 1.24, Shetland at 1.14. Panel B shows a more modest urban–rural gradient, with remote rural and remote towns elevated by around 9–11% over large urban areas.
-So what was happening there? Honestly, from these data alone, we cannot say. The signal could reflect true transmission dynamics — small, well-connected communities where an introduction spreads rapidly through local networks. But it could equally reflect how surveillance operated in those areas, the timing of introductions relative to local viral diversity, or connectivity factors not captured in the model. The island board populations are also small, which adds real uncertainty to the estimates.
-This is exactly the kind of pattern the screen is designed to surface — a geographically specific, falsifiable question to take to other evidence. It is a candidate for external validation, not a conclusion.
+- Here I am showing results from two logistic regression models.
+- One model uses health board as the main predictor, and the other uses urban-rural class; both adjust for epidemic time windows.
+- The strongest place signal appears in the Scottish islands.
+- In Panel A, the odds ratios compare each health board with Greater Glasgow and Clyde, asking how much more or less likely sequences from that board are to sit in a flagged cluster.
+- The island boards stand out most: Western Isles at 1.45, Orkney at 1.24, and Shetland at 1.14.
+- Panel B shows a more modest urban-rural gradient, with remote rural areas and remote towns elevated by around 9-11% compared with large urban areas.
+- So what was happening there? From these data alone, we cannot say.
+- The signal could reflect true transmission dynamics in small, well-connected communities after an introduction.
+- It could also reflect surveillance practice, introduction timing relative to local viral diversity, travel and connectivity patterns not captured in the model, or uncertainty from small island-board populations.
+- This is exactly the kind of result the screen is designed to surface: a geographically specific, falsifiable question for external validation, not a conclusion by itself.
 -->
 
 ---
@@ -274,7 +316,13 @@ This is exactly the kind of pattern the screen is designed to surface — a geog
 
 <!--
 Speaker notes:
-This is the conceptual point I want to leave you with. The genomic screen scans years of surveillance data and produces a prioritised review list at national scale — something manual review cannot do. What it cannot do is confirm what happened or why. That requires evidence from outside the graph: setting information, outbreak investigations, contact tracing, and travel or mobility data. Genomics and epidemiology are complementary, not competing. The ideal workflow links them, with genomic flags triggering targeted epidemiological follow-up.
+- This is the conceptual point I want to leave you with.
+- The genomic screen can scan years of surveillance data and produce a prioritised review list at national scale.
+- That is something manual review cannot do consistently across hundreds of thousands of genomes.
+- What the screen cannot do is confirm what happened or why.
+- Confirmation requires evidence outside the genomes: setting information, outbreak investigations, contact tracing, and travel or mobility data.
+- Genomics and epidemiology are complementary, not competing.
+- The ideal workflow links them, with genomic flags triggering targeted epidemiological follow-up.
 -->
 
 ---
@@ -307,8 +355,17 @@ This is the conceptual point I want to leave you with. The genomic screen scans 
 
 <!--
 Speaker notes:
-To bring it together: the contribution is a scalable, retrospective screen for candidate superspreading-like signatures across Scotland's pandemic genome data. Clustering across overlapping time windows and linking clusters into a transition graph identifies nodes with unusual amplification, novelty, and onward spread — at a scale manual review cannot match. The clearest population finding is that candidate membership is structured by place: most consistently by health board, with island boards standing out, and only modestly by urban–rural class.
-The open questions are where I'd most welcome input. External validation is the biggest: can setting, mobility, or travel data confirm what the screen flags? The policy layer matters too — restrictions and testing changes shaped which clusters were visible, and separating that from real transmission changes is methodologically important. Vaccination effects on cluster composition are largely unexplored in this framework. And finally, generalisability: does this transfer to influenza or other respiratory pathogens, where genomic surveillance is expanding? If any of these overlap with your work, please come and talk to me.
+- To bring it together, the main contribution is a scalable retrospective screen for candidate superspreading-like signatures in Scotland's pandemic genome data.
+- The method clusters genomes across overlapping time windows and links those clusters into a transition graph.
+- That makes it possible to identify nodes with unusual amplification, novelty, or onward spread at a scale manual review cannot match.
+- The clearest population-level finding is that candidate membership is structured by place.
+- The association is strongest and most consistent by health board, with island boards standing out, and more modest by urban-rural class.
+- The open questions are where I would most welcome input.
+- External validation is the biggest one: can setting, mobility, travel, or outbreak data confirm what the screen flags?
+- The policy layer also matters, because restrictions and testing changes shaped which clusters were visible in the data.
+- Vaccination effects on cluster composition and continuation are still largely unexplored in this framework.
+- A final question is generalisability: could this approach transfer to influenza or other respiratory pathogens as genomic surveillance expands?
+- If any of these questions overlap with your work, please come and talk to me.
 -->
 
 ---
@@ -351,5 +408,9 @@ Wellcome Trust funding
 
 <!--
 Speaker notes:
-Thank you very much for listening. I am very grateful to Rowland Kao and Chris Banks for supervision and feedback, the Kao Group for discussion around the network and modelling framing, Public Health Scotland and COG-UK for the surveillance data infrastructure, and Wellcome for funding. I would especially welcome questions or conversations about how to validate the flagged signals, how to interpret the place signal, and whether similar approaches could be useful for other respiratory pathogens.
+- Thank you very much for listening.
+- I am very grateful to Rowland Kao and Chris Banks for supervision and feedback.
+- Thank you to the Kao Group for discussion around the network and modelling framing.
+- Thank you also to Public Health Scotland and COG-UK for the surveillance data infrastructure, and to Wellcome for funding.
+- I would especially welcome questions or conversations about validation, interpretation of the place signal, and whether similar approaches could be useful for other respiratory pathogens.
 -->
