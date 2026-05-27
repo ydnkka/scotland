@@ -29,20 +29,10 @@ import time
 from typing import Any
 
 
-def find_project_root(start: Path | None = None) -> Path:
-    """Walk upward until the repository ``config.yaml`` is found."""
-    starts = [start] if start is not None else [Path.cwd(), Path(__file__).resolve()]
-    for candidate_start in starts:
-        candidate_start = candidate_start.resolve()
-        for candidate in [candidate_start, *candidate_start.parents]:
-            if (candidate / "config.yaml").exists():
-                return candidate
-    raise FileNotFoundError("Could not locate config.yaml from the current path.")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
-
-DEFAULT_PROJECT_ROOT = find_project_root()
-if str(DEFAULT_PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(DEFAULT_PROJECT_ROOT))
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 
 DEFAULT_MODEL_METHOD = "firth_glm"
@@ -243,7 +233,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--project-root",
         type=Path,
-        default=DEFAULT_PROJECT_ROOT,
+        default=PROJECT_ROOT,
         help="Repository root containing config.yaml.",
     )
     parser.add_argument(
@@ -345,8 +335,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.list:
         print_available_analyses()
         return 0
-
-    project_root = find_project_root(args.project_root)
+    
     output_dir = args.sse_output_dir.resolve() if args.sse_output_dir else None
     results_root = args.results_root.resolve() if args.results_root else None
 
@@ -362,7 +351,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     for key in analysis_keys:
         spec = ANALYSES[key]
         result_dir = result_dir_for(
-            project_root=project_root,
+            project_root=PROJECT_ROOT,
             results_root=results_root,
             result_subdir=spec.result_subdir,
         )
@@ -373,7 +362,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         started = time.perf_counter()
         try:
             result = spec.run(
-                project_root=project_root,
+                project_root=PROJECT_ROOT,
                 output_dir=output_dir,
                 result_dir=result_dir,
                 model_method=args.model_method,

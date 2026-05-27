@@ -1739,8 +1739,15 @@ def plot_health_board_enrichment_map(
         "Dumfries and Galloway",
         "Borders",
     ]
+    lowest_board = min(
+        (board for board in geoms if board != reference_board),
+        key=lambda board: hb_or.get(board, np.inf),
+        default=None,
+    )
     for board in mainland_labels:
         if board not in reps:
+            continue
+        if board == lowest_board:
             continue
         value = hb_or.get(board, 1.0)
         fill = reference_fill if board == reference_board else cmap(norm(value))
@@ -1791,6 +1798,28 @@ def plot_health_board_enrichment_map(
             zorder=5,
         )
 
+    if lowest_board in reps:
+        lowest_value = hb_or.get(lowest_board, np.nan) if lowest_board else np.nan
+        point = reps[lowest_board]
+        ax_map.annotate(
+            f"{lowest_board}\nOR {lowest_value:.2f}",
+            xy=(point.x, point.y),
+            xytext=(x_right + 0.12 * span_x, all_y.min() + 0.24 * span_y),
+            fontsize="small",
+            color=TEAL_DARK,
+            fontweight="bold",
+            va="center",
+            ha="left",
+            arrowprops=dict(
+                arrowstyle="-",
+                color=GRAY_LIGHT,
+                lw=0.9,
+                shrinkA=1,
+                shrinkB=2,
+            ),
+            zorder=5,
+        )
+
     sm = ScalarMappable(norm=norm, cmap=cmap)
     sm.set_array([])
     cax = ax_map.inset_axes((0.5, 0.0, 0.42, 0.03))
@@ -1808,12 +1837,10 @@ def plot_health_board_enrichment_map(
         ticks=board_ticks,
     )
     cb.ax.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.2g}"))
-    cb.ax.tick_params(labelsize="small", length=2)
+    cb.ax.tick_params(length=2)
     cb.outline.set_visible(False)  # type: ignore
     cb.set_label(
-        f"Candidate-node odds ratio vs {reference_board}",
-        fontsize="small",
-        color=GRAY,
+        f"Candidate odds ratio vs {reference_board}",
         labelpad=3,
     )
 
@@ -1878,7 +1905,7 @@ def plot_health_board_enrichment_map(
     x_max = max(1.12, max(finite_urban_or, default=1.0) + 0.02)
     ax_or.set_xlim(x_min, x_max)
     ax_or.set_ylim(-0.6, len(urban_order) - 0.25)
-    ax_or.set_xlabel("Candidate-node odds ratio vs large urban areas")
+    ax_or.set_xlabel("Candidate odds ratio vs large urban areas")
     ax_or.spines["left"].set_visible(False)
     ax_or.tick_params(axis="y", length=0)
     ax_or.grid(axis="x", color=GRID, lw=0.8, zorder=0)
@@ -2147,7 +2174,7 @@ def plot_sensitivity_matrix(
     ax.text(
         left - 0.4,
         mix_top + 0.30,
-        "INTERNAL CONCENTRATION",
+        "MIXING",
         ha="right",
         va="bottom",
         fontweight="bold",
@@ -2176,7 +2203,6 @@ def plot_sensitivity_matrix(
     cb.outline.set_visible(False)  # type: ignore
     cb.set_label(
         f"Share of sensitivity models with FDR-adjusted p < {alpha:g}",
-        color=GRAY,
         labelpad=4,
     )
 

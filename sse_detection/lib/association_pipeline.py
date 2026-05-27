@@ -80,7 +80,7 @@ COMPOSITION_SPECS = [
     {
         "name": "simd_quintile",
         "column": "dz_simd_quintile",
-        "reference": "3",
+        "reference": "1",
         "label": "SIMD quintile",
     },
     {

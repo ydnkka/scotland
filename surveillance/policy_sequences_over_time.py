@@ -508,7 +508,7 @@ def main() -> None:
     )
 
     fig, axes = new_figure(
-        width="double",
+        width="slide",
         height_in=7,
         nrows=3,
         ncols=1,
@@ -516,7 +516,7 @@ def main() -> None:
         gridspec_kw={"height_ratios": [0.16, 2.5, 2.5]},
     )
 
-    fig.subplots_adjust(hspace=0.30)
+    fig.subplots_adjust(hspace=0.20)
 
     axes = list(axes)
 
@@ -541,9 +541,9 @@ def main() -> None:
     fig.legend(
         legend_handles,
         legend_labels,
-        ncol=5,
+        ncol=7,
         loc="lower center",
-        bbox_to_anchor=(0.5, -0.1),
+        bbox_to_anchor=(0.5, -0.05),
         bbox_transform=fig.transFigure,
         frameon=False,
         columnspacing=1.1,
@@ -558,12 +558,12 @@ def main() -> None:
     sampling_df.to_csv(table_dir / "sequencing_proportion_by_period.csv")
 
     fig.align_ylabels([ax_top, ax_bottom])
-    add_panel_labels([ax_top, ax_bottom], x=-0.1, y=1.1)
+    add_panel_labels([ax_top, ax_bottom], x=-0.05, y=1.1)
 
     _ = save_figure(
         fig,
         out_dir / "policy_sequences_over_time",
-        width="double",
+        width_in=15,
         height_in=7,
         save_png=True,
         save_pdf=True,
