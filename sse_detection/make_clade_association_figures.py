@@ -277,7 +277,7 @@ def _draw_heatmap_grid(
         ax.set_xticks(np.arange(len(clade_labels)))
         ax.set_xticklabels(clade_labels, rotation=90, ha="center")
         ax.set_yticks(np.arange(len(row_labels)))
-        ax.set_yticklabels(row_labels, fontsize=10)
+        ax.set_yticklabels(row_labels)
         ax.set_xlim(-0.5, len(clade_labels) - 0.5)
         ax.set_ylim(len(row_labels) - 0.5, -0.5)
         ax.set_xticks(np.arange(-0.5, len(clade_labels), 1), minor=True)
@@ -413,7 +413,7 @@ def _draw_or_heatmap_grid(
     log2_cap: float = 2.0,
 ) -> None:
     n_rows = len(row_labels)
-    height_in = min(9.5, max(4.2, 3.4 + 0.28 * n_rows))
+    height_in = min(9, max(4.2, 3.4 + 0.28 * n_rows))
     fig, axes = new_figure(
         width="double",
         height_in=height_in,
@@ -433,9 +433,9 @@ def _draw_or_heatmap_grid(
     ):
         scores = np.ma.masked_invalid(_or_scores(or_values, log2_cap=log2_cap))
         im = ax.imshow(scores, cmap=cmap, norm=norm, aspect="auto")
-        ax.set_title(panel_title)
+        # ax.set_title(panel_title)
         ax.set_xticks(np.arange(len(clade_labels)))
-        ax.set_xticklabels(clade_labels, rotation=45, ha="right", fontsize=8)
+        ax.set_xticklabels(clade_labels, rotation=90, ha="center")
         ax.set_yticks(np.arange(len(row_labels)))
         ax.set_yticklabels(row_labels)
         ax.set_xlim(-0.5, len(clade_labels) - 0.5)
@@ -450,7 +450,7 @@ def _draw_or_heatmap_grid(
         if panel_idx < 2:
             ax.tick_params(labelbottom=False)
 
-    fig.suptitle(title)
+    # fig.suptitle(title)
     if im is not None:
         cbar = fig.colorbar(im, ax=axes.ravel(), shrink=0.82, pad=0.02)
         ticks = [-log2_cap, -1.0, 0.0, 1.0, log2_cap]
@@ -615,7 +615,6 @@ def main() -> None:
     )
 
     odds = _read_odds(RESULTS_DIR / "composition_odds_ratios.csv")
-    effect_labels = clade_order
     effect_outputs = []
     for predictor, title, output_stem, levels in COMPOSITION_EFFECT_SPECS:
         effect_panels = []
@@ -639,7 +638,7 @@ def main() -> None:
         _draw_or_heatmap_grid(
             effect_panels,
             row_labels=row_labels,
-            clade_labels=effect_labels,
+            clade_labels=labels,
             title=title,
             output_stem=output_stem,
         )
