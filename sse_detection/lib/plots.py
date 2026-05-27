@@ -317,21 +317,50 @@ def plot_candidate_rate_over_time(
 ) -> Figure:
     """Per-window candidate rate, with category composition stacked underneath.
 
-    Top panel: % of nodes flagged ``sse_candidate`` per window, with the
-    raw candidate count as a light bar in the background.
-    Bottom panel: stacked counts of candidates by compact ``sse_category``.
+    Top panel: stacked % of sequences in background and candidate nodes per
+    window. Bottom panel: stacked raw counts of candidates by compact
+    ``sse_category``.
     """
-    if "window_idx" not in node_stats.columns:
-        raise KeyError("node_stats needs 'window_idx'")
+    required = {
+        "window_idx",
+        "wn_mid_date",
+        "cluster_size",
+        "sse_candidate",
+        "sse_category",
+    }
+    missing = required.difference(node_stats.columns)
+    if missing:
+        raise KeyError(f"node_stats needs {sorted(missing)}")
 
-    summary = node_stats.groupby(["window_idx", "wn_mid_date"], as_index=False).agg(
-        n_nodes=("cluster_id", "nunique"),
-        n_candidates=("sse_candidate", "sum"),
+    plot_df = node_stats.copy()
+    plot_df["cluster_size"] = pd.to_numeric(plot_df["cluster_size"], errors="coerce")
+    candidate_mask = plot_df["sse_candidate"].fillna(False).astype(bool)
+    plot_df["_candidate_cluster_size"] = np.where(
+        candidate_mask,
+        plot_df["cluster_size"].fillna(0),
+        0,
     )
-    summary["candidate_share"] = summary["n_candidates"] / summary["n_nodes"]
+
+    summary = plot_df.groupby(["window_idx", "wn_mid_date"], as_index=False).agg(
+        n_sequences=("cluster_size", "sum"),
+        n_candidate_sequences=("_candidate_cluster_size", "sum"),
+    )
+    summary["n_background_sequences"] = (
+        summary["n_sequences"] - summary["n_candidate_sequences"]
+    )
+    summary["candidate_sequence_pct"] = np.where(
+        summary["n_sequences"].gt(0),
+        100 * summary["n_candidate_sequences"] / summary["n_sequences"],
+        0.0,
+    )
+    summary["background_sequence_pct"] = np.where(
+        summary["n_sequences"].gt(0),
+        100 * summary["n_background_sequences"] / summary["n_sequences"],
+        0.0,
+    )
 
     category_counts = (
-        node_stats.loc[node_stats["sse_candidate"]]
+        plot_df.loc[candidate_mask]
         .groupby(["wn_mid_date", "sse_category"], as_index=False)
         .size()
         .rename(columns={"size": "n"})
@@ -356,7 +385,6 @@ def plot_candidate_rate_over_time(
         height_in=height_in,
         nrows=2,
         sharex=True,
-        sharey=True,
         context=context,
         font_scale=font_scale,
         layout="constrained",
@@ -364,26 +392,35 @@ def plot_candidate_rate_over_time(
     ax = axes[0]
     ax.bar(
         summary["wn_mid_date"],
-        summary["n_candidates"],
+        summary["background_sequence_pct"],
         width=5,
+        color=GRAY_LIGHT,
+        edgecolor=GRAY,
+        alpha=0.86,
+        label="background sequences",
+    )
+    ax.bar(
+        summary["wn_mid_date"],
+        summary["candidate_sequence_pct"],
+        width=5,
+        bottom=summary["background_sequence_pct"],
         color=ORANGE,
         edgecolor=ORANGE_DARK,
         alpha=0.86,
-        label="candidate nodes",
+        label="candidate-node sequences",
     )
-    ax2 = ax.twinx()
-    ax2.plot(
-        summary["wn_mid_date"],
-        100 * summary["candidate_share"],
-        color=INK_SOFT,
-        linewidth=1.8,
-        label="candidate-node share",
-    )
-    ax.set_ylabel("Candidate nodes")
-    ax2.set_ylabel("Candidate-node share\nof all clusters (%)")
+    ax.set_ylim(0, 100)
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: f"{y:.0f}%"))
+    ax.set_ylabel("Sequence share")
     handles1, labels1 = ax.get_legend_handles_labels()
-    handles2, labels2 = ax2.get_legend_handles_labels()
-    ax.legend(handles1 + handles2, labels1 + labels2, loc="best", ncol=1, frameon=False)
+    ax.legend(
+        handles1,
+        labels1,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 1.2),
+        ncol=2,
+        frameon=False,
+    )
 
     ax = axes[1]
     if len(category_pivot.columns):
@@ -398,7 +435,7 @@ def plot_candidate_rate_over_time(
             colors=colors,
             alpha=0.86,
         )
-        ax.legend(loc="upper left", ncol=3, frameon=False)
+        ax.legend(loc="upper left", ncol=2, frameon=False)
     ax.set_ylabel("Candidate nodes")
     ax.set_xlabel("Window midpoint date")
     fig.autofmt_xdate()
@@ -539,7 +576,8 @@ def plot_composite_distributions(
 
     candidate_label = (
         f"Candidate (n≥{min_size} sequences, "
-        f"{len(node_stats[node_stats['sse_candidate'] & node_stats['cluster_size'].ge(min_size)]):,} nodes)")
+        f"{len(node_stats[node_stats['sse_candidate'] & node_stats['cluster_size'].ge(min_size)]):,} nodes)"
+    )
 
     axes = axes.flatten()
 
@@ -576,14 +614,8 @@ def plot_composite_distributions(
         ax.set_visible(False)
 
     legend_handles = [
-        Line2D(
-            [0], [0], color=GRAY, linewidth=1.8, 
-            label=background_label
-            ),
-        Line2D(
-            [0], [0], color=ORANGE, linewidth=1.8, 
-            label=candidate_label
-            ),
+        Line2D([0], [0], color=GRAY, linewidth=1.8, label=background_label),
+        Line2D([0], [0], color=ORANGE, linewidth=1.8, label=candidate_label),
     ]
     fig.legend(
         handles=legend_handles,
@@ -1689,10 +1721,11 @@ def plot_health_board_enrichment_map(
         ncols=2,
         context=context,
         font_scale=font_scale,
-        gridspec_kw={"width_ratios": [1.12, 0.88], "wspace": 0.08},
+        gridspec_kw={"width_ratios": [1.12, 0.88], "wspace": 0.2},
         layout="constrained",
     )
-    ax_map, ax_or = np.ravel(axes)
+
+    ax_map, ax_or = axes.ravel()
     ax_map.set_aspect("equal")
     ax_map.axis("off")
 

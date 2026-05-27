@@ -513,12 +513,10 @@ def main() -> None:
         nrows=3,
         ncols=1,
         context="talk",
-        gridspec_kw={"height_ratios": [0.16, 2.5, 2.5]},
+        gridspec_kw={"height_ratios": [0.16, 2.5, 2.5], "hspace": 0.20},
     )
 
-    fig.subplots_adjust(hspace=0.20)
-
-    axes = list(axes)
+    axes = axes.ravel()
 
     ax_policy = axes[0]
     ax_top = axes[1]

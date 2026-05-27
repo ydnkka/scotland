@@ -1,0 +1,377 @@
+/* @theme roslin */
+@import "default";
+
+/* =========================================================================
+  Roslin Marp theme
+  Palette sampled from assets/scottish_map.png:
+  navy #101f39, orange #fd8e3c, amber #fbca6c, red #f96734.
+   ========================================================================= */
+
+:root {
+  --navy: #101f39;
+  --ink: #111827;
+  --text: #273348;
+  --muted: #687284;
+  --bg: #fefefe;
+  --panel: #f8f8f8;
+  --border: #e2d8cc;
+  --orange: #fd8e3c;
+  --amber: #fbca6c;
+  --red: #f96734;
+  --white: #fffdf7;
+  --slide-x: 76px;
+  --slide-top: 62px;
+  --slide-bottom: 56px;
+  --title-top: 52px;
+  --title-bottom: 42px;
+  --section-top: 35px;
+  --column-gap: 54px;
+  --content-gap: 26px;
+  --item-gap: 30px;
+}
+
+/* ----------------------------------------------------------------- base */
+
+section {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", Aptos, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  padding: var(--slide-top) var(--slide-x) var(--slide-bottom);
+}
+
+.section-logo {
+  position: absolute;
+  z-index: 2;
+  right: var(--slide-x);
+  top: var(--section-top);
+  height: 60px;
+  width: auto;
+  object-fit: contain;
+  margin: 0;
+  padding: 0;
+}
+.section-logo,
+img.section-logo {
+  border-radius: 0 !important;
+}
+
+section::after {
+  color: var(--muted);
+  font-size: 14px;
+  font-family: "Inter", Aptos, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+h1 {
+  color: var(--navy);
+  font-size: 40px;
+  max-width: 940px;
+  margin: 0 0 24px;
+}
+
+h1::after {
+  content: "";
+  display: block;
+  width: 76px;
+  height: 4px;
+  margin-top: 16px;
+  background: var(--orange);
+}
+
+h2 {
+  color: #c04a12;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin: 0 0 14px;
+  text-transform: uppercase;
+}
+
+h3 {
+  color: var(--navy);
+  font-size: 24px;
+  font-weight: 650;
+  margin: 0 0 10px;
+}
+
+p,
+li {
+  font-size: 24px;
+  line-height: 1.35;
+}
+
+ul,
+ol {
+  padding-left: 28px;
+}
+
+li::marker {
+  color: var(--orange);
+}
+
+strong {
+  color: var(--navy);
+  font-weight: 700;
+}
+
+a {
+  color: var(--red);
+}
+
+blockquote {
+  margin: 22px 0;
+  padding: 16px 22px;
+  color: var(--navy);
+  background: rgba(251, 202, 108, 0.18);
+  border-left: 5px solid var(--orange);
+}
+
+code {
+  color: var(--navy);
+  background: rgba(16, 31, 57, 0.08);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+/* ----------------------------------------------------------------- title slide */
+
+section.title {
+  background: var(--navy);
+  color: rgba(255, 253, 247, 0.9);
+  padding: var(--title-top) var(--slide-x) var(--title-bottom);
+}
+
+section.title::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 12px;
+  background: linear-gradient(90deg, var(--red), var(--orange) 38%, var(--amber));
+}
+
+section.title h1 {
+  color: var(--white);
+  font-size: 44px;
+}
+
+section.title h1::after {
+  width: 118px;
+  height: 5px;
+  margin-top: 24px;
+  background: linear-gradient(90deg, var(--red), var(--orange), var(--amber));
+}
+
+section.title h2 {
+  color: var(--amber);
+  font-size: 24px;
+  letter-spacing: 0;
+  text-transform: none;
+  margin: 0 0 36px;
+}
+
+.title-logo {
+  position: absolute;
+  z-index: 2;
+  top: var(--title-top);
+  left: var(--slide-x);
+  height: 65px;
+  width: auto;
+  object-fit: contain;
+}
+
+.title-layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1.15fr 0.8fr;
+  gap: var(--column-gap);
+  align-items: center;
+  margin-top: var(--column-gap);
+}
+
+.speaker {
+  color: rgba(255, 253, 247, 0.82);
+  font-size: 22px;
+  line-height: 1.45;
+}
+
+.title-figure {
+  position: relative;
+  height: 510px;
+  bottom: 60px;
+  overflow: hidden;
+}
+
+.title-figure img {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  object-fit: contain;
+  object-position: 52% 66%;
+  transform: scale(1.16);
+  transform-origin: 52% 66%;
+  background: transparent;
+  border: 0;
+}
+
+.logo-strip {
+  position: absolute;
+  z-index: 2;
+  right: var(--slide-x);
+  bottom: var(--title-bottom);
+  display: flex;
+  align-items: center;
+  gap: var(--item-gap);
+}
+
+.logo {
+  height: 60px;
+  width: auto;
+  object-fit: contain;
+  margin: 0;
+  padding: 0;
+}
+
+.title-date {
+  position: absolute;
+  left: var(--slide-x);
+  bottom: var(--title-bottom);
+  color: rgba(255, 253, 247, 0.72);
+  font-size: 17px;
+}
+
+.ack-logo-strip {
+  position: absolute;
+  z-index: 2;
+  right: var(--slide-x);
+  bottom: var(--title-bottom);
+  left: var(--slide-x);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 24px;
+}
+
+.ack-logo-strip .logo {
+  max-height: 60px;
+  max-width: 185px;
+  object-fit: contain;
+}
+
+/* ----------------------------------------------------------------- simple content helpers */
+
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--content-gap);
+}
+
+.columns.three {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-top: 5px solid var(--orange);
+  border-radius: 6px;
+  padding: 20px 22px;
+  box-shadow: 0 14px 34px rgba(16, 31, 57, 0.08);
+}
+
+.panel p,
+.panel li {
+  font-size: 22px;
+}
+
+.panel h3 {
+  margin-bottom: 12px;
+}
+
+/* ----------------------------------------------------------------- figures */
+
+section.figure h1 {
+  font-size: 36px;
+  max-width: 1000px;
+}
+
+img {
+  display: block;
+  margin: 14px auto;
+}
+
+.figure-panel img {
+  max-height: 460px;
+  max-width: 100%;
+  object-fit: contain;
+  border-radius: 0 !important;
+}
+
+section.short-figure .figure-panel img {
+  max-height: 390px;
+}
+
+section.short-figure .caption {
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+section.caption-safe .figure-panel img {
+  max-height: 360px;
+}
+
+section.caption-safe .caption {
+  font-size: 14px;
+  margin-top: 2px;
+}
+
+section:not(.title) img {
+  max-width: 100%;
+  border-radius: 6px;
+}
+
+.caption {
+  color: var(--muted);
+  font-size: 15px;
+  text-align: center;
+  margin-top: 8px;
+}
+
+/* ----------------------------------------------------------------- tables */
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 18px;
+  background: var(--panel);
+}
+
+th {
+  color: var(--navy);
+  border-bottom: 3px solid var(--orange);
+  padding: 9px 12px;
+  text-align: left;
+}
+
+td {
+  border-bottom: 1px solid var(--border);
+  padding: 9px 12px;
+}
+
+tbody tr:nth-child(even) {
+  background: rgba(251, 202, 108, 0.12);
+}
+
+/* ----------------------------------------------------------------- compact slides */
+
+section.tight p,
+section.tight li {
+  font-size: 20px;
+}
+
+section.tight h1 {
+  font-size: 34px;
+}
