@@ -31,6 +31,7 @@ from utils import (
     CONTEXTS,
     new_figure,
     add_panel_labels,
+    load_analysis_columns,
     CLADES,
     CLADE_PALETTE,
 )
@@ -48,6 +49,10 @@ from .palettes import (
     ORANGE_DARK,
     ORANGE,
     OR_DIVERGING,
+    BACKGROUND_COLOR,
+    BACKGROUND_DARK,
+    CANDIDATE_COLOR,
+    CANDIDATE_DARK,
     SSE_CATEGORY_ORDER,
     SSE_CATEGORY_PALETTE,
     TEAL_DARK,
@@ -309,6 +314,8 @@ def plot_role_dynamic_heatmap(
 def plot_candidate_rate_over_time(
     node_stats: pd.DataFrame,
     *,
+    sequence_df: pd.DataFrame | None = None,
+    window_stride: int | None = 2,
     width: WIDTHS = "double",
     width_in: float | None = None,
     height_in: float = 5.0,
@@ -317,14 +324,15 @@ def plot_candidate_rate_over_time(
 ) -> Figure:
     """Per-window candidate rate, with category composition stacked underneath.
 
-    Top panel: stacked % of sequences in background and candidate nodes per
-    window. Bottom panel: stacked raw counts of candidates by compact
-    ``sse_category``.
+    Top panel: stacked % of unique sequences present in each retained window,
+    where a sequence is candidate-associated if it appears in at least one
+    candidate SSE node across the overlapping windows. Bottom panel: stacked
+    raw counts of candidate nodes by compact ``sse_category``.
     """
     required = {
+        "cluster_id",
         "window_idx",
         "wn_mid_date",
-        "cluster_size",
         "sse_candidate",
         "sse_category",
     }
@@ -333,18 +341,51 @@ def plot_candidate_rate_over_time(
         raise KeyError(f"node_stats needs {sorted(missing)}")
 
     plot_df = node_stats.copy()
-    plot_df["cluster_size"] = pd.to_numeric(plot_df["cluster_size"], errors="coerce")
     candidate_mask = plot_df["sse_candidate"].fillna(False).astype(bool)
-    plot_df["_candidate_cluster_size"] = np.where(
-        candidate_mask,
-        plot_df["cluster_size"].fillna(0),
-        0,
+    candidate_nodes = set(plot_df.loc[candidate_mask, "cluster_id"].dropna())
+
+    if sequence_df is None:
+        sequence_df = load_analysis_columns(
+            ["window_id", "window_idx", "wn_mid_date", "cluster_id"],
+            add_policy=False,
+            window_stride=window_stride,
+        )
+
+    sequence_required = {"window_idx", "cluster_id", "sequence_id"}
+    missing_sequence = sequence_required.difference(sequence_df.columns)
+    if missing_sequence:
+        raise KeyError(f"sequence_df needs {sorted(missing_sequence)}")
+
+    seq = sequence_df.copy()
+    seq = seq.loc[
+        seq["window_idx"].isin(plot_df["window_idx"].dropna().unique())
+    ].copy()
+    if "wn_mid_date" not in seq.columns:
+        window_dates = plot_df[["window_idx", "wn_mid_date"]].drop_duplicates(
+            "window_idx"
+        )
+        seq = seq.merge(window_dates, on="window_idx", how="left")
+    if "wn_mid_date" not in seq.columns:
+        raise KeyError("sequence_df needs 'wn_mid_date' or node_stats must provide it")
+
+    seq["wn_mid_date"] = pd.to_datetime(seq["wn_mid_date"], errors="coerce")
+    seq["_in_candidate_node"] = seq["cluster_id"].isin(candidate_nodes)
+    candidate_sequences = set(
+        seq.loc[seq["_in_candidate_node"], "sequence_id"].dropna()
+    )
+    seq["_candidate_sequence"] = seq["sequence_id"].isin(candidate_sequences)
+
+    seq_windows = (
+        seq[["window_idx", "wn_mid_date", "sequence_id", "_candidate_sequence"]]
+        .dropna(subset=["window_idx", "wn_mid_date", "sequence_id"])
+        .drop_duplicates(["window_idx", "sequence_id"])
     )
 
-    summary = plot_df.groupby(["window_idx", "wn_mid_date"], as_index=False).agg(
-        n_sequences=("cluster_size", "sum"),
-        n_candidate_sequences=("_candidate_cluster_size", "sum"),
+    summary = seq_windows.groupby(["window_idx", "wn_mid_date"], as_index=False).agg(
+        n_sequences=("sequence_id", "nunique"),
+        n_candidate_sequences=("_candidate_sequence", "sum"),
     )
+    summary = summary.sort_values("window_idx")
     summary["n_background_sequences"] = (
         summary["n_sequences"] - summary["n_candidate_sequences"]
     )
@@ -394,8 +435,8 @@ def plot_candidate_rate_over_time(
         summary["wn_mid_date"],
         summary["background_sequence_pct"],
         width=5,
-        color=GRAY_LIGHT,
-        edgecolor=GRAY,
+        color=BACKGROUND_COLOR,
+        edgecolor=BACKGROUND_DARK,
         alpha=0.86,
         label="background sequences",
     )
@@ -404,10 +445,10 @@ def plot_candidate_rate_over_time(
         summary["candidate_sequence_pct"],
         width=5,
         bottom=summary["background_sequence_pct"],
-        color=ORANGE,
-        edgecolor=ORANGE_DARK,
+        color=CANDIDATE_COLOR,
+        edgecolor=CANDIDATE_DARK,
         alpha=0.86,
-        label="candidate-node sequences",
+        label="candidate-associated sequences",
     )
     ax.set_ylim(0, 100)
     ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: f"{y:.0f}%"))
@@ -585,13 +626,13 @@ def plot_composite_distributions(
         for label, color, mask in [
             (
                 "background",
-                GRAY,
+                BACKGROUND_COLOR,
                 (
                     ~node_stats["sse_candidate"]
                     & node_stats["cluster_size"].ge(min_size)
                 ),
             ),
-            ("candidate", ORANGE, node_stats["sse_candidate"]),
+            ("candidate", CANDIDATE_COLOR, node_stats["sse_candidate"]),
         ]:
             values = node_stats[mask][col[0]].dropna().to_numpy()
             if len(values) < 5:
@@ -614,8 +655,20 @@ def plot_composite_distributions(
         ax.set_visible(False)
 
     legend_handles = [
-        Line2D([0], [0], color=GRAY, linewidth=1.8, label=background_label),
-        Line2D([0], [0], color=ORANGE, linewidth=1.8, label=candidate_label),
+        Line2D(
+            [0],
+            [0],
+            color=BACKGROUND_COLOR,
+            linewidth=1.8,
+            label=background_label,
+        ),
+        Line2D(
+            [0],
+            [0],
+            color=CANDIDATE_COLOR,
+            linewidth=1.8,
+            label=candidate_label,
+        ),
     ]
     fig.legend(
         handles=legend_handles,
@@ -647,11 +700,13 @@ def plot_socio_demo_breakdown(
     context: CONTEXTS = "paper",
     font_scale: float = 1.0,
     min_size: int = 1,
-) -> tuple[Figure, pd.DataFrame]:
+) -> Figure:
     """
     Plot the distribution of mixing scores for candidate vs background nodes,
     and the distribution of class-label frequencies for candidate vs background nodes.
     """
+
+    node_stats = node_stats.loc[node_stats["cluster_size"].ge(min_size)].copy()
 
     fig, axes = new_figure(
         ncols=2,
@@ -666,16 +721,8 @@ def plot_socio_demo_breakdown(
     ax = axes[0]
 
     for label, color, mask in [
-        (
-            "background",
-            GRAY,
-            (~node_stats["sse_candidate"] & node_stats["cluster_size"].ge(min_size)),
-        ),
-        (
-            "candidate",
-            ORANGE,
-            node_stats["sse_candidate"],
-        ),
+        ("background", BACKGROUND_COLOR, ~node_stats["sse_candidate"]),
+        ("candidate", CANDIDATE_COLOR, node_stats["sse_candidate"]),
     ]:
         values = node_stats[mask][score].dropna().to_numpy()
 
@@ -759,8 +806,8 @@ def plot_socio_demo_breakdown(
         y = np.arange(len(order))
 
         for off, candidate_value, lbl, color in [
-            (-bar_h / 2, False, "background", GRAY),
-            (bar_h / 2, True, "candidate", ORANGE),
+            (-bar_h / 2, False, "background", BACKGROUND_COLOR),
+            (bar_h / 2, True, "candidate", CANDIDATE_COLOR),
         ]:
             sub = (
                 share.loc[share["candidate"] == candidate_value]
@@ -780,14 +827,12 @@ def plot_socio_demo_breakdown(
         ax.set_yticklabels(order)
 
     ax.set_ylabel(labels[1])
-    ax.set_xlabel("Fraction of Nodes")
+    ax.set_xlabel("Fraction of sequence counts")
 
     add_panel_labels(axes)
 
     plt.close(fig)
-    return fig, pd.DataFrame(records)
-
-
+    return fig
 # ---------------------------------------------------------------------------
 # Main regression output figures and manuscript tables
 # ---------------------------------------------------------------------------

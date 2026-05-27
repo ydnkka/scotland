@@ -44,7 +44,7 @@ def load_association_lib() -> Any:
     """Import the analysis library only when an analysis is about to run."""
     global _SSELIB
     if _SSELIB is None:
-        from sse_detection import lib as sselib  # noqa: PLC0415
+        from sse_detection import lib as sselib 
 
         _SSELIB = sselib
     return _SSELIB

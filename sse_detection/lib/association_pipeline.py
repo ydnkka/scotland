@@ -73,8 +73,8 @@ COMPOSITION_SPECS = [
     {
         "name": "age_band",
         "column": "age_band",
-        "reference": "30-34",
-        "fallback_references": ["35-39", "25-29"],
+        "reference": "20-24",
+        "fallback_references": ["25-29", "30-34"],
         "label": "Age band",
     },
     {
