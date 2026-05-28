@@ -1,14 +1,14 @@
 """Command-line runner for the SSE association analyses.
 
-The default invocation runs the primary socio-geodemographic association
-analysis plus the clade, window, observed-entropy, policy, and vaccination
-sensitivity/context analyses.
+The default invocation runs the primary demographic, geographic, and
+node-mixing association analysis plus the clade, window, observed-entropy,
+policy, and vaccination sensitivity/context analyses.
 Each run writes its CSV outputs to a dedicated subdirectory under
 ``sse_detection/results``.
 
 Model rationale, inputs, output table definitions, and interpretation notes
-live in ``sse_sociodemographic_association_notes.md``. Pass one or more
-analysis names on the command line to run a subset.
+live in ``sse_association_notes.md``. Pass one or more analysis names on the
+command line to run a subset.
 
 Examples
 --------
@@ -253,8 +253,8 @@ DEFAULT_ANALYSIS_ORDER = tuple(ANALYSES)
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Run the main SSE socio-geodemographic association analysis and "
-            "its sensitivity analyses."
+            "Run the main SSE association analysis and sensitivity/context "
+            "analyses."
         )
     )
     parser.add_argument(

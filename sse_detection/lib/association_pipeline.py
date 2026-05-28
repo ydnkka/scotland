@@ -2711,7 +2711,7 @@ def run_main_association_analysis(
     run_mixing: bool = True,
     **kwargs,
 ) -> dict[str, Any]:
-    """Run the primary overall socio-geodemographic association analysis.
+    """Run the primary demographic, geographic, and mixing association analysis.
 
     This is a thin preset around :func:`run_association_pipeline` for the main
     notebook: no clade stratification, primary and expanded model sets,
