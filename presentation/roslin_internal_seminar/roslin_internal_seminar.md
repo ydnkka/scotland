@@ -288,7 +288,7 @@ Candidate-node odds ratios by health board (A) and urban–rural class (B); isla
 
 <!--
 Speaker notes:
-- Here I am showing results from two logistic regression models.
+- Here I am showing results from a logistic regression model.
 - One model uses health board as the main predictor, and the other uses urban-rural class; both adjust for epidemic time windows, and clades.
 - The strongest place signal appears in the Scottish islands.
 - In Panel A, the odds ratios compare each health board with Greater Glasgow and Clyde, asking how much more or less likely sequences from that board are to sit in a flagged cluster.

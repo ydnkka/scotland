@@ -25,10 +25,13 @@ from .regression import (
     model_fit_stats,
     model_variables_from_terms,
     parameter_names_for_term,
+    robust_wald_for_params,
     robust_wald_for_prefix,
     tidy_odds_ratios,
     tidy_single_parameter_wald,
 )
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 __all__ = [
@@ -191,15 +194,6 @@ class AssociationFrames:
     min_candidate_size: int
 
 
-def _project_root(project_root: Path | str | None = None) -> Path:
-    root = Path(project_root or Path.cwd()).resolve()
-    candidates = [root, *root.parents]
-    for candidate in candidates:
-        if (candidate / "config.yaml").exists():
-            return candidate
-    raise FileNotFoundError("Could not locate config.yaml from project_root.")
-
-
 def _dedupe(values: Iterable[str]) -> list[str]:
     return list(dict.fromkeys(values))
 
@@ -321,7 +315,6 @@ def default_model_sets(
 
 def load_association_frames(
     *,
-    project_root: Path | str | None = None,
     output_dir: Path | str | None = None,
     cluster_se: str = "cluster_id",
     variant_adjuster: str | None = "clade",
@@ -331,11 +324,10 @@ def load_association_frames(
     run_composition: bool = True,
 ) -> AssociationFrames:
     """Load SSE outputs and construct complete model base frames."""
-    root = _project_root(project_root)
     output_path = (
         Path(output_dir)
         if output_dir
-        else root / "sse_detection" / "results" / "sse_outputs"
+        else PROJECT_ROOT / "sse_detection" / "results" / "sse_outputs"
     )
     outs = load_sse_outputs(output_path)
     node_stats = outs.node_stats.copy()
@@ -1067,7 +1059,12 @@ def fit_joint_mixing_model(
             **_group_metadata(group_col, group_label),
             **dropped_metadata(dropped_rows, dropped_strata),
         }
-        wald = tidy_single_parameter_wald(result, features, model_name=model_name)
+        wald = robust_wald_for_params(
+            result,
+            features,
+            model_name=model_name,
+            term="all_mixing",
+        )
         odds = tidy_odds_ratios(result, model_name=model_name)
         odds = odds.loc[odds["term"].isin(features)].copy()
         fit_stats = model_fit_stats(result, model_name=model_name, formula=formula)
@@ -1240,7 +1237,6 @@ def _summarise_tables(
 
 def run_association_pipeline(
     *,
-    project_root: Path | str | None = None,
     output_dir: Path | str | None = None,
     result_dir: Path | str | None = None,
     result_subdir: str = "association_outputs",
@@ -1261,16 +1257,15 @@ def run_association_pipeline(
     run_mixing: bool = True,
 ) -> dict[str, Any]:
     """Run composition and/or mixing association models and export CSV tables."""
-    root = _project_root(project_root)
     output_path = (
         Path(output_dir)
         if output_dir
-        else root / "sse_detection" / "results" / "sse_outputs"
+        else PROJECT_ROOT / "sse_detection" / "results" / "sse_outputs"
     )
     result_path = (
         Path(result_dir)
         if result_dir
-        else root / "sse_detection" / "results" / result_subdir
+        else PROJECT_ROOT / "sse_detection" / "results" / result_subdir
     )
     result_path.mkdir(parents=True, exist_ok=True)
 
@@ -1289,7 +1284,6 @@ def run_association_pipeline(
         )
 
     frames = load_association_frames(
-        project_root=root,
         output_dir=output_path,
         cluster_se=cluster_se,
         variant_adjuster=variant_adjuster,
@@ -1383,7 +1377,6 @@ def run_association_pipeline(
 
 def run_main_association_analysis(
     *,
-    project_root: Path | str | None = None,
     result_dir: Path | str | None = None,
     model_method: str = "firth_glm",
     variant_adjuster: str | None = "clade",
@@ -1400,7 +1393,6 @@ def run_main_association_analysis(
     models saved under ``sse_detection/results/association_outputs`` by default.
     """
     return run_association_pipeline(
-        project_root=project_root,
         result_dir=result_dir,
         result_subdir="association_outputs",
         model_method=model_method,

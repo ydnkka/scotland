@@ -7,8 +7,9 @@ or notebook-side data preparation before plotting.
 
 from __future__ import annotations
 
+import ast
 import re
-from typing import Any, Mapping, Iterable
+from typing import Any, Iterable, Mapping
 
 from matplotlib.cm import ScalarMappable
 from matplotlib.collections import PolyCollection
@@ -47,7 +48,6 @@ from .palettes import (
     ROLE_ORDER,
     ROLE_PALETTE,
     ORANGE_DARK,
-    ORANGE,
     OR_DIVERGING,
     BACKGROUND_COLOR,
     BACKGROUND_DARK,
@@ -68,12 +68,12 @@ __all__ = [
     "plot_composite_distributions",
     "plot_socio_demo_breakdown",
     "plot_regression_wald_heatmap",
-    "plot_regression_odds_ratio_forest",
     "make_regression_wald_table",
     "make_regression_odds_ratio_table",
     "make_regression_fit_table",
     "load_health_board_geometries",
     "plot_health_board_enrichment_map",
+    "plot_age_sex_simd_forest",
     "collect_sensitivity_matrix_results",
     "plot_sensitivity_matrix",
 ]
@@ -833,9 +833,14 @@ def plot_socio_demo_breakdown(
 
     plt.close(fig)
     return fig
+
+
 # ---------------------------------------------------------------------------
-# Main regression output figures and manuscript tables
+# Regression output figures and manuscript tables
 # ---------------------------------------------------------------------------
+
+
+# Shared regression labels/table helpers -------------------------------------
 
 
 _COMPOSITION_ORDER = [
@@ -852,6 +857,7 @@ _MIXING_ORDER = [
     "simd_entropy_z",
     "urban_rural_entropy_z",
     "health_board_entropy_z",
+    "all_mixing",
     "sex_entropy_obs",
     "age_entropy_obs",
     "simd_entropy_obs",
@@ -878,6 +884,8 @@ _PRETTY_LABELS = {
     "simd_entropy_z": "SIMD entropy z-score",
     "urban_rural_entropy_z": "Urban/rural entropy z-score",
     "health_board_entropy_z": "Health-board entropy z-score",
+    "all_mixing": "All mixing predictors",
+    "all_mixing_predictors": "All mixing predictors",
     "primary": "Primary",
     "expanded": "Expanded",
     "single": "Single predictor",
@@ -885,30 +893,6 @@ _PRETTY_LABELS = {
     "composition": "Composition",
     "node_mixing": "Node mixing",
 }
-
-
-_REGRESSION_PANEL_GROUPS = {
-    "sex": "Sociodemographic",
-    "age_band": "Sociodemographic",
-    "simd_quintile": "Sociodemographic",
-    "dz_simd_quintile": "Sociodemographic",
-    "sex_entropy_obs": "Sociodemographic",
-    "age_entropy_obs": "Sociodemographic",
-    "simd_entropy_obs": "Sociodemographic",
-    "sex_entropy_z": "Sociodemographic",
-    "age_entropy_z": "Sociodemographic",
-    "simd_entropy_z": "Sociodemographic",
-    "urban_rural_class": "Geographic",
-    "health_board": "Geographic",
-    "dz_urban_rural_class": "Geographic",
-    "dz_health_board": "Geographic",
-    "urban_rural_entropy_obs": "Geographic",
-    "health_board_entropy_obs": "Geographic",
-    "urban_rural_entropy_z": "Geographic",
-    "health_board_entropy_z": "Geographic",
-}
-
-_REGRESSION_PANEL_ORDER = ["Sociodemographic", "Geographic"]
 
 
 def _pretty_text(value: Any, label_map: Mapping[str, str] | None = None) -> str:
@@ -1043,11 +1027,6 @@ def _regression_sort_source(df: pd.DataFrame) -> pd.Series:
     return source
 
 
-def _regression_panel_group(values: pd.Series) -> pd.Series:
-    """Group regression predictors into compact figure panels where possible."""
-    return values.astype(str).map(_REGRESSION_PANEL_GROUPS).fillna("Other")
-
-
 def _format_p_value(
     value: Any,
     *,
@@ -1083,324 +1062,7 @@ def _format_or_ci(row: pd.Series, *, digits: int = 2) -> str:
     )
 
 
-def plot_regression_wald_heatmap(
-    wald_df: pd.DataFrame,
-    *,
-    domain: str | Iterable[str] | None = None,
-    model_set: str | Iterable[str] | None = None,
-    predictor_set: str | Iterable[str] | None = None,
-    predictors: Iterable[str] | None = None,
-    p_col: str = "p_adj_bh",
-    row_col: str | None = None,
-    label_map: Mapping[str, str] | None = None,
-    cap_neg_log10_p: float = 20.0,
-    annotate_p: bool = True,
-    title: str | None = None,
-    width: WIDTHS = "double",
-    width_in: float | None = None,
-    height_in: float | None = None,
-    context: CONTEXTS = "paper",
-    font_scale: float = 1.0,
-) -> Figure:
-    """Heatmap of omnibus Wald evidence across regression specifications.
-
-    The colour scale is ``-log10(p)`` using the BH-adjusted column when
-    available. Exact zero p-values are capped for display and annotated as
-    ``<1e-k`` rather than being dropped.
-    """
-    df = _filter_regression_table(
-        wald_df,
-        domain=domain,
-        model_set=model_set,
-        predictor_set=predictor_set,
-        predictors=predictors,
-    )
-    if df.empty:
-        raise ValueError("No Wald rows remain after filtering.")
-
-    if p_col not in df.columns:
-        fallback = "P>chi2"
-        if fallback not in df.columns:
-            raise ValueError(f"`wald_df` must contain `{p_col}` or `{fallback}`.")
-        p_col = fallback
-
-    df = _with_regression_display_labels(df, label_map=label_map)
-    if row_col is None:
-        df["_row_id"] = _regression_sort_source(df)
-    elif row_col not in df.columns:
-        raise ValueError(f"`wald_df` does not contain row column `{row_col}`.")
-    else:
-        df["_row_id"] = df[row_col].astype(str)
-
-    row_labels = (
-        df.sort_values("_row_id", key=_predictor_sort_key)
-        .drop_duplicates("_row_id")
-        .set_index("_row_id")["_predictor_label"]
-    )
-    missing_label = row_labels.str.lower().eq("all mixing predictors")
-    if missing_label.any() and "term" in df.columns:
-        replacements = (
-            df.drop_duplicates("_row_id").set_index("_row_id")["term"].map(_pretty_text)
-        )
-        row_labels.loc[missing_label] = replacements.loc[missing_label]
-
-    df["_p_for_plot"] = pd.to_numeric(df[p_col], errors="coerce")
-    positive = df.loc[df["_p_for_plot"].gt(0), "_p_for_plot"]
-    min_positive = positive.min() if not positive.empty else 10 ** (-cap_neg_log10_p)
-    zero_floor = min(min_positive, 10 ** (-cap_neg_log10_p))
-    df["_neg_log10_p"] = -np.log10(df["_p_for_plot"].replace(0, zero_floor))
-    df["_neg_log10_p"] = df["_neg_log10_p"].clip(upper=cap_neg_log10_p)
-
-    pivot = df.pivot_table(
-        index="_row_id",
-        columns="_model_label",
-        values="_neg_log10_p",
-        aggfunc="first",
-    )
-    row_order = [row for row in row_labels.index if row in pivot.index]
-    pivot = pivot.reindex(row_order)
-
-    if {"model_set", "predictor_set"}.issubset(df.columns):
-        col_order_df = (
-            df[["model_set", "predictor_set", "_model_label"]]
-            .drop_duplicates()
-            .assign(
-                _model_set_order=lambda x: (
-                    x["model_set"].map({"primary": 0, "expanded": 1}).fillna(99)
-                ),
-                _predictor_set_order=lambda x: (
-                    x["predictor_set"].map({"single": 0, "joint": 1}).fillna(99)
-                ),
-            )
-            .sort_values(
-                [
-                    "_model_set_order",
-                    "_predictor_set_order",
-                    "model_set",
-                    "predictor_set",
-                ]
-            )
-        )
-        pivot = pivot.reindex(columns=col_order_df["_model_label"])
-
-    annot = None
-    if annotate_p:
-        p_pivot = df.pivot_table(
-            index="_row_id",
-            columns="_model_label",
-            values=p_col,
-            aggfunc="first",
-        ).reindex(index=pivot.index, columns=pivot.columns)
-        annot = p_pivot.apply(
-            lambda col: col.map(
-                lambda x: (
-                    ""
-                    if pd.isna(x)
-                    else (
-                        f"<1e-{int(cap_neg_log10_p)}"
-                        if float(x) == 0
-                        else _format_p_value(x)
-                    )
-                )
-            )
-        )
-
-    if height_in is None:
-        height_in = max(2.5, 0.35 * len(pivot.index) + 1.2)
-
-    fig, ax = new_figure(
-        width=width,
-        width_in=width_in,
-        height_in=height_in,
-        context=context,
-        font_scale=font_scale,
-    )
-    sns.heatmap(
-        pivot,
-        ax=ax,
-        cmap="YlOrRd",
-        vmin=0,
-        vmax=cap_neg_log10_p,
-        linewidths=0.5,
-        linecolor="white",
-        cbar_kws={"label": "Evidence strength (-log10 p-value)"},
-        annot=annot,
-        fmt="" if annotate_p else ".2f",
-    )
-    ax.set_xlabel("")
-    ax.set_ylabel("")
-    ax.set_yticklabels([row_labels.get(row, row) for row in pivot.index], rotation=0)
-    ax.tick_params(axis="x", rotation=0)
-    if title is not None:
-        ax.set_title(title)
-
-    plt.close(fig)
-    return fig
-
-
-def plot_regression_odds_ratio_forest(
-    odds_df: pd.DataFrame,
-    *,
-    domain: str | Iterable[str] | None = None,
-    model_set: str | Iterable[str] | None = "primary",
-    predictor_set: str | Iterable[str] | None = "single",
-    predictors: Iterable[str] | None = None,
-    terms: Iterable[str] | None = None,
-    p_col: str = "p_value",
-    label_map: Mapping[str, str] | None = None,
-    sort_by: str = "table",
-    max_rows: int | None = 40,
-    sig_alpha: float = 0.05,
-    title: str | None = None,
-    xlabel: str = "Odds ratio for candidate-node membership",
-    width: WIDTHS = "double",
-    width_in: float | None = None,
-    height_in: float | None = None,
-    context: CONTEXTS = "paper",
-    font_scale: float = 1.0,
-    split_panels: bool = True,
-) -> Figure:
-    """Forest plot of odds ratios and 95% confidence intervals."""
-    required = {"odds_ratio", "or_low", "or_high", "term"}
-    missing = required - set(odds_df.columns)
-    if missing:
-        raise ValueError(f"`odds_df` is missing required columns: {sorted(missing)}")
-
-    df = _filter_regression_table(
-        odds_df,
-        domain=domain,
-        model_set=model_set,
-        predictor_set=predictor_set,
-        predictors=predictors,
-    )
-    if terms is not None:
-        df = df.loc[df["term"].isin(terms)].copy()
-    if df.empty:
-        raise ValueError("No odds-ratio rows remain after filtering.")
-
-    df = _with_regression_display_labels(df, label_map=label_map)
-    for col in ["odds_ratio", "or_low", "or_high"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-    df = df.replace([np.inf, -np.inf], np.nan).dropna(
-        subset=["odds_ratio", "or_low", "or_high"]
-    )
-    df = df.loc[df[["odds_ratio", "or_low", "or_high"]].gt(0).all(axis=1)]
-    if df.empty:
-        raise ValueError("No finite positive odds ratios remain after filtering.")
-
-    if sort_by == "table":
-        sort_cols = []
-        if "model_set" in df.columns:
-            df["_model_set_order"] = (
-                df["model_set"].map({"primary": 0, "expanded": 1}).fillna(99)
-            )
-            sort_cols.append("_model_set_order")
-        if "predictor_set" in df.columns:
-            df["_predictor_set_order"] = (
-                df["predictor_set"].map({"single": 0, "joint": 1}).fillna(99)
-            )
-            sort_cols.append("_predictor_set_order")
-        if "predictor" in df.columns:
-            df["_predictor_order"] = _predictor_sort_key(_regression_sort_source(df))
-            sort_cols.append("_predictor_order")
-        sort_cols.append("term")
-        df = df.sort_values(sort_cols)
-    elif sort_by == "odds_ratio":
-        df = df.sort_values("odds_ratio")
-    elif sort_by == "abs_log_or":
-        df = df.assign(_abs_log_or=np.abs(np.log(df["odds_ratio"]))).sort_values(
-            "_abs_log_or"
-        )
-    elif sort_by == "p_value":
-        if p_col not in df.columns:
-            raise ValueError(f"`odds_df` does not contain `{p_col}`.")
-        df = df.sort_values(p_col)
-    else:
-        raise ValueError(
-            "`sort_by` must be 'table', 'odds_ratio', 'abs_log_or', or 'p_value'."
-        )
-
-    if max_rows is not None and len(df) > max_rows:
-        df = df.tail(max_rows) if sort_by == "abs_log_or" else df.head(max_rows)
-
-    df = df.reset_index(drop=True)
-    domains = set(df["domain"].astype(str)) if "domain" in df.columns else set()
-    split_this_plot = split_panels and domains != {"node_mixing"}
-    df["_panel_group"] = _regression_panel_group(_regression_sort_source(df))
-    panel_names = [
-        name
-        for name in [*_REGRESSION_PANEL_ORDER, "Other"]
-        if name in set(df["_panel_group"])
-    ]
-    if not split_this_plot or len(panel_names) <= 1:
-        panel_names = ["All"]
-        df["_panel_group"] = "All"
-
-    colors = np.full(len(df), GRAY_LIGHT, dtype=object)
-    if p_col in df.columns:
-        colors = np.where(
-            pd.to_numeric(df[p_col], errors="coerce") < sig_alpha, ORANGE, GRAY_LIGHT
-        )
-    df["_color"] = colors
-
-    if height_in is None:
-        max_panel_rows = max(
-            int(df["_panel_group"].eq(name).sum()) for name in panel_names
-        )
-        height_in = max(3.0, 0.28 * max_panel_rows + 1.7)
-
-    fig, axes = new_figure(
-        width=width,
-        width_in=width_in,
-        height_in=height_in,
-        nrows=len(panel_names),
-        context=context,
-        font_scale=font_scale,
-        layout="constrained",
-    )
-    axes = np.atleast_1d(axes).ravel()
-
-    finite_values = df[["or_low", "or_high"]].to_numpy().ravel()
-    finite_values = finite_values[np.isfinite(finite_values) & (finite_values > 0)]
-
-    for ax, panel_name in zip(axes, panel_names):
-        panel = df.loc[df["_panel_group"].eq(panel_name)].reset_index(drop=True)
-        y = np.arange(len(panel))
-        xerr = np.vstack(
-            [
-                panel["odds_ratio"].to_numpy() - panel["or_low"].to_numpy(),
-                panel["or_high"].to_numpy() - panel["odds_ratio"].to_numpy(),
-            ]
-        )
-        ax.errorbar(
-            panel["odds_ratio"],
-            y,
-            xerr=xerr,
-            fmt="none",
-            ecolor=GRAY,
-            elinewidth=1.0,
-            capsize=2,
-            zorder=1,
-        )
-        ax.scatter(panel["odds_ratio"], y, c=panel["_color"], s=28, zorder=2)
-        ax.axvline(1, color="black", linewidth=0.8)
-        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:g}"))
-        ax.set_yticks(y)
-        ax.set_yticklabels(panel["_contrast_label"])
-        ax.invert_yaxis()
-        ax.set_ylabel("")
-        ax.set_xlabel("")
-        ax.grid(axis="x", color=GRID, linewidth=0.5)
-
-    axes[-1].set_xlabel(xlabel)
-
-    if len(panel_names) > 1:
-        add_panel_labels([ax for ax in axes])
-
-    if title is not None:
-        fig.suptitle(title)
-    plt.close(fig)
-    return fig
+# Manuscript table builders --------------------------------------------------
 
 
 def make_regression_wald_table(
@@ -1600,9 +1262,338 @@ def make_regression_fit_table(
     return out.reset_index(drop=True)
 
 
-# ---------------------------------------------------------------------------
-# Health-board map and urban/rural enrichment figure
-# ---------------------------------------------------------------------------
+# Wald heatmap ---------------------------------------------------------------
+
+
+def _prepare_regression_wald_heatmap(
+    wald_df: pd.DataFrame,
+    *,
+    domain: str | Iterable[str] | None = None,
+    model_set: str | Iterable[str] | None = None,
+    predictor_set: str | Iterable[str] | None = None,
+    predictors: Iterable[str] | None = None,
+    p_col: str = "p_adj_bh",
+    row_col: str | None = None,
+    label_map: Mapping[str, str] | None = None,
+    cap_neg_log10_p: float = 20.0,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
+    """Prepare pivoted Wald evidence and p-value annotation tables."""
+    df = _filter_regression_table(
+        wald_df,
+        domain=domain,
+        model_set=model_set,
+        predictor_set=predictor_set,
+        predictors=predictors,
+    )
+    if df.empty:
+        raise ValueError("No Wald rows remain after filtering.")
+
+    if p_col not in df.columns:
+        fallback = "P>chi2"
+        if fallback not in df.columns:
+            raise ValueError(f"`wald_df` must contain `{p_col}` or `{fallback}`.")
+        p_col = fallback
+
+    df = _with_regression_display_labels(df, label_map=label_map)
+    if row_col is None:
+        df["_row_id"] = _regression_sort_source(df)
+    elif row_col not in df.columns:
+        raise ValueError(f"`wald_df` does not contain row column `{row_col}`.")
+    else:
+        df["_row_id"] = df[row_col].astype(str)
+
+    row_labels = (
+        df.sort_values("_row_id", key=_predictor_sort_key)
+        .drop_duplicates("_row_id")
+        .set_index("_row_id")["_predictor_label"]
+    )
+    missing_label = row_labels.str.lower().eq("all mixing predictors")
+    if missing_label.any() and "term" in df.columns:
+        replacements = (
+            df.drop_duplicates("_row_id").set_index("_row_id")["term"].map(_pretty_text)
+        )
+        row_labels.loc[missing_label] = replacements.loc[missing_label]
+
+    df["_p_for_plot"] = pd.to_numeric(df[p_col], errors="coerce")
+    positive = df.loc[df["_p_for_plot"].gt(0), "_p_for_plot"]
+    min_positive = positive.min() if not positive.empty else 10 ** (-cap_neg_log10_p)
+    zero_floor = min(min_positive, 10 ** (-cap_neg_log10_p))
+    df["_neg_log10_p"] = -np.log10(df["_p_for_plot"].replace(0, zero_floor))
+    df["_neg_log10_p"] = df["_neg_log10_p"].clip(upper=cap_neg_log10_p)
+
+    pivot = df.pivot_table(
+        index="_row_id",
+        columns="_model_label",
+        values="_neg_log10_p",
+        aggfunc="first",
+    )
+    row_order = [row for row in row_labels.index if row in pivot.index]
+    pivot = pivot.reindex(row_order)
+
+    if {"model_set", "predictor_set"}.issubset(df.columns):
+        col_order_df = (
+            df[["model_set", "predictor_set", "_model_label"]]
+            .drop_duplicates()
+            .assign(
+                _model_set_order=lambda x: (
+                    x["model_set"].map({"primary": 0, "expanded": 1}).fillna(99)
+                ),
+                _predictor_set_order=lambda x: (
+                    x["predictor_set"].map({"single": 0, "joint": 1}).fillna(99)
+                ),
+            )
+            .sort_values(
+                [
+                    "_model_set_order",
+                    "_predictor_set_order",
+                    "model_set",
+                    "predictor_set",
+                ]
+            )
+        )
+        pivot = pivot.reindex(columns=col_order_df["_model_label"])
+
+    p_pivot = df.pivot_table(
+        index="_row_id",
+        columns="_model_label",
+        values=p_col,
+        aggfunc="first",
+    ).reindex(index=pivot.index, columns=pivot.columns)
+    annot = p_pivot.apply(
+        lambda col: col.map(
+            lambda x: (
+                ""
+                if pd.isna(x)
+                else (
+                    f"<1e-{int(cap_neg_log10_p)}"
+                    if float(x) == 0
+                    else _format_p_value(x)
+                )
+            )
+        )
+    )
+    return pivot, annot, row_labels
+
+
+def _ordered_column_union(*columns: Iterable[Any]) -> list[Any]:
+    ordered: list[Any] = []
+    for values in columns:
+        for value in values:
+            if value not in ordered:
+                ordered.append(value)
+    return ordered
+
+
+def _hatch_missing_heatmap_cells(ax: Any, values: pd.DataFrame) -> None:
+    for row, col in np.argwhere(values.isna().to_numpy()):
+        ax.add_patch(
+            Rectangle(
+                (col, row),
+                1,
+                1,
+                facecolor="#F1F3F5",
+                edgecolor=BORDER,
+                hatch="////",
+                linewidth=0.6,
+                zorder=2,
+            )
+        )
+        ax.text(
+            col + 0.5,
+            row + 0.5,
+            "n/a",
+            ha="center",
+            va="center",
+            fontsize="small",
+            color=GRAY_LIGHT,
+            zorder=3,
+        )
+
+
+def plot_regression_wald_heatmap(
+    composition_wald_df: pd.DataFrame,
+    mixing_wald_df: pd.DataFrame | None = None,
+    *,
+    model_set: str | Iterable[str] | None = None,
+    predictor_set: str | Iterable[str] | None = None,
+    predictors: Iterable[str] | None = None,
+    p_col: str = "p_adj_bh",
+    row_col: str | None = None,
+    label_map: Mapping[str, str] | None = None,
+    cap_neg_log10_p: float = 20.0,
+    annotate_p: bool = True,
+    title: str | None = None,
+    panel_titles: tuple[str, str] = ("Composition", "Mixing"),
+    width: WIDTHS = "double",
+    width_in: float | None = None,
+    height_in: float | None = None,
+    context: CONTEXTS = "paper",
+    font_scale: float = 1.0,
+) -> Figure:
+    """Heatmap of Wald evidence across regression specifications.
+
+    Passing both composition and mixing Wald tables draws a two-panel figure
+    with composition on top and mixing below. Passing only the first table keeps
+    the historical single-panel behaviour. The colour scale is ``-log10(p)``
+    using the BH-adjusted column when available. Exact zero p-values are capped
+    for display and annotated as ``<1e-k`` rather than being dropped.
+    """
+    if mixing_wald_df is None:
+        pivot, annot, row_labels = _prepare_regression_wald_heatmap(
+            composition_wald_df,
+            model_set=model_set,
+            predictor_set=predictor_set,
+            predictors=predictors,
+            p_col=p_col,
+            row_col=row_col,
+            label_map=label_map,
+            cap_neg_log10_p=cap_neg_log10_p,
+        )
+        if height_in is None:
+            height_in = max(2.5, 0.35 * len(pivot.index) + 1.2)
+
+        fig, ax = new_figure(
+            width=width,
+            width_in=width_in,
+            height_in=height_in,
+            context=context,
+            font_scale=font_scale,
+        )
+        sns.heatmap(
+            pivot,
+            ax=ax,
+            cmap="YlOrRd",
+            vmin=0,
+            vmax=cap_neg_log10_p,
+            linewidths=0.5,
+            linecolor="white",
+            cbar_kws={"label": "Evidence strength (-log10 p-value)"},
+            annot=annot if annotate_p else False,
+            fmt="" if annotate_p else ".2f",
+        )
+        _hatch_missing_heatmap_cells(ax, pivot)
+        ax.set_xlabel("")
+        ax.set_ylabel("")
+        ax.set_yticklabels(
+            [row_labels.get(row, row) for row in pivot.index],
+            rotation=0,
+        )
+        ax.tick_params(axis="x", rotation=0)
+        if title is not None:
+            ax.set_title(title)
+
+        plt.close(fig)
+        return fig
+
+    composition_pivot, composition_annot, composition_labels = (
+        _prepare_regression_wald_heatmap(
+            composition_wald_df,
+            domain="composition",
+            model_set=model_set,
+            predictor_set=predictor_set,
+            predictors=predictors,
+            p_col=p_col,
+            row_col=row_col,
+            label_map=label_map,
+            cap_neg_log10_p=cap_neg_log10_p,
+        )
+    )
+    mixing_pivot, mixing_annot, mixing_labels = _prepare_regression_wald_heatmap(
+        mixing_wald_df,
+        domain="node_mixing",
+        model_set=model_set,
+        predictor_set=predictor_set,
+        predictors=predictors,
+        p_col=p_col,
+        row_col=row_col,
+        label_map=label_map,
+        cap_neg_log10_p=cap_neg_log10_p,
+    )
+
+    col_order = _ordered_column_union(composition_pivot.columns, mixing_pivot.columns)
+    composition_pivot = composition_pivot.reindex(columns=col_order)
+    mixing_pivot = mixing_pivot.reindex(columns=col_order)
+    composition_annot = composition_annot.reindex(
+        index=composition_pivot.index,
+        columns=col_order,
+    ).fillna("")
+    mixing_annot = mixing_annot.reindex(
+        index=mixing_pivot.index,
+        columns=col_order,
+    ).fillna("")
+
+    if height_in is None:
+        n_rows = len(composition_pivot.index) + len(mixing_pivot.index)
+        height_in = max(3.6, 0.35 * n_rows + 1.6)
+
+    fig, axes = new_figure(
+        width=width,
+        width_in=width_in,
+        height_in=height_in,
+        nrows=2,
+        ncols=1,
+        context=context,
+        font_scale=font_scale,
+        gridspec_kw={
+            "height_ratios": [
+                max(1, len(composition_pivot.index)),
+                max(1, len(mixing_pivot.index)),
+            ],
+            "hspace": 0.10,
+        },
+        layout="constrained",
+    )
+
+    axes = axes.ravel()
+    cmap = plt.get_cmap("YlOrRd")
+    for ax, pivot, annot, row_labels, panel_title in [
+        (
+            axes[0],
+            composition_pivot,
+            composition_annot,
+            composition_labels,
+            panel_titles[0],
+        ),
+        (axes[1], mixing_pivot, mixing_annot, mixing_labels, panel_titles[1]),
+    ]:
+        sns.heatmap(
+            pivot,
+            ax=ax,
+            cmap=cmap,
+            vmin=0,
+            vmax=cap_neg_log10_p,
+            linewidths=0.5,
+            linecolor="white",
+            cbar=False,
+            annot=annot if annotate_p else False,
+            fmt="" if annotate_p else ".2f",
+        )
+        _hatch_missing_heatmap_cells(ax, pivot)
+        ax.set_title(panel_title)
+        ax.set_xlabel("")
+        ax.set_ylabel("")
+        ax.set_yticklabels(
+            [row_labels.get(row, row) for row in pivot.index],
+            rotation=0,
+        )
+        ax.tick_params(axis="x", rotation=0)
+
+    axes[0].tick_params(axis="x", labelbottom=False)
+    sm = ScalarMappable(norm=Normalize(0, cap_neg_log10_p), cmap=cmap)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=axes, shrink=0.86, pad=0.02)
+    cbar.set_label("Evidence strength (-log10 p-value)")
+
+    if title is not None:
+        fig.suptitle(title)
+
+    add_panel_labels(axes)
+
+    plt.close(fig)
+    return fig
+
+
+# Focused odds-ratio displays ------------------------------------------------
 
 
 def _read_table(table: pd.DataFrame | str | Any) -> pd.DataFrame:
@@ -1684,6 +1675,258 @@ def _odds_ratio_lookup(
     low[reference] = 1.0
     high[reference] = 1.0
     return odds, low, high
+
+
+def _reference_from_table(
+    odds_df: pd.DataFrame,
+    predictor: str,
+    *,
+    default: str,
+    aliases: Iterable[str] = (),
+) -> str:
+    """Best-effort reference lookup for single and joint composition tables."""
+    if "reference" not in odds_df.columns:
+        return default
+
+    keys = [predictor, *aliases]
+    ref_source = odds_df
+    if "predictor" in odds_df.columns:
+        subset = odds_df.loc[odds_df["predictor"].astype(str).eq(predictor)]
+        if not subset.empty:
+            ref_source = subset
+
+    for value in ref_source["reference"]:
+        if value is None:
+            continue
+        if hasattr(value, "get"):
+            for key in keys:
+                ref_value = value.get(key)
+                if ref_value is not None:
+                    return str(ref_value)
+            continue
+        if pd.isna(value):
+            continue
+
+        text = str(value).strip()
+        if not text:
+            continue
+        if text.startswith("{") and text.endswith("}"):
+            try:
+                parsed = ast.literal_eval(text)
+            except (SyntaxError, ValueError):
+                parsed = None
+            if parsed is not None and hasattr(parsed, "get"):
+                for key in keys:
+                    ref_value = parsed.get(key)
+                    if ref_value is not None:
+                        return str(ref_value)
+                continue
+        return text
+
+    return default
+
+
+def _categorical_or_frame(
+    odds_df: pd.DataFrame,
+    term_token: str,
+    *,
+    reference: str,
+    order: Iterable[str] | None = None,
+    label_map: Mapping[str, str] | None = None,
+) -> pd.DataFrame:
+    """Return ordered OR rows including the reference level."""
+    reference = str(reference)
+    odds, low, high = _odds_ratio_lookup(
+        odds_df,
+        term_token,
+        reference=reference,
+    )
+    if order is None:
+        term_levels = (
+            odds_df.loc[
+                odds_df["term"].astype(str).str.contains(term_token, regex=False),
+                "term",
+            ]
+            .map(_term_level)
+            .astype(str)
+            .tolist()
+        )
+        order_values = [reference, *term_levels]
+    else:
+        order_values = [str(value) for value in order]
+        if reference not in order_values:
+            order_values.insert(0, reference)
+
+    ordered = list(dict.fromkeys(order_values))
+    ordered.extend(level for level in odds if level not in ordered)
+
+    records = []
+    for level in ordered:
+        label = label_map.get(level, level) if label_map else level
+        records.append(
+            {
+                "level": level,
+                "label": f"{label} (ref)" if level == reference else label,
+                "odds_ratio": odds.get(level, np.nan),
+                "or_low": low.get(level, np.nan),
+                "or_high": high.get(level, np.nan),
+                "is_reference": level == reference,
+            }
+        )
+
+    out = pd.DataFrame(records)
+    for col in ["odds_ratio", "or_low", "or_high"]:
+        out[col] = pd.to_numeric(out[col], errors="coerce")
+    out = out.replace([np.inf, -np.inf], np.nan).dropna(subset=["odds_ratio"])
+    return out
+
+
+_DEFAULT_MIXING_OR_ORDER = (
+    "sex_entropy_z",
+    "age_entropy_z",
+    "simd_entropy_z",
+    "urban_rural_entropy_z",
+    "health_board_entropy_z",
+    "sex_entropy_obs_x10",
+    "age_entropy_obs_x10",
+    "simd_entropy_obs_x10",
+    "urban_rural_entropy_obs_x10",
+    "health_board_entropy_obs_x10",
+    "sex_entropy_obs",
+    "age_entropy_obs",
+    "simd_entropy_obs",
+    "urban_rural_entropy_obs",
+    "health_board_entropy_obs",
+)
+
+
+def _mixing_or_label(value: Any, label_map: Mapping[str, str] | None = None) -> str:
+    text = str(value)
+    if label_map and text in label_map:
+        return label_map[text]
+    canonical = (
+        text.replace("_entropy_z", "")
+        .replace("_entropy_obs_x10", "")
+        .replace("_entropy_obs", "")
+    )
+    labels = {
+        "sex": "Sex entropy",
+        "age": "Age entropy",
+        "simd": "SIMD entropy",
+        "urban_rural": "Urban/rural entropy",
+        "health_board": "Health-board entropy",
+    }
+    return labels.get(canonical, _pretty_text(text, label_map))
+
+
+def _mixing_or_frame(
+    odds_df: pd.DataFrame,
+    *,
+    model_set: str,
+    predictor_set: str,
+    order: Iterable[str] | None = None,
+    label_map: Mapping[str, str] | None = None,
+) -> pd.DataFrame:
+    """Return ordered continuous mixing OR rows."""
+    data = _filter_regression_table(
+        odds_df,
+        domain="node_mixing",
+        model_set=model_set,
+        predictor_set=predictor_set,
+    )
+    if predictor_set == "joint" and "predictor" in data.columns:
+        joint = data.loc[data["predictor"].eq("all_mixing")]
+        if not joint.empty:
+            data = joint
+    if data.empty:
+        return pd.DataFrame()
+
+    data = data.copy()
+    for col in ["odds_ratio", "or_low", "or_high"]:
+        data[col] = pd.to_numeric(data[col], errors="coerce")
+
+    observed_terms = list(dict.fromkeys(data["term"].astype(str).tolist()))
+    if order is None:
+        order = [term for term in _DEFAULT_MIXING_OR_ORDER if term in observed_terms]
+    ordered_terms = list(dict.fromkeys([str(term) for term in order]))
+    ordered_terms.extend(term for term in observed_terms if term not in ordered_terms)
+
+    rows = []
+    data = data.set_index(data["term"].astype(str), drop=False)
+    for term in ordered_terms:
+        if term not in data.index:
+            continue
+        row = data.loc[term]
+        if isinstance(row, pd.DataFrame):
+            row = row.iloc[0]
+        rows.append(
+            {
+                "level": term,
+                "label": _mixing_or_label(term, label_map),
+                "odds_ratio": row["odds_ratio"],
+                "or_low": row["or_low"],
+                "or_high": row["or_high"],
+                "is_reference": False,
+            }
+        )
+
+    out = pd.DataFrame(rows)
+    return out.replace([np.inf, -np.inf], np.nan).dropna(subset=["odds_ratio"])
+
+
+def _plot_forest_panel(
+    ax: Any,
+    panel: pd.DataFrame,
+    *,
+    title: str,
+    xlabel: str | None = None,
+    annotate_values: bool = True,
+) -> None:
+    y_positions = np.arange(len(panel))[::-1]
+    for y, row in zip(y_positions, panel.itertuples(index=False)):
+        odds = row.odds_ratio
+        has_ci = not (pd.isna(row.or_low) or pd.isna(row.or_high))
+        low = row.or_low if has_ci else odds
+        high = row.or_high if has_ci else odds
+        ci_overlaps_one = (
+            True if not has_ci else min(low, high) <= 1.0 <= max(low, high) # type: ignore
+        )
+        if row.is_reference or ci_overlaps_one:
+            color = GRAY
+        else:
+            color = ORANGE_DARK if odds > 1 else TEAL_DARK # type: ignore
+        if row.is_reference:
+            ax.plot(1.0, y, marker="o", ms=7.5, color=color, zorder=3)
+        else:
+            ax.plot([low, high], [y, y], color=color, lw=2.2, alpha=0.40, zorder=2)
+            ax.plot([1.0, odds], [y, y], color=color, lw=0.9, ls=":", alpha=0.6)
+            ax.plot(odds, y, marker="o", ms=7.5, color=color, zorder=3)
+        if annotate_values:
+            ax.annotate(
+                f"{odds:.2f}",
+                (odds, y),
+                textcoords="offset points",
+                xytext=(0, 9),
+                ha="center",
+                va="center",
+                fontsize="small",
+                color=color,
+                fontweight=(
+                    "bold" if not row.is_reference and not ci_overlaps_one
+                    else "normal"
+                ),
+            )
+
+    ax.axvline(1.0, color=GRAY_LIGHT, lw=1.0, ls="--", zorder=0)
+    ax.set_yticks(y_positions)
+    ax.set_yticklabels(panel["label"].tolist())
+    ax.set_ylim(-0.6, len(panel) - 0.4)
+    ax.set_xlabel(xlabel or "")
+    ax.spines["left"].set_visible(False)
+    ax.tick_params(axis="y", length=0)
+    ax.grid(axis="x", color=GRID, lw=0.8, zorder=0)
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}"))
+    ax.set_axisbelow(True)
 
 
 def plot_health_board_enrichment_map(
@@ -1994,6 +2237,207 @@ def plot_health_board_enrichment_map(
     return fig
 
 
+def plot_age_sex_simd_forest(
+    composition_odds_ratios: pd.DataFrame | str | Any,
+    mixing_odds_ratios: pd.DataFrame | str | Any,
+    *,
+    model_set: str = "primary",
+    predictor_set: str = "joint",
+    mixing_predictor_set: str | None = None,
+    reference_age: str | None = None,
+    reference_sex: str | None = None,
+    reference_simd: str | None = None,
+    age_order: Iterable[str] | None = None,
+    sex_order: Iterable[str] | None = None,
+    simd_order: Iterable[str] | None = None,
+    mixing_order: Iterable[str] | None = None,
+    simd_label_map: Mapping[str, str] | None = None,
+    mixing_label_map: Mapping[str, str] | None = None,
+    width_ratios: tuple[float, float] = (1.12, 0.88),
+    height_ratios: tuple[float, ...] | None = None,
+    width: WIDTHS = "double",
+    width_in: float | None = None,
+    height_in: float = 4.8,
+    context: CONTEXTS = "paper",
+    font_scale: float = 1.0,
+    annotate_values: bool = True,
+) -> Figure:
+    """Age, sex, SIMD, and mixing odds-ratio forest figure.
+
+    The layout is a 3x2 grid where age spans the first column and sex, SIMD,
+    and mixing occupy the right column.
+    """
+    composition_df = _read_table(composition_odds_ratios)
+    missing = {"term", "odds_ratio", "or_low", "or_high"} - set(composition_df.columns)
+    if missing:
+        raise ValueError(
+            f"`composition_odds_ratios` is missing required columns: {sorted(missing)}"
+        )
+
+    odds_df = _filter_regression_table(
+        composition_df,
+        domain="composition",
+        model_set=model_set,
+        predictor_set=predictor_set,
+    )
+    if odds_df.empty:
+        raise ValueError("No matching composition odds-ratio rows remain.")
+
+    if predictor_set == "joint" and "predictor" in odds_df.columns:
+        joint = odds_df.loc[odds_df["predictor"].eq("all_composition")]
+        if not joint.empty:
+            odds_df = joint
+
+    reference_age = reference_age or _reference_from_table(
+        odds_df,
+        "age_band",
+        default="20-24",
+    )
+    reference_sex = reference_sex or _reference_from_table(
+        odds_df,
+        "sex",
+        default="Male",
+    )
+    reference_simd = reference_simd or _reference_from_table(
+        odds_df,
+        "simd_quintile",
+        default="1",
+        aliases=("dz_simd_quintile",),
+    )
+
+    if age_order is None:
+        age_order = [
+            "00-04",
+            "05-09",
+            "10-14",
+            "15-19",
+            "20-24",
+            "25-29",
+            "30-34",
+            "35-39",
+            "40-44",
+            "45-49",
+            "50-54",
+            "55-59",
+            "60-64",
+            "65-69",
+            "70-74",
+            "75+",
+        ]
+    if sex_order is None:
+        sex_order = ["Male", "Female"]
+    if simd_order is None:
+        simd_order = ["1", "2", "3", "4", "5"]
+    if simd_label_map is None:
+        simd_label_map = {
+            "1": "1 most deprived",
+            "2": "2",
+            "3": "3",
+            "4": "4",
+            "5": "5 least deprived",
+        }
+
+    age_panel = _categorical_or_frame(
+        odds_df,
+        "age_band",
+        reference=reference_age,
+        order=age_order,
+    )
+    sex_panel = _categorical_or_frame(
+        odds_df,
+        "sex",
+        reference=reference_sex,
+        order=sex_order,
+    )
+    simd_panel = _categorical_or_frame(
+        odds_df,
+        "simd_quintile",
+        reference=reference_simd,
+        order=simd_order,
+        label_map=simd_label_map,
+    )
+    mixing_df = _read_table(mixing_odds_ratios)
+    mixing_panel = _mixing_or_frame(
+        mixing_df,
+        model_set=model_set,
+        predictor_set=mixing_predictor_set or predictor_set,
+        order=mixing_order,
+        label_map=mixing_label_map,
+    )
+    if mixing_panel.empty:
+        raise ValueError("No matching mixing odds-ratio rows remain.")
+
+    if age_panel.empty or sex_panel.empty or simd_panel.empty:
+        raise ValueError(
+            "Age, sex, and SIMD panels must each contain at least one row."
+        )
+
+    nrows = 3
+    if height_ratios is None:
+        height_ratios = (0.55, 1.0, 1.0)
+    if len(height_ratios) != nrows:
+        raise ValueError(f"`height_ratios` must contain {nrows} values.")
+
+    fig, axes = new_figure(
+        width=width,
+        width_in=width_in,
+        height_in=height_in,
+        nrows=nrows,
+        ncols=2,
+        sharex=True,
+        context=context,
+        font_scale=font_scale,
+        gridspec_kw={
+            "width_ratios": list(width_ratios),
+            "height_ratios": list(height_ratios),
+            "wspace": 0.10,
+        },
+        layout="constrained",
+    )
+    grid = axes[0, 0].get_gridspec()
+    for row_idx in range(nrows):
+        axes[row_idx, 0].remove()
+    ax_age = fig.add_subplot(grid[:, 0])
+    ax_sex = axes[0, 1]
+    ax_simd = axes[1, 1]
+    ax_mixing = axes[2, 1]
+
+    xlabel = "Candidate odds ratio vs reference level"
+    _plot_forest_panel(
+        ax_age,
+        age_panel,
+        title="",
+        xlabel=xlabel,
+        annotate_values=annotate_values,
+    )
+    _plot_forest_panel(
+        ax_sex,
+        sex_panel,
+        title="",
+        annotate_values=annotate_values,
+    )
+    _plot_forest_panel(
+        ax_simd,
+        simd_panel,
+        title="",
+        xlabel="",
+        annotate_values=annotate_values,
+    )
+    ax_sex.tick_params(axis="x", labelbottom=False)
+    _plot_forest_panel(
+        ax_mixing,
+        mixing_panel,
+        title="",
+        xlabel=xlabel,
+        annotate_values=annotate_values,
+    )
+    ax_simd.tick_params(axis="x", labelbottom=False)
+
+    add_panel_labels([ax_age, ax_sex, ax_simd, ax_mixing])
+    plt.close(fig)
+    return fig
+
+
 # ---------------------------------------------------------------------------
 # Sensitivity matrix figure
 # ---------------------------------------------------------------------------
@@ -2020,6 +2464,7 @@ _SENSITIVITY_MIXING_ROWS = [
     ("simd", "SIMD entropy"),
     ("urban_rural", "Urban/rural entropy"),
     ("sex", "Sex entropy"),
+    ("all_mixing", "All mixing predictors"),
 ]
 
 
@@ -2063,10 +2508,10 @@ def collect_sensitivity_matrix_results(
         mix_path = f"{path}/mixing_wald.csv"
         if pd.io.common.file_exists(mix_path):  # type: ignore
             mix = pd.read_csv(mix_path)
-            mix = mix.loc[mix["predictor"].ne("all_mixing")].copy()
-            mix["_canonical_predictor"] = mix["predictor"].map(
-                _canonical_mixing_predictor
-            )
+            source = mix["predictor"].astype(str)
+            if "term" in mix.columns:
+                source = source.where(~source.eq("all_mixing"), mix["term"].astype(str))
+            mix["_canonical_predictor"] = source.map(_canonical_mixing_predictor)
             mixing[family] = {  # type: ignore
                 predictor: (int((group[p_col] < alpha).sum()), len(group))
                 for predictor, group in mix.groupby("_canonical_predictor")
@@ -2223,15 +2668,15 @@ def plot_sensitivity_matrix(
         )
 
     comp_top = 10.7
-    ax.text(
-        left - 0.4,
-        comp_top + 0.28,
-        "COMPOSITION",
-        ha="right",
-        va="bottom",
-        fontweight="bold",
-        color=TEAL_DARK,
-    )
+    # ax.text(
+    #     left - 0.4,
+    #     comp_top + 0.28,
+    #     "COMPOSITION",
+    #     ha="right",
+    #     va="bottom",
+    #     fontweight="bold",
+    #     color=TEAL_DARK,
+    # )
     _draw_sensitivity_block(
         ax,
         composition_rows,
@@ -2249,15 +2694,15 @@ def plot_sensitivity_matrix(
 
     mix_top = comp_top - len(composition_rows) * row_h - 0.55
     ax.plot([left - 0.1, 12], [mix_top + 0.30, mix_top + 0.30], color=BORDER, lw=1.0)
-    ax.text(
-        left - 0.4,
-        mix_top + 0.30,
-        "MIXING",
-        ha="right",
-        va="bottom",
-        fontweight="bold",
-        color=TEAL_DARK,
-    )
+    # ax.text(
+    #     left - 0.4,
+    #     mix_top + 0.30,
+    #     "MIXING",
+    #     ha="right",
+    #     va="bottom",
+    #     fontweight="bold",
+    #     color=TEAL_DARK,
+    # )
     _draw_sensitivity_block(
         ax,
         mixing_rows,
@@ -2275,7 +2720,7 @@ def plot_sensitivity_matrix(
 
     sm = ScalarMappable(norm=norm, cmap=cmap)
     sm.set_array([])
-    cax = ax.inset_axes((left / 12, 0.045, (12 - left) / 12 * 0.55, 0.022))
+    cax = ax.inset_axes((0.5, -0.05, (12 - left) / 12 * 0.5, 0.022))
     cb = fig.colorbar(sm, cax=cax, orientation="horizontal", ticks=[0, 0.5, 1.0])
     cb.ax.set_xticklabels(["0%", "50%", "100%"])
     cb.outline.set_visible(False)  # type: ignore

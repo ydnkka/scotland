@@ -62,7 +62,6 @@ class AnalysisSpec:
 
 def result_dir_for(
     *,
-    project_root: Path,
     results_root: Path | None,
     result_subdir: str,
 ) -> Path:
@@ -70,14 +69,13 @@ def result_dir_for(
     root = (
         results_root
         if results_root is not None
-        else project_root / "sse_detection" / "results"
+        else PROJECT_ROOT / "sse_detection" / "results"
     )
     return root / result_subdir
 
 
 def run_main_analysis(
     *,
-    project_root: Path,
     output_dir: Path | None,
     result_dir: Path,
     model_method: str,
@@ -86,7 +84,6 @@ def run_main_analysis(
     """Run the primary overall composition and mixing association analysis."""
     sselib = load_association_lib()
     return sselib.run_main_association_analysis(
-        project_root=project_root,
         output_dir=output_dir,
         result_dir=result_dir,
         model_method=model_method,
@@ -99,7 +96,6 @@ def run_main_analysis(
 
 def run_clade_sensitivity(
     *,
-    project_root: Path,
     output_dir: Path | None,
     result_dir: Path,
     model_method: str,
@@ -112,7 +108,6 @@ def run_clade_sensitivity(
         window_adjustment="fixed_effects",
     )
     return sselib.run_association_pipeline(
-        project_root=project_root,
         output_dir=output_dir,
         result_dir=result_dir,
         model_method=model_method,
@@ -127,7 +122,6 @@ def run_clade_sensitivity(
 
 def run_window_sensitivity(
     *,
-    project_root: Path,
     output_dir: Path | None,
     result_dir: Path,
     model_method: str,
@@ -140,7 +134,6 @@ def run_window_sensitivity(
         window_adjustment="surveillance",
     )
     return sselib.run_association_pipeline(
-        project_root=project_root,
         output_dir=output_dir,
         result_dir=result_dir,
         model_method=model_method,
@@ -155,7 +148,6 @@ def run_window_sensitivity(
 
 def run_observed_entropy_sensitivity(
     *,
-    project_root: Path,
     output_dir: Path | None,
     result_dir: Path,
     model_method: str,
@@ -168,7 +160,6 @@ def run_observed_entropy_sensitivity(
         window_adjustment="fixed_effects",
     )
     return sselib.run_association_pipeline(
-        project_root=project_root,
         output_dir=output_dir,
         result_dir=result_dir,
         model_method=model_method,
@@ -351,7 +342,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     for key in analysis_keys:
         spec = ANALYSES[key]
         result_dir = result_dir_for(
-            project_root=PROJECT_ROOT,
             results_root=results_root,
             result_subdir=spec.result_subdir,
         )
@@ -362,7 +352,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         started = time.perf_counter()
         try:
             result = spec.run(
-                project_root=PROJECT_ROOT,
                 output_dir=output_dir,
                 result_dir=result_dir,
                 model_method=args.model_method,

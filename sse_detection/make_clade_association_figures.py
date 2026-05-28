@@ -14,6 +14,7 @@ from typing import Iterable
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import matplotlib.patheffects as pe
 from matplotlib.colors import Normalize
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -32,6 +33,10 @@ ANALYSIS_DATASET = (
 
 ALPHA = 0.05
 SCORE_CAP = 6.0  # Cap -log10(q) to avoid extreme values dominating the color scale in the heatmaps.
+STAR_TEXT_EFFECTS = [pe.withStroke(linewidth=1.2, foreground="white")]
+
+CLADES_GROUP = {v: k for k, v in CLADES.items()}
+CLADES_GROUP["Other"] = "Other"
 
 COMPOSITION_ROWS = [
     ("sex", "Sex"),
@@ -47,6 +52,7 @@ MIXING_ROWS = [
     ("simd", "SIMD entropy"),
     ("urban_rural", "Urban/rural entropy"),
     ("health_board", "Health-board entropy"),
+    ("all_mixing", "All mixing predictors"),
 ]
 
 MODEL_PANELS = [
@@ -130,7 +136,7 @@ COMPOSITION_EFFECT_SPECS = [
 
 COMPOSITION_REFERENCE_LEVELS = {
     "sex": "Male",
-    "age_band": "30-34",
+    "age_band": "20-24",
     "simd_quintile": "1",
     "urban_rural_class": "Large Urban Areas",
     "health_board": "Greater Glasgow and Clyde",
@@ -204,7 +210,7 @@ def _clade_labels(summary: pd.DataFrame, clades: Iterable[str]) -> list[str]:
     for clade in clades:
         if clade in lookup.index and pd.notna(lookup.loc[clade, "median"]):
             median = lookup.loc[clade, "median"]
-            labels.append(f"{median}::{clade}")
+            labels.append(f"{median} | {CLADES_GROUP[clade]}")
         else:
             labels.append(str(clade))
     return labels
@@ -292,14 +298,16 @@ def _draw_heatmap_grid(
 
         sig = q_values.astype(float).to_numpy() < ALPHA
         for row, col in np.argwhere(sig):
-            ax.scatter(
+            ax.text(
                 col,
                 row,
-                s=42,
-                marker="*",
-                facecolor="black",
-                edgecolor="white",
-                linewidth=0.7,
+                "*",
+                ha="center",
+                va="center",
+                color="black",
+                fontsize=9,
+                fontweight="bold",
+                path_effects=STAR_TEXT_EFFECTS,
                 zorder=3,
             )
 
@@ -369,7 +377,7 @@ def _composition_or_matrix(
     predictor_set: str,
     levels: list[str],
     clade_order: list[str],
-) -> tuple[pd.DataFrame, str]:
+) -> tuple[pd.DataFrame, pd.DataFrame, str]:
     data = odds.loc[
         odds["domain"].eq("composition")
         & odds["model_set"].eq(model_set)
@@ -381,7 +389,9 @@ def _composition_or_matrix(
     else:
         data = data.loc[data["predictor"].eq(predictor)]
     if data.empty:
-        return pd.DataFrame(index=levels, columns=clade_order, dtype=float), ""
+        matrix = pd.DataFrame(index=levels, columns=clade_order, dtype=float)
+        ci_excludes_1 = pd.DataFrame(False, index=levels, columns=clade_order)
+        return matrix, ci_excludes_1, ""
 
     reference = COMPOSITION_REFERENCE_LEVELS[predictor]
     data["level"] = data["term"].map(_term_level)
@@ -391,9 +401,23 @@ def _composition_or_matrix(
         values="odds_ratio",
         aggfunc="first",
     ).reindex(index=levels, columns=clade_order)
+    low = data.pivot_table(
+        index="level",
+        columns="clade_group",
+        values="or_low",
+        aggfunc="first",
+    ).reindex(index=levels, columns=clade_order)
+    high = data.pivot_table(
+        index="level",
+        columns="clade_group",
+        values="or_high",
+        aggfunc="first",
+    ).reindex(index=levels, columns=clade_order)
+    ci_excludes_1 = ((low > 1.0) | (high < 1.0)).fillna(False).astype(bool)
     if reference in matrix.index:
         matrix.loc[reference, clade_order] = 1.0
-    return matrix, reference
+        ci_excludes_1.loc[reference, clade_order] = False
+    return matrix, ci_excludes_1, reference
 
 
 def _or_scores(or_values: pd.DataFrame, *, log2_cap: float = 2.0) -> np.ndarray:
@@ -404,7 +428,7 @@ def _or_scores(or_values: pd.DataFrame, *, log2_cap: float = 2.0) -> np.ndarray:
 
 
 def _draw_or_heatmap_grid(
-    panels: list[tuple[str, pd.DataFrame]],
+    panels: list[tuple[str, pd.DataFrame, pd.DataFrame]],
     *,
     row_labels: list[str],
     clade_labels: list[str],
@@ -428,7 +452,7 @@ def _draw_or_heatmap_grid(
     cmap.set_bad("#E5E7EB")
     norm = Normalize(-log2_cap, log2_cap)
     im = None
-    for panel_idx, (ax, (panel_title, or_values)) in enumerate(
+    for panel_idx, (ax, (panel_title, or_values, ci_excludes_1)) in enumerate(
         zip(axes.ravel(), panels)
     ):
         scores = np.ma.masked_invalid(_or_scores(or_values, log2_cap=log2_cap))
@@ -449,6 +473,26 @@ def _draw_or_heatmap_grid(
             spine.set_visible(False)
         if panel_idx < 2:
             ax.tick_params(labelbottom=False)
+
+        stars = (
+            ci_excludes_1.reindex(index=or_values.index, columns=or_values.columns)
+            .fillna(False)
+            .astype(bool)
+            .to_numpy()
+        )
+        for row, col in np.argwhere(stars):
+            ax.text(
+                col,
+                row,
+                "*",
+                ha="center",
+                va="center",
+                color="black",
+                fontsize=9,
+                fontweight="bold",
+                path_effects=STAR_TEXT_EFFECTS,
+                zorder=3,
+            )
 
     # fig.suptitle(title)
     if im is not None:
@@ -472,19 +516,29 @@ def _draw_or_heatmap_grid(
     plt.close(fig)
 
 def _composition_or_summary_table(
-    panels: list[tuple[str, pd.DataFrame]],
+    panels: list[tuple[str, pd.DataFrame, pd.DataFrame]],
     *,
     predictor: str,
     clade_summary: pd.DataFrame,
     output_name: str,
 ) -> None:
     pieces = []
-    for panel_name, values in panels:
+    for panel_name, values, ci_excludes_1 in panels:
         long = (
             values.rename_axis("level")
             .reset_index()
             .melt(id_vars="level", var_name="clade_group", value_name="odds_ratio")
         )
+        ci_long = (
+            ci_excludes_1.rename_axis("level")
+            .reset_index()
+            .melt(
+                id_vars="level",
+                var_name="clade_group",
+                value_name="ci_excludes_1",
+            )
+        )
+        long = long.merge(ci_long, on=["level", "clade_group"], how="left")
         long["model"] = panel_name
         long["predictor"] = predictor
         pieces.append(long)
@@ -620,7 +674,7 @@ def main() -> None:
         effect_panels = []
         reference = ""
         for panel_key, panel_title, model_set, predictor_set in MODEL_PANELS:
-            matrix, panel_reference = _composition_or_matrix(
+            matrix, ci_excludes_1, panel_reference = _composition_or_matrix(
                 odds,
                 predictor=predictor,
                 model_set=model_set,
@@ -629,7 +683,7 @@ def main() -> None:
                 clade_order=clade_order,
             )
             reference = reference or panel_reference
-            effect_panels.append((panel_title, matrix))
+            effect_panels.append((panel_title, matrix, ci_excludes_1))
 
         row_labels = [
             f"{level} (ref)" if reference and level == reference else level
@@ -643,7 +697,13 @@ def main() -> None:
             output_stem=output_stem,
         )
         _composition_or_summary_table(
-            [(key, matrix) for (key, _, _, _), (_, matrix) in zip(MODEL_PANELS, effect_panels)],
+            [
+                (key, matrix, ci_excludes_1)
+                for (key, _, _, _), (_, matrix, ci_excludes_1) in zip(
+                    MODEL_PANELS,
+                    effect_panels,
+                )
+            ],
             predictor=predictor,
             clade_summary=clade_summary,
             output_name=f"{output_stem}_table.csv",
