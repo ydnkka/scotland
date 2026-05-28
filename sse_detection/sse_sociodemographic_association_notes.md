@@ -29,6 +29,30 @@ The main analysis saves CSV tables to `sse_detection/results/association_outputs
 
 Sensitivity notebooks write equivalent tables to their own output directories, such as `sse_detection/results/sensitivity_clade` and `sse_detection/results/sensitivity_window`.
 
+The policy-era context analysis saves CSV tables to `sse_detection/results/policy_outputs`:
+
+- `policy_era_candidate_summary.csv`
+- `policy_era_category_summary.csv`
+- `policy_wald.csv`
+- `policy_odds_ratios.csv`
+- `policy_fit_stats.csv`
+
+The vaccination-context analysis saves CSV tables to `sse_detection/results/vaccination_outputs`:
+
+- `vaccination_candidate_summary.csv`
+- `vaccination_composition_wald.csv`
+- `vaccination_composition_odds_ratios.csv`
+- `vaccination_composition_fit_stats.csv`
+- `vaccination_node_wald.csv`
+- `vaccination_node_odds_ratios.csv`
+- `vaccination_node_fit_stats.csv`
+- `vaccination_mixing_age_conditional_node_features.csv`
+- `vaccination_mixing_age_conditional_summary.csv`
+- `vaccination_mixing_age_conditional_category_summary.csv`
+- `vaccination_mixing_age_conditional_wald.csv`
+- `vaccination_mixing_age_conditional_odds_ratios.csv`
+- `vaccination_mixing_age_conditional_fit_stats.csv`
+
 ## Eligible Analysis Set
 
 The background set is restricted to nodes with `cluster_size >= min(candidate cluster size)`. This prevents candidate nodes from being compared against all small singleton-like background nodes. The candidate label is stored as `candidate`, a binary version of `sse_candidate`.
@@ -113,7 +137,7 @@ This makes sparse-window filtering visible in every result table.
 
 ## Multiple Testing
 
-Benjamini-Hochberg correction is applied within each `domain` by `model_set` by `predictor_set` family. For grouped sensitivity analyses, adjustment is additionally performed within the grouping column.
+Benjamini-Hochberg correction is applied within each `domain` by `model_set` by `predictor_set` family. For grouped sensitivity analyses, adjustment is additionally performed within the grouping column. For vaccination joint blocks, correction is also kept within `joint_model` so each pre-specified block remains a separate robustness family.
 
 The main confirmatory family is the single-predictor primary model set. Expanded and joint models are robustness or sensitivity families and should be interpreted separately rather than pooled with the primary confirmatory family.
 
@@ -128,3 +152,20 @@ Use the tables in this order:
 5. McFadden pseudo-R2 and likelihood summaries: diagnostics for comparing models within the same outcome family and analysis frame.
 
 Composition models describe who and where the sequences in candidate nodes come from. Node-level mixing models describe whether candidate nodes are unusually internally diverse or concentrated for their size and window.
+
+## Policy Context Analysis
+
+Policy era is treated as a contextual association rather than a formal causal effect. The analysis keeps the existing candidate definition and eligible-node restriction, then adds grouped policy eras derived from `policy_period`.
+
+The policy model does not include `C(window_idx)` because policy periods are calendar-time variables and would be absorbed by window fixed effects. Its primary model adjusts for `C(clade_group)` plus window-level surveillance intensity; its expanded model adds local datazone surveillance/incidence context. `policy_intensity` is fitted as a single-exposure sensitivity in both policy adjustment sets rather than jointly with `policy_era`.
+
+## Vaccination Context Analysis
+
+Vaccination is treated as a contextual association rather than a formal causal effect. The analysis adds sequence-level vaccination predictors (`is_vaccinated`, dose category, booster status, days-since-vaccination category, and datazone vaccination-event coverage), node-level vaccination summaries, and age-conditional vaccination-mixing features aggregated across sequences within each eligible node.
+
+Vaccination composition, node, and age-conditional mixing models retain the existing `C(window_idx) + C(clade)` primary adjustment because vaccination varies within retained windows. Their expanded models add non-vaccination context:
+
+- composition expanded models add `C(age_band)`, `C(sex)`, `C(dz_simd_quintile)`, `C(dz_urban_rural_class)`, and `C(dz_health_board)`;
+- node expanded models add standardised datazone surveillance/incidence context.
+
+Vaccination outputs include single-exposure models plus selected joint blocks. Composition joint blocks pair datazone vaccination-event coverage with vaccination status, dose category, booster status, or days-since-vaccination category. Node joint models are deliberately conservative and pair node proportion vaccinated with node mean datazone vaccination-event coverage. Joint models are robustness checks, not replacements for the primary single-exposure summaries.

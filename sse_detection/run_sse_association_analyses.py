@@ -1,7 +1,8 @@
 """Command-line runner for the SSE association analyses.
 
 The default invocation runs the primary socio-geodemographic association
-analysis plus the clade, window, and observed-entropy sensitivity analyses.
+analysis plus the clade, window, observed-entropy, policy, and vaccination
+sensitivity/context analyses.
 Each run writes its CSV outputs to a dedicated subdirectory under
 ``sse_detection/results``.
 
@@ -174,6 +175,40 @@ def run_observed_entropy_sensitivity(
     )
 
 
+def run_policy_analysis(
+    *,
+    output_dir: Path | None,
+    result_dir: Path,
+    model_method: str,
+    window_stride: int,
+) -> dict[str, Any]:
+    """Run the policy-era association analysis."""
+    sselib = load_association_lib()
+    return sselib.run_policy_analysis(
+        output_dir=output_dir,
+        result_dir=result_dir,
+        model_method=model_method,
+        window_stride=window_stride,
+    )
+
+
+def run_vaccination_analysis(
+    *,
+    output_dir: Path | None,
+    result_dir: Path,
+    model_method: str,
+    window_stride: int,
+) -> dict[str, Any]:
+    """Run the vaccination-context association analysis."""
+    sselib = load_association_lib()
+    return sselib.run_vaccination_analysis(
+        output_dir=output_dir,
+        result_dir=result_dir,
+        model_method=model_method,
+        window_stride=window_stride,
+    )
+
+
 ANALYSES: dict[str, AnalysisSpec] = {
     "main": AnalysisSpec(
         key="main",
@@ -199,6 +234,18 @@ ANALYSES: dict[str, AnalysisSpec] = {
         result_subdir="sensitivity_observed_entropy",
         run=run_observed_entropy_sensitivity,
     ),
+    "policy": AnalysisSpec(
+        key="policy",
+        label="Policy-era context analysis",
+        result_subdir="policy_outputs",
+        run=run_policy_analysis,
+    ),
+    "vaccination": AnalysisSpec(
+        key="vaccination",
+        label="Vaccination context analysis",
+        result_subdir="vaccination_outputs",
+        run=run_vaccination_analysis,
+    ),
 }
 DEFAULT_ANALYSIS_ORDER = tuple(ANALYSES)
 
@@ -214,7 +261,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "analyses",
         nargs="*",
         default=None,
-        metavar="{main,clade,window,observed-entropy,all}",
+        metavar="{main,clade,window,observed-entropy,policy,vaccination,all}",
         help=(
             "Analyses to run. Defaults to all. Available analyses: "
             + ", ".join(ANALYSES.keys())

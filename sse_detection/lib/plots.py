@@ -63,6 +63,14 @@ from .clade_association_figures import (
     make_clade_association_outputs,
     make_clade_association_summary_tables,
 )
+from .policy_figures import (
+    make_policy_figures,
+    plot_policy_report,
+)
+from .vaccination_figures import (
+    make_vaccination_figures,
+    plot_vaccination_report,
+)
 
 
 __all__ = [
@@ -75,6 +83,10 @@ __all__ = [
     "make_clade_association_figures",
     "make_clade_association_outputs",
     "make_clade_association_summary_tables",
+    "make_policy_figures",
+    "make_vaccination_figures",
+    "plot_policy_report",
+    "plot_vaccination_report",
     "plot_regression_wald_heatmap",
     "make_regression_wald_table",
     "make_regression_odds_ratio_table",
@@ -453,6 +465,16 @@ def plot_candidate_rate_over_time(
         100 * summary["n_background_sequences"] / summary["n_sequences"],
         0.0,
     )
+    window_candidate_rate = (
+        plot_df.assign(_candidate_node=candidate_mask)
+        .groupby(["window_idx", "wn_mid_date"], as_index=False)
+        .agg(candidate_rate=("_candidate_node", lambda s: 100 * s.fillna(False).mean()))
+        .sort_values("window_idx")
+    )
+    window_candidate_rate["wn_mid_date"] = pd.to_datetime(
+        window_candidate_rate["wn_mid_date"],
+        errors="coerce",
+    )
 
     category_counts = (
         plot_df.loc[candidate_mask]
@@ -504,16 +526,26 @@ def plot_candidate_rate_over_time(
         alpha=0.86,
         label="candidate-associated sequences",
     )
+    ax.plot(
+        window_candidate_rate["wn_mid_date"],
+        window_candidate_rate["candidate_rate"],
+        color="red",
+        linestyle="--",
+        marker="o",
+        markersize=3,
+        linewidth=1.2,
+        label="Candidate rate by window",
+    )
     ax.set_ylim(0, 100)
     ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: f"{y:.0f}%"))
-    ax.set_ylabel("Sequence share")
+    ax.set_ylabel("Percent")
     handles1, labels1 = ax.get_legend_handles_labels()
     ax.legend(
         handles1,
         labels1,
         loc="upper center",
         bbox_to_anchor=(0.5, 1.2),
-        ncol=2,
+        ncol=3,
         frameon=False,
     )
 
@@ -2074,7 +2106,7 @@ def plot_health_board_enrichment_map(
     ax_map.axis("off")
 
     reps = {}
-    reference_fill = GRAY
+    reference_fill = "#FF0000"
     for board, geom in geoms.items():
         fill = (
             reference_fill
@@ -2241,7 +2273,7 @@ def plot_health_board_enrichment_map(
     for y, key in zip(y_positions, urban_order):
         odds = ur_or.get(key, np.nan)
         if key == reference_urban_rural:
-            ax_or.plot(1, y, marker="o", ms=9, color=GRAY, zorder=3)
+            ax_or.plot(1, y, marker="o", ms=9, color="#FF0000", zorder=3)
             ax_or.annotate(
                 "1.00",
                 (1, y),
@@ -2249,7 +2281,7 @@ def plot_health_board_enrichment_map(
                 xytext=(0, 11),
                 ha="center",
                 fontsize="small",
-                color=GRAY,
+                color="#FF0000",
             )
             continue
         low = ur_low.get(key, odds)

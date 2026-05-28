@@ -11,6 +11,8 @@ max_entropy
     log_base(k); the maximum entropy of a k-category distribution.
 cluster_socio_demo_entropy
     Cluster category-entropy with within-window null model and z-scores.
+cluster_age_conditional_binary_entropy
+    Cluster binary-label entropy against a window-by-age conditional null.
 onward_edge_entropy
     Per-source entropy of outgoing edge weights.
 
@@ -27,6 +29,7 @@ __all__ = [
     "shannon_entropy",
     "shannon_entropy_grouped",
     "cluster_socio_demo_entropy",
+    "cluster_age_conditional_binary_entropy",
     "onward_edge_entropy",
 ]
 
@@ -321,6 +324,181 @@ def cluster_socio_demo_entropy(
     out = out.merge(stats, on=[window_col, cluster_col], how="left")
 
     return out
+
+
+def cluster_age_conditional_binary_entropy(
+    df: pd.DataFrame,
+    cluster_col: str,
+    binary_col: str,
+    window_col: str,
+    age_col: str,
+    *,
+    n_random: int = 1000,
+    base: float = 2,
+    random_state: int = 42,
+    prefix: str = "cluster",
+) -> pd.DataFrame:
+    """Attach cluster binary entropy against a window-by-age conditional null.
+
+    The null model preserves each cluster's observed ``window_col`` by
+    ``age_col`` composition, then redraws binary-positive counts from the
+    corresponding pooled stratum positive probability. This is useful when a
+    binary attribute is strongly structured by age and calendar time.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input row-level dataframe.
+    cluster_col : str
+        Column identifying clusters.
+    binary_col : str
+        Numeric or boolean binary label. Values greater than zero are treated
+        as positive. Missing labels are excluded.
+    window_col : str
+        Window stratum column.
+    age_col : str
+        Age-band stratum column.
+    n_random : int, default 1000
+        Random null draws per cluster.
+    base : float, default 2
+        Logarithm base.
+    random_state : int, default 42
+        RNG seed.
+    prefix : str, default "cluster"
+        Column prefix for outputs.
+
+    Returns
+    -------
+    pd.DataFrame
+        ``df`` with cluster-level statistics merged on ``cluster_col``:
+        ``{prefix}_n``, ``{prefix}_prop_positive``,
+        ``{prefix}_entropy_obs``, ``{prefix}_entropy_null_mean``,
+        ``{prefix}_entropy_null_sd``, and ``{prefix}_entropy_z``.
+    """
+    required_cols = [cluster_col, binary_col, window_col, age_col]
+    missing = [col for col in required_cols if col not in df.columns]
+    if missing:
+        raise ValueError(f"Missing columns in dataframe: {missing}")
+    if n_random < 2:
+        raise ValueError("n_random must be >= 2 to estimate null SD.")
+    if base <= 0 or base == 1:
+        raise ValueError("base must be positive and not equal to 1.")
+
+    out = df.copy()
+    stat_cols = [
+        f"{prefix}_n",
+        f"{prefix}_prop_positive",
+        f"{prefix}_entropy_obs",
+        f"{prefix}_entropy_null_mean",
+        f"{prefix}_entropy_null_sd",
+        f"{prefix}_entropy_z",
+    ]
+
+    binary = pd.to_numeric(out[binary_col], errors="coerce")
+    valid = out[cluster_col].notna() & binary.notna()
+    work = out.loc[valid, [cluster_col, window_col, age_col]].copy()
+    work["_positive"] = binary.loc[valid].gt(0).astype(int).to_numpy()
+
+    if work.empty:
+        for col in stat_cols:
+            out[col] = np.nan
+        return out
+
+    stratum_prob = (
+        work.groupby([window_col, age_col], dropna=False, observed=True)["_positive"]
+        .mean()
+        .rename("_stratum_positive_prob")
+        .reset_index()
+    )
+    work = work.merge(
+        stratum_prob,
+        on=[window_col, age_col],
+        how="left",
+    )
+
+    cluster_totals = (
+        work.groupby(cluster_col, dropna=False, observed=True)
+        .agg(
+            **{
+                f"{prefix}_n": ("_positive", "size"),
+                "_observed_positive": ("_positive", "sum"),
+            }
+        )
+        .reset_index()
+    )
+    counts = np.column_stack(
+        [
+            cluster_totals["_observed_positive"].to_numpy(dtype=float),
+            (
+                cluster_totals[f"{prefix}_n"]
+                - cluster_totals["_observed_positive"]
+            ).to_numpy(dtype=float),
+        ]
+    )
+    cluster_totals[f"{prefix}_prop_positive"] = (
+        cluster_totals["_observed_positive"] / cluster_totals[f"{prefix}_n"]
+    )
+    cluster_totals[f"{prefix}_entropy_obs"] = shannon_entropy(counts, base=base)
+
+    rng = np.random.default_rng(random_state)
+    null_mean = np.full(len(cluster_totals), np.nan, dtype=float)
+    null_sd = np.full(len(cluster_totals), np.nan, dtype=float)
+    cluster_row = {
+        cluster: idx
+        for idx, cluster in enumerate(cluster_totals[cluster_col].tolist())
+    }
+
+    cluster_strata = (
+        work.groupby(
+            [cluster_col, window_col, age_col],
+            dropna=False,
+            observed=True,
+        )
+        .agg(
+            n=("_positive", "size"),
+            p=("_stratum_positive_prob", "first"),
+        )
+        .reset_index()
+    )
+
+    for cluster, block in cluster_strata.groupby(cluster_col, dropna=False, sort=False):
+        row_idx = cluster_row[cluster]
+        n_by_stratum = block["n"].to_numpy(dtype=int)
+        p_by_stratum = block["p"].to_numpy(dtype=float)
+        total = int(n_by_stratum.sum())
+        if total <= 0:
+            continue
+
+        sampled_positive = rng.binomial(
+            n=n_by_stratum,
+            p=p_by_stratum,
+            size=(n_random, len(n_by_stratum)),
+        ).sum(axis=1)
+        sampled_counts = np.column_stack(
+            [sampled_positive, total - sampled_positive]
+        )
+        null_entropy = shannon_entropy(sampled_counts, base=base)
+        null_mean[row_idx] = null_entropy.mean()
+        null_sd[row_idx] = null_entropy.std(ddof=1)
+
+    cluster_totals[f"{prefix}_entropy_null_mean"] = null_mean
+    cluster_totals[f"{prefix}_entropy_null_sd"] = null_sd
+    with np.errstate(divide="ignore", invalid="ignore"):
+        cluster_totals[f"{prefix}_entropy_z"] = np.where(
+            (null_sd > 0) & ~np.isnan(null_sd),
+            (cluster_totals[f"{prefix}_entropy_obs"].to_numpy(dtype=float) - null_mean)
+            / null_sd,
+            np.nan,
+        )
+
+    stats = cluster_totals[
+        [
+            cluster_col,
+            *stat_cols,
+        ]
+    ]
+    out = out.drop(columns=[col for col in stat_cols if col in out.columns])
+    return out.merge(stats, on=cluster_col, how="left")
 
 
 def onward_edge_entropy(
