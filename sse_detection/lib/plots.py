@@ -131,32 +131,34 @@ def _pretty_role_dynamic(value: Any, label_map: Mapping[str, str] | None = None)
         return _ROLE_DYNAMIC_LABELS[text]
     return text.replace("_", " ").strip().capitalize()
 
-
 def plot_cluster_size_distribution(
     df: pd.DataFrame,
-    size_col: str = "log_cluster_size",
+    size_col: str = "cluster_size",
     *,
     by: str | None = "clade",
+    sse_col: str = "sse_candidate",
+    sse_labels: dict[int, str] | None = None,
     min_size: int = 1,
-    is_log1p: bool = True,
     width: WIDTHS = "double",
     width_in: float | None = None,
-    height_in: float = 3.5,
+    height_in: float = 6.5,
     context: CONTEXTS = "paper",
     font_scale: float = 1.0,
     complementary: bool = True,
 ) -> Figure:
-    """Two-panel plot of cluster-size distributions."""
+    """Four-panel plot of cluster-size distributions, split by `sse_col`.
+
+    Top row / bottom row correspond to the two values of the binary
+    `sse_col`. Columns are ECDF (left) and violin (right), matching the
+    two-panel layout. Size scales are shared across rows for comparability.
+    """
 
     df = df.copy()
     transformed_min = np.log1p(min_size)
-    if not is_log1p:
-        df["_plot_size"] = np.log1p(df[size_col])
-    else:
-        df["_plot_size"] = df[size_col]
+    df["_plot_size"] = np.log1p(df[size_col])
+    df = df.loc[df["_plot_size"] >= transformed_min]
 
-    df = df.loc[(df["_plot_size"] >= transformed_min) & (df["_plot_size"] > 0)]
-
+    # --- grouping (computed once, on full data, so rows stay consistent) ---
     if by is None or by not in df.columns:
         df["_plot_group"] = "All clusters"
         group_order = ["All clusters"]
@@ -169,8 +171,23 @@ def plot_cluster_size_distribution(
             group_order.append("Other")
         palette = {g: CLADE_PALETTE.get(g, GRAY) for g in group_order}
 
+    # --- row split on the binary column ---
+    if sse_labels is None:
+        sse_labels = {1: "Candidate", 0: "Background"}
+    # top = 1, bottom = 0 (only rows present in the data)
+    row_values = [v for v in (1, 0) if v in set(df[sse_col].dropna())]
+
+    # --- shared size-axis ticks, from full filtered data ---
+    smin = np.floor(df["_plot_size"].min())
+    smax = np.ceil(df["_plot_size"].max())
+    log_ticks = np.arange(smin, smax + 1)
+    size_ticks = np.expm1(log_ticks)
+    size_tick_labels = [f"{int(round(t))}" for t in size_ticks]
+
+    clade_label_to_key = {label: key for key, label in CLADES.items()}
+
     fig, axes = new_figure(
-        nrows=1,
+        nrows=2,
         ncols=2,
         layout="constrained",
         width=width,
@@ -179,81 +196,110 @@ def plot_cluster_size_distribution(
         context=context,
         font_scale=font_scale,
     )
-    ax_ecdf, ax_violin = axes[0], axes[1]
+    axes = axes
 
-    # Left Panel: ECDF
-    sns.ecdfplot(
-        data=df,
-        x="_plot_size",
-        hue="_plot_group",
-        hue_order=group_order,
-        palette=palette,
-        complementary=complementary,
-        stat="proportion",
-        linewidth=1.5,
-        ax=ax_ecdf,
-    )
-    ax_ecdf.set_xlabel("Cluster size")
-    ax_ecdf.set_ylabel("P(X ≥ Cluster size)")
+    legend_handles: list = []
+    legend_labels: list = []
 
-    leg = ax_ecdf.get_legend()
-    handles, labels = (
-        (leg.legend_handles, [t.get_text() for t in leg.get_texts()])
-        if leg
-        else ([], [])
-    )
-    if leg:
-        leg.remove()
+    def _draw_row(ax_ecdf, ax_violin, sub_df, row_label, *, is_bottom):
+        nonlocal legend_handles, legend_labels
 
-    # Right Panel: Violin
-    sns.violinplot(
-        data=df,
-        x="_plot_group",
-        y="_plot_size",
-        hue="_plot_group",
-        order=group_order,
-        hue_order=group_order,
-        palette=palette,
-        cut=0,
-        inner="quartile",
-        linewidth=0.8,
-        ax=ax_violin,
-    )
-    ax_violin.set_xlabel("SARS-CoV-2 clade")
-    ax_violin.set_ylabel("Cluster size")
+        if sub_df.empty:
+            for ax in (ax_ecdf, ax_violin):
+                ax.text(0.5, 0.5, "No data", ha="center", va="center",
+                        transform=ax.transAxes)
+            return
 
-    # X-Ticks translation
-    if by == "clade":
-        clade_label_to_key = {label: key for key, label in CLADES.items()}
-        x_tick_labels = [clade_label_to_key.get(group, group) for group in group_order]
-        ax_violin.set_xticks(np.arange(len(group_order)))
-        ax_violin.set_xticklabels(x_tick_labels, rotation=45, ha="right")
-    else:
-        ax_violin.tick_params(axis="x", rotation=45)
+        # Left: ECDF
+        sns.ecdfplot(
+            data=sub_df,
+            x="_plot_size",
+            hue="_plot_group",
+            hue_order=group_order,
+            palette=palette,
+            complementary=complementary,
+            stat="proportion",
+            linewidth=1.5,
+            ax=ax_ecdf,
+        )
+        ax_ecdf.set_ylabel("P(X ≥ Cluster size)")
+        ax_ecdf.set_xticks(log_ticks)
+        ax_ecdf.set_xlim(smin, smax)
 
-    if ax_violin.get_legend():
-        ax_violin.get_legend().remove()
+        leg = ax_ecdf.get_legend()
+        if leg:
+            if not legend_handles:  # capture once, from the first populated row
+                legend_handles = list(leg.legend_handles)
+                legend_labels = [t.get_text() for t in leg.get_texts()]
+            leg.remove()
 
-    smin = np.floor(df["_plot_size"].min())
-    smax = np.ceil(df["_plot_size"].max())
-    log_ticks = np.arange(smin, smax + 1)
+        # Right: Violin
+        sns.violinplot(
+            data=sub_df,
+            x="_plot_group",
+            y="_plot_size",
+            hue="_plot_group",
+            order=group_order,
+            hue_order=group_order,
+            palette=palette,
+            cut=0,
+            inner="quartile",
+            linewidth=0.8,
+            ax=ax_violin,
+        )
+        ax_violin.set_ylabel("Cluster size")
+        ax_violin.set_yticks(log_ticks)
+        ax_violin.set_yticklabels(size_tick_labels)
+        ax_violin.set_ylim(smin, smax)
+        if ax_violin.get_legend():
+            ax_violin.get_legend().remove()
 
-    size_ticks = np.expm1(log_ticks)
+        # X handling differs top vs bottom
+        if is_bottom:
+            ax_ecdf.set_xticklabels(size_tick_labels)
+            ax_ecdf.set_xlabel("Cluster size")
+            if by == "clade":
+                x_tick_labels = [clade_label_to_key.get(g, g) for g in group_order]
+                ax_violin.set_xticks(np.arange(len(group_order)))
+                ax_violin.set_xticklabels(x_tick_labels, rotation=35)
+                ax_violin.set_xlabel("SARS-CoV-2 clade")
+            else:
+                ax_violin.tick_params(axis="x")
+                ax_violin.set_xlabel("")
+        else:
+            ax_ecdf.tick_params(labelbottom=False)
+            ax_ecdf.set_xlabel("")
+            ax_violin.tick_params(labelbottom=False)
+            ax_violin.set_xlabel("")
 
-    ax_violin.set_yticks(log_ticks)
-    ax_violin.set_yticklabels([f"{int(round(t))}" for t in size_ticks])
-    ax_ecdf.set_xticks(log_ticks)
-    ax_ecdf.set_xticklabels([f"{int(round(t))}" for t in size_ticks])
+        # Row label on the far left, rotated (won't collide with panel letters)
+        ax_ecdf.annotate(
+            row_label,
+            xy=(0, 0.5), xycoords="axes fraction",
+            xytext=(-ax_ecdf.yaxis.labelpad - 28, 0), textcoords="offset points",
+            ha="right", va="center", rotation=90, fontweight="bold",
+        )
+
+    panel_axes = []
+    for r, val in enumerate(row_values):
+        ax_ecdf, ax_violin = axes[r, 0], axes[r, 1]
+        sub = df.loc[df[sse_col] == val]
+        _draw_row(
+            ax_ecdf, ax_violin, sub,
+            row_label=sse_labels.get(val, str(val)),
+            is_bottom=(r == len(row_values) - 1),
+        )
+        panel_axes.extend([ax_ecdf, ax_violin])
 
     fig.legend(
-        handles=handles,
-        labels=labels,
+        handles=legend_handles,
+        labels=legend_labels,
         title="",
         loc="center left",
         bbox_to_anchor=(1.02, 0.5),
         frameon=False,
     )
-    add_panel_labels([ax_ecdf, ax_violin])
+    add_panel_labels(panel_axes)
     plt.close(fig)
 
     return fig
@@ -1899,7 +1945,9 @@ def _plot_forest_panel(
         ci_overlaps_one = (
             True if not has_ci else min(low, high) <= 1.0 <= max(low, high) # type: ignore
         )
-        if row.is_reference or ci_overlaps_one:
+        if row.is_reference:
+            color = "#FF0000"
+        elif ci_overlaps_one:
             color = GRAY
         else:
             color = ORANGE_DARK if odds > 1 else TEAL_DARK # type: ignore
