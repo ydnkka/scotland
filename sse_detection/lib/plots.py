@@ -58,6 +58,11 @@ from .palettes import (
     TEAL_DARK,
     WARM_SEQ,
 )
+from .clade_association_figures import (
+    make_clade_association_figures,
+    make_clade_association_outputs,
+    make_clade_association_summary_tables,
+)
 
 
 __all__ = [
@@ -67,6 +72,9 @@ __all__ = [
     "plot_core_metric_space",
     "plot_composite_distributions",
     "plot_socio_demo_breakdown",
+    "make_clade_association_figures",
+    "make_clade_association_outputs",
+    "make_clade_association_summary_tables",
     "plot_regression_wald_heatmap",
     "make_regression_wald_table",
     "make_regression_odds_ratio_table",

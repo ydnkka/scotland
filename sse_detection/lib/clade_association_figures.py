@@ -1,4 +1,4 @@
-"""Render clade-stratified association significance figures.
+"""Build clade-stratified association figures without saving them.
 
 The figures use the clade-sensitivity Wald tables and show where candidate-node
 composition and internal-mixing predictors are significant within clade groups.
@@ -6,28 +6,32 @@ composition and internal-mixing predictors are significant within clade groups.
 
 from __future__ import annotations
 
-import sys
 import re
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import matplotlib.patheffects as pe
 from matplotlib.colors import Normalize
+from matplotlib.figure import Figure
+from matplotlib.patches import Rectangle
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from utils import CLADES, new_figure, save_figure, add_panel_labels  # noqa: E402
+from utils import CLADES, new_figure, add_panel_labels
 
 
-RESULTS_DIR = PROJECT_ROOT / "sse_detection" / "results" / "sensitivity_clade"
-FIG_DIR = PROJECT_ROOT / "sse_detection" / "figures"
-ANALYSIS_DATASET = (
+__all__ = [
+    "make_clade_association_figures",
+    "make_clade_association_summary_tables",
+    "make_clade_association_outputs",
+]
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+DEFAULT_RESULTS_DIR = PROJECT_ROOT / "sse_detection" / "results" / "sensitivity_clade"
+DEFAULT_ANALYSIS_DATASET = (
     PROJECT_ROOT / "data" / "processed" / "scotland_clustering_analysis_dataset.parquet"
 )
 
@@ -66,7 +70,7 @@ COMPOSITION_EFFECT_SPECS = [
     (
         "age_band",
         "Age-band composition odds ratios by clade group",
-        "fig17_clade_composition_or_age_band",
+        "clade_composition_or_age_band",
         [
             "00-04",
             "05-09",
@@ -89,19 +93,19 @@ COMPOSITION_EFFECT_SPECS = [
     (
         "sex",
         "Sex composition odds ratios by clade group",
-        "fig18_clade_composition_or_sex",
+        "clade_composition_or_sex",
         ["Male", "Female"],
     ),
     (
         "simd_quintile",
         "SIMD-quintile composition odds ratios by clade group",
-        "fig19_clade_composition_or_simd_quintile",
+        "clade_composition_or_simd_quintile",
         ["1", "2", "3", "4", "5"],
     ),
     (
         "urban_rural_class",
         "Urban-rural composition odds ratios by clade group",
-        "fig20_clade_composition_or_urban_rural_class",
+        "clade_composition_or_urban_rural_class",
         [
             "Large Urban Areas",
             "Other Urban Areas",
@@ -114,7 +118,7 @@ COMPOSITION_EFFECT_SPECS = [
     (
         "health_board",
         "Health-board composition odds ratios by clade group",
-        "fig21_clade_composition_or_health_board",
+        "clade_composition_or_health_board",
         [
             "Greater Glasgow and Clyde",
             "Ayrshire and Arran",
@@ -175,9 +179,9 @@ def _read_wald(path: Path) -> pd.DataFrame:
     return _clean_strings(pd.read_csv(path, skipinitialspace=True))
 
 
-def _clade_summary() -> pd.DataFrame:
+def _clade_summary(analysis_dataset: Path | str) -> pd.DataFrame:
     data = pd.read_parquet(
-        ANALYSIS_DATASET,
+        analysis_dataset,
         columns=["sequence_id", "collection_date", "clade"],
     ).drop_duplicates("sequence_id")
     data["collection_date"] = pd.to_datetime(data["collection_date"])
@@ -254,14 +258,40 @@ def _score(q_values: pd.DataFrame) -> np.ndarray:
     return np.clip(scores, 0, SCORE_CAP)
 
 
+def _hatch_missing_heatmap_cells(ax: object, values: pd.DataFrame) -> None:
+    missing = values.isna().to_numpy()
+    for row, col in np.argwhere(missing):
+        ax.add_patch(
+            Rectangle(
+                (col - 0.5, row - 0.5),
+                1,
+                1,
+                facecolor="#F1F3F5",
+                edgecolor="#D1D5DB",
+                hatch="////",
+                linewidth=0.6,
+                zorder=2,
+            )
+        )
+        ax.text(
+            col,
+            row,
+            "n/a",
+            ha="center",
+            va="center",
+            fontsize="small",
+            color="#9CA3AF",
+            zorder=3,
+        )
+
+
 def _draw_heatmap_grid(
     panels: list[tuple[str, pd.DataFrame]],
     *,
     row_labels: list[str],
     clade_labels: list[str],
     cmap: str,
-    output_stem: str,
-) -> None:
+) -> Figure:
     fig, axes = new_figure(
         width="double",
         height_in=4,
@@ -273,12 +303,14 @@ def _draw_heatmap_grid(
     )
 
     norm = Normalize(0, SCORE_CAP)
+    cmap_obj = plt.get_cmap(cmap).copy()
+    cmap_obj.set_bad("#F1F3F5")
     im = None
     for panel_idx, (ax, (panel_title, q_values)) in enumerate(
         zip(axes.ravel(), panels)
     ):
-        scores = _score(q_values)
-        im = ax.imshow(scores, cmap=cmap, norm=norm, aspect="auto")
+        scores = np.ma.masked_invalid(_score(q_values))
+        im = ax.imshow(scores, cmap=cmap_obj, norm=norm, aspect="auto")
         # ax.set_title(panel_title)
         ax.set_xticks(np.arange(len(clade_labels)))
         ax.set_xticklabels(clade_labels, rotation=90, ha="center")
@@ -295,6 +327,8 @@ def _draw_heatmap_grid(
             spine.set_visible(False)
         if panel_idx < 2:
             ax.tick_params(labelbottom=False)
+
+        _hatch_missing_heatmap_cells(ax, q_values)
 
         sig = q_values.astype(float).to_numpy() < ALPHA
         for row, col in np.argwhere(sig):
@@ -318,15 +352,7 @@ def _draw_heatmap_grid(
         cbar.ax.axhline(threshold, color="#000000", linewidth=2.0)
 
     add_panel_labels(axes.ravel())
-    FIG_DIR.mkdir(parents=True, exist_ok=True)
-    save_figure(
-        fig,
-        FIG_DIR / f"{output_stem}",
-        width="double",
-        save_png=True,
-        save_pdf=True,
-    )
-    plt.close(fig)
+    return fig
 
 
 def _summary_table(
@@ -334,8 +360,7 @@ def _summary_table(
     *,
     rows: list[tuple[str, str]],
     clade_summary: pd.DataFrame,
-    output_name: str,
-) -> None:
+) -> pd.DataFrame:
     labels = dict(rows)
     pieces = []
     for predictor_set, values in panels:
@@ -350,7 +375,7 @@ def _summary_table(
     out["label"] = out["predictor"].map(labels)
     out["significant"] = out["q_value"].astype(float) < ALPHA
     out = out.merge(clade_summary, on="clade_group", how="left")
-    out.to_csv(FIG_DIR / output_name, index=False)
+    return out
 
 
 def _term_level(term: object) -> str:
@@ -433,9 +458,8 @@ def _draw_or_heatmap_grid(
     row_labels: list[str],
     clade_labels: list[str],
     title: str,
-    output_stem: str,
     log2_cap: float = 2.0,
-) -> None:
+) -> Figure:
     n_rows = len(row_labels)
     height_in = min(9, max(4.2, 3.4 + 0.28 * n_rows))
     fig, axes = new_figure(
@@ -504,24 +528,14 @@ def _draw_or_heatmap_grid(
         cbar.ax.axhline(0, color="#111827", linewidth=1.2)
 
     add_panel_labels(axes.ravel())
-    FIG_DIR.mkdir(parents=True, exist_ok=True)
-    save_figure(
-        fig,
-        FIG_DIR / output_stem,
-        width="double",
-        height_in=height_in,
-        save_png=True,
-        save_pdf=True,
-    )
-    plt.close(fig)
+    return fig
 
 def _composition_or_summary_table(
     panels: list[tuple[str, pd.DataFrame, pd.DataFrame]],
     *,
     predictor: str,
     clade_summary: pd.DataFrame,
-    output_name: str,
-) -> None:
+) -> pd.DataFrame:
     pieces = []
     for panel_name, values, ci_excludes_1 in panels:
         long = (
@@ -544,15 +558,20 @@ def _composition_or_summary_table(
         pieces.append(long)
     out = pd.concat(pieces, ignore_index=True)
     out = out.merge(clade_summary, on="clade_group", how="left")
-    out.to_csv(FIG_DIR / output_name, index=False)
+    return out
 
 
-def main() -> None:
-    clade_summary = _clade_summary()
+def _build_clade_association_panels(
+    *,
+    results_dir: Path | str,
+    analysis_dataset: Path | str,
+) -> dict[str, Any]:
+    results_dir = Path(results_dir)
+    clade_summary = _clade_summary(analysis_dataset)
     clade_order = clade_summary["clade_group"].tolist()
     labels = _clade_labels(clade_summary, clade_order)
 
-    composition = _read_wald(RESULTS_DIR / "composition_wald.csv")
+    composition = _read_wald(results_dir / "composition_wald.csv")
     comp_primary_single = _pivot_q(
         composition,
         domain="composition",
@@ -591,26 +610,8 @@ def main() -> None:
         ("expanded_single", comp_expanded_single),
         ("expanded_joint", comp_expanded_joint),
     ]
-    _draw_heatmap_grid(
-        [
-            ("Primary single-predictor", comp_primary_single),
-            ("Primary joint", comp_primary_joint),
-            ("Expanded single-predictor", comp_expanded_single),
-            ("Expanded joint", comp_expanded_joint),
-        ],
-        row_labels=[label for _, label in COMPOSITION_ROWS],
-        clade_labels=labels,
-        cmap="YlGnBu",
-        output_stem="fig15_clade_composition_significance",
-    )
-    _summary_table(
-        comp_panels,
-        rows=COMPOSITION_ROWS,
-        clade_summary=clade_summary,
-        output_name="fig15_clade_composition_significance_table.csv",
-    )
 
-    mixing = _read_wald(RESULTS_DIR / "mixing_wald.csv")
+    mixing = _read_wald(results_dir / "mixing_wald.csv")
     mix_primary_single = _pivot_q(
         mixing,
         domain="node_mixing",
@@ -649,28 +650,10 @@ def main() -> None:
         ("expanded_single", mix_expanded_single),
         ("expanded_joint", mix_expanded_joint),
     ]
-    _draw_heatmap_grid(
-        [
-            ("Primary single-predictor", mix_primary_single),
-            ("Primary joint", mix_primary_joint),
-            ("Expanded single-predictor", mix_expanded_single),
-            ("Expanded joint", mix_expanded_joint),
-        ],
-        row_labels=[label for _, label in MIXING_ROWS],
-        clade_labels=labels,
-        cmap="YlOrRd",
-        output_stem="fig16_clade_mixing_significance",
-    )
-    _summary_table(
-        mix_panels,
-        rows=MIXING_ROWS,
-        clade_summary=clade_summary,
-        output_name="fig16_clade_mixing_significance_table.csv",
-    )
 
-    odds = _read_odds(RESULTS_DIR / "composition_odds_ratios.csv")
-    effect_outputs = []
-    for predictor, title, output_stem, levels in COMPOSITION_EFFECT_SPECS:
+    odds = _read_odds(results_dir / "composition_odds_ratios.csv")
+    effect_panels_by_key = {}
+    for predictor, title, output_key, levels in COMPOSITION_EFFECT_SPECS:
         effect_panels = []
         reference = ""
         for panel_key, panel_title, model_set, predictor_set in MODEL_PANELS:
@@ -689,32 +672,139 @@ def main() -> None:
             f"{level} (ref)" if reference and level == reference else level
             for level in levels
         ]
-        _draw_or_heatmap_grid(
-            effect_panels,
-            row_labels=row_labels,
-            clade_labels=labels,
-            title=title,
-            output_stem=output_stem,
-        )
-        _composition_or_summary_table(
-            [
+        effect_panels_by_key[output_key] = {
+            "predictor": predictor,
+            "title": title,
+            "row_labels": row_labels,
+            "figure_panels": effect_panels,
+            "summary_panels": [
                 (key, matrix, ci_excludes_1)
                 for (key, _, _, _), (_, matrix, ci_excludes_1) in zip(
                     MODEL_PANELS,
                     effect_panels,
                 )
             ],
-            predictor=predictor,
-            clade_summary=clade_summary,
-            output_name=f"{output_stem}_table.csv",
+        }
+
+    return {
+        "clade_summary": clade_summary,
+        "clade_labels": labels,
+        "composition_panels": comp_panels,
+        "mixing_panels": mix_panels,
+        "effect_panels_by_key": effect_panels_by_key,
+    }
+
+
+def _figures_from_panels(data: dict[str, Any]) -> dict[str, Figure]:
+    labels = data["clade_labels"]
+    comp_primary_single = data["composition_panels"][0][1]
+    comp_primary_joint = data["composition_panels"][1][1]
+    comp_expanded_single = data["composition_panels"][2][1]
+    comp_expanded_joint = data["composition_panels"][3][1]
+    mix_primary_single = data["mixing_panels"][0][1]
+    mix_primary_joint = data["mixing_panels"][1][1]
+    mix_expanded_single = data["mixing_panels"][2][1]
+    mix_expanded_joint = data["mixing_panels"][3][1]
+
+    figures = {
+        "clade_composition_significance": _draw_heatmap_grid(
+            [
+                ("Primary single-predictor", comp_primary_single),
+                ("Primary joint", comp_primary_joint),
+                ("Expanded single-predictor", comp_expanded_single),
+                ("Expanded joint", comp_expanded_joint),
+            ],
+            row_labels=[label for _, label in COMPOSITION_ROWS],
+            clade_labels=labels,
+            cmap="YlGnBu",
+        ),
+        "clade_mixing_significance": _draw_heatmap_grid(
+            [
+                ("Primary single-predictor", mix_primary_single),
+                ("Primary joint", mix_primary_joint),
+                ("Expanded single-predictor", mix_expanded_single),
+                ("Expanded joint", mix_expanded_joint),
+            ],
+            row_labels=[label for _, label in MIXING_ROWS],
+            clade_labels=labels,
+            cmap="YlOrRd",
+        ),
+    }
+
+    for output_key, effect in data["effect_panels_by_key"].items():
+        figures[output_key] = _draw_or_heatmap_grid(
+            effect["figure_panels"],
+            row_labels=effect["row_labels"],
+            clade_labels=labels,
+            title=effect["title"],
         )
-        effect_outputs.append(FIG_DIR / f"{output_stem}.png")
 
-    print(FIG_DIR / "fig15_clade_composition_significance.png")
-    print(FIG_DIR / "fig16_clade_mixing_significance.png")
-    for path in effect_outputs:
-        print(path)
+    return figures
 
 
-if __name__ == "__main__":
-    main()
+def _tables_from_panels(data: dict[str, Any]) -> dict[str, pd.DataFrame]:
+    clade_summary = data["clade_summary"]
+    tables = {
+        "clade_composition_significance_table": _summary_table(
+            data["composition_panels"],
+            rows=COMPOSITION_ROWS,
+            clade_summary=clade_summary,
+        ),
+        "clade_mixing_significance_table": _summary_table(
+            data["mixing_panels"],
+            rows=MIXING_ROWS,
+            clade_summary=clade_summary,
+        ),
+    }
+
+    for output_key, effect in data["effect_panels_by_key"].items():
+        tables[f"{output_key}_table"] = _composition_or_summary_table(
+            effect["summary_panels"],
+            predictor=effect["predictor"],
+            clade_summary=clade_summary,
+        )
+
+    return tables
+
+
+def make_clade_association_figures(
+    *,
+    results_dir: Path | str = DEFAULT_RESULTS_DIR,
+    analysis_dataset: Path | str = DEFAULT_ANALYSIS_DATASET,
+) -> dict[str, Figure]:
+    """Return clade association figures keyed by stable semantic output stem.
+
+    The figures are not saved or closed; callers can inspect, display, save, and
+    close them using their preferred notebook naming scheme.
+    """
+    data = _build_clade_association_panels(
+        results_dir=results_dir,
+        analysis_dataset=analysis_dataset,
+    )
+    return _figures_from_panels(data)
+
+
+def make_clade_association_summary_tables(
+    *,
+    results_dir: Path | str = DEFAULT_RESULTS_DIR,
+    analysis_dataset: Path | str = DEFAULT_ANALYSIS_DATASET,
+) -> dict[str, pd.DataFrame]:
+    """Return the clade association summary tables without writing CSV files."""
+    data = _build_clade_association_panels(
+        results_dir=results_dir,
+        analysis_dataset=analysis_dataset,
+    )
+    return _tables_from_panels(data)
+
+
+def make_clade_association_outputs(
+    *,
+    results_dir: Path | str = DEFAULT_RESULTS_DIR,
+    analysis_dataset: Path | str = DEFAULT_ANALYSIS_DATASET,
+) -> tuple[dict[str, Figure], dict[str, pd.DataFrame]]:
+    """Return both clade association figures and summary tables."""
+    data = _build_clade_association_panels(
+        results_dir=results_dir,
+        analysis_dataset=analysis_dataset,
+    )
+    return _figures_from_panels(data), _tables_from_panels(data)

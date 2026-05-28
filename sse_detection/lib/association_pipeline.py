@@ -10,7 +10,7 @@ from typing import Any, Iterable, Mapping, Sequence
 import numpy as np
 import pandas as pd
 
-from utils.data import CLADES, load_analysis_columns
+from utils import CLADES, load_analysis_columns
 
 from .io import load_sse_outputs
 from .regression import (
