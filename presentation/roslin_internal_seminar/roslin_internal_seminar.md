@@ -19,7 +19,7 @@ paginate: true
 
 <div class="speaker">
 Dominic Arthur<br>
-PhD student, Kao Group<br>
+OHMD PhD student, Kao Group<br>
 The Roslin Institute, University of Edinburgh<br>
 <b>Supervisors:</b> Prof Rowland R. Kao & Dr Christopher J. Banks
 </div>
@@ -216,7 +216,7 @@ Speaker notes:
 
 <div class="columns">
   <div class="figure-panel">
-    <img src="images/fig03_subgraph_AM00027_exemplar.png"
+    <img src="images/fig03_meta_cluster_subgraph.png"
          alt="Example flagged SARS-CoV-2 genome-cluster pattern through time">
   </div>
 
@@ -278,7 +278,7 @@ Speaker notes:
 # What was happening on the Scottish Isles?
 
 <div class="figure-panel">
-  <img src="images/fig13_healthboard_map.png"
+  <img src="images/fig11_health_board_urban_rural_enrichment.png"
        alt="Health-board and urban-rural odds ratios for candidate-node membership">
 </div>
 
