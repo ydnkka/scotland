@@ -39,7 +39,7 @@ NODE_GRAY = "#aab9c2"
 FONT = (
     "'Helvetica Neue', Helvetica, Arial, 'Liberation Sans', 'DejaVu Sans', sans-serif"
 )
-FONT_SCALE = 1.15
+FONT_SCALE = 1.25
 
 # ----------------------------------------------------------------- geometry
 MARGIN_X = 36

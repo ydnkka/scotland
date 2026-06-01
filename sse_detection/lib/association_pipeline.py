@@ -13,7 +13,14 @@ import pandas as pd
 from utils import CLADES, load_analysis_columns
 from utils import PERIOD_INTENSITY
 
-from .entropy import cluster_age_conditional_binary_entropy
+from .entropy import (
+    DEFAULT_MIXING_FEATURES,
+    OBSERVED_MIXING_FEATURES,
+    OBSERVED_MIXING_FEATURES_X10,
+    VACCINATION_MIXING_TERTILE_ORDER,
+    add_observed_mixing_entropy_scales,
+    add_vaccination_mixing_features,
+)
 from .io import load_sse_outputs
 from .regression import (
     AssociationModel,
@@ -145,24 +152,6 @@ COMPOSITION_SPECS = [
     },
 ]
 
-DEFAULT_MIXING_FEATURES = [
-    "sex_entropy_z",
-    "age_entropy_z",
-    "simd_entropy_z",
-    "urban_rural_entropy_z",
-    "health_board_entropy_z",
-]
-
-OBSERVED_MIXING_FEATURES = [
-    "sex_entropy_obs",
-    "age_entropy_obs",
-    "simd_entropy_obs",
-    "urban_rural_entropy_obs",
-    "health_board_entropy_obs",
-]
-OBSERVED_MIXING_FEATURES_X10 = [
-    f"{feature}_x10" for feature in OBSERVED_MIXING_FEATURES
-]
 OBSERVED_MIXING_REFERENCE_X10 = "per 0.1 increase in observed normalised entropy"
 
 VACCINATION_COMPOSITION_SPECS = [
@@ -277,12 +266,6 @@ VACCINATION_NODE_JOINT_GROUPS = [
         "label": "Node vaccination status plus datazone vaccination-event coverage",
         "specs": ["node_prop_vaccinated", "node_mean_dz_cum_prop_vaccinated"],
     },
-]
-
-VACCINATION_MIXING_TERTILE_ORDER = [
-    "more_homogeneous",
-    "as_expected",
-    "more_mixed",
 ]
 
 STANDARDISE_SPECS = {
@@ -486,13 +469,7 @@ def _add_standardised_columns(
 
 def add_standardised_adjusters(data: pd.DataFrame) -> pd.DataFrame:
     """Add standardised surveillance and context adjusters used by notebooks."""
-    out = data.copy()
-    for feature, scaled_feature in zip(
-        OBSERVED_MIXING_FEATURES,
-        OBSERVED_MIXING_FEATURES_X10,
-    ):
-        if feature in out.columns:
-            out[scaled_feature] = out[feature].astype(float) * 10
+    out = add_observed_mixing_entropy_scales(data)
     if "wn_positive_tests" in out.columns:
         out["log1p_wn_positive_tests"] = np.log1p(out["wn_positive_tests"])
     if "dz_cum_positive_tests" in out.columns:
@@ -632,72 +609,6 @@ def add_vaccination_node_features(
             ),
         },
     )
-
-
-def _ordered_tertile(values: pd.Series, *, categories: list[str]) -> pd.Categorical:
-    """Return rank-based ordered tertiles for a numeric series."""
-    out = pd.Series(pd.NA, index=values.index, dtype="object")
-    present = values.notna()
-    if present.sum() >= 3:
-        ranks = values.loc[present].rank(method="first")
-        bins = pd.qcut(
-            ranks,
-            q=3,
-            labels=categories,
-        )
-        out.loc[present] = bins.astype(str).to_numpy()
-    return pd.Categorical(out, categories=categories, ordered=True)
-
-
-def add_vaccination_mixing_features(
-    node_data: pd.DataFrame,
-    sequence_data: pd.DataFrame,
-    *,
-    cluster_col: str = "cluster_id",
-    vaccination_col: str = "is_vaccinated",
-    window_col: str = "window_idx",
-    age_col: str = "age_band",
-    n_random: int = 1000,
-    random_state: int = 42,
-) -> pd.DataFrame:
-    """Attach age-conditional vaccination-mixing entropy features to nodes."""
-    required = {cluster_col, vaccination_col, window_col, age_col}
-    missing = sorted(required - set(sequence_data.columns))
-    if missing:
-        raise KeyError(f"Missing vaccination mixing columns: {missing}")
-    if cluster_col not in node_data.columns:
-        raise KeyError(f"{cluster_col!r} is required in node_data.")
-
-    seq = sequence_data.copy()
-    seq["_vaccination_mix_positive"] = (
-        pd.to_numeric(seq[vaccination_col], errors="coerce").fillna(0).gt(0).astype(int)
-    )
-    seq[age_col] = seq[age_col].astype("string").fillna("Missing")
-    with_entropy = cluster_age_conditional_binary_entropy(
-        seq,
-        cluster_col=cluster_col,
-        binary_col="_vaccination_mix_positive",
-        window_col=window_col,
-        age_col=age_col,
-        n_random=n_random,
-        random_state=random_state,
-        prefix="vaccination_mix",
-    )
-    feature_cols = [
-        "vaccination_mix_n",
-        "vaccination_mix_prop_positive",
-        "vaccination_mix_entropy_obs",
-        "vaccination_mix_entropy_null_mean",
-        "vaccination_mix_entropy_null_sd",
-        "vaccination_mix_entropy_z",
-    ]
-    features = with_entropy[[cluster_col, *feature_cols]].drop_duplicates(cluster_col)
-    out = node_data.merge(features, on=cluster_col, how="left")
-    out["vaccination_mix_tertile"] = _ordered_tertile(
-        out["vaccination_mix_entropy_z"],
-        categories=VACCINATION_MIXING_TERTILE_ORDER,
-    )
-    return out
 
 
 def default_model_sets(

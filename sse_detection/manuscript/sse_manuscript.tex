@@ -1,0 +1,361 @@
+\documentclass[10pt,letterpaper]{article}
+\usepackage[top=0.85in,left=2.75in,footskip=0.75in]{geometry}
+
+\usepackage{amsmath,amssymb}
+\usepackage{textcomp,marvosym}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{adjustbox}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{epstopdf}
+\usepackage{cite}
+\usepackage{nameref,hyperref}
+\usepackage[right]{lineno}
+\usepackage[nopatch=eqnum]{microtype}
+\DisableLigatures[f]{encoding = *, family = *}
+\usepackage[
+	aboveskip=1pt,
+	labelfont=bf,
+	labelsep=period,
+	justification=raggedright,
+	singlelinecheck=off
+]{caption}
+\renewcommand{\figurename}{Fig}
+
+\newcolumntype{+}{!{\vrule width 2pt}}
+\newlength\savedwidth\newcommand\thickcline[1]{%
+\noalign{\global\savedwidth\arrayrulewidth\global\arrayrulewidth2pt}%
+\cline{#1}%
+\noalign{\vskip\arrayrulewidth}%
+\noalign{\global\arrayrulewidth\savedwidth}%
+}
+\newcommand\thickhline{%
+\noalign{\global\savedwidth\arrayrulewidth\global\arrayrulewidth2pt}%
+\hline
+\noalign{\global\arrayrulewidth\savedwidth}%
+}
+
+\raggedright\setlength{\parindent}{0.5cm}
+\textwidth 5.25in
+\textheight 8.75in
+
+\graphicspath{{sse_detection/manuscript/}{./}}
+
+\begin{document}
+\vspace*{0.2in}
+\begin{flushleft}
+
+	{\Large\bfseries Detecting superspreading signatures from national SARS-CoV-2 genomic surveillance using EpiLink-derived temporal cluster-transition graphs}
+
+	\medskip
+	\textbf{Short title:} Genomic superspreading signatures in Scotland
+
+	\bigskip
+
+	Dominic Arthur\textsuperscript{1},
+	Christopher J. Banks\textsuperscript{1},
+	Rowland R. Kao\textsuperscript{1,2*}
+
+	\bigskip
+
+	\textbf{1} The Roslin Institute, University of Edinburgh, Edinburgh, United Kingdom
+
+	\textbf{2} School of Physics and Astronomy, University of Edinburgh, Edinburgh, United Kingdom
+
+	\bigskip
+
+	* rowland.kao@ed.ac.uk
+\end{flushleft}
+
+\section*{Abstract}
+
+Superspreading shapes the epidemiology of SARS-CoV-2, but it is difficult to detect from consensus genomes alone: a large group of near-identical sequences may reflect a genuine transmission burst, dense sampling of a diffuse lineage, or uneven surveillance. Detailed transmission-inference methods do not scale to national datasets, and fixed single-nucleotide-polymorphism thresholds lack a stable interpretation when sampling is incomplete. We analysed national Scottish SARS-CoV-2 genomic surveillance from July 2020 to January 2023 using EpiLink-derived temporal clusters arranged into a rolling cluster-transition graph, in which nodes are time-indexed genomic clusters and directed edges encode continuity across adjacent surveillance windows. Across 67 windows this yielded 99,006 window-level cluster nodes, from which we identified 7,014 candidate superspreading-signature (SSE) nodes (7.1\%) using window-relative graph features describing local amplification, novelty, persistence, branching, and onward dissemination, rather than raw cluster size: 44\% of candidates fell outside the equally sized set of largest nodes. Candidates separated into seven interpretable graph phenotypes, from contained local bursts to mixed-population dissemination. Comparing candidates with size-matched background nodes using Firth-penalised logistic models adjusted for surveillance window and viral clade, candidate status was associated most strongly and reproducibly with geography---urban/rural class and health board, with enrichment in remote, island, and non-metropolitan contexts---and this signal strengthened rather than attenuated after adjustment for local sequencing intensity, incidence, and test positivity. Individual demographic, deprivation, policy, and vaccination signals were weaker or attributable to area- and calendar-time structure, although candidate nodes were modestly more age-homogeneous than expected. National genomic transmission heterogeneity in Scotland was therefore recurrent, phenotypically diverse, and primarily spatially structured.
+
+\linenumbers
+
+\section*{Introduction}
+
+The COVID-19 pandemic established pathogen genomics as a routine component of infectious-disease surveillance. In the United Kingdom, the COVID-19 Genomics UK (COG-UK) Consortium created an integrated national-scale sequencing infrastructure that enabled near real-time tracking of introductions, lineage replacement, and outbreak structure across the epidemic~\cite{COGUK2020,duPlessis2021}. More broadly, genomic surveillance is now recognised as a core public-health capability because it links pathogen evolution to the spatial, temporal, and epidemiological structure of spread~\cite{Armstrong2019,Struelens2024,Black2020}. This value was particularly clear in Scotland, where genomic analyses reconstructed early SARS-CoV-2 introductions, supported investigations in hospitals, universities, dialysis units, and care homes, and contributed to variant-focused analyses of Alpha, Delta, and travel-associated importation pressure~\cite{daSilvaFilipe2021,Li2021,Nickbakhsh2022,Stirrup2021,Stirrup2022,Cotton2023,Pascall2023,Sheikh2021,McLachlan2024}.
+
+One of the most important unresolved uses of large-scale genomic surveillance is the detection and characterisation of transmission heterogeneity. Superspreading has shaped outbreaks of SARS-CoV-1, MERS, Ebola, SARS-CoV-2, and other pathogens, and remains central to the epidemiology of directly transmitted infections~\cite{LloydSmith2005,Shen2004,Lau2017,Cho2016,Lee2020}. For SARS-CoV-2, superspreading events can create rapid local expansions in which many infections occur over short timescales and remain genetically identical or near-identical~\cite{Lemieux2021,Valesano2021,Bendall2022}. This makes superspreading difficult to identify from consensus genomes alone: a large cluster of similar sequences may represent a genuine burst of recent transmission, dense sampling of a more diffuse lineage, continued observation of an established chain, or an artefact of uneven surveillance intensity.
+
+Existing genomic epidemiological methods only partly address this problem. Detailed transmission-inference methods such as outbreaker2, TransPhylo, and SCOTTI can model uncertainty and unsampled intermediates, but they are designed primarily for detailed outbreak reconstruction and can be difficult to apply across national surveillance datasets with hundreds of thousands of sequences~\cite{Campbell2018b,Didelot2017,DeMaio2016}. Population-level superspreading is classically summarised by the dispersion of the offspring distribution~\cite{LloydSmith2005}, but recovering comparable transmission heterogeneity directly from sequence data generally requires either linked contact and line-list data or computationally intensive phylodynamic inference, neither of which is readily applied across an entire national consensus-genome archive. Threshold-based and distance-based clustering methods are more scalable, but fixed single-nucleotide-polymorphism thresholds do not have a stable biological interpretation when sampling is incomplete, mutation accumulation is stochastic, or testing dates carry information not represented by static genetic distance~\cite{Poon2016,Stimson2019,Campbell2019,Valesano2021,Bendall2022}. These limitations are amplified in superspreading-driven epidemics, where rapid transmission can produce large groups of closely related infections with little consensus-level divergence~\cite{LloydSmith2005,Lemieux2021}.
+
+We therefore build on EpiLink, a process-based compatibility model that evaluates whether the observed genetic distance and sampling-time difference between two cases are consistent with recent transmission scenarios~\cite{ArthurEpiLink2026}. EpiLink simulates distributions of temporal and genetic separation under specified natural-history, testing-delay, and molecular-clock assumptions, then scores observed pairs according to how centrally they fall within those distributions. Combined with community detection, this provides an interpretable way to infer recent-transmission clusters without fixed SNP cut-offs or labelled transmission pairs. In the present study, we use EpiLink-derived clusters not as the endpoint, but as the temporal units from which to construct a rolling cluster-transition graph.
+
+We define a temporal cluster-transition graph as a directed graph in which each node is an EpiLink-derived cluster observed within a surveillance window, and edges encode continuity between clusters across adjacent retained windows. This representation shifts the inferential target from static cluster size to dynamic behaviour: whether a cluster appears abruptly, expands relative to upstream continuity, persists into a single successor, branches into multiple successors, or disseminates into geographically and demographically mixed downstream populations. These are signatures of superspreading-like transmission structure, but they are deliberately not treated as confirmed individual exposure events. Instead, they are candidate graph phenotypes for population-scale surveillance.
+
+This distinction is important because genomic clusters are shaped by transmission, sampling, testing, lineage replacement, and public-health context. Social and geographic inequalities strongly shaped COVID-19 burden in the UK and Scotland~\cite{Bambra2020,Niedzwiedz2020,Mathur2021,Whitehead2021,PublicHealthScotland2020,Marmot2020,Sheikh2021}, but genomic cluster size cannot be interpreted as a direct proxy for social transmission burden without modelling surveillance structure~\cite{Han2023,Chen2022,ECDC2021}. A high-impact analysis of superspreading signatures should therefore ask not only which clusters are large, but which temporal graph signatures are repeatedly observed, how they vary over epidemic phases, and whether candidate signatures are associated with demographic, geographic, policy, vaccination, and surveillance context.
+
+Here, we analyse national Scottish SARS-CoV-2 genomic surveillance from July 2020 to early 2023 using EpiLink-derived temporal clusters and a rolling cluster-transition graph. We first identify candidate superspreading-signature nodes from graph features describing local amplification, novelty, persistence, branching, and onward dissemination. We then ask whether candidate nodes differ from size-comparable background nodes in sequence composition, geographic context, internal population mixing, policy era, and vaccination context. Our aim is not to reconstruct individual superspreading events, but to identify recurrent, interpretable genomic signatures of transmission heterogeneity at national scale.
+
+\section*{Results}
+
+\subsection*{EpiLink-derived window clusters resolve a national-scale SARS-CoV-2 transition graph}
+
+We used EpiLink-derived temporal clusters as the units for a rolling genomic transition graph, allowing recently compatible sequence groups to be followed across surveillance windows rather than treating each cluster as an isolated snapshot. Across 67 windows from 14 July 2020 to 24 January 2023, this produced 99,006 window-level cluster nodes, 41,747 directed transitions between nodes, and 57,354 connected components (Table~\ref{tab:sse_summary}; Fig~\ref{fig:sse_framework}). The graph contained 445,384 sequence-window memberships, reflecting repeated observation of evolving lineages across adjacent windows.
+
+\begin{table}[!ht]
+	\centering
+	\caption{
+		\textbf{Summary of the EpiLink-derived SSE transition graph.}
+		Node counts refer to window-level temporal cluster nodes. The eligible background is restricted to non-candidate nodes with cluster size at least as large as the smallest candidate node.
+	}\label{tab:sse_summary}
+	\begin{adjustbox}{max width=\textwidth}
+		\begin{tabular}{lr}
+			\toprule
+			Quantity & Value \\
+			\midrule
+			Window-level cluster nodes & 99,006 \\
+			Directed transitions & 41,747 \\
+			Connected components & 57,354 \\
+			Sequence-window memberships & 445,384 \\
+			Candidate SSE nodes & 7,014 \\
+			Candidate share of all nodes & 7.1\% \\
+			Candidate sequence-window memberships & 169,214 \\
+			Eligible non-candidate background nodes & 6,045 \\
+			Eligible analysis nodes & 13,059 \\
+			Candidate categories & 7 \\
+			\bottomrule
+		\end{tabular}
+	\end{adjustbox}
+\end{table}
+
+\begin{figure}[!ht]
+	\centering
+	\includegraphics[width=\textwidth]{figures/fig02_meta_cluster_subgraph.pdf}
+	\caption{
+		\textbf{Example EpiLink-derived transition subgraph.}
+		Window-level cluster nodes are connected across adjacent surveillance windows, allowing local amplification, persistence, and onward dissemination signatures to be evaluated as temporal graph properties rather than as static cluster-size summaries.
+	}\label{fig:sse_framework}
+\end{figure}
+
+Candidate superspreading-signature (SSE) nodes were uncommon in the full graph but accounted for a large share of sequence memberships. In total, 7,014 nodes (7.1\% of all nodes) met the candidate definition, representing 169,214 sequence-window memberships. Candidate cluster sizes were strongly right-skewed (median 11 sequences; 90th percentile 35; 95th percentile 61; maximum 2,666), consistent with a surveillance graph in which most candidate signatures were modest local expansions but a small number captured very large genomic clusters (S1 Fig). Because candidate status required a minimum observed cluster size of six sequences, downstream association models compared candidates with a size-restricted background of 6,045 non-candidate nodes, yielding 13,059 eligible nodes overall.
+
+Candidate nodes occurred across the major variant phases of the Scottish SARS-CoV-2 epidemic (S2 Fig). Omicron accounted for 3,355 candidates, Delta for 2,770, Alpha for 627, and recombinant lineages for 21, with 241 candidates outside these labelled variant groups. The largest clade contributions were from 21J Delta (2,738 candidates), 21L Omicron (1,499), 21K Omicron (1,014), 20I Alpha (627), and 22B Omicron (560). Candidate SSE signatures were therefore not confined to a single epidemic wave or variant background; instead, they recurred throughout the period in which EpiLink-derived clusters were observed.
+
+\subsection*{Candidate detection captured window-relative amplification rather than raw cluster size}
+
+Because the candidate screen combined window-relative amplification, novelty, and onward-spread metrics, it did not reduce to a simple size ranking. Candidate nodes occupied a distinct region of the joint local-growth and onward-spread metric space, separating from background nodes within each graph role (Fig~\ref{fig:metric_space}), and the within-window percentile components that define the screen were shifted in candidates relative to size-matched background nodes (S3 Fig). Quantitatively, of the 7,014 candidate nodes, only 56.5\% also appeared among the 7,014 largest nodes by raw cluster size; the remaining 43.5\% would have been missed by an equally sized size-only ranking. Candidate status therefore reflects graph behaviour---rapid local accumulation, novelty relative to upstream continuity, and onward dissemination---rather than absolute size alone.
+
+\begin{figure}[!ht]
+	\centering
+	\includegraphics[width=\textwidth]{figures/fig05_core_metric_space.pdf}
+	\caption{
+		\textbf{Candidate nodes occupy a distinct local-growth and onward-spread metric space.}
+		Each point is a window-level cluster node, positioned by its local growth/novelty score and onward-spread score, sized by cluster size and coloured by graph role, and split by whether it passed the candidate screen. Candidates separate from background nodes across graph roles rather than along a single size axis.
+	}\label{fig:metric_space}
+\end{figure}
+
+\subsection*{Candidate nodes captured distinct graph phenotypes rather than a single outbreak type}
+
+Candidate labels separated the transition graph into interpretable SSE-like phenotypes (Fig~\ref{fig:sse_categories}). The most common category was contained local burst (3,460 candidates; 49.3\%), followed by sustained single-chain transmission (1,718; 24.5\%). A further 903 candidates (12.9\%) showed focused branching transmission, 432 (6.2\%) showed secondary relay amplification, and 299 (4.3\%) showed diffuse branching transmission. Smaller but epidemiologically important groups included mixed population dissemination (173; 2.5\%) and high-volume onward transmission (29; 0.4\%).
+
+\begin{figure}[!ht]
+	\centering
+	\includegraphics[width=\textwidth]{figures/fig03_sse_role_onward_heatmap.pdf}
+	\caption{
+		\textbf{Candidate SSE graph phenotypes.}
+		Candidate nodes separate into interpretable combinations of local amplification, persistence, branching, onward dissemination, and population-mixing signatures.
+	}\label{fig:sse_categories}
+\end{figure}
+
+Consistent with the metric-space separation above, this category diversity confirms that the candidate definition did not simply recover the largest clusters. Instead, it identified several ways in which a node could become unusual in a temporal transition graph: rapid local accumulation, persistence through a single dominant chain, branching into multiple downstream clusters, relay-like amplification after upstream introduction, or dissemination across demographically and geographically mixed populations. The right-skewed size distribution and heterogeneous category composition together support treating candidate SSE nodes as graph signatures of transmission heterogeneity, not as confirmed individual superspreading events.
+
+\subsection*{Candidate status was associated most strongly with geography rather than individual demographic composition}
+
+We next asked whether candidate nodes differed from the size-comparable background in their sequence composition. Primary Firth logistic models adjusted for surveillance window and viral clade showed strong global evidence for geographic structure. Urban/rural class was associated with candidate membership in both single-predictor (Wald $\chi^2 = 91.1$, df = 5, FDR-adjusted $q = 1.0\times10^{-17}$) and joint composition models (Wald $\chi^2 = 48.0$, df = 5, $q = 9.1\times10^{-9}$). Health board showed a similarly robust association in single-predictor (Wald $\chi^2 = 119.2$, df = 13, $q = 1.5\times10^{-18}$) and joint models (Wald $\chi^2 = 78.4$, df = 13, $q = 1.1\times10^{-10}$) (Table~\ref{tab:association_summary}; Fig~\ref{fig:association_heatmap}). Critically, these geographic associations were not explained by uneven surveillance intensity: in expanded models that additionally adjusted for datazone cumulative proportion sequenced, cumulative incidence, test positivity, and positive-test volume, both signals strengthened rather than attenuated (single-predictor urban/rural Wald $\chi^2 = 375.7$, df = 5; health board Wald $\chi^2 = 608.4$, df = 13; both $q < 10^{-3}$).
+
+\begin{table}[!ht]
+	\centering
+	\caption{
+		\textbf{Primary association results for candidate SSE membership.}
+		Composition models use sequence-window rows joined to eligible-node candidate status and adjust for surveillance window and clade. Node-mixing models use eligible nodes and entropy features standardised against size-window null models. Policy and vaccination rows are included as contextual analyses, not causal effects.
+	}\label{tab:association_summary}
+	\begin{adjustbox}{max width=\textwidth}
+		\begin{tabular}{lllll}
+			\toprule
+			Analysis & Predictor & Primary evidence & Representative effect & Interpretation \\
+			\midrule
+			Composition & Urban/rural class & $\chi^2=91.1$, df = 5, $q=1.0\times10^{-17}$ & Remote rural OR 1.14 & Strong geographic structure \\
+			Composition & Health board & $\chi^2=119.2$, df = 13, $q=1.5\times10^{-18}$ & Western Isles OR 1.56 & Strong geographic structure \\
+			Composition & Age band & $\chi^2=22.7$, df = 15, $q=0.148$ & 75+ OR 1.09 & Weak global evidence \\
+			Composition & Sex & $\chi^2=2.44$, df = 1, $q=0.148$ & Female OR 1.01 & No robust association \\
+			Composition & SIMD quintile & $\chi^2=6.25$, df = 4, $q=0.181$ & Quintile 5 OR 0.98 & No robust association \\
+			Node mixing & Age entropy & $\chi^2=8.03$, df = 1, $q=0.023$ & OR 0.97 per null SD & Modest age homogeneity \\
+			Policy context & Policy era & $\chi^2=3.02$, df = 5, $q=0.697$ & Post-restriction reference & Descriptive only \\
+			Vaccination context & Datazone vaccination coverage & $\chi^2=359.5$, df = 1, $q<10^{-3}$ & Positive area-context signal & Area/calendar context, not candidate-specific \\
+			\bottomrule
+		\end{tabular}
+	\end{adjustbox}
+\end{table}
+
+\begin{figure}[!ht]
+	\centering
+	\includegraphics[width=\textwidth]{figures/fig08_regression_wald_heatmap.pdf}
+	\caption{
+		\textbf{Primary and expanded association evidence.}
+		Omnibus Wald tests compare candidate and eligible background nodes across composition and node-mixing model families. Geographic composition variables show the strongest and most consistent evidence.
+	}\label{fig:association_heatmap}
+\end{figure}
+
+The effect sizes were moderate but coherent. Relative to large urban areas, candidate-node sequence membership was higher in remote rural areas (OR 1.14), remote small towns (OR 1.13), other urban areas (OR 1.08), accessible rural areas (OR 1.06), and accessible small towns (OR 1.05). Health-board contrasts showed the largest enrichments for Western Isles (OR 1.56), Orkney (OR 1.36), Shetland (OR 1.23), Fife (OR 1.10), Highland (OR 1.08), Ayrshire and Arran (OR 1.08), and Grampian (OR 1.08), relative to Greater Glasgow and Clyde (Fig~\ref{fig:geographic_enrichment}). These contrasts suggest that candidate SSE signatures were not distributed uniformly across the surveillance geography, with remote and island contexts contributing disproportionately after adjustment for window and clade.
+
+\begin{figure}[!ht]
+	\centering
+	\includegraphics[width=\textwidth]{figures/fig10_health_board_urban_rural_enrichment.pdf}
+	\caption{
+		\textbf{Geographic enrichment of candidate-node sequence membership.}
+		Adjusted odds ratios highlight enrichment in remote, island, and selected non-metropolitan contexts relative to the primary urban and health-board reference categories.
+	}\label{fig:geographic_enrichment}
+\end{figure}
+
+By contrast, individual demographic and deprivation variables showed weaker primary evidence. In the same primary single-predictor family, sex (FDR-adjusted $q = 0.148$), age band ($q = 0.148$), and SIMD quintile ($q = 0.181$) did not meet the FDR threshold. Some age-specific contrasts were elevated--for example, sequences from the 75+ age band had higher candidate odds than those from ages 20--24 (OR 1.09)--but the global age-band test was not robust after multiple-testing adjustment. SIMD quintile showed no consistent monotonic gradient in the primary models. Thus, the strongest compositional signal was geographic, rather than a broad individual-level age, sex, or deprivation profile. Full composition and node-mixing model tables are provided in S1--S6 Table.
+
+\subsection*{Internal mixing analyses suggested modest age homogeneity within candidate nodes}
+
+We also tested whether candidate nodes were unusually internally mixed for their size and surveillance window. Entropy features were standardised against a null model matched on node size and window, so odds ratios represent the change in candidate odds per one null-model standard deviation increase in entropy. In primary single-predictor models, age entropy was negatively associated with candidate status (OR 0.97 per null-model SD increase; Wald $\chi^2 = 8.03$, FDR-adjusted $q = 0.023$), indicating that candidate nodes tended to be slightly more age-homogeneous than expected under the null model (S4 Fig). The same direction was retained in the joint mixing model (OR 0.97; nominal $p = 0.015$), although the omnibus joint mixing test was borderline after FDR adjustment (Wald $\chi^2 = 10.24$, df = 5, $q = 0.069$).
+
+Other mixing dimensions were weaker in the primary analysis. Sex, SIMD, urban/rural, and health-board entropy did not meet the FDR threshold in primary single-predictor models. Expanded models that additionally adjusted for local surveillance and epidemic-burden context strengthened some internal-mixing contrasts, including lower age entropy and health-board entropy and higher urban/rural entropy in the joint specification. We therefore interpret internal mixing as a secondary feature of candidate nodes: candidate signatures were not simply the most demographically diverse clusters, but they showed evidence of structured age composition and context-dependent geographic mixing (per-predictor mixing-score and composition breakdowns in S7--S11 Fig).
+
+\subsection*{Geographic associations were robust across major clade backgrounds}
+
+Clade-stratified sensitivity analyses supported the main geographic finding (Fig~\ref{fig:clade_sensitivity}). Health board remained the most reproducible compositional signal, with significant primary associations in several major clade groups, including 20I Alpha, 21J Delta, 21K Omicron, 21L Omicron, 22B Omicron, and other smaller clade groups. Urban/rural class was also evident in the high-sample Alpha, Delta 21J, and Omicron 21K/21L strata, although with more heterogeneity in the direction and magnitude of individual category contrasts.
+
+\begin{figure}[!ht]
+	\centering
+	\includegraphics[width=\textwidth]{figures/fig11_sensitivity_wald_matrix.pdf}
+	\caption{
+		\textbf{Sensitivity of association evidence across model specifications.}
+		The sensitivity matrix compares the main association signals across primary, expanded, clade-stratified, window-adjusted, and entropy-scale sensitivity analyses.
+	}\label{fig:clade_sensitivity}
+\end{figure}
+
+The clade-stratified results also clarified why the pooled demographic signals were weaker. Age-band associations appeared in some major clades, including 20I Alpha, 21J Delta, and 21L Omicron, but were not uniform across the epidemic. SIMD associations were more limited and were most apparent within specific Delta and Omicron strata. Sex was largely uninformative except in isolated joint clade-specific models. Together, these sensitivity analyses indicate that the main pooled result is not driven by a single variant background, but that demographic composition varies more by epidemic phase than the geographic signal does. Full clade-stratified significance and odds-ratio results are provided in S12--S18 Fig and S7--S13 Table.
+
+\subsection*{Candidate frequency changed across policy eras, but adjusted policy-era effects were not robust}
+
+Candidate frequency rose across policy eras (S5 Fig): among eligible nodes the candidate rate increased from 44.8--46.5\% during the 2020--2021 restriction periods to 57.3\% during the Omicron response and 59.9\% after restrictions were lifted, becoming more common in later epidemic phases.
+
+This descriptive trend did not survive adjustment for clade group and window-level surveillance intensity. Neither the grouped policy-era model (Wald $\chi^2 = 3.02$, df = 5, $q = 0.697$) nor the numeric policy-intensity sensitivity (Wald $\chi^2 = 2.26$, df = 1, $q = 0.266$) showed a global association, and expanded models adding datazone surveillance and epidemic-burden context gave the same conclusion. We therefore treat policy-era variation as descriptive epidemic context rather than evidence for a direct policy effect on candidate SSE signatures.
+
+\subsection*{Vaccination context tracked area and calendar structure rather than candidate-specific mixing}
+
+Candidate-node sequences came from higher-vaccination contexts than background sequences (S6 Fig): 64.1\% were from previously vaccinated individuals versus 59.4\% in the background, and 30.1\% versus 24.2\% were boosted, with candidate nodes also showing higher mean datazone vaccination-event coverage (1.44 vs.\ 1.33 events per capita).
+
+In models adjusted for window and clade, the dominant signal was area-level. Datazone vaccination-event coverage was strongly associated with candidate membership (Wald $\chi^2 = 359.5$, df = 1) and remained dominant in joint models pairing it with individual vaccination variables, whereas the node proportion vaccinated was not robustly associated after adjustment (primary $q = 0.232$). Because vaccination coverage, calendar time, and variant background are tightly coupled, we interpret this as the area and temporal context in which candidate signatures were observed, not as a vaccination effect on superspreading.
+
+Age-conditional vaccination mixing showed only weak evidence: the continuous vaccination-mixing entropy score was nominally associated with candidate status (OR 1.03 per age-conditional null SD increase; $p = 0.046$) but did not survive FDR adjustment ($q = 0.092$), and the tertile-based model was non-significant ($q = 0.306$). Candidate nodes were therefore not characterised by unusual within-node mixing of vaccinated and unvaccinated individuals.
+
+\subsection*{Candidate SSE signatures reflect spatially structured transmission heterogeneity}
+
+Taken together, the results identify candidate SSE nodes as recurrent graph signatures of transmission heterogeneity in national genomic surveillance. EpiLink-derived window clusters yielded a large temporal transition graph in which a minority of nodes captured a disproportionate share of sequence memberships and expressed several interpretable SSE-like phenotypes. The strongest downstream association was geographic: candidate membership was consistently structured by urban/rural class and health board, including elevated odds in remote, island, and selected non-metropolitan contexts. Individual demographic, deprivation, policy, and vaccination signals were present but more conditional on variant phase, local surveillance intensity, or area-level context. The main empirical finding is therefore not that candidate SSE signatures map to a single individual risk group, but that genomic transmission heterogeneity was spatially patterned across Scotland and repeatedly detectable from EpiLink-derived temporal cluster dynamics.
+
+\section*{Discussion}
+
+This study shows that EpiLink-derived temporal cluster-transition graphs can turn national genomic surveillance into a structured map of candidate superspreading signatures. Across 67 retained surveillance windows, we identified 99,006 window-level cluster nodes and 7,014 candidate SSE nodes. These candidates were not a single phenomenon. They included contained local bursts, sustained single-chain transmission, focused and diffuse branching, secondary relay amplification, mixed-population dissemination, and high-volume onward transmission. This heterogeneity is the main methodological point: candidate superspreading signatures are better understood as dynamic graph phenotypes than as unusually large static clusters.
+
+The strongest empirical result was geographic. Candidate membership was robustly associated with urban/rural class and health board after adjustment for surveillance window and clade, while sex, age band, and SIMD quintile were much weaker in the primary pooled analysis. This finding reframes the old deprivation-centred interpretation of the work. Area deprivation remains epidemiologically important for COVID-19 burden, but in this graph-based analysis the clearest structure was spatial and health-board-level heterogeneity, including enrichment in remote, island, and selected non-metropolitan contexts. Critically, this geographic structure was not an artefact of more complete sequencing in smaller populations: adjusting for datazone cumulative proportion sequenced and local epidemic burden strengthened rather than weakened the urban/rural and health-board associations. These associations should not be read as higher individual risk in those areas. Rather, they indicate that the genomic signatures meeting the candidate SSE definition were not uniformly distributed across the surveillance geography.
+
+The internal-mixing results point to a coherent mechanism rather than a separate finding. Candidate nodes were not simply more demographically diverse; the clearest primary node-level signal was lower age entropy, indicating modest age homogeneity within candidates after accounting for node size and window. Read together with the geographic result, this is consistent with superspreading-like genomic signatures arising from structured local amplification within particular settings---for example age-assortative transmission in care homes, workplaces, or closely connected remote and island communities---rather than from broad mixing across all demographic groups. On this reading, the spatial enrichment and the age homogeneity are two views of the same process: amplification concentrated in specific, often demographically narrow, local contexts. Expanded models also suggested context-dependent geographic mixing, but these signals were secondary to the composition-level geography results.
+
+Policy and vaccination analyses were useful mainly as contextual checks. Candidate frequency rose descriptively in later epidemic phases, especially during and after the Omicron transition, but adjusted policy-era models did not support a robust independent policy-era association after clade and surveillance adjustment. Vaccination variables were associated with candidate status at both sequence and node levels, but the strongest and most persistent signals were area-level vaccination-event coverage variables. This is the expected difficulty in interpreting vaccination-era genomic structure: vaccination coverage, calendar time, variant background, testing behaviour, and local epidemic context were tightly coupled. We therefore treat vaccination associations as descriptors of the contexts in which candidate signatures were observed, not as evidence that vaccination caused or prevented superspreading signatures.
+
+Several limitations follow from the design. First, these are genomic surveillance signatures, not confirmed exposure events. Edges in the cluster-transition graph arise from continuity across overlapping surveillance windows and shared sequence membership, and therefore encode observed temporal continuity rather than direct transmission. Second, sampling intensity varied over time and space. Although we adjusted for window, clade, datazone surveillance, incidence, positivity, and positive-test volume, unmeasured ascertainment structure could still influence candidate detection. Third, the candidate definition is deliberately heuristic. It combines window-relative amplification, novelty, excess over upstream continuity, onward expansion, and internal mixing into interpretable categories; alternative thresholds would change the absolute number of candidates. Fourth, EpiLink itself operates on consensus genomes and collection dates, so it inherits the known resolution limits of SARS-CoV-2 genomic epidemiology when genetic diversity is low or sampling is sparse~\cite{Valesano2021,Bendall2022,ArthurEpiLink2026}. Finally, these models are descriptive association analyses. They are designed to identify robust contextual patterns, not to estimate causal effects of geography, policy, vaccination, or deprivation.
+
+Two features of the analysis nonetheless argue against the candidate signatures being mere artefacts of overlapping-window sampling. First, candidate status is defined by percentile ranks computed within each surveillance window, so window-level differences in sampling intensity and carry-over are absorbed by construction rather than mistaken for amplification. Second, the geographic associations replicated within independent clade strata (Fig~\ref{fig:clade_sensitivity}) and strengthened under explicit adjustment for local sequencing intensity; a signal generated purely by window overlap would not be expected to track health board and settlement type so consistently across distinct variant backgrounds. The candidate phenotypes therefore carry information beyond observed window continuity, even though individual edges should not be read as confirmed transmission.
+
+Despite these limitations, the approach has practical value. Public-health genomics often needs scalable, interpretable signals that can prioritise clusters for review without pretending to infer a complete transmission tree. A temporal cluster-transition graph provides exactly that intermediate level: it preserves enough temporal structure to distinguish local bursts, persistence, branching, and relay amplification, while remaining scalable to national surveillance. The main conclusion is that candidate superspreading signatures in Scotland were recurrent, diverse, and spatially structured. The strongest signal was not a single demographic risk group, but a geographic pattern of transmission heterogeneity detectable from EpiLink-derived cluster dynamics.
+
+\section*{Materials and methods}
+
+\subsection*{Study population and source data}
+
+We analysed SARS-CoV-2 whole-genome sequences from Scottish residents collected through Public Health Scotland and COG-UK genomic surveillance between July 2020 and early 2023~\cite{COGUK2020,daSilvaFilipe2021}. The underlying processed analysis dataset contained sequence collection dates, Pango lineage, Nextclade clade and quality-control annotations, residential datazone, health board, urban/rural classification, age band, sex, SIMD quintile, vaccination variables, policy-period annotations, and local testing and sequencing context. Residential datazone was used to link sequences to area-level surveillance summaries and SIMD-derived variables~\cite{ScottishSIMD2020}. Vaccination variables included prior vaccination status, dose count, booster status, days since vaccination, and cumulative datazone vaccination-event coverage.
+
+\subsection*{EpiLink-derived temporal clusters}
+
+Recent-transmission clusters were inferred upstream using EpiLink, a simulation-based pairwise compatibility model for recent transmission~\cite{ArthurEpiLink2026}. Briefly, EpiLink evaluates each pair of sampled cases using the observed collection-time difference and consensus genetic distance, scoring compatibility with recent transmission scenarios under assumptions about incubation period, infectiousness, testing delay, mutation accumulation, and molecular-clock variation~\cite{Hart2021,McAloon2020,Hart2022,Duchene2020}. Pairwise scores were used as weighted edges within lineage-window strata, and the Leiden community-detection algorithm was used to infer clusters~\cite{Traag2019}. The present analysis used clusters built in overlapping three-week sequence windows. The SSE detection workflow retained every other original window, yielding retained node windows two weeks apart while preserving the underlying three-week overlap.
+
+\subsection*{Temporal cluster-transition graph}
+
+For each retained window, each EpiLink-derived cluster was represented as a node. Directed edges connected clusters in adjacent retained windows when sequence continuity linked an upstream node to a downstream node. Because windows overlap, these edges measure observed continuity and carry-over in genomic surveillance rather than confirmed direct transmission. We therefore call this structure a temporal cluster-transition graph: nodes are time-indexed genomic clusters, and directed edges encode how observed cluster membership transitions across windows.
+
+Node-level summaries included cluster size, duration, first and last collection dates, clade, Pango lineage, policy period, number of represented datazones, dominant urban/rural class, health board, local authority, age-band composition, sex composition, SIMD quintile composition, local surveillance and incidence context, and entropy summaries for sex, age, SIMD quintile, urban/rural class, and health board. Graph summaries included in-degree, out-degree, incoming and outgoing edge strength, onward entropy, dominant-successor fraction, lifecycle indicators, amplification scores, novelty fraction, excess over upstream continuity, and onward expansion proxies.
+
+\subsection*{Candidate superspreading-signature detection}
+
+Candidate SSE nodes were defined from temporal graph features rather than from raw cluster size. For each node we computed three core amplification metrics: the log cluster size $\log(1+n)$; the log excess over upstream continuity, $\log(1+n) - \log(1+s_{\mathrm{in}})$, where $s_{\mathrm{in}}$ is the summed shared-sequence overlap inherited from upstream nodes; and the novelty fraction, $(n - s_{\mathrm{in}})/n$ clipped to $[0,1]$, the share of a node not explained by incoming overlap. The log cluster size and log excess were converted to percentile ranks within each surveillance window; the novelty fraction, already bounded in $[0,1]$, was used directly, because it saturates at 1 for every newly observed node and its within-window percentile is therefore degenerate. The local amplification score was the mean of these three components. Onward behaviour was summarised by an onward-expansion proxy (outgoing retention $s_{\mathrm{out}}/n$ multiplied by out-degree), percentile-ranked within window among nodes with observed onward spread.
+
+A node was screened as a candidate if it satisfied any of four conditions: (i) a local amplification score in the top decile of its window; (ii) a cluster size in the top 5\% of its window combined with either a novelty fraction of at least 0.80 or a top-decile log excess over upstream continuity; (iii) a novelty fraction of at least 0.80 combined with a top-decile onward-expansion proxy; or (iv) a within-window $z$-score of at least 2 for log cluster size and at least 1 for log excess over upstream continuity. These conditions combine within-window percentile ranks, an absolute novelty threshold, and within-window $z$-scores, so detection is largely relative to each window's local epidemic and sampling intensity rather than to a single global cut-off. Candidates additionally required a minimum of six sampled sequences; smaller high-novelty clusters were retained as novelty signals but were not labelled candidate SSE nodes.
+
+Candidate nodes were assigned mutually exclusive epidemiological categories in priority order. Mixed-population dissemination was assigned to candidates with diverse-population broadcaster dynamics. Relay-amplification categories captured nodes with inherited upstream continuity that amplified before continuing onward. Branching categories separated diffuse multi-branch seeding from focused dominant-branch transmission. Sustained single-chain candidates had one observed successor, contained local bursts had limited detected onward spread, and high-volume onward transmission captured nodes with high outgoing burden but insufficient entropy evidence for a branching label. We deliberately did not retain an ``introduction burst'' category: a newly observed node with no detected upstream link (in-degree zero) is dominated by graph sparsity in this dataset---most nodes have no incoming edge because cross-window sequence overlap rarely links clusters---so such nodes were categorised by their observed onward-spread phenotype rather than interpreted as introductions. These categories are heuristic review labels, not confirmed exposure-event classifications.
+
+\subsection*{Eligible background for association analyses}
+
+Downstream association analyses compared candidate nodes with a size-comparable non-candidate background. Because the smallest candidate node contained six sampled sequences, the eligible background was restricted to non-candidate nodes with cluster size at least six. The final eligible node frame contained 6,907 candidate nodes and 6,152 non-candidate background nodes. The binary outcome for all association models was candidate-node membership.
+
+Sequence-level composition models used sequence-window rows joined to eligible node status by cluster identifier. These models retained the same odd-window stride as the detection workflow. Node-level models used eligible node rows directly.
+
+\subsection*{Composition and internal-mixing association models}
+
+Composition models tested whether sequences in candidate nodes differed from eligible background nodes by sex, age band, SIMD quintile, urban/rural class, and health board. Each predictor was fitted in a single-predictor model and then all composition predictors were fitted jointly. The primary adjustment set was surveillance-window fixed effects and clade fixed effects. Expanded models additionally adjusted for standardised datazone cumulative proportion sequenced, cumulative incidence per capita, seven-day test positivity, and log cumulative positive tests.
+
+Node-level internal-mixing models used entropy features for sex, age, SIMD quintile, urban/rural class, and health board. The primary features were null-model z-scores:
+\[
+	z = \frac{H_{\mathrm{obs}} - H_{\mathrm{null}}}{\sigma_{\mathrm{null}}},
+\]
+where the null mean and standard deviation were estimated for nodes of the same size within the same surveillance window. Odds ratios therefore represent the change in candidate odds per one null-model standard deviation increase in entropy. An observed-entropy sensitivity analysis used observed normalised entropy scaled per 0.1-unit increase.
+
+\subsection*{Policy and vaccination context analyses}
+
+Policy context was analysed at node level by grouping policy-period labels into six ordered eras: early restriction easing, autumn/winter restrictions, spring/summer 2021 easing, near-normal Delta, Omicron response, and post-restriction. Policy-era models did not include window fixed effects, because policy era is a calendar-time variable. The primary policy model adjusted for clade group plus window-level sequencing proportion and log positive-test volume; the expanded model added the datazone surveillance and epidemic-burden covariates. Numeric policy intensity was fitted as a separate single-exposure sensitivity.
+
+Vaccination context was analysed at sequence and node levels. Sequence-level vaccination composition models included prior vaccination status, dose category, booster status, days-since-vaccination category, and datazone cumulative vaccination-event coverage. Node-level models aggregated vaccination context within eligible nodes, including node proportion vaccinated, node proportion boosted, mean prior dose count, median days since vaccination, and mean datazone vaccination-event coverage. Age-conditional vaccination-mixing models quantified whether nodes were unusually mixed by vaccination status after conditioning on age-window structure, using both a continuous entropy z-score and ordered tertiles.
+
+\subsection*{Model fitting, inference, and sensitivity analyses}
+
+The primary fitting method was Firth-penalised logistic regression, chosen to reduce sparse-data and separation bias in high-dimensional fixed-effect models~\cite{Firth1993,Heinze2002}. The pipeline also supports binomial GLMs with cluster-robust standard errors and conditional logistic regression by window for smaller model frames. Before fitting each model, complete-case filtering was applied to the outcome, exposure, and adjustment variables. For fixed-effect window models, windows with no candidate/background variation were dropped and the dropped row and stratum counts were exported with the model results.
+
+Multiple testing was controlled using the Benjamini-Hochberg false-discovery-rate procedure within each model domain, model set, and predictor-set family~\cite{Benjamini1995}. Clade-stratified sensitivity analyses fitted the same model families within curated clade groups and removed clade from the adjustment set. Window-sensitivity models replaced fixed window effects with window-level surveillance adjustment. We interpreted single-predictor primary models as the main screening family, while expanded, joint, clade-stratified, policy, vaccination, and entropy-scale models were treated as robustness or context analyses.
+
+\section*{Supporting information}
+
+\paragraph*{S1 Fig.}
+{\bf Candidate cluster-size distribution.} The strongly right-skewed cluster-size distribution of candidate SSE nodes.
+
+\paragraph*{S2 Fig.}
+{\bf Candidate-node frequency over time.} Candidate share across surveillance windows and epidemic phases.
+
+\paragraph*{S3 Fig.}
+{\bf Within-window score components.} Candidate versus size-matched background distributions of the six percentile components underlying the candidate screen.
+
+\paragraph*{S4 Fig.}
+{\bf Individual demographic and node-mixing odds ratios.} Forest plots of demographic and entropy-based node-mixing associations with candidate status.
+
+\paragraph*{S5 Fig.}
+{\bf Policy-era context.} Descriptive candidate frequency and category composition across policy eras.
+
+\paragraph*{S6 Fig.}
+{\bf Vaccination context.} Vaccination summaries and age-conditional vaccination-mixing context for candidate and background nodes.
+
+\paragraph*{S7--S11 Fig.}
+{\bf Per-predictor mixing and composition breakdowns.} Candidate/background mixing-score distributions paired with observed category composition for sex (S7), age band (S8), SIMD quintile (S9), urban/rural class (S10), and health board (S11).
+
+\paragraph*{S12--S13 Fig.}
+{\bf Clade-stratified omnibus significance.} Wald significance heatmaps for composition (S12) and node-mixing (S13) predictors within major clade groups.
+
+\paragraph*{S14--S18 Fig.}
+{\bf Clade-stratified odds ratios.} Per-category odds-ratio heatmaps within clade groups for age band (S14), sex (S15), SIMD quintile (S16), urban/rural class (S17), and health board (S18).
+
+\paragraph*{S1--S6 Table.}
+{\bf Primary composition and node-mixing model results.} Wald tests, odds ratios, and fit statistics for composition (S1--S3) and node-mixing (S4--S6) models.
+
+\paragraph*{S7--S13 Table.}
+{\bf Clade-stratified association results.} Composition (S7) and node-mixing (S8) Wald summaries and per-predictor odds-ratio summaries for age band (S9), sex (S10), SIMD quintile (S11), urban/rural class (S12), and health board (S13) within clade groups; provided as machine-readable files.
+
+\bibliographystyle{plos2015}
+\bibliography{references}
+
+\end{document}

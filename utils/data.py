@@ -76,6 +76,72 @@ CLADE_PALETTE: dict[str, str] = {
     "Other": "#DDDDDD",
 }
 
+TEST_REASON_MAP = {
+    "symptomatic-citizen": "symptomatic_citizen",
+    "I have coronavirus symptoms": "symptomatic_citizen",
+    "I live~ work or study in a lockdown area with a coronavirus outbreak": "symptomatic_citizen",
+    "symptomatic-essential-worker": "symptomatic_essential_worker",
+    "Im an essential worker": "symptomatic_essential_worker",
+    "scotland-wales-keyworker": "symptomatic_essential_worker",
+    "wales-keyworker": "symptomatic_essential_worker",
+    "test-for-contact-tracing": "contact_tracing",
+    "test-for-contact-tracing-app": "contact_tracing",
+    "test-for-contact-self-referral": "contact_tracing",
+    "for-symptomatic-household-member": "contact_tracing",
+    "Ive been in contact with a person who has tested positive for coronavirus and Ive been asked to take a test by a contact tracer (Northern Ireland and Scotland)": "contact_tracing",
+    "Ive been in contact with a person who has tested positive for coronavirus and have since developed symptoms": "contact_tracing",
+    "confirmatory-positive-test": "confirmatory",
+    "confirmatory-other-reason": "confirmatory",
+    "confirmatory-test-unclear": "confirmatory",
+    "confirmatory-test-borders": "confirmatory",
+    "told-to-order-repeat-test": "confirmatory",
+    "self-isolation-support-grant": "isolation_scheme",
+    "isolation-testing-home": "isolation_scheme",
+    "isolation-testing-facility": "isolation_scheme",
+    "gp-healthcare-request": "clinical",
+    "antiviral-order": "clinical",
+    "dental-patient-testing": "clinical",
+    "I have been told to have a test before I go into hospital~ for example~ for surgery": "clinical",
+    "zoe-symptom-study": "surveillance_research",
+    "contact-testing-study": "surveillance_research",
+    "events-research-programme": "surveillance_research",
+    "serial-testing": "surveillance_research",
+    "ntrg-member": "surveillance_research",
+    "local-council-request": "local_outbreak",
+    "attended-outbreak-venue": "local_outbreak",
+    "community-testing": "local_outbreak",
+    "scotland-university": "local_outbreak",
+    "wales-university": "local_outbreak",
+    "green-traveller": "travel",
+    "other": "other",
+    "Other": "other",
+    "none": "other",
+    "do-not-know": "other",
+    "general-cta-referral": "other",
+    "personal-assistant": "other",
+    "Im a visiting professional": "other",
+    "asymptomatic-home-order": "other",
+}
+
+POLICY_ERA_BY_PERIOD = {
+    "E0": "early_restriction_easing",
+    "L1": "early_restriction_easing",
+    "P1": "early_restriction_easing",
+    "P2": "early_restriction_easing",
+    "P3": "early_restriction_easing",
+    "T1": "autumn_winter_restrictions",
+    "F5": "autumn_winter_restrictions",
+    "L2": "autumn_winter_restrictions",
+    "SL": "spring_summer_2021_easing",
+    "L3": "spring_summer_2021_easing",
+    "L21": "spring_summer_2021_easing",
+    "L0": "spring_summer_2021_easing",
+    "NN": "near_normal_delta",
+    "OM": "omicron_response",
+    "FE": "omicron_response",
+    "PR": "post_restriction",
+}
+
 
 def repo_root(start: Path | None = None) -> Path:
     """Walk up from *start* until ``config.yaml`` is found."""
@@ -335,7 +401,7 @@ def load_analysis_columns(
     "collection_date", "datazone", "dz_xcoord", "dz_ycoord", "sex",
     "is_female", "age_band", "age_midpoint", "is_vaccinated",
     "vacc_dose_number", "vacc_date_prior", "vacc_product_name",
-    "vacc_booster", "days_since_vaccination", "s_gene_status",
+    "vacc_booster", "days_since_vaccination", "test_reason",
     "is_reinfection", "pango_lineage", "clade", "who_voc", "nextclade_qc",
     "dz_population", "dz_working_age_population", "dz_area_km2",
     "dz_population_density", "dz_simd_rank", "dz_simd_quintile",
@@ -417,6 +483,22 @@ def load_analysis_columns(
 
     if add_policy:
         df = attach_period(df, "collection_date")
+        df["policy_era"] = df["policy_period"].map(
+            POLICY_ERA_BY_PERIOD).fillna(df["policy_period"])
+    
+    if "test_reason" in df.columns:
+        df["test_reason"] = df["test_reason"].replace(TEST_REASON_MAP).fillna("other")
+
+    fill_values = {
+        "is_vaccinated": 0.0,
+        "days_since_vaccination": -1,
+        "vacc_booster": 0,
+        "who_voc": "Other/Non-VOC",
+    }
+
+    for col, value in fill_values.items():
+        if col in df.columns:
+            df[col] = df[col].fillna(value)
 
     return df
 
