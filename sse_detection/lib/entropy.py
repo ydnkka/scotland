@@ -33,13 +33,16 @@ __all__ = [
     "cluster_age_conditional_binary_entropy",
     "onward_edge_entropy",
     "observed_mixing_entropy_scales",
+    "add_observed_mixing_entropy_scales",
     "add_mixing_tertiles",
     "vaccination_mixing_features",
+    "add_vaccination_mixing_features",
     "DEFAULT_MIXING_FEATURES",
     "OBSERVED_MIXING_FEATURES",
     "OBSERVED_MIXING_FEATURES_X10",
     "MIXING_TERTILE_FEATURES",
     "MIXING_TERTILE_ORDER",
+    "VACCINATION_MIXING_TERTILE_ORDER",
 ]
 
 
@@ -47,6 +50,8 @@ DEFAULT_MIXING_FEATURES = [
     "sex_entropy_z",
     "age_entropy_z",
     "simd_entropy_z",
+    "datazone_entropy_z",
+    "local_authority_entropy_z",
     "urban_rural_entropy_z",
     "health_board_entropy_z",
     "vaccination_entropy_z",
@@ -56,6 +61,8 @@ OBSERVED_MIXING_FEATURES = [
     "sex_entropy_obs",
     "age_entropy_obs",
     "simd_entropy_obs",
+    "datazone_entropy_obs",
+    "local_authority_entropy_obs",
     "urban_rural_entropy_obs",
     "health_board_entropy_obs",
     "vaccination_entropy_obs",
@@ -69,6 +76,7 @@ MIXING_TERTILE_ORDER = [
     "as_expected",
     "more_mixed",
 ]
+VACCINATION_MIXING_TERTILE_ORDER = MIXING_TERTILE_ORDER
 
 
 # --------------------------------------------------------------------------- #
@@ -714,6 +722,86 @@ def observed_mixing_entropy_scales(
         if feature in cluster_stats.columns:
             out[scaled_feature] = cluster_stats[feature].astype(float) * multiplier
     return out
+
+
+def add_observed_mixing_entropy_scales(
+    cluster_stats: pd.DataFrame,
+    *,
+    cluster_col: str = "cluster_id",
+    features: list[str] | None = None,
+    scaled_features: list[str] | None = None,
+    multiplier: float = 10,
+) -> pd.DataFrame:
+    """Return ``cluster_stats`` with observed-entropy scale columns attached."""
+    scaled = observed_mixing_entropy_scales(
+        cluster_stats,
+        cluster_col=cluster_col,
+        features=features,
+        scaled_features=scaled_features,
+        multiplier=multiplier,
+    )
+    out = cluster_stats.copy()
+    new_cols = [col for col in scaled.columns if col != cluster_col]
+    for col in new_cols:
+        out[col] = scaled[col]
+    return out
+
+
+def add_vaccination_mixing_features(
+    node_data: pd.DataFrame,
+    sequence_data: pd.DataFrame,
+    *,
+    cluster_col: str = "cluster_id",
+    vaccination_col: str = "is_vaccinated",
+    window_col: str = "window_idx",
+    age_col: str = "age_band",
+    n_random: int = 1000,
+    random_state: int = 42,
+) -> pd.DataFrame:
+    """Attach age-conditional vaccination-mixing features to node rows."""
+    required_node = {cluster_col}
+    missing_node = sorted(required_node - set(node_data.columns))
+    if missing_node:
+        raise KeyError(f"Missing vaccination node columns: {missing_node}")
+
+    required_seq = {cluster_col, vaccination_col, window_col, age_col}
+    missing_seq = sorted(required_seq - set(sequence_data.columns))
+    if missing_seq:
+        raise KeyError(f"Missing vaccination mixing columns: {missing_seq}")
+
+    seq = sequence_data.copy()
+    seq["_vaccination_mix_positive"] = (
+        pd.to_numeric(seq[vaccination_col], errors="coerce")
+        .fillna(0)
+        .gt(0)
+        .astype(int)
+    )
+    seq[age_col] = seq[age_col].astype("string").fillna("Missing")
+
+    stats = cluster_age_conditional_binary_entropy(
+        seq,
+        cluster_col=cluster_col,
+        binary_col="_vaccination_mix_positive",
+        window_col=window_col,
+        age_col=age_col,
+        n_random=n_random,
+        random_state=random_state,
+        prefix="vaccination_mix",
+    )
+    feature_cols = [
+        "vaccination_mix_n",
+        "vaccination_mix_prop_positive",
+        "vaccination_mix_entropy_obs",
+        "vaccination_mix_entropy_null_mean",
+        "vaccination_mix_entropy_null_sd",
+        "vaccination_mix_entropy_z",
+    ]
+    stats = stats.loc[:, [cluster_col, *feature_cols]].drop_duplicates(cluster_col)
+    stats["vaccination_mix_tertile"] = _ordered_tertile(
+        stats["vaccination_mix_entropy_z"],
+        categories=VACCINATION_MIXING_TERTILE_ORDER,
+    )
+    return node_data.merge(stats, on=cluster_col, how="left")
 
 
 def _ordered_tertile(values: pd.Series, *, categories: list[str]) -> pd.Categorical:

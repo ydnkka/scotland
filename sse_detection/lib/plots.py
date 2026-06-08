@@ -38,43 +38,60 @@ from utils import (
 )
 
 from .palettes import (
-    BORDER,
-    DYNAMIC_ORDER,
-    GRAY,
-    GRAY_LIGHT,
-    GRID,
-    INK,
-    INK_SOFT,
-    ROLE_ORDER,
-    ROLE_PALETTE,
-    ORANGE_DARK,
-    OR_DIVERGING,
     BACKGROUND_COLOR,
     BACKGROUND_DARK,
     CANDIDATE_COLOR,
     CANDIDATE_DARK,
-    SSE_CATEGORY_ORDER,
-    SSE_CATEGORY_PALETTE,
-    TEAL_DARK,
-    WARM_SEQ,
 )
-from .clade_association_figures import (
-    make_clade_association_figures,
-    make_clade_association_outputs,
-    make_clade_association_summary_tables,
+from .io import HIGH_PRIORITY_CANDIDATE_TIERS
+
+BORDER = "#D0D7DE"
+GRAY = "#808080"
+GRAY_LIGHT = "#6C757D"
+GRID = "#E9ECEF"
+INK = "#212529"
+INK_SOFT = "#495057"
+ORANGE_DARK = "#D95F02"
+OR_DIVERGING = plt.get_cmap("RdBu_r")
+TEAL_DARK = "#007C89"
+WARM_SEQ = plt.get_cmap("YlOrBr")
+
+SSE_SIGNATURE_ORDER = ["burst", "burden", "burst+burden"]
+SSE_SIGNATURE_PALETTE = {
+    "burst": CANDIDATE_COLOR,
+    "burden": TEAL_DARK,
+    "burst+burden": ORANGE_DARK,
+}
+
+
+def _missing_optional_helper(name: str):
+    def _missing(*args, **kwargs):
+        raise ImportError(
+            f"{name} is not available in this checkout; the optional report "
+            "figure module that defines it is not present."
+        )
+
+    return _missing
+
+
+make_clade_association_figures = _missing_optional_helper(
+    "make_clade_association_figures"
 )
-from .policy_figures import (
-    make_policy_figures,
-    plot_policy_report,
+make_clade_association_outputs = _missing_optional_helper(
+    "make_clade_association_outputs"
 )
-from .vaccination_figures import (
-    make_vaccination_figures,
-    plot_vaccination_report,
+make_clade_association_summary_tables = _missing_optional_helper(
+    "make_clade_association_summary_tables"
 )
+make_policy_figures = _missing_optional_helper("make_policy_figures")
+plot_policy_report = _missing_optional_helper("plot_policy_report")
+make_vaccination_figures = _missing_optional_helper("make_vaccination_figures")
+plot_vaccination_report = _missing_optional_helper("plot_vaccination_report")
 
 
 __all__ = [
     "plot_cluster_size_distribution",
+    "plot_meta_cluster_subgraph",
     "plot_role_dynamic_heatmap",
     "plot_candidate_rate_over_time",
     "plot_core_metric_space",
@@ -142,6 +159,323 @@ def _pretty_role_dynamic(value: Any, label_map: Mapping[str, str] | None = None)
     if text in _ROLE_DYNAMIC_LABELS:
         return _ROLE_DYNAMIC_LABELS[text]
     return text.replace("_", " ").strip().capitalize()
+
+
+def _candidate_mask(
+    df: pd.DataFrame,
+    *,
+    sse_col: str = "sse_candidate",
+) -> pd.Series:
+    """Return a boolean candidate mask from current or compatibility columns."""
+    if sse_col in df.columns:
+        return df[sse_col].fillna(False).astype(bool)
+    if "candidate_tier" in df.columns:
+        return df["candidate_tier"].isin(HIGH_PRIORITY_CANDIDATE_TIERS)
+    raise KeyError(f"data needs '{sse_col}' or 'candidate_tier'")
+
+
+def _with_candidate_status(
+    df: pd.DataFrame,
+    *,
+    sse_col: str = "sse_candidate",
+) -> pd.DataFrame:
+    out = df.copy()
+    mask = _candidate_mask(out, sse_col=sse_col)
+    out["_sse_candidate_mask"] = mask
+    out["_sse_status"] = np.where(mask, "Candidate", "Background")
+    return out
+
+
+def _signature_series(df: pd.DataFrame) -> pd.Series:
+    if "sse_signature" in df.columns:
+        signature = df["sse_signature"].astype("string").fillna("none")
+    elif "axes_fired" in df.columns:
+        signature = df["axes_fired"].astype("string").fillna("none")
+    elif "sse_category" in df.columns:
+        signature = df["sse_category"].astype("string").fillna("none")
+    else:
+        signature = pd.Series("none", index=df.index, dtype="string")
+    return signature.mask(~_candidate_mask(df), "none")
+
+
+def _signature_order(values: Iterable[Any]) -> list[str]:
+    observed = [str(v) for v in pd.Series(list(values)).dropna().unique()]
+    ordered = [v for v in SSE_SIGNATURE_ORDER if v in observed]
+    ordered.extend(sorted(set(observed) - set(ordered) - {"none"}))
+    return ordered
+
+
+def _signature_color(value: Any) -> str:
+    return SSE_SIGNATURE_PALETTE.get(str(value), CANDIDATE_COLOR)
+
+
+def plot_meta_cluster_subgraph(
+    node_stats: pd.DataFrame,
+    edge_table: pd.DataFrame,
+    meta_cluster_id: Any,
+    *,
+    meta_col: str = "meta_cluster_id",
+    sse_col: str = "sse_candidate",
+    max_nodes: int | None = 250,
+    annotate_top_n: int = 0,
+    rankdir: str = "LR",
+    layout_method: str = "sugiyama",
+    jitter: float | tuple[float, float] = 0.08,
+    random_state: int | None = 42,
+    edge_weight_col: str = "n_shared_sequences",
+    scale_edges_by_weight: bool = True,
+    edge_curve: float = 0.16,
+    width: WIDTHS = "double",
+    width_in: float | None = None,
+    height_in: float = 5.0,
+    context: CONTEXTS = "paper",
+    font_scale: float = 1.0,
+) -> Figure:
+    """Draw one connected-component subgraph with igraph and binary SSE status.
+
+    Nodes are coloured only by candidate/background status. ``layout_method``
+    can be ``"sugiyama"`` for igraph's layered DAG layout or ``"tree"`` /
+    ``"dot"`` for Graphviz's tree-like hierarchical layout via pygraphviz.
+    ``jitter`` applies a deterministic two-dimensional layout perturbation to
+    reduce overlap. Pass a scalar to use the same relative spread on x and y, or
+    ``(x_jitter, y_jitter)`` to tune horizontal and vertical spread separately.
+    Edge weight defaults to ``n_shared_sequences``, the count of sequence IDs
+    shared across adjacent-window clusters; it is overlap support, not observed
+    transmission. When ``max_nodes`` is set and the component is larger,
+    candidates are retained first and the remaining slots are filled by largest
+    background nodes.
+    """
+    if "cluster_id" not in node_stats.columns:
+        raise KeyError("node_stats needs 'cluster_id'")
+    if meta_col not in node_stats.columns:
+        if "connected_components" in node_stats.columns:
+            meta_col = "connected_components"
+        else:
+            raise KeyError(f"node_stats needs '{meta_col}' or 'connected_components'")
+    if not {"source", "target"}.issubset(edge_table.columns):
+        raise KeyError("edge_table needs 'source' and 'target'")
+
+    nodes = node_stats.loc[node_stats[meta_col].eq(meta_cluster_id)].copy()
+    if nodes.empty:
+        raise ValueError(f"No nodes found for {meta_col}={meta_cluster_id!r}")
+
+    nodes = _with_candidate_status(nodes, sse_col=sse_col)
+    if max_nodes is not None and len(nodes) > max_nodes:
+        sort_cols = ["_sse_candidate_mask"]
+        ascending = [False]
+        if "cluster_size" in nodes.columns:
+            sort_cols.append("cluster_size")
+            ascending.append(False)
+        if "window_idx" in nodes.columns:
+            sort_cols.append("window_idx")
+            ascending.append(True)
+        nodes = nodes.sort_values(sort_cols, ascending=ascending).head(max_nodes)
+
+    node_ids = nodes["cluster_id"].astype(str).tolist()
+    node_id_set = set(node_ids)
+    edges = edge_table.loc[
+        edge_table["source"].astype(str).isin(node_id_set)
+        & edge_table["target"].astype(str).isin(node_id_set)
+    ].copy()
+    edges["source"] = edges["source"].astype(str)
+    edges["target"] = edges["target"].astype(str)
+
+    import igraph as ig
+
+    graph = ig.Graph(directed=True)
+    graph.add_vertices(node_ids)
+    edge_pairs = list(edges[["source", "target"]].itertuples(index=False, name=None))
+    if edge_pairs:
+        graph.add_edges(edge_pairs)
+        if edge_weight_col in edges.columns:
+            graph.es["weight"] = pd.to_numeric(
+                edges[edge_weight_col],
+                errors="coerce",
+            ).fillna(1).clip(lower=1).to_numpy(dtype=float)
+        else:
+            graph.es["weight"] = np.ones(len(edge_pairs), dtype=float)
+
+    node_lookup = nodes.assign(cluster_id=nodes["cluster_id"].astype(str)).set_index(
+        "cluster_id"
+    )
+    graph.vs["candidate"] = [
+        bool(node_lookup.loc[name, "_sse_candidate_mask"]) for name in graph.vs["name"]
+    ]
+
+    if "window_idx" in node_lookup.columns:
+        windows = pd.Series( pd.to_numeric(
+            node_lookup.loc[graph.vs["name"], "window_idx"], errors="coerce"
+        ))
+        layers = pd.factorize(windows.fillna(windows.min()).to_numpy(), sort=True)[0]
+    else:
+        layers = None
+
+    layout_method = layout_method.lower()
+    if layout_method not in {"sugiyama", "tree", "dot", "graphviz", "circle"}:
+        raise ValueError(
+            "layout_method must be one of 'sugiyama', 'tree', 'dot', "
+            "'graphviz', or 'circle'."
+        )
+
+    if graph.vcount() == 1:
+        coords = np.array([[0.0, 0.0]])
+    elif layout_method in {"tree", "dot", "graphviz"}:
+        import pygraphviz as pgv
+
+        ag = pgv.AGraph(directed=True, strict=False, rankdir=rankdir.upper())
+        ag.graph_attr.update(splines="true", overlap="false")
+        for name in node_ids:
+            ag.add_node(name)
+        for source, target in edge_pairs:
+            ag.add_edge(source, target)
+        ag.layout(prog="dot")
+        coords = np.asarray(
+            [
+                [
+                    float(value)
+                    for value in str(getattr(ag.get_node(name), "attr", {}).get("pos")).split(",")[:2]
+                ]
+                for name in graph.vs["name"]
+            ],
+            dtype=float,
+        )
+    elif layout_method == "circle":
+        layout = graph.layout_circle()
+        coords = np.asarray(layout.coords, dtype=float)
+    elif graph.ecount() > 0:
+        layout = graph.layout_sugiyama(layers=layers)
+        coords = np.asarray(layout.coords, dtype=float)
+    else:
+        layout = graph.layout_circle()
+        coords = np.asarray(layout.coords, dtype=float)
+
+    horizontal = rankdir.upper() in {"LR", "RL"}
+    if layout_method == "sugiyama" and horizontal:
+        coords = coords[:, [1, 0]]
+    coords = coords - coords.mean(axis=0, keepdims=True)
+
+    if isinstance(jitter, tuple):
+        if len(jitter) != 2:
+            raise ValueError("jitter tuple must be (x_jitter, y_jitter).")
+        jitter_xy = np.asarray(jitter, dtype=float)
+    else:
+        jitter_xy = np.asarray([float(jitter), float(jitter)], dtype=float)
+    if np.any(jitter_xy < 0):
+        raise ValueError("jitter values must be non-negative.")
+
+    if np.any(jitter_xy > 0) and graph.vcount() > 1:
+        rng = np.random.default_rng(random_state)
+        span = np.ptp(coords, axis=0)
+        fallback_span = max(float(np.nanmax(span)), 1.0)
+        axis_scale = np.where(span > 0, span, fallback_span)
+        coords += rng.normal(
+            0.0,
+            jitter_xy * axis_scale,
+            size=(graph.vcount(), 2),
+        )
+
+    fig, ax = new_figure(
+        width=width,
+        width_in=width_in,
+        height_in=height_in,
+        context=context,
+        font_scale=font_scale,
+    )
+
+    for edge in graph.es:
+        source, target = edge.tuple
+        x0, y0 = coords[source]
+        x1, y1 = coords[target]
+        weight = float(edge["weight"]) if "weight" in edge.attributes() else 1.0
+        if scale_edges_by_weight and graph.ecount() > 0:
+            weights = np.asarray(graph.es["weight"], dtype=float)
+            max_weight = max(float(np.nanmax(weights)), 1.0)
+            width_scale = np.sqrt(weight / max_weight)
+            edge_lw = 0.45 + 1.8 * width_scale
+            edge_alpha = 0.18 + 0.34 * width_scale
+        else:
+            edge_lw = 0.7
+            edge_alpha = 0.32
+        curve_sign = -1 if edge.index % 2 else 1
+        connectionstyle = f"arc3,rad={curve_sign * edge_curve:.3f}"
+        ax.annotate(
+            "",
+            xy=(x1, y1),
+            xytext=(x0, y0),
+            arrowprops={
+                "arrowstyle": "-|>",
+                "color": GRAY_LIGHT,
+                "lw": edge_lw,
+                "alpha": edge_alpha,
+                "shrinkA": 4,
+                "shrinkB": 4,
+                "connectionstyle": connectionstyle,
+            },
+            zorder=1,
+        )
+
+    if "cluster_size" in node_lookup.columns:
+        sizes = pd.Series(pd.to_numeric(
+            node_lookup.loc[graph.vs["name"], "cluster_size"], errors="coerce"
+        )).fillna(1)
+        marker_sizes = 26 + 120 * np.sqrt(sizes / max(float(sizes.max()), 1.0))
+    else:
+        marker_sizes = np.full(graph.vcount(), 58.0)
+
+    candidate = np.asarray(graph.vs["candidate"], dtype=bool)
+    for mask, label, color, edge_color, zorder in [
+        (~candidate, "Background", BACKGROUND_COLOR, BACKGROUND_DARK, 2),
+        (candidate, "Candidate", CANDIDATE_COLOR, CANDIDATE_DARK, 3),
+    ]:
+        if not mask.any():
+            continue
+        ax.scatter(
+            coords[mask, 0],
+            coords[mask, 1],
+            s=np.asarray(marker_sizes)[mask],
+            c=color,
+            edgecolors=edge_color,
+            linewidths=0.45,
+            alpha=0.88,
+            label=f"{label} (n={int(mask.sum()):,})",
+            zorder=zorder,
+        )
+
+    if annotate_top_n > 0 and "cluster_size" in node_lookup.columns:
+        top_names = (
+            node_lookup["cluster_size"].sort_values(ascending=False).head(annotate_top_n)
+        ).index
+        coord_lookup = dict(zip(graph.vs["name"], coords))
+        for name in top_names:
+            if name not in coord_lookup:
+                continue
+            x, y = coord_lookup[name]
+            ax.text(x, y, str(name), fontsize="x-small", color=INK, zorder=4)
+
+    ax.set_title(f"{meta_col}: {meta_cluster_id} ({graph.vcount():,} nodes)")
+    ax.set_axis_off()
+    legend_handles, legend_labels = ax.get_legend_handles_labels()
+    if scale_edges_by_weight and graph.ecount() > 0:
+        weights = np.asarray(graph.es["weight"], dtype=float)
+        finite = weights[np.isfinite(weights)]
+        if finite.size:
+            for value in sorted(set([float(np.nanmin(finite)), float(np.nanmax(finite))])):
+                max_weight = max(float(np.nanmax(finite)), 1.0)
+                width_scale = np.sqrt(value / max_weight)
+                legend_handles.append(
+                    Line2D(
+                        [0],
+                        [0],
+                        color=GRAY_LIGHT,
+                        lw=0.45 + 1.8 * width_scale,
+                        alpha=0.55,
+                    )
+                )
+                legend_labels.append(f"{edge_weight_col}={value:g}")
+    ax.legend(legend_handles, legend_labels, loc="upper left", frameon=False)
+    plt.close(fig)
+    return fig
+
 
 def plot_cluster_size_distribution(
     df: pd.DataFrame,
@@ -327,23 +661,24 @@ def plot_role_dynamic_heatmap(
     context: CONTEXTS = "paper",
     font_scale: float = 1.0,
 ) -> Figure:
-    """Counts of ``sse_role`` x ``sse_onward_dynamic`` for SSE candidates.
+    """Counts of candidate signatures by review tier or burden status."""
+    d = candidates.copy()
+    d = d.loc[_candidate_mask(d)].copy()
+    if d.empty:
+        raise ValueError("No candidate rows available for signature heatmap.")
 
-    Cells are coloured on a log scale and annotated with raw counts.
-    """
-    role_order = [
-        r for r in ROLE_ORDER if r in candidates["sse_role"].dropna().unique()
-    ]
-    dyn_order = [
-        d
-        for d in DYNAMIC_ORDER
-        if d in candidates["sse_onward_dynamic"].dropna().unique()
-    ]
-    heat = (
-        pd.crosstab(candidates["sse_role"], candidates["sse_onward_dynamic"]).reindex(
-            index=role_order, columns=dyn_order, fill_value=0
-        )
-    ).T
+    d["sse_signature"] = _signature_series(d)
+    row_col = "candidate_tier" if "candidate_tier" in d.columns else "burden_status"
+    if row_col not in d.columns:
+        d[row_col] = "candidate"
+
+    row_order = [v for v in d[row_col].dropna().astype(str).unique()]
+    sig_order = _signature_order(d["sse_signature"])
+    heat = pd.crosstab(d[row_col].astype(str), d["sse_signature"].astype(str)).reindex(
+        index=row_order,
+        columns=sig_order,
+        fill_value=0,
+    )
     heat_plot = np.log10(heat + 1)
     heat_plot.index = [_pretty_role_dynamic(v, label_map) for v in heat_plot.index]  # type: ignore
     heat_plot.columns = [_pretty_role_dynamic(v, label_map) for v in heat_plot.columns]  # type: ignore
@@ -368,8 +703,8 @@ def plot_role_dynamic_heatmap(
         cbar_kws={"label": "Number of candidates [log10(n + 1)]"},
         ax=ax,
     )
-    ax.set_ylabel("Onward dynamic")
-    ax.set_xlabel("Node role")
+    ax.set_ylabel(_pretty_role_dynamic(row_col))
+    ax.set_xlabel("Detection signature")
     ax.tick_params(axis="x", rotation=35)
     ax.tick_params(axis="y", rotation=0)
 
@@ -388,31 +723,30 @@ def plot_candidate_rate_over_time(
     context: CONTEXTS = "paper",
     font_scale: float = 1.0,
 ) -> Figure:
-    """Per-window candidate rate, with category composition stacked underneath.
+    """Per-window candidate rate, with signature composition stacked underneath.
 
     Top panel: stacked % of unique sequences present in each retained window,
     where a sequence is candidate-associated if it appears in at least one
     candidate SSE node across the overlapping windows. Bottom panel: stacked
-    raw counts of candidate nodes by compact ``sse_category``.
+    raw counts of candidate nodes by ``sse_signature``.
     """
     required = {
         "cluster_id",
         "window_idx",
         "wn_mid_date",
-        "sse_candidate",
-        "sse_category",
     }
     missing = required.difference(node_stats.columns)
     if missing:
         raise KeyError(f"node_stats needs {sorted(missing)}")
 
-    plot_df = node_stats.copy()
-    candidate_mask = plot_df["sse_candidate"].fillna(False).astype(bool)
+    plot_df = _with_candidate_status(node_stats)
+    plot_df["sse_signature"] = _signature_series(plot_df)
+    candidate_mask = plot_df["_sse_candidate_mask"]
     candidate_nodes = set(plot_df.loc[candidate_mask, "cluster_id"].dropna())
 
     if sequence_df is None:
         sequence_df = load_analysis_columns(
-            ["window_id", "window_idx", "wn_mid_date", "cluster_id"],
+            ["window_id", "window_idx", "wn_mid_date", "cluster_id", "sequence_id"],
             add_policy=False,
             window_stride=window_stride,
         )
@@ -476,23 +810,23 @@ def plot_candidate_rate_over_time(
         errors="coerce",
     )
 
-    category_counts = (
+    signature_counts = (
         plot_df.loc[candidate_mask]
-        .groupby(["wn_mid_date", "sse_category"], as_index=False)
+        .groupby(["wn_mid_date", "sse_signature"], as_index=False)
         .size()
         .rename(columns={"size": "n"})
     )
-    category_pivot = (
-        category_counts.pivot(index="wn_mid_date", columns="sse_category", values="n")
+    signature_pivot = (
+        signature_counts.pivot(
+            index="wn_mid_date",
+            columns="sse_signature",
+            values="n",
+        )
         .fillna(0)
         .sort_index()
     )
-    category_pivot = category_pivot.reindex(
-        columns=[
-            c
-            for c in SSE_CATEGORY_ORDER
-            if c != "not_sse_like" and c in category_pivot.columns
-        ],
+    signature_pivot = signature_pivot.reindex(
+        columns=_signature_order(signature_pivot.columns),
         fill_value=0,
     )
 
@@ -550,15 +884,12 @@ def plot_candidate_rate_over_time(
     )
 
     ax = axes[1]
-    if len(category_pivot.columns):
-        colors = [
-            SSE_CATEGORY_PALETTE.get(category, GRAY)
-            for category in category_pivot.columns
-        ]
+    if len(signature_pivot.columns):
+        colors = [_signature_color(signature) for signature in signature_pivot.columns]
         ax.stackplot(
-            category_pivot.index,
-            [category_pivot[c].to_numpy() for c in category_pivot.columns],
-            labels=[_pretty_role_dynamic(c) for c in category_pivot.columns],
+            signature_pivot.index,
+            [signature_pivot[c].to_numpy() for c in signature_pivot.columns],
+            labels=[_pretty_role_dynamic(c) for c in signature_pivot.columns],
             colors=colors,
             alpha=0.86,
         )
@@ -576,78 +907,92 @@ def plot_candidate_rate_over_time(
 def plot_core_metric_space(
     node_stats: pd.DataFrame,
     *,
+    x_col: str | None = None,
+    y_col: str | None = None,
     height_in: float = 4,
     context: CONTEXTS = "paper",
     font_scale: float = 1.0,
     min_size: int = 1,
 ) -> Figure:
-    """Scatter of core growth/novelty vs onward spread, faceted by candidate screen."""
+    """Scatter of local-burst vs onward-burden metrics by SSE status."""
     set_theme(
         context=context,
         font_scale=font_scale,
     )
 
-    plot_df = node_stats.loc[node_stats["cluster_size"].ge(min_size)].copy()
-    plot_df["candidate_screen"] = np.where(
-        plot_df["sse_candidate"].fillna(False).astype(bool),
-        "yes",
-        "no",
+    plot_df = _with_candidate_status(
+        node_stats.loc[node_stats["cluster_size"].ge(min_size)].copy()
     )
+    x_candidates = [
+        "burst_score_null_z",
+        "burst_score",
+        "sampling_adjusted_excess_size",
+        "log_cluster_size",
+    ]
+    y_candidates = [
+        "burden_score_null_z",
+        "burden_score",
+        "log_new_downstream_burden_ratio",
+        "log_supported_new_downstream_burden_ratio",
+    ]
+    x_col = x_col or next((col for col in x_candidates if col in plot_df.columns), None)
+    y_col = y_col or next(
+        (
+            col
+            for col in y_candidates
+            if col in plot_df.columns and plot_df[col].notna().sum() >= 5
+        ),
+        None,
+    )
+    if x_col is None or y_col is None:
+        raise ValueError("No usable burst/burden metric columns are present.")
+    plot_df = plot_df.dropna(subset=[x_col, y_col]).copy()
 
     clip_hi = plot_df["cluster_size"].quantile(0.995)
     plot_df["marker_size"] = np.sqrt(
         plot_df["cluster_size"].clip(lower=1, upper=clip_hi)
     )
 
-    g = sns.relplot(
-        data=plot_df,
-        x="local_amplification_score",
-        y="onward_dissemination_score",
-        size="marker_size",
-        hue="sse_role",
-        palette=ROLE_PALETTE,
-        col="candidate_screen",
-        col_order=["no", "yes"],
-        kind="scatter",
-        alpha=0.3,
-        sizes=(12, 220),
-        height=height_in,
-        facet_kws={"sharex": True, "sharey": True},
-        legend=False,
+    fig, ax = new_figure(
+        width="double",
+        height_in=height_in,
+        context=context,
+        font_scale=font_scale,
     )
-
-    g.set_axis_labels("Local growth/novelty score", "Onward spread score")
-    g.set_titles("Candidate screen: {col_name}")
-
-    handles = [
-        Line2D(
-            [0],
-            [0],
-            marker="o",
-            linestyle="",
-            label=role.replace("_", " ").capitalize(),
-            markerfacecolor=ROLE_PALETTE[role],
-            markeredgecolor=ROLE_PALETTE[role],
-            markersize=7,
-            alpha=1,
+    for status, color, edgecolor, alpha, zorder in [
+        ("Background", BACKGROUND_COLOR, BACKGROUND_DARK, 0.28, 1),
+        ("Candidate", CANDIDATE_COLOR, CANDIDATE_DARK, 0.82, 2),
+    ]:
+        sub = plot_df.loc[plot_df["_sse_status"].eq(status)]
+        if sub.empty:
+            continue
+        size_min = plot_df["marker_size"].min()
+        size_max = plot_df["marker_size"].max()
+        if size_min == size_max:
+            point_sizes = np.full(len(sub), 60.0)
+        else:
+            point_sizes = np.interp(
+                sub["marker_size"],
+                (size_min, size_max),
+                (12, 180),
+            )
+        ax.scatter(
+            sub[x_col],
+            sub[y_col],
+            s=point_sizes,
+            c=color,
+            edgecolors=edgecolor,
+            linewidths=0.25,
+            alpha=alpha,
+            label=f"{status} (n={len(sub):,})",
+            zorder=zorder,
         )
-        for role in plot_df["sse_role"].dropna().unique()
-        if role in ROLE_PALETTE
-    ]
 
-    g.figure.legend(
-        handles=handles,
-        ncol=3,
-        title="Graph role",
-        loc="lower center",
-        bbox_to_anchor=(0.5, -0.15),
-        frameon=False,
-    )
-
-    add_panel_labels(list(g.axes.flat))
-
-    plt.close(g.figure)
-    return g.figure
+    ax.set_xlabel(_pretty_role_dynamic(x_col))
+    ax.set_ylabel(_pretty_role_dynamic(y_col))
+    ax.legend(frameon=False, loc="best")
+    plt.close(fig)
+    return fig
 
 
 def plot_composite_distributions(
@@ -655,11 +1000,15 @@ def plot_composite_distributions(
     *,
     columns: Iterable[tuple[str, str]] = (
         ("log_cluster_size_pct_window", "Cluster size"),
+        ("sampling_adjusted_excess_size_pct_window", "Context excess size"),
         ("log_excess_over_upstream_pct_window", "Excess over upstream"),
-        ("novelty_fraction_pct_window", "Novelty fraction"),
-        ("out_degree_pct_window", "Outgoing branches"),
-        ("out_strength_pct_window", "Outgoing burden"),
-        ("onward_expansion_proxy_pct_window", "Onward expansion"),
+        ("log_new_downstream_burden_ratio_pct_window", "New onward burden ratio"),
+        (
+            "log_supported_new_downstream_burden_ratio_pct_window",
+            "Supported onward burden ratio",
+        ),
+        ("burst_score", "Burst score"),
+        ("burden_score", "Burden score"),
     ),
     nrows: int = 2,
     ncols: int = 3,
@@ -672,13 +1021,10 @@ def plot_composite_distributions(
 ) -> Figure:
     """Overlaid KDE of score components for candidates vs background.
 
-    By default, the top row shows the three percentile components of
-    ``local_amplification_score``. The bottom row shows three main percentile
-    components of ``onward_dissemination_score``: outgoing branch count,
-    outgoing burden, and onward expansion.
+    Defaults use the current two-axis detector components: local burst,
+    upstream excess, and onward-burden ratios/scores.
     """
-    if "sse_candidate" not in node_stats.columns:
-        raise KeyError("node_stats needs 'sse_candidate'")
+    node_stats = _with_candidate_status(node_stats)
 
     columns = [s for s in columns if s[0] in node_stats.columns]
     if not columns:
@@ -698,12 +1044,12 @@ def plot_composite_distributions(
 
     background_label = (
         f"Background (n≥{min_size} sequences, "
-        f"{len(node_stats[~node_stats['sse_candidate'] & node_stats['cluster_size'].ge(min_size)]):,} nodes)"
+        f"{len(node_stats[~node_stats['_sse_candidate_mask'] & node_stats['cluster_size'].ge(min_size)]):,} nodes)"
     )
 
     candidate_label = (
         f"Candidate (n≥{min_size} sequences, "
-        f"{len(node_stats[node_stats['sse_candidate'] & node_stats['cluster_size'].ge(min_size)]):,} nodes)"
+        f"{len(node_stats[node_stats['_sse_candidate_mask'] & node_stats['cluster_size'].ge(min_size)]):,} nodes)"
     )
 
     axes = axes.flatten()
@@ -715,11 +1061,14 @@ def plot_composite_distributions(
                 BACKGROUND_COLOR,
                 (
                     ~node_stats["sse_candidate"]
-                    & node_stats["cluster_size"].ge(min_size)
+                    if "sse_candidate" in node_stats.columns
+                    else ~node_stats["_sse_candidate_mask"]
                 ),
             ),
-            ("candidate", CANDIDATE_COLOR, node_stats["sse_candidate"]),
+            ("candidate", CANDIDATE_COLOR, node_stats["_sse_candidate_mask"]),
         ]:
+            if isinstance(mask, pd.Series):
+                mask = mask & node_stats["cluster_size"].ge(min_size)
             values = node_stats[mask][col[0]].dropna().to_numpy()
             if len(values) < 5:
                 continue
@@ -792,7 +1141,9 @@ def plot_socio_demo_breakdown(
     and the distribution of class-label frequencies for candidate vs background nodes.
     """
 
-    node_stats = node_stats.loc[node_stats["cluster_size"].ge(min_size)].copy()
+    node_stats = _with_candidate_status(
+        node_stats.loc[node_stats["cluster_size"].ge(min_size)].copy()
+    )
 
     fig, axes = new_figure(
         ncols=2,
@@ -807,8 +1158,8 @@ def plot_socio_demo_breakdown(
     ax = axes[0]
 
     for label, color, mask in [
-        ("background", BACKGROUND_COLOR, ~node_stats["sse_candidate"]),
-        ("candidate", CANDIDATE_COLOR, node_stats["sse_candidate"]),
+        ("background", BACKGROUND_COLOR, ~node_stats["_sse_candidate_mask"]),
+        ("candidate", CANDIDATE_COLOR, node_stats["_sse_candidate_mask"]),
     ]:
         values = node_stats[mask][score].dropna().to_numpy()
 
@@ -831,6 +1182,11 @@ def plot_socio_demo_breakdown(
     ax.legend(loc="best", frameon=False)
 
     ax = axes[1]
+    if col not in node_stats.columns:
+        ax.set_visible(False)
+        add_panel_labels([axes[0]])
+        plt.close(fig)
+        return fig
 
     def _parse_freq_counts(s: str):
         """
@@ -867,7 +1223,7 @@ def plot_socio_demo_breakdown(
     records = []
 
     for _, row in node_stats.iterrows():
-        candidate = row["sse_candidate"]
+        candidate = row["_sse_candidate_mask"]
 
         for q, n in _parse_freq_counts(row[col]):
             records.append(

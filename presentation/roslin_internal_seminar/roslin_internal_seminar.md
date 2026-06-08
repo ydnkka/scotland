@@ -35,7 +35,7 @@ The Roslin Institute, University of Edinburgh<br>
 <div class="logo-strip">
   <img src="../logos/uoe/The Roslin Institute logo [WHITE].png" alt="Roslin logo" class="logo">
   <!-- <img src="../logos/uoe/The University of Edinburgh logo [WHITE].png" alt="University of Edinburgh logo" class="logo"> -->
-  <img src="../logos/wellcome/wellcome-logo-white.png" alt="Wellcome logo" class="logo">
+  <img src="../logos/wellcome/ohmd-welcome-black.jpg" alt="Wellcome logo" class="logo">
 </div>
 
 <div class="title-date">
@@ -401,7 +401,7 @@ Wellcome Trust funding
 <div class="ack-logo-strip">
   <img src="../logos/uoe/The Roslin Institute logo [WHITE].png" alt="Roslin logo" class="logo">
   <!-- <img src="../logos/uoe/The University of Edinburgh logo [WHITE].png" alt="University of Edinburgh logo" class="logo"> -->
-  <img src="../logos/wellcome/wellcome-logo-white.png" alt="Wellcome logo" class="logo">
+  <img src="../logos/wellcome/ohmd-welcome-black.jpg" alt="Wellcome logo" class="logo">
   <img src="../logos/others/New_COG-UK_logo.jpg" alt="COG-UK logo" class="logo">
   <img src="../logos/others/Public_Health_Scotland_logo.jpg" alt="Public Health Scotland logo" class="logo">
 </div>

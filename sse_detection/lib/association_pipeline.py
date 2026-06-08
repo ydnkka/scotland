@@ -21,7 +21,7 @@ from .entropy import (
     add_observed_mixing_entropy_scales,
     add_vaccination_mixing_features,
 )
-from .io import load_sse_outputs
+from .io import HIGH_PRIORITY_CANDIDATE_TIERS, load_sse_outputs
 from .regression import (
     AssociationModel,
     bh_adjust,
@@ -70,6 +70,7 @@ __all__ = [
     "add_vaccination_node_features",
     "default_model_sets",
     "load_association_frames",
+    "prepare_node_stats_for_association",
     "run_association_pipeline",
     "run_main_association_analysis",
     "run_policy_analysis",
@@ -504,7 +505,7 @@ def add_vaccination_composition_features(data: pd.DataFrame) -> pd.DataFrame:
         np.select(
             [dose.le(0), dose.eq(1), dose.eq(2), dose.ge(3)],
             ["0", "1", "2", "3+"],
-            default=None,
+            default="",
         ),
         categories=["0", "1", "2", "3+"],
         ordered=True,
@@ -520,7 +521,7 @@ def add_vaccination_composition_features(data: pd.DataFrame) -> pd.DataFrame:
                 vaccinated & booster.eq(1),
             ],
             ["unvaccinated", "not_booster", "booster"],
-            default=None,
+            default="",
         ),
         categories=["unvaccinated", "not_booster", "booster"],
         ordered=True,
@@ -537,7 +538,7 @@ def add_vaccination_composition_features(data: pd.DataFrame) -> pd.DataFrame:
                 vaccinated & days.ge(180),
             ],
             ["unvaccinated", "0-13", "14-89", "90-179", "180+"],
-            default=None,
+            default="",
         ),
         categories=["unvaccinated", "0-13", "14-89", "90-179", "180+"],
         ordered=True,
@@ -632,6 +633,46 @@ def default_model_sets(
     }
 
 
+def prepare_node_stats_for_association(node_stats: pd.DataFrame) -> pd.DataFrame:
+    """Normalise current detector outputs to the association-frame contract."""
+    out = node_stats.copy()
+
+    if "cluster_id" not in out.columns:
+        raise KeyError("node_stats needs 'cluster_id'")
+    if "cluster_size" not in out.columns:
+        raise KeyError("node_stats needs 'cluster_size'")
+
+    if "candidate_tier" in out.columns:
+        high_priority = out["candidate_tier"].isin(HIGH_PRIORITY_CANDIDATE_TIERS)
+    elif "sse_candidate" in out.columns:
+        high_priority = out["sse_candidate"].fillna(False).astype(bool)
+    else:
+        raise KeyError("node_stats needs either 'candidate_tier' or 'sse_candidate'")
+
+    out["sse_candidate"] = high_priority.astype(bool)
+
+    if "axes_fired" in out.columns:
+        signature = out["axes_fired"].astype("string").fillna("none")
+    elif "sse_category" in out.columns:
+        signature = out["sse_category"].astype("string").fillna("none")
+    else:
+        signature = pd.Series("none", index=out.index, dtype="string")
+
+    signature = signature.mask(~out["sse_candidate"], "none")
+    out["sse_signature"] = signature
+    if "axes_fired" not in out.columns:
+        out["axes_fired"] = signature
+
+    if "meta_cluster_id" not in out.columns:
+        if "connected_components" in out.columns:
+            out["meta_cluster_id"] = out["connected_components"]
+        else:
+            out["meta_cluster_id"] = out["cluster_id"]
+    out["meta_cluster_id"] = out["meta_cluster_id"].fillna(out["cluster_id"])
+
+    return out
+
+
 def load_association_frames(
     *,
     output_dir: Path | str | None = None,
@@ -650,16 +691,17 @@ def load_association_frames(
         else PROJECT_ROOT / "sse_detection" / "results" / "sse_outputs"
     )
     outs = load_sse_outputs(output_path)
-    node_stats = outs.node_stats.copy()
+    node_stats = prepare_node_stats_for_association(outs.node_stats)
 
     if group_by_clade:
         node_stats = add_clade_group(node_stats, target_col=clade_group_col)
         if variant_adjuster == "clade":
             variant_adjuster = None
 
-    min_candidate_size = int(
-        node_stats.loc[node_stats["sse_candidate"], "cluster_size"].min()
-    )
+    candidate_sizes = node_stats.loc[node_stats["sse_candidate"], "cluster_size"]
+    if candidate_sizes.empty:
+        raise ValueError("No high-priority SSE candidates are present in node_stats.")
+    min_candidate_size = int(candidate_sizes.min())
     eligible_nodes = node_stats.loc[
         node_stats["cluster_size"].ge(min_candidate_size)
     ].copy()
@@ -694,12 +736,19 @@ def load_association_frames(
             "cluster_id",
             "meta_cluster_id",
             "sse_candidate",
+            "candidate_tier",
+            "axes_fired",
+            "sse_signature",
+            "burden_status",
             cluster_se,
             "cluster_size",
         ]
         if group_by_clade:
             node_key_cols.append(clade_group_col)
-        node_key = eligible_nodes[_dedupe(node_key_cols)].drop_duplicates("cluster_id")
+        node_key_cols = [
+            col for col in _dedupe(node_key_cols) if col in eligible_nodes.columns
+        ]
+        node_key = eligible_nodes[node_key_cols].drop_duplicates("cluster_id")
 
         sequence_columns: list[str] = list(
             {
@@ -1601,7 +1650,10 @@ def fit_joint_exposure_specs(
     for group in joint_groups:
         joint_name = str(group["name"])
         try:
-            group_specs = [spec_by_name[str(name)] for name in group.get("specs", [])]
+            group_spec_names = group.get("specs", [])
+            if isinstance(group_spec_names, (str, bytes)) or not isinstance(group_spec_names, Sequence):
+                group_spec_names = [group_spec_names]
+            group_specs = [spec_by_name[str(name)] for name in group_spec_names if name is not None]
             predictors = [str(spec["column"]) for spec in group_specs]
             d, dropped_rows, dropped_strata = _prepare_model_frame(
                 source,
@@ -1755,19 +1807,21 @@ def make_policy_era_candidate_summary(source: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def make_policy_era_category_summary(source: pd.DataFrame) -> pd.DataFrame:
-    """Summarise candidate category mix by grouped policy era."""
+def make_policy_era_signature_summary(source: pd.DataFrame) -> pd.DataFrame:
+    """Summarise candidate signature mix by grouped policy era."""
     d = source.loc[source["candidate"].eq(1)].copy()
     if d.empty:
         return pd.DataFrame()
+    if "sse_signature" not in d.columns:
+        d["sse_signature"] = d.get("axes_fired", "unknown")
     out = (
-        d.groupby(["policy_era", "sse_category"], observed=False, dropna=False)
+        d.groupby(["policy_era", "sse_signature"], observed=False, dropna=False)
         .agg(n_candidates=("cluster_id", "nunique"))
         .reset_index()
     )
     out = out.loc[out["n_candidates"].gt(0)].copy()
     totals = out.groupby("policy_era", observed=False)["n_candidates"].transform("sum")
-    out["candidate_category_share"] = out["n_candidates"] / totals
+    out["candidate_signature_share"] = out["n_candidates"] / totals
     return out
 
 
@@ -1865,24 +1919,27 @@ def make_vaccination_mixing_age_conditional_summary(
     return out
 
 
-def make_vaccination_mixing_age_conditional_category_summary(
+def make_vaccination_mixing_age_conditional_signature_summary(
     source: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Summarise candidate phenotype mix by vaccination-mixing tertile."""
-    d = source.dropna(subset=["vaccination_mix_tertile", "sse_category"]).copy()
+    """Summarise candidate signature mix by vaccination-mixing tertile."""
+    d = source.copy()
+    if "sse_signature" not in d.columns:
+        d["sse_signature"] = d.get("axes_fired", "unknown")
+    d = d.dropna(subset=["vaccination_mix_tertile", "sse_signature"]).copy()
     d = d.loc[d["candidate"].astype(bool)].copy()
     if d.empty:
         return pd.DataFrame(
             columns=[
                 "vaccination_mix_tertile",
-                "sse_category",
+                "sse_signature",
                 "n_candidates",
-                "candidate_category_share",
+                "candidate_signature_share",
             ]
         )
     out = (
         d.groupby(
-            ["vaccination_mix_tertile", "sse_category"],
+            ["vaccination_mix_tertile", "sse_signature"],
             observed=False,
             dropna=False,
         )
@@ -1893,7 +1950,7 @@ def make_vaccination_mixing_age_conditional_category_summary(
     totals = out.groupby("vaccination_mix_tertile", observed=False)[
         "n_candidates"
     ].transform("sum")
-    out["candidate_category_share"] = out["n_candidates"] / totals
+    out["candidate_signature_share"] = out["n_candidates"] / totals
     return out
 
 
@@ -1905,7 +1962,10 @@ def vaccination_mixing_node_feature_table(source: pd.DataFrame) -> pd.DataFrame:
         "clade",
         "candidate",
         "sse_candidate",
-        "sse_category",
+        "candidate_tier",
+        "axes_fired",
+        "sse_signature",
+        "burden_status",
         "cluster_size",
         "vaccination_mix_n",
         "vaccination_mix_prop_positive",
@@ -2254,7 +2314,7 @@ def run_policy_analysis(
         "policy_era_candidate_summary.csv": make_policy_era_candidate_summary(
             node_base
         ),
-        "policy_era_category_summary.csv": make_policy_era_category_summary(
+        "policy_era_signature_summary.csv": make_policy_era_signature_summary(
             node_base
         ),
         "policy_wald.csv": policy_wald,
@@ -2560,8 +2620,8 @@ def run_vaccination_analysis(
         "vaccination_mixing_age_conditional_summary.csv": (
             make_vaccination_mixing_age_conditional_summary(vaccination_mixing_base)
         ),
-        "vaccination_mixing_age_conditional_category_summary.csv": (
-            make_vaccination_mixing_age_conditional_category_summary(
+        "vaccination_mixing_age_conditional_signature_summary.csv": (
+            make_vaccination_mixing_age_conditional_signature_summary(
                 vaccination_mixing_base
             )
         ),

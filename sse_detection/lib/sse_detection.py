@@ -35,11 +35,25 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
 from utils import load_analysis_columns  # noqa: E402
-import entropy as e  # noqa: E402
+from entropy import (  # noqa: E402
+    cluster_socio_demo_entropy,
+    vaccination_mixing_features,
+    add_mixing_tertiles,
+    onward_edge_entropy,
+)
 
 RANDOM_SEED = 42
-
 N_ENTROPY_DRAWS = 1000
+N_PERMUTATIONS = 1000
+MIN_CLUSTER_SIZE = 6
+
+# Onward-spread SHAPE (dispersal: onward_entropy_norm and dominant_successor_frac)
+# is NOT a detection axis. It was evaluated as one and demoted to
+# characterisation: ~91% of the candidates it would uniquely contribute are
+# out_degree==2 nodes, where the entropy is near-binary (balanced vs lopsided
+# pair) and its rank-based p-value is poorly calibrated. The raw shape features
+# are retained to characterise how detected candidates propagate (multiplicative
+# fan-out vs concentrated hand-off), but they do not flag candidates.
 
 ANALYSIS_COLUMNS = [
     "window_id",
@@ -79,15 +93,6 @@ ANALYSIS_COLUMNS = [
     "dz_cum_vaccinated",
     "dz_cum_prop_vaccinated",
 ]
-
-COHERENCE_OBS_COLS = [
-    # "sex_entropy_obs",
-    # "age_entropy_obs",
-    # "urban_rural_entropy_obs",
-    "simd_entropy_obs",
-    "health_board_entropy_obs",
-]
-
 
 def load_sequence_data() -> pd.DataFrame:
     """Load sequence-window rows.
@@ -218,7 +223,7 @@ def build_cluster_stats(
     so that ALL clusters are retained (left joins); nodes with no in/out edges
     keep NaN here and are filled to 0 downstream.
     """
-    sex_stats = e.cluster_socio_demo_entropy(
+    sex_stats = cluster_socio_demo_entropy(
         df,
         "cluster_id",
         "sex",
@@ -227,7 +232,7 @@ def build_cluster_stats(
         n_random=n_entropy_draws,
         random_state=random_state,
     )
-    age_stats = e.cluster_socio_demo_entropy(
+    age_stats = cluster_socio_demo_entropy(
         df,
         "cluster_id",
         "age_band",
@@ -236,7 +241,7 @@ def build_cluster_stats(
         n_random=n_entropy_draws,
         random_state=random_state,
     )
-    simd_stats = e.cluster_socio_demo_entropy(
+    simd_stats = cluster_socio_demo_entropy(
         df,
         "cluster_id",
         "dz_simd_quintile",
@@ -245,7 +250,25 @@ def build_cluster_stats(
         n_random=n_entropy_draws,
         random_state=random_state,
     )
-    hb_stats = e.cluster_socio_demo_entropy(
+    dz_stats = cluster_socio_demo_entropy(
+        df,
+        "cluster_id",
+        "datazone",
+        "window_idx",
+        prefix="datazone",
+        n_random=n_entropy_draws,
+        random_state=random_state,
+    )
+    la_stats = cluster_socio_demo_entropy(
+        df,
+        "cluster_id",
+        "dz_local_authority",
+        "window_idx",
+        prefix="local_authority",
+        n_random=n_entropy_draws,
+        random_state=random_state,
+    )
+    hb_stats = cluster_socio_demo_entropy(
         df,
         "cluster_id",
         "dz_health_board",
@@ -254,7 +277,7 @@ def build_cluster_stats(
         n_random=n_entropy_draws,
         random_state=random_state,
     )
-    ur_stats = e.cluster_socio_demo_entropy(
+    ur_stats = cluster_socio_demo_entropy(
         df,
         "cluster_id",
         "dz_urban_rural_class",
@@ -263,7 +286,7 @@ def build_cluster_stats(
         n_random=n_entropy_draws,
         random_state=random_state,
     )
-    vacc_stats = e.vaccination_mixing_features(
+    vacc_stats = vaccination_mixing_features(
         df,
         n_random=n_entropy_draws,
         random_state=random_state,
@@ -278,6 +301,22 @@ def build_cluster_stats(
         )
         .merge(
             simd_stats[["cluster_id", "simd_entropy_z", "simd_entropy_obs"]],
+            on="cluster_id",
+            how="outer",
+        )
+        .merge(
+            dz_stats[["cluster_id", "datazone_entropy_z", "datazone_entropy_obs"]],
+            on="cluster_id",
+            how="outer",
+        )
+        .merge(
+            la_stats[
+                [
+                    "cluster_id",
+                    "local_authority_entropy_z",
+                    "local_authority_entropy_obs",
+                ]
+            ],
             on="cluster_id",
             how="outer",
         )
@@ -304,9 +343,9 @@ def build_cluster_stats(
         )
     )
 
-    cluster_stats = e.add_mixing_tertiles(cluster_stats)
+    cluster_stats = add_mixing_tertiles(cluster_stats)
 
-    edge_stats = e.onward_edge_entropy(
+    edge_stats = onward_edge_entropy(
         edge_table,
         source_col="source",
         weight_col="n_shared_sequences",
@@ -369,10 +408,97 @@ def build_cluster_attributes(df: pd.DataFrame) -> pd.DataFrame:
     return cluster_att
 
 
+def build_new_downstream_metrics(
+    sequence_df: pd.DataFrame,
+    edge_table: pd.DataFrame,
+    *,
+    min_shared_sequences: int = 2,
+) -> pd.DataFrame:
+    """Compute overlap-adjusted downstream burden for each source node.
+
+    ``new_downstream_burden`` counts unique sequences in all adjacent-window
+    child clusters that are not already present in the source cluster. The
+    supported version applies the same calculation after excluding weak edges
+    with fewer than ``min_shared_sequences`` shared sequences.
+    """
+    if min_shared_sequences < 1:
+        raise ValueError("min_shared_sequences must be at least 1.")
+
+    stat_cols = [
+        "new_downstream_burden",
+        "supported_new_downstream_burden",
+        "new_downstream_children",
+        "supported_new_downstream_children",
+        "mean_successor_new_sequences",
+    ]
+
+    required_edge_cols = {"source", "target", "n_shared_sequences"}
+    missing_edge_cols = sorted(required_edge_cols - set(edge_table.columns))
+    if missing_edge_cols:
+        raise ValueError(f"Missing edge columns: {missing_edge_cols}")
+
+    required_sequence_cols = {"cluster_id", "sequence_id"}
+    missing_sequence_cols = sorted(required_sequence_cols - set(sequence_df.columns))
+    if missing_sequence_cols:
+        raise ValueError(f"Missing sequence columns: {missing_sequence_cols}")
+
+    if edge_table.empty:
+        return pd.DataFrame(columns=["cluster_id", *stat_cols])
+
+    membership = sequence_df[["cluster_id", "sequence_id"]].dropna().drop_duplicates()
+    cluster_sequences = (
+        membership.groupby("cluster_id", sort=False)["sequence_id"]
+        .agg(lambda values: frozenset(values))
+        .to_dict()
+    )
+
+    rows = []
+    for source, edges in edge_table.groupby("source", sort=False, dropna=False):
+        source_sequences = cluster_sequences.get(source, frozenset())
+        new_sequences: set = set()
+        supported_new_sequences: set = set()
+        child_new_counts: list[int] = []
+        new_child_count = 0
+        supported_new_child_count = 0
+
+        for edge in edges.itertuples(index=False):
+            target_sequences = cluster_sequences.get(edge.target, frozenset())
+            child_new_sequences = target_sequences.difference(source_sequences)
+            child_new_count = len(child_new_sequences)
+            child_new_counts.append(child_new_count)
+
+            if child_new_count > 0:
+                new_child_count += 1
+                new_sequences.update(child_new_sequences)
+
+            if edge.n_shared_sequences >= min_shared_sequences:  # type: ignore
+                if child_new_count > 0:
+                    supported_new_child_count += 1
+                    supported_new_sequences.update(child_new_sequences)
+
+        rows.append(
+            {
+                "cluster_id": source,
+                "new_downstream_burden": len(new_sequences),
+                "supported_new_downstream_burden": len(supported_new_sequences),
+                "new_downstream_children": new_child_count,
+                "supported_new_downstream_children": supported_new_child_count,
+                "mean_successor_new_sequences": (
+                    float(np.mean(child_new_counts)) if child_new_counts else np.nan
+                ),
+            }
+        )
+
+    return pd.DataFrame(rows, columns=["cluster_id", *stat_cols])
+
+
 def build_cluster_table(
     cluster_att: pd.DataFrame,
     cluster_stats: pd.DataFrame,
     edge_table: pd.DataFrame,
+    sequence_df: pd.DataFrame,
+    *,
+    min_supported_shared_sequences: int = 2,
 ) -> pd.DataFrame:
     """Join attributes + stats and attach downstream-burden metrics.
 
@@ -397,6 +523,26 @@ def build_cluster_table(
     cluster_table["downstream_cluster_burden"] = cluster_table[
         "downstream_cluster_burden"
     ].fillna(0)
+
+    new_downstream = build_new_downstream_metrics(
+        sequence_df,
+        edge_table,
+        min_shared_sequences=min_supported_shared_sequences,
+    )
+    cluster_table = cluster_table.merge(
+        new_downstream,
+        on="cluster_id",
+        how="left",
+    )
+    fill_zero_cols = [
+        "new_downstream_burden",
+        "supported_new_downstream_burden",
+        "new_downstream_children",
+        "supported_new_downstream_children",
+    ]
+    for col in fill_zero_cols:
+        cluster_table[col] = cluster_table[col].fillna(0)
+
     return cluster_table
 
 
@@ -450,16 +596,16 @@ def empirical_upper_tail_p(
     Parameters
     ----------
     obs:
-        One-dimensional array of observed scores, shape ``(n,)``.
+        One-dimensional array of observed scores, dispersal ``(n,)``.
 
     null_scores:
-        Two-dimensional array of null scores, shape ``(n, B)``, where ``B`` is
+        Two-dimensional array of null scores, dispersal ``(n, B)``, where ``B`` is
         the number of permutations.
 
     Returns
     -------
     np.ndarray
-        One empirical upper-tail p-value per observation, shape ``(n,)``.
+        One empirical upper-tail p-value per observation, dispersal ``(n,)``.
 
         Returns ``NaN`` when the observed score is ``NaN`` or when no valid null
         scores are available for that row.
@@ -473,10 +619,10 @@ def empirical_upper_tail_p(
     null_scores = np.asarray(null_scores, dtype=float)
 
     if null_scores.ndim != 2:
-        raise ValueError("null_scores must be a 2D array with shape (n, B).")
+        raise ValueError("null_scores must be a 2D array with dispersal (n, B).")
 
     if obs.ndim != 1:
-        raise ValueError("obs must be a 1D array with shape (n,).")
+        raise ValueError("obs must be a 1D array with dispersal (n,).")
 
     if null_scores.shape[0] != obs.shape[0]:
         raise ValueError("obs and null_scores must have the same number of rows.")
@@ -613,10 +759,10 @@ def _strata_nested_in_rank_groups(
     Parameters
     ----------
     strata_codes:
-        Integer-coded permutation strata, shape ``(n,)``.
+        Integer-coded permutation strata, dispersal ``(n,)``.
 
     rank_codes:
-        Integer-coded ranking groups, shape ``(n,)``.
+        Integer-coded ranking groups, dispersal ``(n,)``.
 
     Returns
     -------
@@ -876,29 +1022,45 @@ def add_sse_node_metrics(
     df: pd.DataFrame,
     *,
     min_stratum_n: int = 20,
-    n_permutations: int = 500,
+    n_permutations: int = N_PERMUTATIONS,
     random_state: int = RANDOM_SEED,
-    min_cluster_size: int = 6,
+    min_cluster_size: int = MIN_CLUSTER_SIZE,
     null_mode: str = "profile",
 ) -> pd.DataFrame:
     """
     Add SSE-candidate metrics to a node-level cluster table.
 
-    The SSE score is computed only for size-eligible nodes, defined by
-    ``cluster_size >= min_cluster_size``. Smaller nodes are retained in the
-    output but marked as ``size_ineligible`` and are not used for percentile
-    ranking, null calibration or candidate tiering.
+    Detection rests on two demographic-blind, near-orthogonal calibrated axes:
 
-    The observed composite score is constructed by:
+    * **burst** — local accumulation: anomalously large / high-excess clusters,
+        scored for every size-eligible node (``cluster_size >= min_cluster_size``);
+    * **burden** — per-capita onward propagation: clusters that seed an
+        unusually large downstream burden RELATIVE TO THEIR SIZE, scored only on
+        the propagating subpopulation (clusters with non-zero onward burden), so
+        the ~93% non-propagating mass does not dominate the ranking. Uses
+        ratio/per-capita components only, so it is empirically orthogonal to
+        burst rather than a restatement of size.
 
-    1. deriving raw size, novelty, onward-flow and coherence components;
-    2. percentile-ranking those components within ``window_idx``;
-    3. averaging the available percentile-ranked components.
+    The shape of onward spread (``onward_entropy_norm``,
+    ``dominant_successor_frac``) was evaluated as a third "dispersal" axis but
+    demoted to characterisation: it is dominated by two-successor nodes, where it
+    is near-binary and poorly calibrated. It is retained raw to describe how a
+    candidate propagates, not to flag candidates.
 
-    A permutation-calibrated null is then added. By default, ``null_mode`` is
-    ``"profile"``, which shuffles whole multivariate component profiles within
-    adaptive strata. This preserves correlation among score components and is
-    therefore more conservative than independently shuffling each component.
+    Socio-demographic and geographic concentration features (the entropy-z
+    coherence/mixing columns), raw onward counts (``effective_successors``,
+    ``out_strength``), the onward-shape features and ``novelty_fraction`` are
+    deliberately NOT used in any detection axis. They are retained on the output
+    as descriptive characterisation features for the archetype classifier, so
+    that the candidate set is not biased by demographic sampling.
+
+    Smaller nodes are retained in the output but marked ``size_ineligible`` and
+    are not used for percentile ranking, null calibration or tiering.
+
+    Each observed axis score is the mean of its components' within-window
+    percentile ranks; a profile-permutation null is then added per axis. By
+    default ``null_mode="profile"`` shuffles whole multivariate component
+    profiles within adaptive strata, preserving component correlation.
 
     Parameters
     ----------
@@ -910,14 +1072,13 @@ def add_sse_node_metrics(
         cluster size and adaptive permutation strata.
 
     n_permutations:
-        Number of permutations used for composite-score null calibration.
+        Number of permutations used for axis-score null calibration.
 
     random_state:
         Random seed used for reproducible permutation results.
 
     min_cluster_size:
-        Minimum cluster size required for a node to be tested as an SSE
-        candidate.
+        Minimum cluster size required for a node to be tested at all.
 
     null_mode:
         Either ``"profile"`` or ``"independent"``. ``"profile"`` is the
@@ -928,7 +1089,8 @@ def add_sse_node_metrics(
     -------
     pd.DataFrame
         Copy of ``df`` with additional SSE feature columns, sub-scores,
-        permutation-null statistics and candidate review tiers.
+        per-axis permutation-null statistics, descriptive coherence features and
+        candidate review tiers.
     """
     if null_mode not in {"profile", "independent"}:
         raise ValueError("null_mode must be either 'profile' or 'independent'.")
@@ -939,17 +1101,18 @@ def add_sse_node_metrics(
         raise ValueError(f"Missing required columns: {missing_required}")
 
     out = df.copy()
+    
     out["sse_tested"] = out["cluster_size"].ge(min_cluster_size)
     out["candidate_tier"] = "size_ineligible"
 
-    edge_default_cols = {
+    basic_edge_default_cols = {
         "in_degree": 0,
         "out_degree": 0,
         "in_strength": 0,
         "out_strength": 0,
         "downstream_cluster_burden": 0,
     }
-    for col, default in edge_default_cols.items():
+    for col, default in basic_edge_default_cols.items():
         if col not in out.columns:
             out[col] = default
         else:
@@ -962,26 +1125,48 @@ def add_sse_node_metrics(
     # ------------------------------------------------------------------
     # 1. Context-adjusted excess cluster size.
     # ------------------------------------------------------------------
-    expected = pd.Series(
-        tested["cluster_size"].mean(),
+    # Cluster sizes are heavy-tailed (power-law-like), so a Poisson-style
+    # standardisation (size - mean) / sqrt(mean) badly understates the spread
+    # and is dominated by a few huge clusters. We instead work in log space,
+    # where the bulk is approximately log-normal, and standardise each cluster
+    # against the location and scale of its (window, clade) context. The mean is
+    # also replaced implicitly by a log-space mean computed only over strata
+    # large enough to estimate it, with a coarser-context backoff.
+    tested["log_cluster_size"] = np.log1p(tested["cluster_size"])
+
+    context_cols = [col for col in ["window_idx", "clade"] if col in tested.columns]
+
+    # Global fallback location/scale (used until a large-enough stratum overrides).
+    expected_log = pd.Series(
+        tested["log_cluster_size"].mean(), index=tested.index, dtype=float
+    )
+    scale_log = pd.Series(
+        max(tested["log_cluster_size"].std(ddof=1), 1e-6),
         index=tested.index,
         dtype=float,
     )
 
-    context_cols = [col for col in ["window_idx", "clade"] if col in tested.columns]
-
     for n_cols in range(1, len(context_cols) + 1):
         cols = context_cols[:n_cols]
-        grouped = tested.groupby(cols, dropna=False)["cluster_size"]
-        group_mean = grouped.transform("mean")
-        group_n = grouped.transform("size")
-        use_group = group_n >= min_stratum_n
-        expected.loc[use_group] = group_mean.loc[use_group]
+        grouped = tested.groupby(cols, dropna=False)["log_cluster_size"]
 
-    tested["expected_cluster_size"] = expected.clip(lower=0.5)
+        group_mean = grouped.transform("mean")
+        group_std = grouped.transform("std")
+        group_n = grouped.transform("size")
+        # Require enough rows BOTH to trust the location and to estimate a SD
+        # (std needs >= 2 and is noisy when thin, so reuse the stratum-size gate).
+        use_group = (group_n >= min_stratum_n) & group_std.gt(0) & group_std.notna()
+        expected_log.loc[use_group] = group_mean.loc[use_group]
+        scale_log.loc[use_group] = group_std.loc[use_group]
+
+    scale_log = scale_log.clip(lower=1e-6)
+
+    # Report the back-transformed expectation for interpretability, and the
+    # log-space robust z-score as the excess feature actually used downstream.
+    tested["expected_cluster_size"] = np.maximum(np.expm1(expected_log), 0.5)
     tested["sampling_adjusted_excess_size"] = (
-        tested["cluster_size"] - tested["expected_cluster_size"]
-    ) / np.sqrt(tested["expected_cluster_size"])
+        tested["log_cluster_size"] - expected_log
+    ) / scale_log
 
     # ------------------------------------------------------------------
     # 2. Graph-position role indicators
@@ -1049,150 +1234,286 @@ def add_sse_node_metrics(
     first_window = tested["window_idx"].min()
     last_window = tested["window_idx"].max()
 
-    tested["left_censored"] = tested["is_source_boundary"] & tested["window_idx"].eq(first_window)
-    tested["right_censored"] = tested["is_sink_boundary"] & tested["window_idx"].eq(last_window)
+    tested["left_censored"] = tested["is_source_boundary"] & tested["window_idx"].eq(
+        first_window
+    )
+    tested["right_censored"] = tested["is_sink_boundary"] & tested["window_idx"].eq(
+        last_window
+    )
     tested["boundary_censored"] = tested["left_censored"] | tested["right_censored"]
 
     # ------------------------------------------------------------------
     # 3. Size, novelty and onward-flow proxies.
     # ------------------------------------------------------------------
-    tested["log_cluster_size"] = np.log1p(tested["cluster_size"])
+    tested["log_new_downstream_burden"] = np.log1p(tested["new_downstream_burden"])
     tested["log_excess_over_upstream"] = log1p_ratio(
         tested["cluster_size"],
         tested["in_strength"],
     )
-    tested["novelty_fraction"] = safe_divide(
-        tested["cluster_size"] - tested["in_strength"],
-        tested["cluster_size"],
-    ).clip(lower=0, upper=1)
-    tested["onward_retention_ratio"] = safe_divide(
-        tested["out_strength"],
+    tested["log_new_downstream_burden_ratio"] = log1p_ratio(
+        tested["new_downstream_burden"],
         tested["cluster_size"],
     )
-    tested["onward_expansion_proxy"] = (
-        tested["onward_retention_ratio"] * tested["out_degree"]
-    )
-    tested["log_downstream_burden"] = np.log1p(tested["downstream_cluster_burden"])
-    tested["log_downstream_burden_ratio"] = log1p_ratio(
-        tested["downstream_cluster_burden"],
+    tested["log_supported_new_downstream_burden_ratio"] = log1p_ratio(
+        tested["supported_new_downstream_burden"],
         tested["cluster_size"],
     )
 
     # ------------------------------------------------------------------
-    # 4. Mixing / coherence scores.
+    # 4. Within-window percentile ranks (detection components only).
     # ------------------------------------------------------------------
-    obs_cols = [col for col in COHERENCE_OBS_COLS if col in tested.columns]
-    if obs_cols:
-        observed_coherence = 1 - tested[obs_cols]
-        tested["coherence_score"] = observed_coherence.mean(axis=1, skipna=True)
-        tested["coherence_score_n"] = observed_coherence.notna().sum(axis=1)
-    else:
-        tested["coherence_score"] = np.nan
-        tested["coherence_score_n"] = 0
-
-    # ------------------------------------------------------------------
-    # 5. Within-window percentile ranks.
-    # ------------------------------------------------------------------
+    # coherence_score is intentionally absent: it is a descriptive feature, not
+    # a detection component.
     rank_cols = [
         "sampling_adjusted_excess_size",
         "log_cluster_size",
         "log_excess_over_upstream",
-        "novelty_fraction",
-        "out_strength",
-        "out_degree",
-        "effective_successors",
-        "onward_entropy_norm",
-        "onward_expansion_proxy",
-        "log_downstream_burden",
-        "coherence_score",
+        "log_new_downstream_burden_ratio",
+        "log_supported_new_downstream_burden_ratio",
     ]
 
     for col in rank_cols:
+        if col not in tested.columns:
+            continue
         tested[f"{col}_pct_window"] = tested.groupby("window_idx", dropna=False)[
             col
         ].rank(pct=True, method="average")
 
     # ------------------------------------------------------------------
-    # 6. Interpretable sub-scores.
+    # 5. Detection axes and null calibration.
     # ------------------------------------------------------------------
-    focused_components = [
-        "sampling_adjusted_excess_size_pct_window",
-        "log_excess_over_upstream_pct_window",
-        "novelty_fraction_pct_window",
-        "coherence_score_pct_window",
-    ]
-    tested["focused_amplification_score"], tested["focused_amplification_n"] = (
-        mean_with_count(tested, focused_components)
-    )
+    # Two near-orthogonal calibrated detection axes, each scored on the
+    # population where it is actually defined:
+    #   burst  (universal)                    — local accumulation / intensity
+    #   burden (non-zero-burden subset, ~7%)  — per-capita onward volume
+    # Pairwise (on the burden-eligible subset): burst~burden ~ -0.2 — distinct.
+    # Burden is a SUBPOPULATION axis: the network is ~93% non-propagating, so
+    # scoring burden across all nodes would rank a ~93% zero-mass and is
+    # meaningless. It is scored and calibrated only on its eligible subset, with
+    # the rest flagged "burden_not_applicable".
 
-    onward_components = [
-        "out_strength_pct_window",
-        "effective_successors_pct_window",
-        "onward_entropy_norm_pct_window",
-        "log_downstream_burden_pct_window",
-    ]
-    tested["onward_burden_score"], tested["onward_burden_n"] = mean_with_count(
-        tested,
-        onward_components,
-    )
-
-    # ------------------------------------------------------------------
-    # 7. Composite SSE score and null calibration.
-    # ------------------------------------------------------------------
-    composite_raw_components = [
-        "sampling_adjusted_excess_size",
+    # BURST: local accumulation, context-adjusted. Scored for every tested node.
+    # Most size-dominated axis, so carries the small-cluster floor behaviour at
+    # p ~ 1 (expected, conservative). sampling_adjusted_excess_size is kept (the
+    # most epidemiologically faithful "large for its context" component); its
+    # mild negative correlation with onward signals is acceptable.
+    burst_components = [
         "log_cluster_size",
+        "sampling_adjusted_excess_size",
         "log_excess_over_upstream",
-        "effective_successors",
-        "onward_expansion_proxy",
-        "log_downstream_burden",
-        "coherence_score",
     ]
-    composite_pct_components = [f"{col}_pct_window" for col in composite_raw_components]
 
-    tested["composite_sse_score"], tested["composite_sse_score_n"] = mean_with_count(
-        tested,
-        composite_pct_components,
+    # BURDEN: per-capita onward volume on the propagating subpopulation. Ratio
+    # forms only (raw counts would reintroduce size). Eligible = non-zero on
+    # either burden ratio (a terminal cluster has no burden to be anomalous about).
+    burden_components = [
+        "log_new_downstream_burden_ratio",
+        "log_supported_new_downstream_burden_ratio",
+    ]
+
+    axis_strata_cols = [c for c in ["window_idx", "clade"] if c in tested.columns]
+
+    # --- BURST: universal axis, calibrated across all tested nodes. ---
+    burst_pct = [f"{c}_pct_window" for c in burst_components]
+    tested["burst_score"], tested["burst_score_n"] = mean_with_count(
+        tested, burst_pct
     )
-
     tested = add_composite_null_scores(
         tested,
-        score_col="composite_sse_score",
-        raw_component_cols=composite_raw_components,
+        score_col="burst_score",
+        raw_component_cols=burst_components,
         rank_within="window_idx",
-        strata_cols=context_cols,
+        strata_cols=axis_strata_cols,
         min_stratum_n=min_stratum_n,
         n_permutations=n_permutations,
         random_state=random_state,
         null_mode=null_mode,
     )
 
+    # --- BURDEN: subpopulation axis on nodes with non-zero onward burden. ---
+    burden_present = [c for c in burden_components if c in tested.columns]
+    burden_nonzero = pd.Series(False, index=tested.index)
+    for c in burden_present:
+        burden_nonzero = burden_nonzero | (tested[c].fillna(0) > 0)
+    tested["burden_eligible"] = burden_nonzero
+
+    burden_idx = tested.index[tested["burden_eligible"]]
+    for col in (
+        "burden_score",
+        "burden_score_n",
+        "burden_score_null_mean",
+        "burden_score_null_sd",
+        "burden_score_null_z",
+        "burden_score_upper_p",
+    ):
+        tested[col] = np.nan
+
+    if len(burden_idx) >= 2:
+        burden_sub = tested.loc[burden_idx].copy()
+        # Re-rank within the burden-eligible subpopulation (not the whole graph),
+        # so ranks reflect the population the axis is defined on.
+        for c in burden_present:
+            burden_sub[f"{c}_burden_pct"] = burden_sub.groupby(
+                "window_idx", dropna=False
+            )[c].rank(pct=True, method="average")
+        burden_sub_pct = [f"{c}_burden_pct" for c in burden_present]
+        burden_sub["burden_score"], burden_sub["burden_score_n"] = mean_with_count(
+            burden_sub, burden_sub_pct
+        )
+        # Sparse subpopulation: calibrate with coarse strata (clade else pooled),
+        # not per-window.
+        burden_strata_cols = [c for c in ["clade"] if c in burden_sub.columns]
+        burden_sub = add_composite_null_scores(
+            burden_sub,
+            score_col="burden_score",
+            raw_component_cols=burden_present,
+            rank_within="window_idx",
+            strata_cols=burden_strata_cols,
+            min_stratum_n=min_stratum_n,
+            n_permutations=n_permutations,
+            random_state=random_state,
+            null_mode=null_mode,
+        )
+        for col in (
+            "burden_score",
+            "burden_score_n",
+            "burden_score_null_mean",
+            "burden_score_null_sd",
+            "burden_score_null_z",
+            "burden_score_upper_p",
+        ):
+            tested.loc[burden_idx, col] = burden_sub[col]
+
+    # ---- onward-spread SHAPE: characterisation only, NOT a detection axis -----
+    # Dispersal (the shape of onward spread) was evaluated as a third detection
+    # axis but demoted to characterisation. The signal is dominated by
+    # out_degree == 2 nodes, where onward_entropy_norm is near-binary (balanced
+    # vs lopsided pair); its rank-based p-value is then lumpy and poorly
+    # calibrated, and ~91% of the candidates it would uniquely contribute are
+    # exactly these tie-prone two-successor nodes. Rather than detect on a signal
+    # we cannot calibrate, we retain the raw onward-shape descriptors —
+    # onward_entropy_norm (evenness of spread) and dominant_successor_frac
+    # (concentration in the top successor) — as characterisation features for the
+    # archetype classifier (multiplicative fan-out vs concentrated hand-off). They
+    # are already present on the table and play no part in scoring or tiering.
+
     # ------------------------------------------------------------------
-    # 8. Candidate ranking and review tiers.
+    # 6. Candidate ranking and review tiers (two detection axes).
     # ------------------------------------------------------------------
-    tested["candidate_rank"] = tested["composite_sse_score_null_z"].rank(
+    # Two near-orthogonal calibrated detection axes: burst (local size/excess,
+    # universal) and burden (per-capita onward propagation, propagating subset).
+    # Onward-spread shape (dispersal) was demoted to characterisation (see above),
+    # so it does not contribute to scoring, ranking or tiering.
+    #   - rank on the row-wise max calibrated z across the two axes;
+    #   - assign a primary tier by which axis (if any) is significant;
+    #   - record the set of significant axes as an "axes_fired" signature string
+    #     for the archetype classifier.
+    axis_z_cols = ["burst_score_null_z", "burden_score_null_z"]
+    tested["max_axis_null_z"] = tested[axis_z_cols].max(axis=1)
+    tested["candidate_rank"] = tested["max_axis_null_z"].rank(
         ascending=False,
         method="min",
         na_option="bottom",
     )
 
     enough_sequences = tested["cluster_size"].ge(min_cluster_size)
-    high_priority = tested["composite_sse_score_upper_p"].le(0.05) & enough_sequences
-    possible_review = tested["composite_sse_score_upper_p"].le(0.10) & enough_sequences
-    high_score_uncalibrated = tested["composite_sse_score"].ge(0.90) & enough_sequences
+    burden_eligible = tested["burden_eligible"].fillna(False)
 
+    # Per-axis significance (size-gated). burden also requires its subpopulation
+    # eligibility — a node with no onward burden cannot be significant on an axis
+    # that is undefined for it.
+    burst_sig = tested["burst_score_upper_p"].le(0.05) & enough_sequences
+    burden_sig = (
+        tested["burden_score_upper_p"].le(0.05)
+        & enough_sequences
+        & burden_eligible
+    )
+    any_sig = burst_sig | burden_sig
+
+    # axes_fired signature: which axes are significant, joined (e.g. "burst+burden").
+    def _fired(row_burst, row_burden):
+        fired = []
+        if row_burst:
+            fired.append("burst")
+        if row_burden:
+            fired.append("burden")
+        return "+".join(fired) if fired else "none"
+
+    tested["axes_fired"] = [
+        _fired(b, u) for b, u in zip(burst_sig, burden_sig)
+    ]
+
+    # Weaker (possible-review) band on either axis, not already high-priority.
+    burst_possible = tested["burst_score_upper_p"].le(0.10)
+    burden_possible = tested["burden_score_upper_p"].le(0.10) & burden_eligible
+    any_possible = (
+        (burst_possible | burden_possible) & enough_sequences & ~any_sig
+    )
+
+    # Uncalibrated fallback: high observed burst or burden but no null p (stratum
+    # too small to calibrate).
+    uncalibrated = (
+        (
+            (tested["burst_score"].ge(0.90) & tested["burst_score_upper_p"].isna())
+            | (tested["burden_score"].ge(0.90) & tested["burden_score_upper_p"].isna())
+        )
+        & enough_sequences
+        & ~any_sig
+    )
+
+    # Primary tier: both-axis first, then single-axis, then weaker / fallback.
+    both_sig = burst_sig & burden_sig
     tested["candidate_tier"] = np.select(
         [
-            high_priority,
-            possible_review,
-            high_score_uncalibrated,
+            both_sig,
+            burst_sig,
+            burden_sig,
+            any_possible,
+            uncalibrated,
         ],
         [
-            "high_priority_review",
+            "high_priority_both_axes",
+            "high_priority_burst",
+            "high_priority_burden",
             "possible_review",
             "high_score_uncalibrated",
         ],
         default="background_or_low_information",
+    )
+
+    # Record burden applicability explicitly for downstream interpretation.
+    # Distinguishes "burden tested but not significant" from "no onward burden".
+    tested["burden_status"] = np.where(
+        burden_eligible, "burden_tested", "burden_not_applicable"
+    )
+
+    # ------------------------------------------------------------------
+    # 7. Characterisation features (NOT used in detection).
+    # ------------------------------------------------------------------
+    # These describe detected candidates and feed the archetype classifier; they
+    # play no part in the detection axes or tiering.
+    #   - burst_vs_burden_contrast: signed contained-burst <-> onward-spreader
+    #     axis on the propagating subset. Among clusters with onward burden, burst
+    #     and burden oppose (r ~ -0.21): large-for-context clusters tend to be the
+    #     more CONTAINED ones, while the real onward drivers are modest in size.
+    #     Positive = burst-dominant (contained outbreak); negative = burden-dominant
+    #     (spreader). NaN where no onward burden is defined.
+    #   - onward_entropy_norm, dominant_successor_frac: onward-spread SHAPE
+    #     (evenness; concentration in top successor). Demoted from a detection
+    #     axis (out_degree==2 dominated, near-binary, poorly calibrated) and kept
+    #     raw to distinguish multiplicative fan-out from concentrated hand-off.
+    #   - novelty_fraction: fresh-emergence vs inherited continuation.
+    #   - onward_retention_ratio: per-capita onward weight (descriptive).
+    #   - coherence_score + the entropy-z columns: geographic/socio-demographic
+    #     concentration.
+
+    # Signed contained <-> spreader contrast on the burden-eligible subpopulation.
+    # NaN where no onward burden is defined (a non-propagating cluster has no
+    # contrast).
+    tested["burst_vs_burden_contrast"] = np.where(
+        burden_eligible,
+        tested["burst_score_null_z"] - tested["burden_score_null_z"],
+        np.nan,
     )
 
     # Assign tested results back safely. This creates any new columns in the
@@ -1214,18 +1535,22 @@ def main():
     cluster_stats = build_cluster_stats(df, edge_table)
     cluster_att = build_cluster_attributes(df)
     cluster_att["connected_components"] = cluster_att["cluster_id"].map(component_map)
-    cluster_table = build_cluster_table(cluster_att, cluster_stats, edge_table)
+    cluster_table = build_cluster_table(
+        cluster_att,
+        cluster_stats,
+        edge_table,
+        sequence_df=df,
+    )
 
     print("...........detecting SSEs")
     sse_df = add_sse_node_metrics(cluster_table)
 
     out_path = PROJECT_ROOT / "sse_detection/results/sse_outputs"
     out_path.mkdir(exist_ok=True)
-    sse_df.to_parquet(out_path / "cluster_table")
-    edge_table.to_parquet(out_path / "edge_table")
+    sse_df.to_parquet(out_path / "cluster_table.parquet")
+    edge_table.to_parquet(out_path / "edge_table.parquet")
 
     print("Done.")
-
 
 if __name__ == "__main__":
     main()
