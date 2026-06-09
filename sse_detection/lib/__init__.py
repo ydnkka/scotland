@@ -49,28 +49,23 @@ from .io import HIGH_PRIORITY_CANDIDATE_TIERS, SseOutputs, load_sse_outputs
 from .plots import (
     collect_sensitivity_matrix_results,
     load_health_board_geometries,
-    make_clade_association_figures,
-    make_clade_association_outputs,
-    make_clade_association_summary_tables,
-    make_policy_figures,
     make_regression_fit_table,
     make_regression_odds_ratio_table,
     make_regression_wald_table,
-    make_vaccination_figures,
     plot_age_sex_simd_forest,
     plot_candidate_rate_over_time,
     plot_cluster_size_distribution,
     plot_composite_distributions,
     plot_core_metric_space,
     plot_health_board_enrichment_map,
+    plot_individual_categorical_distribution_bars,
     plot_meta_cluster_subgraph,
-    plot_policy_report,
     plot_regression_wald_heatmap,
     plot_role_dynamic_heatmap,
     plot_sensitivity_matrix,
     plot_socio_demo_breakdown,
-    plot_vaccination_report,
 )
+from .policy_figures import make_policy_figures, plot_policy_report
 from .regression import (
     AssociationModel,
     bh_adjust,
@@ -90,6 +85,15 @@ from .regression import (
     tidy_odds_ratios,
     tidy_single_parameter_wald,
 )
+from .sensitivity_figures import (
+    make_clade_association_figures,
+    make_clade_association_outputs,
+    make_clade_association_summary_tables,
+    make_sensitivity_analysis_figures,
+    make_sensitivity_analysis_outputs,
+    make_sensitivity_analysis_summary_tables,
+)
+from .vaccination_figures import make_vaccination_figures, plot_vaccination_report
 
 __all__ = [
     "AssociationFrames",
@@ -146,6 +150,9 @@ __all__ = [
     "make_regression_fit_table",
     "make_regression_odds_ratio_table",
     "make_regression_wald_table",
+    "make_sensitivity_analysis_figures",
+    "make_sensitivity_analysis_outputs",
+    "make_sensitivity_analysis_summary_tables",
     "make_vaccination_figures",
     "model_fit_stats",
     "model_variables_from_terms",
@@ -158,6 +165,7 @@ __all__ = [
     "plot_composite_distributions",
     "plot_core_metric_space",
     "plot_health_board_enrichment_map",
+    "plot_individual_categorical_distribution_bars",
     "plot_meta_cluster_subgraph",
     "plot_policy_report",
     "plot_regression_wald_heatmap",

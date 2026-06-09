@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import ast
 import re
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable, Mapping, Sequence
 
 from matplotlib.cm import ScalarMappable
 from matplotlib.collections import PolyCollection
@@ -53,6 +53,7 @@ INK = "#212529"
 INK_SOFT = "#495057"
 ORANGE_DARK = "#D95F02"
 OR_DIVERGING = plt.get_cmap("RdBu_r")
+REFERENCE_COLOR = "#FF0000"
 TEAL_DARK = "#007C89"
 WARM_SEQ = plt.get_cmap("YlOrBr")
 
@@ -74,19 +75,45 @@ def _missing_optional_helper(name: str):
     return _missing
 
 
-make_clade_association_figures = _missing_optional_helper(
-    "make_clade_association_figures"
-)
-make_clade_association_outputs = _missing_optional_helper(
-    "make_clade_association_outputs"
-)
-make_clade_association_summary_tables = _missing_optional_helper(
-    "make_clade_association_summary_tables"
-)
-make_policy_figures = _missing_optional_helper("make_policy_figures")
-plot_policy_report = _missing_optional_helper("plot_policy_report")
-make_vaccination_figures = _missing_optional_helper("make_vaccination_figures")
-plot_vaccination_report = _missing_optional_helper("plot_vaccination_report")
+try:
+    from .sensitivity_figures import (
+        make_clade_association_figures,
+        make_clade_association_outputs,
+        make_clade_association_summary_tables,
+        make_sensitivity_analysis_figures,
+        make_sensitivity_analysis_outputs,
+        make_sensitivity_analysis_summary_tables,
+    )
+except ImportError:
+    make_clade_association_figures = _missing_optional_helper(
+        "make_clade_association_figures"
+    )
+    make_clade_association_outputs = _missing_optional_helper(
+        "make_clade_association_outputs"
+    )
+    make_clade_association_summary_tables = _missing_optional_helper(
+        "make_clade_association_summary_tables"
+    )
+    make_sensitivity_analysis_figures = _missing_optional_helper(
+        "make_sensitivity_analysis_figures"
+    )
+    make_sensitivity_analysis_outputs = _missing_optional_helper(
+        "make_sensitivity_analysis_outputs"
+    )
+    make_sensitivity_analysis_summary_tables = _missing_optional_helper(
+        "make_sensitivity_analysis_summary_tables"
+    )
+try:
+    from .policy_figures import make_policy_figures, plot_policy_report
+except ImportError:
+    make_policy_figures = _missing_optional_helper("make_policy_figures")
+    plot_policy_report = _missing_optional_helper("plot_policy_report")
+
+try:
+    from .vaccination_figures import make_vaccination_figures, plot_vaccination_report
+except ImportError:
+    make_vaccination_figures = _missing_optional_helper("make_vaccination_figures")
+    plot_vaccination_report = _missing_optional_helper("plot_vaccination_report")
 
 
 __all__ = [
@@ -96,10 +123,14 @@ __all__ = [
     "plot_candidate_rate_over_time",
     "plot_core_metric_space",
     "plot_composite_distributions",
+    "plot_individual_categorical_distribution_bars",
     "plot_socio_demo_breakdown",
     "make_clade_association_figures",
     "make_clade_association_outputs",
     "make_clade_association_summary_tables",
+    "make_sensitivity_analysis_figures",
+    "make_sensitivity_analysis_outputs",
+    "make_sensitivity_analysis_summary_tables",
     "make_policy_figures",
     "make_vaccination_figures",
     "plot_policy_report",
@@ -1120,6 +1151,269 @@ def plot_composite_distributions(
     return fig
 
 
+_DEFAULT_INDIVIDUAL_CATEGORICAL_VARIABLES: list[tuple[str, str]] = [
+    ("sex", "Sex"),
+    ("age_band", "Age band"),
+    ("dz_simd_quintile", "SIMD quintile"),
+    ("dz_urban_rural_class", "Urban/rural class"),
+    ("dz_health_board", "Health board"),
+]
+
+_SEX_ORDER = ["Male", "Female", "Other", "Unknown", "Missing"]
+_SIMD_ORDER = ["1", "2", "3", "4", "5", "Unknown", "Missing"]
+_URBAN_RURAL_ORDER = [
+    "Large Urban Areas",
+    "Other Urban Areas",
+    "Accessible Small Towns",
+    "Remote Small Towns",
+    "Very Remote Small Towns",
+    "Accessible Rural Areas",
+    "Remote Rural Areas",
+    "Very Remote Rural Areas",
+    "Unknown",
+    "Missing",
+]
+
+
+def _normalise_categorical_specs(
+    variables: Sequence[tuple[str, str] | Mapping[str, Any]] | None,
+) -> list[tuple[str, str]]:
+    if variables is None:
+        return list(_DEFAULT_INDIVIDUAL_CATEGORICAL_VARIABLES)
+
+    specs: list[tuple[str, str]] = []
+    for item in variables:
+        if isinstance(item, Mapping):
+            column = str(item["column"])
+            label = str(item.get("label", _pretty_text(column)))
+        else:
+            column, label = item
+            column = str(column)
+            label = str(label)
+        specs.append((column, label))
+    return specs
+
+
+def _age_band_sort_key(value: Any) -> tuple[int, int, str]:
+    text = str(value).strip()
+    if text.lower() in {"missing", "unknown", "nan", "none"}:
+        return (10_000, 0, text)
+    match = re.match(r"^<?\s*(\d+)\s*(?:[-–]\s*(\d+)|\+)?$", text)
+    if match:
+        lower = int(match.group(1))
+        upper = int(match.group(2)) if match.group(2) else lower
+        return (lower, upper, text)
+    return (9_000, 0, text)
+
+
+def _ordered_category_levels(
+    summary: pd.DataFrame,
+    *,
+    column: str,
+    max_levels: int | None,
+) -> tuple[pd.DataFrame, list[str]]:
+    """Return a plotting summary with stable level order for common fields."""
+    summary = summary.copy()
+    column_key = column.lower()
+    observed = summary.groupby("_level", as_index=False)["n"].sum()
+    observed["_level"] = observed["_level"].astype(str)
+    observed_set = set(observed["_level"])
+
+    if column_key in {"sex"}:
+        order = [level for level in _SEX_ORDER if level in observed_set]
+        order.extend(
+            sorted(observed_set - set(order), key=lambda value: str(value).casefold())
+        )
+    elif "simd" in column_key and "quintile" in column_key:
+        order = [level for level in _SIMD_ORDER if level in observed_set]
+        order.extend(
+            sorted(observed_set - set(order), key=lambda value: str(value).casefold())
+        )
+    elif "age" in column_key:
+        order = sorted(observed["_level"], key=_age_band_sort_key)
+    elif "urban" in column_key or "rural" in column_key:
+        order = [level for level in _URBAN_RURAL_ORDER if level in observed_set]
+        order.extend(
+            sorted(observed_set - set(order), key=lambda value: str(value).casefold())
+        )
+    else:
+        order = (
+            observed.sort_values(["n", "_level"], ascending=[False, True])["_level"]
+            .astype(str)
+            .tolist()
+        )
+
+    if max_levels is not None and max_levels > 1 and len(order) > max_levels:
+        keep = set(order[: max_levels - 1])
+        other_label = f"Other ({len(order) - len(keep)} levels)"
+        summary["_level"] = summary["_level"].where(
+            summary["_level"].isin(keep), other_label
+        )
+        summary = summary.groupby(["_level", "_sse_status"], as_index=False)["n"].sum()
+        order = order[: max_levels - 1] + [other_label]
+
+    return summary, order
+
+
+def _individual_category_summary(
+    data: pd.DataFrame,
+    *,
+    column: str,
+    status_col: str,
+    sequence_col: str,
+    unit: str,
+) -> pd.DataFrame:
+    if column not in data.columns:
+        raise KeyError(f"{column!r} is not present in the input data.")
+
+    df = _with_candidate_status(data, sse_col=status_col)
+    keep_cols = [column, "_sse_status"]
+    if unit == "sequences" and sequence_col in df.columns:
+        keep_cols.append(sequence_col)
+    d = df.loc[:, keep_cols].copy()
+    d["_level"] = (
+        d[column]
+        .astype("string")
+        .fillna("Missing")
+        .str.strip()
+        .replace({"": "Missing", "<NA>": "Missing", "nan": "Missing"})
+    )
+
+    if unit == "sequences" and sequence_col in d.columns:
+        d = d.dropna(subset=[sequence_col])
+        d = d.drop_duplicates([sequence_col, "_sse_status", "_level"])
+    elif unit != "rows":
+        raise ValueError("unit must be 'sequences' or 'rows'.")
+
+    return d.groupby(["_level", "_sse_status"], as_index=False).size().rename(
+        columns={"size": "n"}
+    )
+
+
+def plot_individual_categorical_distribution_bars(
+    data: pd.DataFrame,
+    *,
+    variables: Sequence[tuple[str, str] | Mapping[str, Any]] | None = None,
+    status_col: str = "candidate",
+    sequence_col: str = "sequence_id",
+    unit: str = "sequences",
+    max_levels: int | None = None,
+    width: WIDTHS = "double",
+    width_in: float | None = None,
+    height_in: float | None = None,
+    context: CONTEXTS = "paper",
+    font_scale: float = 1.0,
+) -> Figure:
+    """Plot within-status categorical distributions for individual-level rows.
+
+    The default input is ``AssociationFrames.composition_base`` from
+    ``load_association_frames(run_composition=True)``. Percentages are computed
+    separately within candidate-associated and background-associated records.
+    """
+
+    specs = _normalise_categorical_specs(variables)
+    if not specs:
+        raise ValueError("At least one categorical variable is required.")
+    if unit not in {"sequences", "rows"}:
+        raise ValueError("unit must be 'sequences' or 'rows'.")
+
+    ncols = 1 if len(specs) == 1 else 2
+    nrows = int(np.ceil(len(specs) / ncols))
+    if height_in is None:
+        height_in = max(3.0, 2.4 * nrows)
+
+    fig, axes = new_figure(
+        nrows=nrows,
+        ncols=ncols,
+        width=width,
+        width_in=width_in,
+        height_in=height_in,
+        context=context,
+        font_scale=font_scale,
+        layout="constrained",
+        squeeze=False,
+    )
+    axes_flat = np.asarray(axes).reshape(-1)
+
+    bar_height = 0.34
+    statuses = [
+        ("Background", BACKGROUND_COLOR, BACKGROUND_DARK, -bar_height / 2),
+        ("Candidate", CANDIDATE_COLOR, CANDIDATE_DARK, bar_height / 2),
+    ]
+
+    for ax, (column, label) in zip(axes_flat, specs):
+        summary = _individual_category_summary(
+            data,
+            column=column,
+            status_col=status_col,
+            sequence_col=sequence_col,
+            unit=unit,
+        )
+        summary, order = _ordered_category_levels(
+            summary,
+            column=column,
+            max_levels=max_levels,
+        )
+
+        totals = summary.groupby("_sse_status")["n"].transform("sum")
+        summary["pct"] = np.where(totals.gt(0), 100 * summary["n"] / totals, 0.0)
+        pivot = (
+            summary.pivot_table(
+                index="_level",
+                columns="_sse_status",
+                values="pct",
+                aggfunc="sum",
+                fill_value=0,
+            )
+            .reindex(order, fill_value=0)
+            .reindex(columns=["Background", "Candidate"], fill_value=0)
+        )
+
+        y = np.arange(len(order))
+        for status, color, edgecolor, offset in statuses:
+            ax.barh(
+                y + offset,
+                pivot[status].to_numpy(),
+                height=bar_height,
+                color=color,
+                edgecolor=edgecolor,
+                linewidth=0.4,
+                alpha=0.9,
+                label=status,
+            )
+
+        ax.set_yticks(y)
+        ax.set_yticklabels(order)
+        ax.invert_yaxis()
+        ax.set_title(label)
+        ax.set_xlabel("Within-status share (%)")
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.0f}%"))
+        ax.grid(axis="x", color=GRID, linewidth=0.8)
+        ax.grid(axis="y", visible=False)
+        xmax = float(pivot.to_numpy().max()) if not pivot.empty else 0.0
+        ax.set_xlim(0, max(5.0, np.ceil(xmax / 5) * 5))
+
+    for ax in axes_flat[len(specs) :]:
+        ax.set_visible(False)
+
+    handles = [
+        Rectangle((0, 0), 1, 1, facecolor=color, edgecolor=edgecolor, label=status)
+        for status, color, edgecolor, _ in statuses
+    ]
+    fig.legend(
+        handles=handles,
+        loc="outside upper center",
+        bbox_to_anchor=(0.5, 1.04),
+        ncol=2,
+        frameon=False,
+        columnspacing=1.5,
+    )
+
+    add_panel_labels([ax for ax in axes_flat[: len(specs)] if ax.get_visible()])
+    plt.close(fig)
+    return fig
+
+
 def plot_socio_demo_breakdown(
     node_stats: pd.DataFrame,
     col: str = "top_simd_quintiles",
@@ -2101,6 +2395,29 @@ def _text_on_fill(color: Any) -> str:
     return "#FFFFFF" if luminance < 0.55 else INK
 
 
+def _or_effect_color(
+    odds: Any,
+    low: Any = np.nan,
+    high: Any = np.nan,
+    *,
+    is_reference: bool = False,
+) -> str:
+    """Color ORs by direction when the CI excludes one."""
+    if is_reference:
+        return REFERENCE_COLOR
+
+    odds_value = pd.to_numeric(pd.Series([odds]), errors="coerce").iloc[0]
+    low_value = pd.to_numeric(pd.Series([low]), errors="coerce").iloc[0]
+    high_value = pd.to_numeric(pd.Series([high]), errors="coerce").iloc[0]
+    if pd.isna(odds_value):
+        return GRAY
+
+    has_ci = pd.notna(low_value) and pd.notna(high_value)
+    if has_ci and min(low_value, high_value) <= 1.0 <= max(low_value, high_value):
+        return GRAY
+    return ORANGE_DARK if odds_value > 1 else TEAL_DARK
+
+
 def _odds_ratio_lookup(
     odds_df: pd.DataFrame,
     term_token: str,
@@ -2331,14 +2648,14 @@ def _plot_forest_panel(
         low = row.or_low if has_ci else odds
         high = row.or_high if has_ci else odds
         ci_overlaps_one = (
-            True if not has_ci else min(low, high) <= 1.0 <= max(low, high) # type: ignore
+            True if not has_ci else min(low, high) <= 1.0 <= max(low, high)  # type: ignore
         )
-        if row.is_reference:
-            color = "#FF0000"
-        elif ci_overlaps_one:
-            color = GRAY
-        else:
-            color = ORANGE_DARK if odds > 1 else TEAL_DARK # type: ignore
+        color = _or_effect_color(
+            odds,
+            low,
+            high,
+            is_reference=bool(row.is_reference),
+        )
         if row.is_reference:
             ax.plot(1.0, y, marker="o", ms=7.5, color=color, zorder=3)
         else:
@@ -2384,6 +2701,9 @@ def plot_health_board_enrichment_map(
     reference_board: str = "Greater Glasgow and Clyde",
     reference_urban_rural: str = "Large Urban Areas",
     board_or_limits: tuple[float, float, float] | None = None,
+    annotate_top_n: int = 3,
+    annotate_all_boards: bool = False,
+    show_annotation_ci: bool = True,
     width: WIDTHS = "double",
     width_in: float | None = None,
     height_in: float = 4.2,
@@ -2392,8 +2712,9 @@ def plot_health_board_enrichment_map(
 ) -> Figure:
     """Manuscript map of health-board ORs with an urban/rural companion panel.
 
-    The health-board panel encodes the point estimate only; confidence
-    intervals are intentionally left for the accompanying results table.
+    Health-board annotations are selected from the largest ORs above and below
+    one, excluding the reference board. Confidence intervals are shown in the
+    annotation text when available.
     """
     geoms = load_health_board_geometries(
         geography,
@@ -2415,7 +2736,7 @@ def plot_health_board_enrichment_map(
         if not joint.empty:
             odds_df = joint
 
-    hb_or, _, _ = _odds_ratio_lookup(
+    hb_or, hb_low, hb_high = _odds_ratio_lookup(
         odds_df,
         "health_board",
         reference=reference_board,
@@ -2462,7 +2783,7 @@ def plot_health_board_enrichment_map(
     ax_map.axis("off")
 
     reps = {}
-    reference_fill = "#FF0000"
+    reference_fill = REFERENCE_COLOR
     for board, geom in geoms.items():
         fill = (
             reference_fill
@@ -2488,102 +2809,118 @@ def plot_health_board_enrichment_map(
     )
     span_x = all_x.max() - all_x.min()
     span_y = all_y.max() - all_y.min()
-    ax_map.set_xlim(all_x.min() - 0.05 * span_x, all_x.max() + 0.22 * span_x)
+    label_margin = 0.30 if annotate_all_boards or annotate_top_n > 0 else 0.05
+    ax_map.set_xlim(
+        all_x.min() - label_margin * span_x,
+        all_x.max() + label_margin * span_x,
+    )
     ax_map.set_ylim(all_y.min() - 0.03 * span_y, all_y.max() + 0.03 * span_y)
 
-    mainland_labels = [
-        "Greater Glasgow and Clyde",
-        "Lothian",
-        "Lanarkshire",
-        "Grampian",
-        "Highland",
-        "Tayside",
-        "Fife",
-        "Forth Valley",
-        "Ayrshire and Arran",
-        "Dumfries and Galloway",
-        "Borders",
-    ]
-    lowest_board = min(
-        (board for board in geoms if board != reference_board),
-        key=lambda board: hb_or.get(board, np.inf),
-        default=None,
-    )
-    for board in mainland_labels:
-        if board not in reps:
-            continue
-        if board == lowest_board:
-            continue
-        value = hb_or.get(board, 1.0)
-        fill = reference_fill if board == reference_board else cmap(norm(value))
-        text = "ref" if board == reference_board else f"{value:.2f}"
-        point = reps[board]
+    if reference_board in reps:
+        point = reps[reference_board]
         ax_map.text(
             point.x,
             point.y,
-            text,
+            "ref",
             ha="center",
             va="center",
             fontsize="small",
             fontweight="bold",
-            color=_text_on_fill(fill),
+            color=_text_on_fill(reference_fill),
             zorder=4,
         )
 
-    x_right = all_x.max()
-    island_labels = {
-        "Shetland": (x_right + 0.16 * span_x, all_y.min() + 0.97 * span_y, "left"),
-        "Orkney": (x_right + 0.16 * span_x, all_y.min() + 0.80 * span_y, "left"),
-        "Western Isles": (
-            all_x.min() + 0.02 * span_x,
-            all_y.min() + 0.74 * span_y,
-            "left",
-        ),
-    }
-    for board, (label_x, label_y, label_ha) in island_labels.items():
-        if board not in reps:
+    def _format_board_annotation(row: pd.Series) -> str:
+        text = f"{row['board']}\nOR {row['odds_ratio']:.2f}"
+        if (
+            show_annotation_ci
+            and pd.notna(row["or_low"])
+            and pd.notna(row["or_high"])
+        ):
+            text += f"\n[{row['or_low']:.2f}--{row['or_high']:.2f}]"
+        return text
+
+    hb_records = []
+    for board in geoms:
+        if board == reference_board or board not in reps:
+            continue
+        odds = hb_or.get(board, np.nan)
+        low = hb_low.get(board, np.nan)
+        high = hb_high.get(board, np.nan)
+        if not np.isfinite(odds):
             continue
         point = reps[board]
-        ax_map.annotate(
-            f"{board}\nOR {hb_or.get(board, 1.0):.2f}",
-            xy=(point.x, point.y),
-            xytext=(label_x, label_y),
-            fontsize="small",
-            color=ORANGE_DARK,
-            fontweight="bold",
-            va="center",
-            ha=label_ha,
-            arrowprops=dict(
-                arrowstyle="-",
-                color=GRAY_LIGHT,
-                lw=0.9,
-                shrinkA=1,
-                shrinkB=2,
-            ),
-            zorder=5,
+        hb_records.append(
+            {
+                "board": board,
+                "odds_ratio": float(odds),
+                "or_low": low,
+                "or_high": high,
+                "point_x": point.x,
+                "point_y": point.y,
+                "color": _or_effect_color(odds, low, high),
+            }
         )
+    hb_annotations = pd.DataFrame(hb_records)
+    if annotate_all_boards:
+        label_rows = hb_annotations.sort_values("point_y", ascending=False)
+    elif annotate_top_n > 0 and not hb_annotations.empty:
+        high_rows = (
+            hb_annotations.loc[hb_annotations["odds_ratio"].gt(1.0)]
+            .sort_values("odds_ratio", ascending=False)
+            .head(annotate_top_n)
+        )
+        low_rows = (
+            hb_annotations.loc[hb_annotations["odds_ratio"].lt(1.0)]
+            .sort_values("odds_ratio", ascending=True)
+            .head(annotate_top_n)
+        )
+        label_rows = (
+            pd.concat([high_rows, low_rows], ignore_index=True)
+            .drop_duplicates("board")
+            .sort_values(["odds_ratio", "board"], ascending=[False, True])
+        )
+    else:
+        label_rows = pd.DataFrame()
 
-    if lowest_board in reps:
-        lowest_value = hb_or.get(lowest_board, np.nan) if lowest_board else np.nan
-        point = reps[lowest_board]
-        ax_map.annotate(
-            f"{lowest_board}\nOR {lowest_value:.2f}",
-            xy=(point.x, point.y),
-            xytext=(x_right + 0.12 * span_x, all_y.min() + 0.24 * span_y),
-            fontsize="small",
-            color=TEAL_DARK,
-            fontweight="bold",
-            va="center",
-            ha="left",
-            arrowprops=dict(
-                arrowstyle="-",
-                color=GRAY_LIGHT,
-                lw=0.9,
-                shrinkA=1,
-                shrinkB=2,
-            ),
-            zorder=5,
-        )
+    if not label_rows.empty:
+        x_left = all_x.min() - 0.24 * span_x
+        x_right = all_x.max() + 0.24 * span_x
+        y_top = all_y.max() - 0.03 * span_y
+        y_bottom = all_y.min() + 0.07 * span_y
+        for side, side_rows in [
+            ("right", label_rows.loc[label_rows["odds_ratio"].ge(1.0)]),
+            ("left", label_rows.loc[label_rows["odds_ratio"].lt(1.0)]),
+        ]:
+            if side_rows.empty:
+                continue
+            side_rows = side_rows.sort_values("point_y", ascending=False)
+            y_targets = np.linspace(y_top, y_bottom, len(side_rows))
+            for label_y, (_, row) in zip(y_targets, side_rows.iterrows()):
+                point = reps[row["board"]]
+                label_x = x_right if side == "right" else x_left
+                ax_map.annotate(
+                    _format_board_annotation(row),
+                    xy=(point.x, point.y),
+                    xytext=(label_x, label_y),
+                    fontsize="small",
+                    color=row["color"],
+                    fontweight=(
+                        "bold" if row["color"] in {ORANGE_DARK, TEAL_DARK}
+                        else "normal"
+                    ),
+                    va="center",
+                    ha="left" if side == "right" else "right",
+                    linespacing=1.0,
+                    arrowprops=dict(
+                        arrowstyle="-",
+                        color=GRAY_LIGHT,
+                        lw=0.9,
+                        shrinkA=1,
+                        shrinkB=2,
+                    ),
+                    zorder=5,
+                )
 
     sm = ScalarMappable(norm=norm, cmap=cmap)
     sm.set_array([])
@@ -2629,7 +2966,7 @@ def plot_health_board_enrichment_map(
     for y, key in zip(y_positions, urban_order):
         odds = ur_or.get(key, np.nan)
         if key == reference_urban_rural:
-            ax_or.plot(1, y, marker="o", ms=9, color="#FF0000", zorder=3)
+            ax_or.plot(1, y, marker="o", ms=9, color=REFERENCE_COLOR, zorder=3)
             ax_or.annotate(
                 "1.00",
                 (1, y),
@@ -2637,12 +2974,12 @@ def plot_health_board_enrichment_map(
                 xytext=(0, 11),
                 ha="center",
                 fontsize="small",
-                color="#FF0000",
+                color=REFERENCE_COLOR,
             )
             continue
         low = ur_low.get(key, odds)
         high = ur_high.get(key, odds)
-        color = ORANGE_DARK if odds > 1 else TEAL_DARK
+        color = _or_effect_color(odds, low, high)
         ax_or.plot([low, high], [y, y], color=color, lw=2.6, alpha=0.40, zorder=2)
         ax_or.plot([1, odds], [y, y], color=color, lw=1.0, ls=":", alpha=0.6, zorder=1)
         ax_or.plot(odds, y, marker="o", ms=9, color=color, zorder=3)
@@ -2654,7 +2991,7 @@ def plot_health_board_enrichment_map(
             ha="center",
             fontsize="small",
             color=color,
-            fontweight="bold",
+            fontweight="bold" if color in {ORANGE_DARK, TEAL_DARK} else "normal",
         )
 
     ax_or.axvline(1.0, color=GRAY_LIGHT, lw=1.0, ls="--", zorder=0)
