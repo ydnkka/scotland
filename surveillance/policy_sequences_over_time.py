@@ -330,7 +330,17 @@ def plot_lineage_frequency_and_overtakes(
     min_sequences_per_period: int = 1,
     ax: Axes,
     legend_ax: Axes | None = None,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, Axes, list, list]:
+) -> tuple[
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    Axes,
+    list,
+    list,
+]:
     """Plot selected lineage-group frequency and sequencing coverage over time.
 
     Returns
@@ -339,6 +349,8 @@ def plot_lineage_frequency_and_overtakes(
         Unsmoothed clade frequency table.
     plot_freq
         Smoothed clade frequency table used for plotting.
+    clade_counts
+        Unsmoothed sequence counts by clade and period.
     dominance_df
         Dominant clade group per period.
     overtakes
@@ -389,6 +401,15 @@ def plot_lineage_frequency_and_overtakes(
 
     if clade_freq.empty or not clade_order:
         raise ValueError("No sequences matched the selected clade groups.")
+
+    clade_counts = (
+        counts.pivot(index="time_period", columns=clade_col, values="n")
+        .fillna(0)
+        .astype(int)
+        .sort_index()
+        .reindex(columns=clade_order, fill_value=0)
+    )
+    clade_counts.insert(0, "total_sequences", clade_counts.sum(axis=1))
 
     sampling_df = (
         dd.groupby("time_period")[prop_sequenced_col]
@@ -485,7 +506,17 @@ def plot_lineage_frequency_and_overtakes(
             borderaxespad=0.0,
         )
 
-    return clade_freq, plot_freq, dominance_df, overtakes, sampling_df, ax2, legend_handles, legend_labels
+    return (
+        clade_freq,
+        plot_freq,
+        clade_counts,
+        dominance_df,
+        overtakes,
+        sampling_df,
+        ax2,
+        legend_handles,
+        legend_labels,
+    )
 
 
 def main() -> None:
@@ -508,11 +539,10 @@ def main() -> None:
     )
 
     fig, axes = new_figure(
-        width="slide",
-        height_in=7,
+        width="double",
+        height_in=6,
         nrows=3,
         ncols=1,
-        context="talk",
         gridspec_kw={"height_ratios": [0.16, 2.5, 2.5], "hspace": 0.20},
     )
 
@@ -528,7 +558,17 @@ def main() -> None:
     place_policy_strip_flush(ax_policy, ax_top)
     add_policy_intensity_colorbar(fig, ax_policy, ax_top)
 
-    clade_freq, plot_freq, dominance_df, overtakes, sampling_df, _, legend_handles, legend_labels = (
+    (
+        clade_freq,
+        plot_freq,
+        clade_counts,
+        dominance_df,
+        overtakes,
+        sampling_df,
+        _,
+        legend_handles,
+        legend_labels,
+    ) = (
         plot_lineage_frequency_and_overtakes(
             sequences,
             ax=ax_bottom,
@@ -539,9 +579,9 @@ def main() -> None:
     fig.legend(
         legend_handles,
         legend_labels,
-        ncol=7,
+        ncol=5,
         loc="lower center",
-        bbox_to_anchor=(0.5, -0.05),
+        bbox_to_anchor=(0.5, -0.075),
         bbox_transform=fig.transFigure,
         frameon=False,
         columnspacing=1.1,
@@ -551,6 +591,7 @@ def main() -> None:
 
     clade_freq.to_csv(table_dir / "clade_frequency_by_period.csv")
     plot_freq.to_csv(table_dir / "clade_frequency_by_period_smoothed.csv")
+    clade_counts.to_csv(table_dir / "clade_counts_by_period.csv")
     dominance_df.to_csv(table_dir / "clade_dominance_by_period.csv", index=False)
     overtakes.to_csv(table_dir / "clade_overtake_events.csv", index=False)
     sampling_df.to_csv(table_dir / "sequencing_proportion_by_period.csv")
@@ -561,8 +602,7 @@ def main() -> None:
     _ = save_figure(
         fig,
         out_dir / "policy_sequences_over_time",
-        width_in=15,
-        height_in=7,
+        width="double",
         save_png=True,
         save_pdf=True,
         save_tiff=True,

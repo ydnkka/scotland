@@ -1,42 +1,13 @@
-# Surveillance, Lineage Replacement, and Policy Context
+# SARS-CoV-2 Genomic Surveillance in Scotland
 
-Genomic surveillance in Scotland captured a rapidly changing epidemic in which
-the available sequence data, dominant viral lineages, and public-health policy
-context all shifted over time. The surveillance period begins after the first
-national lockdown, during Route-map phase 3, when B.1.177 dominated the
-sequenced epidemic. Sequence volumes and sequencing coverage varied
-substantially across the study period, reflecting changes in testing behaviour,
-sequencing capacity, incidence, and public-health priorities. These changes
-mean that genomic clusters should be interpreted as products of both
-transmission and surveillance ascertainment.
+Scotland's SARS-CoV-2 genomic surveillance data provide a national view of an epidemic that changed repeatedly in scale, lineage composition, sampling intensity, and policy context. The surveillance outputs summarised here cover weekly periods with available sequence data from the week beginning 29 June 2020 to the week beginning 30 January 2023. In the plotted analysis subset, 271,333 sequenced cases were assigned to weekly clade groups, with a median of 1,056 sequences per week and a peak of 9,171 sequences in the week beginning 18 April 2022. The estimated weekly proportion of confirmed cases that were sequenced varied widely, from about 3% to 58%, showing that the genomic record is not a fixed fraction of the epidemic over time.
 
-The lineage composition of sequenced cases changed through a series of clear
-replacement events. B.1.177 dominated through late 2020 before Alpha became
-dominant in January 2021. Delta then overtook Alpha in late May 2021 and
-remained dominant through the second half of 2021. The Omicron transition was
-particularly rapid: BA.1 overtook Delta in December 2021, followed by BA.2 in
-March 2022. Later Omicron sublineages then replaced one another, with BA.5
-becoming dominant in June 2022 and BQ.1 in November 2022. These successive
-rises and falls show that the study period was not a single epidemic, but a
-sequence of variant-specific waves with different transmission dynamics,
-immune contexts, and sampling conditions.
+This variation in sequence volume and sequencing coverage is central to interpretation. Genomic clusters are observed through a surveillance system whose sensitivity changed with incidence, testing behaviour, sequencing capacity, public-health priorities, and the availability of suitable samples. Consequently, changes in apparent cluster size, geographic spread, or demographic composition should not be read as transmission signals alone. They also reflect the conditions under which cases were tested, sequenced, and included in the analysis.
 
-Policy restrictions changed along the same calendar axis. Scotland moved from
-Route-map phases into pre-tier tightening and the five-tier framework in autumn
-2020, then into the second national lockdown in January 2021 as Alpha emerged.
-Restrictions were gradually eased through Stay Local, Level 3, Level 2/1, and
-Level 0 during spring and summer 2021, before near-normal conditions began in
-August 2021 during Delta dominance. Omicron-specific restrictions were
-introduced in late 2021, followed by final easing in January 2022 and a
-post-restriction period from April 2022 onwards.
+The clade-frequency outputs show a succession of major lineage replacement events. Early in the plotted period, 20B dominated the sequenced epidemic, but 20E (EU1) became the dominant grouped clade in the week beginning 31 August 2020. Alpha, represented here by 20I, became dominant in the week beginning 11 January 2021. Delta, primarily 21J in these outputs, overtook Alpha in the week beginning 24 May 2021 and accounted for the largest share of sequences overall. Omicron then replaced Delta rapidly: 21K became dominant in the week beginning 20 December 2021, followed by 21L in the week beginning 7 March 2022. Later Omicron sublineages then replaced one another, with 22B becoming dominant in the week beginning 13 June 2022 and 22E in the week beginning 14 November 2022. By the week beginning 23 January 2023, clades outside the main grouped categories were dominant in the smoothed frequency table.
 
-This overlap between lineage replacement and policy change is central to the
-interpretation of the thesis. Apparent changes in cluster size, geographic
-spread, or demographic mixing may reflect policy, but they may also reflect
-variant biology, epidemic phase, population immunity, testing behaviour, and
-sequencing intensity. For this reason, the analyses treat surveillance
-conditions and policy periods as part of the context in which genomic clusters
-were observed, rather than as neutral background features. The surveillance
-timeline therefore provides the interpretive frame for Parts 1-3: it shows
-when sequences were available, which lineages were circulating, and what
-restrictions shaped social contact during each phase of the Scottish epidemic.
+These dates are based on the smoothed weekly dominance table and should be interpreted as surveillance summaries rather than exact emergence dates. They nevertheless demonstrate that the study period was not a single homogeneous epidemic. Instead, it comprised a sequence of variant-specific waves, each with different transmissibility, immune context, testing conditions, and opportunities for onward spread. Across the plotted subset, 21J (Delta), 21L (Omicron), 21K (Omicron), and 20I (Alpha) accounted for the largest shares of assigned sequences, while later Omicron sublineages contributed shorter but epidemiologically important replacement phases.
+
+The policy timeline changed along the same calendar axis. The plotted surveillance period begins after the first national lockdown, during Route map phase 3. Scotland then moved through pre-tier tightening and the five-tier framework in autumn 2020, followed by the second national lockdown from January 2021 as Alpha became dominant. Restrictions were eased stepwise through Stay Local, Level 3, Level 2/1, and Level 0 during spring and summer 2021, before a near-normal period during Delta dominance. Omicron-specific measures were introduced in late 2021, followed by final easing in early 2022 and a post-restriction period from April 2022 onwards.
+
+This overlap between lineage replacement, surveillance intensity, and policy change provides the interpretive frame for the thesis analyses. Associations between inferred cluster structure and deprivation may reflect genuine differences in transmission opportunity, but they are observed within periods that differ sharply in dominant variant, restrictions, population immunity, case ascertainment, and sequencing coverage. The surveillance timeline therefore anchors Parts 1-3 of the thesis by showing when sequences were available, which clade groups were circulating, and what restriction context shaped social contact during each phase of the Scottish epidemic.
