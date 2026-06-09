@@ -249,9 +249,8 @@ def plot_meta_cluster_subgraph(
     sse_col: str = "sse_candidate",
     max_nodes: int | None = 250,
     annotate_top_n: int = 0,
-    rankdir: str = "LR",
-    layout_method: str = "sugiyama",
-    jitter: float | tuple[float, float] = 0.08,
+    layout_method: str = "twopi",
+    jitter: float = 0.0,
     random_state: int | None = 42,
     edge_weight_col: str = "n_shared_sequences",
     scale_edges_by_weight: bool = True,
@@ -261,21 +260,51 @@ def plot_meta_cluster_subgraph(
     height_in: float = 5.0,
     context: CONTEXTS = "paper",
     font_scale: float = 1.0,
+    close: bool = True,
 ) -> Figure:
-    """Draw one connected-component subgraph with igraph and binary SSE status.
+    """Draw one connected-component subgraph coloured by binary SSE status.
 
-    Nodes are coloured only by candidate/background status. ``layout_method``
-    can be ``"sugiyama"`` for igraph's layered DAG layout or ``"tree"`` /
-    ``"dot"`` for Graphviz's tree-like hierarchical layout via pygraphviz.
-    ``jitter`` applies a deterministic two-dimensional layout perturbation to
-    reduce overlap. Pass a scalar to use the same relative spread on x and y, or
-    ``(x_jitter, y_jitter)`` to tune horizontal and vertical spread separately.
-    Edge weight defaults to ``n_shared_sequences``, the count of sequence IDs
-    shared across adjacent-window clusters; it is overlap support, not observed
-    transmission. When ``max_nodes`` is set and the component is larger,
-    candidates are retained first and the remaining slots are filled by largest
-    background nodes.
+    Nodes are coloured by candidate/background status and sized on a log scale
+    (to avoid heavy-tailed cluster-size compression).
+
+    Layout
+    ------
+    The default ``"twopi"`` uses Graphviz's radial engine: the highest-degree
+    node is placed at the centre and all others arranged in concentric rings by
+    graph distance.  This maps cleanly onto power-law edge-count distributions
+    — the dominant hub sits centrally, direct neighbours form the first ring,
+    and the long tail of weakly-connected nodes fills the outer rings.
+
+    Other accepted values:
+
+    ``"fr"``
+        Fruchterman-Reingold force-directed layout.  Edge weights attract
+        high-overlap pairs together; good when there are multiple competing
+        hubs of similar degree.
+    ``"kk"``
+        Kamada-Kawai.  Slower but often cleaner for small components; weights
+        are converted to distances so high-overlap pairs sit closer.
+    ``"drl"``
+        DrL.  Better for very large, sparse graphs (hundreds of nodes).
+    ``"dot"``
+        Graphviz hierarchical (left-to-right).  Use when DAG structure matters.
+    ``"circle"``
+        Uniform ring.  Useful as a diagnostic baseline.
+
+    Parameters
+    ----------
+    jitter:
+        Relative Gaussian perturbation applied after layout.  Defaults to 0;
+        increase only if nodes overlap heavily in dense components.
+    close:
+        Call ``plt.close(fig)`` before returning.  Set ``False`` for
+        interactive inspection.
     """
+    _valid_layouts = {"twopi", "fr", "kk", "drl", "dot", "circle"}
+
+    # ------------------------------------------------------------------ #
+    # 1.  Validate inputs
+    # ------------------------------------------------------------------ #
     if "cluster_id" not in node_stats.columns:
         raise KeyError("node_stats needs 'cluster_id'")
     if meta_col not in node_stats.columns:
@@ -285,25 +314,34 @@ def plot_meta_cluster_subgraph(
             raise KeyError(f"node_stats needs '{meta_col}' or 'connected_components'")
     if not {"source", "target"}.issubset(edge_table.columns):
         raise KeyError("edge_table needs 'source' and 'target'")
+    if layout_method not in _valid_layouts:
+        raise ValueError(f"layout_method must be one of {sorted(_valid_layouts)!r}")
+    if jitter < 0:
+        raise ValueError("jitter must be non-negative.")
 
+    # ------------------------------------------------------------------ #
+    # 2.  Filter nodes; retain candidates first within max_nodes budget
+    # ------------------------------------------------------------------ #
     nodes = node_stats.loc[node_stats[meta_col].eq(meta_cluster_id)].copy()
     if nodes.empty:
         raise ValueError(f"No nodes found for {meta_col}={meta_cluster_id!r}")
 
     nodes = _with_candidate_status(nodes, sse_col=sse_col)
+
     if max_nodes is not None and len(nodes) > max_nodes:
         sort_cols = ["_sse_candidate_mask"]
         ascending = [False]
         if "cluster_size" in nodes.columns:
             sort_cols.append("cluster_size")
             ascending.append(False)
-        if "window_idx" in nodes.columns:
-            sort_cols.append("window_idx")
-            ascending.append(True)
         nodes = nodes.sort_values(sort_cols, ascending=ascending).head(max_nodes)
 
+    # ------------------------------------------------------------------ #
+    # 3.  Build igraph
+    # ------------------------------------------------------------------ #
     node_ids = nodes["cluster_id"].astype(str).tolist()
     node_id_set = set(node_ids)
+
     edges = edge_table.loc[
         edge_table["source"].astype(str).isin(node_id_set)
         & edge_table["target"].astype(str).isin(node_id_set)
@@ -316,95 +354,130 @@ def plot_meta_cluster_subgraph(
     graph = ig.Graph(directed=True)
     graph.add_vertices(node_ids)
     edge_pairs = list(edges[["source", "target"]].itertuples(index=False, name=None))
+
     if edge_pairs:
         graph.add_edges(edge_pairs)
-        if edge_weight_col in edges.columns:
-            graph.es["weight"] = pd.to_numeric(
-                edges[edge_weight_col],
-                errors="coerce",
-            ).fillna(1).clip(lower=1).to_numpy(dtype=float)
-        else:
-            graph.es["weight"] = np.ones(len(edge_pairs), dtype=float)
+        graph.es["weight"] = (
+            pd.to_numeric(edges[edge_weight_col], errors="coerce")
+            .fillna(1)
+            .clip(lower=1)
+            .to_numpy(dtype=float)
+            if edge_weight_col in edges.columns
+            else np.ones(len(edge_pairs), dtype=float)
+        )
+    else:
+        graph.es["weight"] = np.empty(0, dtype=float)
 
     node_lookup = nodes.assign(cluster_id=nodes["cluster_id"].astype(str)).set_index(
         "cluster_id"
     )
+
     graph.vs["candidate"] = [
         bool(node_lookup.loc[name, "_sse_candidate_mask"]) for name in graph.vs["name"]
     ]
 
-    if "window_idx" in node_lookup.columns:
-        windows = pd.Series( pd.to_numeric(
-            node_lookup.loc[graph.vs["name"], "window_idx"], errors="coerce"
-        ))
-        layers = pd.factorize(windows.fillna(windows.min()).to_numpy(), sort=True)[0]
-    else:
-        layers = None
-
-    layout_method = layout_method.lower()
-    if layout_method not in {"sugiyama", "tree", "dot", "graphviz", "circle"}:
-        raise ValueError(
-            "layout_method must be one of 'sugiyama', 'tree', 'dot', "
-            "'graphviz', or 'circle'."
-        )
+    # ------------------------------------------------------------------ #
+    # 4.  Compute layout coordinates
+    # ------------------------------------------------------------------ #
+    weights = (
+        np.asarray(graph.es["weight"], dtype=float) if graph.ecount() > 0 else None
+    )
 
     if graph.vcount() == 1:
-        coords = np.array([[0.0, 0.0]])
-    elif layout_method in {"tree", "dot", "graphviz"}:
+        coords = np.zeros((1, 2), dtype=float)
+
+    elif layout_method in {"twopi", "dot"}:
         import pygraphviz as pgv
 
-        ag = pgv.AGraph(directed=True, strict=False, rankdir=rankdir.upper())
+        prog = layout_method  # both are valid Graphviz programs
+        ag = pgv.AGraph(directed=True, strict=False)
+        if layout_method == "dot":
+            ag.graph_attr["rankdir"] = "LR"
         ag.graph_attr.update(splines="true", overlap="false")
         for name in node_ids:
             ag.add_node(name)
-        for source, target in edge_pairs:
-            ag.add_edge(source, target)
-        ag.layout(prog="dot")
+        for src, tgt in edge_pairs:
+            ag.add_edge(src, tgt)
+        ag.layout(prog=prog)
         coords = np.asarray(
             [
-                [
-                    float(value)
-                    for value in str(getattr(ag.get_node(name), "attr", {}).get("pos")).split(",")[:2]
-                ]
-                for name in graph.vs["name"]
+                [float(v) for v in str(ag.get_node(n).attr["pos"]).split(",")[:2]]  # type: ignore
+                for n in graph.vs["name"]
             ],
             dtype=float,
         )
+
     elif layout_method == "circle":
-        layout = graph.layout_circle()
-        coords = np.asarray(layout.coords, dtype=float)
-    elif graph.ecount() > 0:
-        layout = graph.layout_sugiyama(layers=layers)
-        coords = np.asarray(layout.coords, dtype=float)
-    else:
-        layout = graph.layout_circle()
-        coords = np.asarray(layout.coords, dtype=float)
+        coords = np.asarray(graph.layout_circle().coords, dtype=float)
 
-    horizontal = rankdir.upper() in {"LR", "RL"}
-    if layout_method == "sugiyama" and horizontal:
-        coords = coords[:, [1, 0]]
-    coords = coords - coords.mean(axis=0, keepdims=True)
+    elif layout_method == "kk":
+        if weights is not None:
+            dist = 1.0 / np.maximum(weights, 1e-6)
+            n = graph.vcount()
+            dist_matrix = np.full((n, n), float(n))
+            for eidx, (src, tgt) in enumerate(edge_pairs):
+                si = graph.vs.find(name=src).index
+                ti = graph.vs.find(name=tgt).index
+                dist_matrix[si, ti] = dist[eidx]
+                dist_matrix[ti, si] = dist[eidx]
+            np.fill_diagonal(dist_matrix, 0.0)
+            coords = np.asarray(
+                graph.layout_kamada_kawai(
+                    weights=weights.tolist() if weights is not None else None
+                ).coords,
+                dtype=float,
+            )
+        else:
+            coords = np.asarray(graph.layout_kamada_kawai().coords, dtype=float)
 
-    if isinstance(jitter, tuple):
-        if len(jitter) != 2:
-            raise ValueError("jitter tuple must be (x_jitter, y_jitter).")
-        jitter_xy = np.asarray(jitter, dtype=float)
-    else:
-        jitter_xy = np.asarray([float(jitter), float(jitter)], dtype=float)
-    if np.any(jitter_xy < 0):
-        raise ValueError("jitter values must be non-negative.")
-
-    if np.any(jitter_xy > 0) and graph.vcount() > 1:
-        rng = np.random.default_rng(random_state)
-        span = np.ptp(coords, axis=0)
-        fallback_span = max(float(np.nanmax(span)), 1.0)
-        axis_scale = np.where(span > 0, span, fallback_span)
-        coords += rng.normal(
-            0.0,
-            jitter_xy * axis_scale,
-            size=(graph.vcount(), 2),
+    elif layout_method == "drl":
+        coords = np.asarray(
+            graph.layout_drl(
+                weights=weights.tolist() if weights is not None else None
+            ).coords,
+            dtype=float,
         )
 
+    else:  # "fr"
+        niter = max(500, graph.vcount() * 4)
+        coords = np.asarray(
+            graph.layout_fruchterman_reingold(
+                weights=weights.tolist() if weights is not None else None,
+                niter=niter,
+            ).coords,
+            dtype=float,
+        )
+
+    coords -= coords.mean(axis=0, keepdims=True)
+
+    # ------------------------------------------------------------------ #
+    # 5.  Optional jitter
+    # ------------------------------------------------------------------ #
+    if jitter > 0.0 and graph.vcount() > 1:
+        rng = np.random.default_rng(random_state)
+        span = np.ptp(coords, axis=0)
+        axis_scale = np.where(span > 0, span, max(float(np.nanmax(span)), 1.0))
+        coords = coords + rng.normal(0.0, jitter * axis_scale, size=(graph.vcount(), 2))
+
+    # ------------------------------------------------------------------ #
+    # 6.  Pre-compute edge aesthetics (hoisted out of draw loop)
+    # ------------------------------------------------------------------ #
+    if scale_edges_by_weight and graph.ecount() > 0:
+        ew = np.asarray(graph.es["weight"], dtype=float)
+        max_weight = max(float(np.nanmax(ew)), 1.0)
+        width_scales = np.sqrt(ew / max_weight)
+        edge_lws = 0.45 + 1.8 * width_scales
+        edge_alphas = 0.18 + 0.34 * width_scales
+    else:
+        edge_lws = np.full(graph.ecount(), 0.7)
+        edge_alphas = np.full(graph.ecount(), 0.32)
+
+    def _curve_sign(src_idx: int, tgt_idx: int) -> int:
+        return 1 if src_idx < tgt_idx else -1
+
+    # ------------------------------------------------------------------ #
+    # 7.  Draw edges
+    # ------------------------------------------------------------------ #
     fig, ax = new_figure(
         width=width,
         width_in=width_in,
@@ -414,21 +487,10 @@ def plot_meta_cluster_subgraph(
     )
 
     for edge in graph.es:
-        source, target = edge.tuple
-        x0, y0 = coords[source]
-        x1, y1 = coords[target]
-        weight = float(edge["weight"]) if "weight" in edge.attributes() else 1.0
-        if scale_edges_by_weight and graph.ecount() > 0:
-            weights = np.asarray(graph.es["weight"], dtype=float)
-            max_weight = max(float(np.nanmax(weights)), 1.0)
-            width_scale = np.sqrt(weight / max_weight)
-            edge_lw = 0.45 + 1.8 * width_scale
-            edge_alpha = 0.18 + 0.34 * width_scale
-        else:
-            edge_lw = 0.7
-            edge_alpha = 0.32
-        curve_sign = -1 if edge.index % 2 else 1
-        connectionstyle = f"arc3,rad={curve_sign * edge_curve:.3f}"
+        src, tgt = edge.tuple
+        x0, y0 = coords[src]
+        x1, y1 = coords[tgt]
+        sign = _curve_sign(src, tgt)
         ax.annotate(
             "",
             xy=(x1, y1),
@@ -436,20 +498,30 @@ def plot_meta_cluster_subgraph(
             arrowprops={
                 "arrowstyle": "-|>",
                 "color": GRAY_LIGHT,
-                "lw": edge_lw,
-                "alpha": edge_alpha,
+                "lw": float(edge_lws[edge.index]),
+                "alpha": float(edge_alphas[edge.index]),
                 "shrinkA": 4,
                 "shrinkB": 4,
-                "connectionstyle": connectionstyle,
+                "connectionstyle": f"arc3,rad={sign * edge_curve:.3f}",
             },
             zorder=1,
         )
 
+    # ------------------------------------------------------------------ #
+    # 8.  Draw nodes
+    # ------------------------------------------------------------------ #
     if "cluster_size" in node_lookup.columns:
-        sizes = pd.Series(pd.to_numeric(
-            node_lookup.loc[graph.vs["name"], "cluster_size"], errors="coerce"
-        )).fillna(1)
-        marker_sizes = 26 + 120 * np.sqrt(sizes / max(float(sizes.max()), 1.0))
+        sizes = (
+            pd.Series(
+                pd.to_numeric(
+                    node_lookup.loc[graph.vs["name"], "cluster_size"], errors="coerce"
+                )
+            )
+            .fillna(1)
+            .to_numpy(dtype=float)
+        )
+        log_sizes = np.log1p(sizes)
+        marker_sizes = 26.0 + 120.0 * (log_sizes / max(float(log_sizes.max()), 1.0))
     else:
         marker_sizes = np.full(graph.vcount(), 58.0)
 
@@ -463,7 +535,7 @@ def plot_meta_cluster_subgraph(
         ax.scatter(
             coords[mask, 0],
             coords[mask, 1],
-            s=np.asarray(marker_sizes)[mask],
+            s=marker_sizes[mask],
             c=color,
             edgecolors=edge_color,
             linewidths=0.45,
@@ -474,37 +546,57 @@ def plot_meta_cluster_subgraph(
 
     if annotate_top_n > 0 and "cluster_size" in node_lookup.columns:
         top_names = (
-            node_lookup["cluster_size"].sort_values(ascending=False).head(annotate_top_n)
-        ).index
+            node_lookup["cluster_size"]
+            .sort_values(ascending=False)
+            .head(annotate_top_n)
+            .index
+        )
         coord_lookup = dict(zip(graph.vs["name"], coords))
         for name in top_names:
-            if name not in coord_lookup:
-                continue
-            x, y = coord_lookup[name]
-            ax.text(x, y, str(name), fontsize="x-small", color=INK, zorder=4)
+            if name in coord_lookup:
+                x, y = coord_lookup[name]
+                ax.text(x, y, str(name), fontsize="x-small", color=INK, zorder=4)
 
-    ax.set_title(f"{meta_col}: {meta_cluster_id} ({graph.vcount():,} nodes)")
     ax.set_axis_off()
+
+    # ------------------------------------------------------------------ #
+    # 9.  Legend
+    # ------------------------------------------------------------------ #
     legend_handles, legend_labels = ax.get_legend_handles_labels()
+
     if scale_edges_by_weight and graph.ecount() > 0:
-        weights = np.asarray(graph.es["weight"], dtype=float)
-        finite = weights[np.isfinite(weights)]
+        ew = np.asarray(graph.es["weight"], dtype=float)
+        finite = ew[np.isfinite(ew)]
         if finite.size:
-            for value in sorted(set([float(np.nanmin(finite)), float(np.nanmax(finite))])):
-                max_weight = max(float(np.nanmax(finite)), 1.0)
-                width_scale = np.sqrt(value / max_weight)
+            breakpoints = np.unique(
+                np.percentile(finite, [0, 50, 100]).round().astype(int)
+            )
+            max_w = max(float(finite.max()), 1.0)
+            for value in breakpoints:
+                ws = np.sqrt(float(value) / max_w)
                 legend_handles.append(
-                    Line2D(
-                        [0],
-                        [0],
-                        color=GRAY_LIGHT,
-                        lw=0.45 + 1.8 * width_scale,
-                        alpha=0.55,
-                    )
+                    Line2D([0], [0], color=GRAY_LIGHT, lw=0.45 + 1.8 * ws, alpha=0.55)
                 )
-                legend_labels.append(f"{edge_weight_col}={value:g}")
-    ax.legend(legend_handles, legend_labels, loc="upper left", frameon=False)
-    plt.close(fig)
+                legend_labels.append(f"Shared seqs: {value:,}")
+
+    # ax.legend(
+    #     legend_handles,
+    #     legend_labels,
+    #     loc="lower center",
+    #     bbox_to_anchor=(0.5, -0.075),
+    #     ncols=len(legend_handles),
+    #     frameon=False,
+    # )
+
+    ax.legend(
+        legend_handles,
+        legend_labels,
+        loc="best",
+        frameon=False,
+        labelspacing=1,
+    )
+    if close:
+        plt.close(fig)
     return fig
 
 
@@ -583,8 +675,14 @@ def plot_cluster_size_distribution(
 
         if sub_df.empty:
             for ax in (ax_ecdf, ax_violin):
-                ax.text(0.5, 0.5, "No data", ha="center", va="center",
-                        transform=ax.transAxes)
+                ax.text(
+                    0.5,
+                    0.5,
+                    "No data",
+                    ha="center",
+                    va="center",
+                    transform=ax.transAxes,
+                )
             return
 
         # Left: ECDF
@@ -652,9 +750,14 @@ def plot_cluster_size_distribution(
         # Row label on the far left, rotated (won't collide with panel letters)
         ax_ecdf.annotate(
             row_label,
-            xy=(0, 0.5), xycoords="axes fraction",
-            xytext=(-ax_ecdf.yaxis.labelpad - 28, 0), textcoords="offset points",
-            ha="right", va="center", rotation=90, fontweight="bold",
+            xy=(0, 0.5),
+            xycoords="axes fraction",
+            xytext=(-ax_ecdf.yaxis.labelpad - 28, 0),
+            textcoords="offset points",
+            ha="right",
+            va="center",
+            rotation=90,
+            fontweight="bold",
         )
 
     panel_axes = []
@@ -662,7 +765,9 @@ def plot_cluster_size_distribution(
         ax_ecdf, ax_violin = axes[r, 0], axes[r, 1]
         sub = df.loc[df[sse_col] == val]
         _draw_row(
-            ax_ecdf, ax_violin, sub,
+            ax_ecdf,
+            ax_violin,
+            sub,
             row_label=sse_labels.get(val, str(val)),
             is_bottom=(r == len(row_values) - 1),
         )
@@ -736,7 +841,7 @@ def plot_role_dynamic_heatmap(
     )
     ax.set_ylabel(_pretty_role_dynamic(row_col))
     ax.set_xlabel("Detection signature")
-    ax.tick_params(axis="x", rotation=35)
+    ax.tick_params(axis="x", rotation=0)
     ax.tick_params(axis="y", rotation=0)
 
     plt.close(fig)
@@ -1021,7 +1126,7 @@ def plot_core_metric_space(
 
     ax.set_xlabel(_pretty_role_dynamic(x_col))
     ax.set_ylabel(_pretty_role_dynamic(y_col))
-    ax.legend(frameon=False, loc="best")
+    ax.legend(frameon=False, loc="upper center", bbox_to_anchor=(0.5, 1.1), ncol=2)
     plt.close(fig)
     return fig
 
@@ -1114,7 +1219,8 @@ def plot_composite_distributions(
                 common_norm=False,
             )
         ax.set_title(col[1])
-        ax.set_ylabel("Density")
+        ax.set_ylabel("")
+        ax.set_yticks([])
         if col[0].endswith("_pct_window") or col[0].endswith("_pct_onward_window"):
             ax.set_xlim(0, 1)
     for ax in axes[len(columns) :]:
@@ -1146,7 +1252,8 @@ def plot_composite_distributions(
         columnspacing=1.6,
     )
     fig.supxlabel("Within window percentile score (higher = more extreme)")
-    add_panel_labels([ax for ax in axes[: len(columns)] if ax.get_visible()])
+    fig.supylabel("Density (not comparable across panels)")
+    add_panel_labels([ax for ax in axes[: len(columns)] if ax.get_visible()], y=1.2)
     plt.close(fig)
     return fig
 
@@ -1215,41 +1322,49 @@ def _ordered_category_levels(
     """Return a plotting summary with stable level order for common fields."""
     summary = summary.copy()
     column_key = column.lower()
+
+    # Ensure levels are strings for consistent set operations and ordering
+    summary["_level"] = summary["_level"].astype(str)
+
     observed = summary.groupby("_level", as_index=False)["n"].sum()
-    observed["_level"] = observed["_level"].astype(str)
     observed_set = set(observed["_level"])
 
+    # 1. Determine the baseline sorting order
     if column_key in {"sex"}:
         order = [level for level in _SEX_ORDER if level in observed_set]
         order.extend(
-            sorted(observed_set - set(order), key=lambda value: str(value).casefold())
+            sorted(observed_set - set(order), key=lambda value: value.casefold())
         )
     elif "simd" in column_key and "quintile" in column_key:
         order = [level for level in _SIMD_ORDER if level in observed_set]
         order.extend(
-            sorted(observed_set - set(order), key=lambda value: str(value).casefold())
+            sorted(observed_set - set(order), key=lambda value: value.casefold())
         )
     elif "age" in column_key:
         order = sorted(observed["_level"], key=_age_band_sort_key)
     elif "urban" in column_key or "rural" in column_key:
         order = [level for level in _URBAN_RURAL_ORDER if level in observed_set]
         order.extend(
-            sorted(observed_set - set(order), key=lambda value: str(value).casefold())
+            sorted(observed_set - set(order), key=lambda value: value.casefold())
         )
     else:
-        order = (
-            observed.sort_values(["n", "_level"], ascending=[False, True])["_level"]
-            .astype(str)
-            .tolist()
-        )
+        order = observed.sort_values(["n", "_level"], ascending=[False, True])[  # type: ignore
+            "_level"
+        ].tolist()
 
+    # 2. Handle max_levels truncation
     if max_levels is not None and max_levels > 1 and len(order) > max_levels:
         keep = set(order[: max_levels - 1])
         other_label = f"Other ({len(order) - len(keep)} levels)"
+
         summary["_level"] = summary["_level"].where(
             summary["_level"].isin(keep), other_label
         )
-        summary = summary.groupby(["_level", "_sse_status"], as_index=False)["n"].sum()
+
+        # Dynamically aggregate all columns except 'n' and '_level'
+        agg_cols = [c for c in summary.columns if c != "n"]
+        summary = summary.groupby(agg_cols, as_index=False, dropna=False)["n"].sum()  # type: ignore
+
         order = order[: max_levels - 1] + [other_label]
 
     return summary, order
@@ -1285,9 +1400,219 @@ def _individual_category_summary(
     elif unit != "rows":
         raise ValueError("unit must be 'sequences' or 'rows'.")
 
-    return d.groupby(["_level", "_sse_status"], as_index=False).size().rename(
-        columns={"size": "n"}
+    return (
+        d.groupby(["_level", "_sse_status"], as_index=False)
+        .size()
+        .rename(columns={"size": "n"})
     )
+
+
+def _simd_tick_label(level: str) -> str:
+    simd_label_map = {
+        "1": "1\n(most deprived)",
+        "2": "2",
+        "3": "3",
+        "4": "4",
+        "5": "5\n(least deprived)",
+    }
+    return simd_label_map.get(level, level)
+
+
+def _plot_individual_category_bar_panel(
+    ax: plt.Axes,
+    data: pd.DataFrame,
+    *,
+    column: str,
+    category_label: str,
+    status_col: str,
+    sequence_col: str,
+    unit: str,
+    max_levels: int | None,
+    show_ylabel: bool = True,
+) -> None:
+    summary = _individual_category_summary(
+        data,
+        column=column,
+        status_col=status_col,
+        sequence_col=sequence_col,
+        unit=unit,
+    )
+    summary, order = _ordered_category_levels(
+        summary,
+        column=column,
+        max_levels=max_levels,
+    )
+
+    totals = summary.groupby("_sse_status")["n"].transform("sum")
+    summary["pct"] = np.where(totals.gt(0), 100 * summary["n"] / totals, 0.0)
+    pivot = (
+        summary.pivot_table(
+            index="_level",
+            columns="_sse_status",
+            values="pct",
+            aggfunc="sum",
+            fill_value=0,
+        )
+        .reindex(order, fill_value=0)
+        .reindex(columns=["Background", "Candidate"], fill_value=0)
+    )
+
+    bar_height = 0.34
+    statuses = [
+        ("Background", BACKGROUND_COLOR, BACKGROUND_DARK, -bar_height / 2),
+        ("Candidate", CANDIDATE_COLOR, CANDIDATE_DARK, bar_height / 2),
+    ]
+    y = np.arange(len(order))
+    for status, color, edgecolor, offset in statuses:
+        ax.barh(
+            y + offset,
+            pivot[status].to_numpy(),
+            height=bar_height,
+            color=color,
+            edgecolor=edgecolor,
+            linewidth=0.4,
+            alpha=0.9,
+            label=status,
+        )
+
+    ax.set_yticks(y)
+    ax.set_yticklabels([_simd_tick_label(level) for level in order])
+    ax.invert_yaxis()
+    ax.set_xlabel("Within-status share (%)")
+    ax.set_ylabel(category_label if show_ylabel else "")
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.0f}%"))
+    ax.grid(axis="x", color=GRID, linewidth=0.8)
+    ax.grid(axis="y", visible=False)
+    xmax = float(pivot.to_numpy().max()) if not pivot.empty else 0.0
+    ax.set_xlim(0, max(5.0, np.ceil(xmax / 5) * 5))
+
+
+def _parse_label_count_string(value: Any) -> list[tuple[str, int]]:
+    if not isinstance(value, str) or not value.strip():
+        return []
+
+    out = []
+    for part in value.split(";"):
+        part = part.strip()
+        if not part:
+            continue
+        match = re.match(r"^(.*?)\s*\((\d+)\)\s*$", part)
+        if match is None:
+            continue
+        label = match.group(1).strip()
+        count = int(match.group(2))
+        if label and count > 0:
+            out.append((label, count))
+    return out
+
+
+def _plot_node_count_category_bar_panel(
+    ax: plt.Axes,
+    node_stats: pd.DataFrame,
+    *,
+    col: str,
+    category_label: str,
+    max_levels: int | None,
+) -> None:
+    records = []
+    for _, row in node_stats.iterrows():
+        for level, n in _parse_label_count_string(row[col]):
+            records.append(
+                {
+                    "_level": level,
+                    "_sse_status": row["_sse_status"],
+                    "n": n,
+                }
+            )
+
+    if not records:
+        ax.set_visible(False)
+        return
+
+    summary = pd.DataFrame(records).groupby(
+        ["_level", "_sse_status"],
+        as_index=False,
+        dropna=False,
+    )["n"].sum()
+    summary, order = _ordered_category_levels(
+        summary,
+        column=col,
+        max_levels=max_levels,
+    )
+    totals = summary.groupby("_sse_status")["n"].transform("sum")
+    summary["pct"] = np.where(totals.gt(0), 100 * summary["n"] / totals, 0.0)
+    pivot = (
+        summary.pivot_table(
+            index="_level",
+            columns="_sse_status",
+            values="pct",
+            aggfunc="sum",
+            fill_value=0,
+        )
+        .reindex(order, fill_value=0)
+        .reindex(columns=["Background", "Candidate"], fill_value=0)
+    )
+
+    bar_height = 0.34
+    y = np.arange(len(order))
+    for status, color, edgecolor, offset in [
+        ("Background", BACKGROUND_COLOR, BACKGROUND_DARK, -bar_height / 2),
+        ("Candidate", CANDIDATE_COLOR, CANDIDATE_DARK, bar_height / 2),
+    ]:
+        ax.barh(
+            y + offset,
+            pivot[status].to_numpy(),
+            height=bar_height,
+            color=color,
+            edgecolor=edgecolor,
+            linewidth=0.4,
+            alpha=0.9,
+            label=status,
+        )
+
+    ax.set_yticks(y)
+    ax.set_yticklabels([_simd_tick_label(level) for level in order])
+    ax.invert_yaxis()
+    ax.set_xlabel("Within-status share (%)")
+    ax.set_ylabel(category_label)
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.0f}%"))
+    ax.grid(axis="x", color=GRID, linewidth=0.8)
+    ax.grid(axis="y", visible=False)
+    xmax = float(pivot.to_numpy().max()) if not pivot.empty else 0.0
+    ax.set_xlim(0, max(5.0, np.ceil(xmax / 5) * 5))
+
+
+def _plot_mixing_score_density_panel(
+    ax: plt.Axes,
+    node_stats: pd.DataFrame,
+    *,
+    score: str,
+    mixing_label: str,
+) -> None:
+    if score not in node_stats.columns:
+        raise KeyError(f"{score!r} is not present in node_stats.")
+
+    for label, color, mask in [
+        ("Background", BACKGROUND_COLOR, ~node_stats["_sse_candidate_mask"]),
+        ("Candidate", CANDIDATE_COLOR, node_stats["_sse_candidate_mask"]),
+    ]:
+        values = node_stats.loc[mask, score].dropna().to_numpy()
+        if len(values) < 5:
+            continue
+        sns.kdeplot(
+            values,
+            ax=ax,
+            fill=True,
+            color=color,
+            alpha=0.35,
+            linewidth=1.2,
+            label=label,
+            common_norm=False,
+        )
+
+    ax.set_xlabel(mixing_label)
+    ax.set_ylabel("Density")
+    ax.grid(axis="y", color=GRID, linewidth=0.8)
 
 
 def plot_individual_categorical_distribution_bars(
@@ -1335,70 +1660,39 @@ def plot_individual_categorical_distribution_bars(
     )
     axes_flat = np.asarray(axes).reshape(-1)
 
-    bar_height = 0.34
-    statuses = [
-        ("Background", BACKGROUND_COLOR, BACKGROUND_DARK, -bar_height / 2),
-        ("Candidate", CANDIDATE_COLOR, CANDIDATE_DARK, bar_height / 2),
-    ]
-
     for ax, (column, label) in zip(axes_flat, specs):
-        summary = _individual_category_summary(
+        _plot_individual_category_bar_panel(
+            ax,
             data,
             column=column,
+            category_label=label,
             status_col=status_col,
             sequence_col=sequence_col,
             unit=unit,
-        )
-        summary, order = _ordered_category_levels(
-            summary,
-            column=column,
             max_levels=max_levels,
+            show_ylabel=False,
         )
-
-        totals = summary.groupby("_sse_status")["n"].transform("sum")
-        summary["pct"] = np.where(totals.gt(0), 100 * summary["n"] / totals, 0.0)
-        pivot = (
-            summary.pivot_table(
-                index="_level",
-                columns="_sse_status",
-                values="pct",
-                aggfunc="sum",
-                fill_value=0,
-            )
-            .reindex(order, fill_value=0)
-            .reindex(columns=["Background", "Candidate"], fill_value=0)
-        )
-
-        y = np.arange(len(order))
-        for status, color, edgecolor, offset in statuses:
-            ax.barh(
-                y + offset,
-                pivot[status].to_numpy(),
-                height=bar_height,
-                color=color,
-                edgecolor=edgecolor,
-                linewidth=0.4,
-                alpha=0.9,
-                label=status,
-            )
-
-        ax.set_yticks(y)
-        ax.set_yticklabels(order)
-        ax.invert_yaxis()
-        ax.set_title(label)
-        ax.set_xlabel("Within-status share (%)")
-        ax.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.0f}%"))
-        ax.grid(axis="x", color=GRID, linewidth=0.8)
-        ax.grid(axis="y", visible=False)
-        xmax = float(pivot.to_numpy().max()) if not pivot.empty else 0.0
-        ax.set_xlim(0, max(5.0, np.ceil(xmax / 5) * 5))
 
     for ax in axes_flat[len(specs) :]:
         ax.set_visible(False)
 
     handles = [
-        Rectangle((0, 0), 1, 1, facecolor=color, edgecolor=edgecolor, label=status)
-        for status, color, edgecolor, _ in statuses
+        Rectangle(
+            (0, 0),
+            1,
+            1,
+            facecolor=BACKGROUND_COLOR,
+            edgecolor=BACKGROUND_DARK,
+            label="Background",
+        ),
+        Rectangle(
+            (0, 0),
+            1,
+            1,
+            facecolor=CANDIDATE_COLOR,
+            edgecolor=CANDIDATE_DARK,
+            label="Candidate",
+        ),
     ]
     fig.legend(
         handles=handles,
@@ -1408,35 +1702,56 @@ def plot_individual_categorical_distribution_bars(
         frameon=False,
         columnspacing=1.5,
     )
-
-    add_panel_labels([ax for ax in axes_flat[: len(specs)] if ax.get_visible()])
     plt.close(fig)
     return fig
 
 
 def plot_socio_demo_breakdown(
     node_stats: pd.DataFrame,
-    col: str = "top_simd_quintiles",
+    col: str | None = None,
     score: str = "simd_entropy_obs",
     labels: tuple[str, str] = (
         "Socioeconomic mixing score",
         "SIMD Quintile (1 = most deprived)",
     ),
     *,
+    individual_data: pd.DataFrame | None = None,
+    category_col: str | None = None,
+    status_col: str = "candidate",
+    sequence_col: str = "sequence_id",
+    unit: str = "sequences",
+    max_levels: int | None = None,
     width: WIDTHS = "double",
     width_in: float | None = None,
     height_in: float = 4.0,
     context: CONTEXTS = "paper",
     font_scale: float = 1.0,
     min_size: int = 1,
+    node_status_col: str = "sse_candidate",
 ) -> Figure:
     """
-    Plot the distribution of mixing scores for candidate vs background nodes,
-    and the distribution of class-label frequencies for candidate vs background nodes.
+    Pair sequence-level category composition with node-level mixing scores.
+
+    The preferred input combines ``individual_data`` (for the left-hand
+    within-status category bars) with ``node_stats`` (for the right-hand
+    within-cluster mixing-score distribution). ``category_col`` names the
+    sequence-level categorical variable. For compatibility with older outputs,
+    ``col`` can still point to a node-level ``"label (count); ..."`` summary
+    column when ``individual_data`` is not supplied.
     """
 
+    if unit not in {"sequences", "rows"}:
+        raise ValueError("unit must be 'sequences' or 'rows'.")
+
+    category_column = category_col or col
+    if category_column is None:
+        raise ValueError("category_col is required when col is not supplied.")
+
+    if "cluster_size" not in node_stats.columns:
+        raise KeyError("node_stats needs 'cluster_size'.")
     node_stats = _with_candidate_status(
-        node_stats.loc[node_stats["cluster_size"].ge(min_size)].copy()
+        node_stats.loc[node_stats["cluster_size"].ge(min_size)].copy(),
+        sse_col=node_status_col,
     )
 
     fig, axes = new_figure(
@@ -1449,123 +1764,66 @@ def plot_socio_demo_breakdown(
         layout="constrained",
     )
 
-    ax = axes[0]
-
-    for label, color, mask in [
-        ("background", BACKGROUND_COLOR, ~node_stats["_sse_candidate_mask"]),
-        ("candidate", CANDIDATE_COLOR, node_stats["_sse_candidate_mask"]),
-    ]:
-        values = node_stats[mask][score].dropna().to_numpy()
-
-        if len(values) < 5:
-            continue
-
-        sns.kdeplot(
-            values,
-            ax=ax,
-            fill=True,
-            color=color,
-            alpha=0.35,
-            linewidth=1.2,
-            label=label,
-            common_norm=False,
+    if individual_data is not None:
+        _plot_individual_category_bar_panel(
+            axes[0],
+            individual_data,
+            column=category_column,
+            category_label=labels[1],
+            status_col=status_col,
+            sequence_col=sequence_col,
+            unit=unit,
+            max_levels=max_levels,
+        )
+    else:
+        if category_column not in node_stats.columns:
+            raise KeyError(
+                f"{category_column!r} is not present in node_stats; pass "
+                "individual_data and category_col for sequence-level bars."
+            )
+        _plot_node_count_category_bar_panel(
+            axes[0],
+            node_stats,
+            col=category_column,
+            category_label=labels[1],
+            max_levels=max_levels,
         )
 
-    ax.set_xlabel(labels[0])
-    ax.set_ylabel("Density")
-    ax.legend(loc="best", frameon=False)
+    _plot_mixing_score_density_panel(
+        axes[1],
+        node_stats,
+        score=score,
+        mixing_label=labels[0],
+    )
 
-    ax = axes[1]
-    if col not in node_stats.columns:
-        ax.set_visible(False)
-        add_panel_labels([axes[0]])
-        plt.close(fig)
-        return fig
+    handles = [
+        Rectangle(
+            (0, 0),
+            1,
+            1,
+            facecolor=BACKGROUND_COLOR,
+            edgecolor=BACKGROUND_DARK,
+            label="Background",
+        ),
+        Rectangle(
+            (0, 0),
+            1,
+            1,
+            facecolor=CANDIDATE_COLOR,
+            edgecolor=CANDIDATE_DARK,
+            label="Candidate",
+        ),
+    ]
+    fig.legend(
+        handles=handles,
+        loc="outside upper center",
+        bbox_to_anchor=(0.5, 1.12),
+        ncol=2,
+        frameon=False,
+        columnspacing=1.5,
+    )
 
-    def _parse_freq_counts(s: str):
-        """
-        Parse strings like:
-        'class label one (3); class label two (10); class label three (1)'
-
-        Returns:
-        [('class label one', 3), ('class label two', 10), ...]
-        """
-        if not isinstance(s, str) or not s.strip():
-            return []
-
-        out = []
-
-        for part in s.split(";"):
-            part = part.strip()
-
-            if not part:
-                continue
-
-            match = re.match(r"^(.*?)\s*\((\d+)\)\s*$", part)
-
-            if match is None:
-                continue
-
-            label = match.group(1).strip()
-            count = int(match.group(2))
-
-            if label and count > 0:
-                out.append((label, count))
-
-        return out
-
-    records = []
-
-    for _, row in node_stats.iterrows():
-        candidate = row["_sse_candidate_mask"]
-
-        for q, n in _parse_freq_counts(row[col]):
-            records.append(
-                {
-                    "q": q,
-                    "candidate": candidate,
-                    "n": n,
-                }
-            )
-
-    if records:
-        share = (
-            pd.DataFrame(records).groupby(["q", "candidate"], as_index=False)["n"].sum()
-        )
-
-        denom = share.groupby("candidate")["n"].transform("sum")
-        share["frac"] = share["n"] / denom
-
-        order = sorted(share["q"].unique())
-
-        bar_h = 0.4
-        y = np.arange(len(order))
-
-        for off, candidate_value, lbl, color in [
-            (-bar_h / 2, False, "background", BACKGROUND_COLOR),
-            (bar_h / 2, True, "candidate", CANDIDATE_COLOR),
-        ]:
-            sub = (
-                share.loc[share["candidate"] == candidate_value]
-                .set_index("q")
-                .reindex(order, fill_value=0)
-            )
-
-            ax.barh(
-                y + off,
-                sub["frac"].to_numpy(),
-                height=bar_h,
-                color=color,
-                label=lbl,
-            )
-
-        ax.set_yticks(y)
-        ax.set_yticklabels(order)
-
-    ax.set_ylabel(labels[1])
-    ax.set_xlabel("Fraction of sequence counts")
-
-    add_panel_labels(axes)
+    add_panel_labels(axes, y=1.08)
 
     plt.close(fig)
     return fig
@@ -2673,8 +2931,7 @@ def _plot_forest_panel(
                 fontsize="small",
                 color=color,
                 fontweight=(
-                    "bold" if not row.is_reference and not ci_overlaps_one
-                    else "normal"
+                    "bold" if not row.is_reference and not ci_overlaps_one else "normal"
                 ),
             )
 
@@ -2716,6 +2973,36 @@ def plot_health_board_enrichment_map(
     one, excluding the reference board. Confidence intervals are shown in the
     annotation text when available.
     """
+
+    def _spread_annotation_positions(
+        desired: Sequence[float],
+        *,
+        lower: float,
+        upper: float,
+        min_gap: float,
+    ) -> np.ndarray:
+        """Place labels near their anchors while preserving vertical order."""
+        if len(desired) == 0:
+            return np.asarray([], dtype=float)
+
+        positions = np.clip(np.asarray(desired, dtype=float), lower, upper)
+        for idx in range(1, len(positions)):
+            positions[idx] = max(positions[idx], positions[idx - 1] + min_gap)
+
+        overflow = positions[-1] - upper
+        if overflow > 0:
+            positions -= overflow
+            for idx in range(len(positions) - 2, -1, -1):
+                positions[idx] = min(positions[idx], positions[idx + 1] - min_gap)
+
+        underflow = lower - positions[0]
+        if underflow > 0:
+            positions += underflow
+            for idx in range(1, len(positions)):
+                positions[idx] = max(positions[idx], positions[idx - 1] + min_gap)
+
+        return np.clip(positions, lower, upper)
+
     geoms = load_health_board_geometries(
         geography,
         board_col=board_col,
@@ -2832,11 +3119,7 @@ def plot_health_board_enrichment_map(
 
     def _format_board_annotation(row: pd.Series) -> str:
         text = f"{row['board']}\nOR {row['odds_ratio']:.2f}"
-        if (
-            show_annotation_ci
-            and pd.notna(row["or_low"])
-            and pd.notna(row["or_high"])
-        ):
+        if show_annotation_ci and pd.notna(row["or_low"]) and pd.notna(row["or_high"]):
             text += f"\n[{row['or_low']:.2f}--{row['or_high']:.2f}]"
         return text
 
@@ -2884,30 +3167,42 @@ def plot_health_board_enrichment_map(
         label_rows = pd.DataFrame()
 
     if not label_rows.empty:
-        x_left = all_x.min() - 0.24 * span_x
-        x_right = all_x.max() + 0.24 * span_x
+        x_left = all_x.min() - 0.12 * span_x
+        x_right = all_x.max() + 0.12 * span_x
         y_top = all_y.max() - 0.03 * span_y
         y_bottom = all_y.min() + 0.07 * span_y
-        for side, side_rows in [
-            ("right", label_rows.loc[label_rows["odds_ratio"].ge(1.0)]),
-            ("left", label_rows.loc[label_rows["odds_ratio"].lt(1.0)]),
-        ]:
+        min_label_gap = span_y * (0.16 if show_annotation_ci else 0.11)
+        x_mid = float((all_x.min() + all_x.max()) / 2)
+        label_rows = label_rows.copy()
+        label_rows["label_side"] = np.where(
+            label_rows["point_x"].ge(x_mid),
+            "right",
+            "left",
+        )
+        for side in ["left", "right"]:
+            side_rows = label_rows.loc[label_rows["label_side"].eq(side)].copy()
             if side_rows.empty:
                 continue
-            side_rows = side_rows.sort_values("point_y", ascending=False)
-            y_targets = np.linspace(y_top, y_bottom, len(side_rows))
-            for label_y, (_, row) in zip(y_targets, side_rows.iterrows()):
+            side_rows = side_rows.sort_values("point_y", ascending=True)
+            available_gap = (y_top - y_bottom) / max(len(side_rows) - 1, 1)
+            side_rows["label_y"] = _spread_annotation_positions(
+                side_rows["point_y"].to_numpy(dtype=float),  # type: ignore
+                lower=y_bottom,
+                upper=y_top,
+                min_gap=min(min_label_gap, available_gap * 0.96),
+            )
+            side_rows = side_rows.sort_values("label_y", ascending=False)
+            for _, row in side_rows.iterrows():
                 point = reps[row["board"]]
                 label_x = x_right if side == "right" else x_left
                 ax_map.annotate(
                     _format_board_annotation(row),
                     xy=(point.x, point.y),
-                    xytext=(label_x, label_y),
+                    xytext=(label_x, row["label_y"]),
                     fontsize="small",
                     color=row["color"],
                     fontweight=(
-                        "bold" if row["color"] in {ORANGE_DARK, TEAL_DARK}
-                        else "normal"
+                        "bold" if row["color"] in {ORANGE_DARK, TEAL_DARK} else "normal"
                     ),
                     va="center",
                     ha="left" if side == "right" else "right",
@@ -2919,6 +3214,7 @@ def plot_health_board_enrichment_map(
                         shrinkA=1,
                         shrinkB=2,
                     ),
+                    annotation_clip=False,
                     zorder=5,
                 )
 
@@ -3111,11 +3407,11 @@ def plot_age_sex_simd_forest(
         simd_order = ["1", "2", "3", "4", "5"]
     if simd_label_map is None:
         simd_label_map = {
-            "1": "1 most deprived",
+            "1": "1\n(most deprived)",
             "2": "2",
             "3": "3",
             "4": "4",
-            "5": "5 least deprived",
+            "5": "5\n(least deprived)",
         }
 
     age_panel = _categorical_or_frame(
@@ -3155,7 +3451,7 @@ def plot_age_sex_simd_forest(
 
     nrows = 3
     if height_ratios is None:
-        height_ratios = (0.55, 1.0, 1.0)
+        height_ratios = (0.45, 0.8, 1.0)
     if len(height_ratios) != nrows:
         raise ValueError(f"`height_ratios` must contain {nrows} values.")
 
