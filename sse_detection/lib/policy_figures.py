@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-import re
 from typing import Any, Iterable, Mapping
 
 from matplotlib.figure import Figure
@@ -27,6 +26,13 @@ from .palettes import (
     SSE_CATEGORY_ORDER,
     SSE_CATEGORY_PALETTE,
     TEAL_DARK,
+)
+from .table_utils import (
+    clean_strings as _clean_strings,
+    forest_xlim as _forest_xlim,
+    pretty_text as _pretty_text,
+    read_table as _read_table,
+    term_level as _term_level,
 )
 
 __all__ = [
@@ -79,40 +85,6 @@ def _filter_model_single(
     if "predictor_set" in out.columns:
         out = out.loc[out["predictor_set"].astype(str).eq(predictor_set)].copy()
     return out
-
-
-def _read_table(table: pd.DataFrame | str | Path | Any) -> pd.DataFrame:
-    if isinstance(table, pd.DataFrame):
-        return table.copy()
-    path = Path(table)
-    if path.suffix == ".parquet":
-        return pd.read_parquet(path)
-    return pd.read_csv(path, skipinitialspace=True)
-
-
-def _clean_strings(df: pd.DataFrame) -> pd.DataFrame:
-    out = df.copy()
-    out.columns = [str(col).strip() for col in out.columns]
-    for col in out.select_dtypes(include=["object", "string"]).columns:
-        present = out[col].notna()
-        out.loc[present, col] = out.loc[present, col].astype(str).str.strip()
-    return out
-
-
-def _pretty_text(value: Any, label_map: Mapping[str, str] | None = None) -> str:
-    if pd.isna(value):
-        return ""
-    text = str(value)
-    if label_map and text in label_map:
-        return label_map[text]
-    return text.replace("_", " ").strip().capitalize()
-
-
-def _term_level(term: Any) -> str:
-    if pd.isna(term):
-        return ""
-    match = re.search(r"\[T\.(.*)\]$", str(term))
-    return match.group(1) if match else str(term)
 
 
 def _prepare_policy_summary(policy_summary: pd.DataFrame) -> pd.DataFrame:
@@ -336,22 +308,6 @@ def _plot_category_mix_panel(
             handlelength=1.1,
             borderaxespad=0.0,
         )
-
-
-def _forest_xlim(panel: pd.DataFrame) -> tuple[float, float]:
-    values = pd.to_numeric(
-        pd.concat([panel["or_low"], panel["or_high"], pd.Series([1.0])]),
-        errors="coerce",
-    )
-    values = values[np.isfinite(values) & values.gt(0)]
-    if values.empty:
-        return (0.75, 1.35)
-    lo = float(values.min())
-    hi = float(values.max())
-    log_lo = np.log(lo)
-    log_hi = np.log(hi)
-    pad = max((log_hi - log_lo) * 0.12, 0.08)
-    return float(np.exp(log_lo - pad)), float(np.exp(log_hi + pad))
 
 
 def _or_tick_label(value: float) -> str:

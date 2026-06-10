@@ -7,19 +7,20 @@ clade groups.
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any, Iterable
 
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 import numpy as np
 import pandas as pd
 import matplotlib.patheffects as pe
 from matplotlib.colors import Normalize
-from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
 
 from utils import CLADES, new_figure, add_panel_labels
+from .table_utils import clean_strings as _clean_strings, term_level as _term_level
 
 
 __all__ = [
@@ -159,15 +160,6 @@ COMPOSITION_TERM_TOKENS = {
 }
 
 
-def _clean_strings(df: pd.DataFrame) -> pd.DataFrame:
-    out = df.copy()
-    out.columns = [str(col).strip() for col in out.columns]
-    for col in out.select_dtypes(include=["object", "string"]).columns:
-        present = out[col].notna()
-        out.loc[present, col] = out.loc[present, col].astype(str).str.strip()
-    return out
-
-
 def _canonical_mixing_predictor(value: object) -> str:
     return (
         str(value)
@@ -262,7 +254,7 @@ def _score(q_values: pd.DataFrame) -> np.ndarray:
     return np.clip(scores, 0, SCORE_CAP)
 
 
-def _hatch_missing_heatmap_cells(ax: object, values: pd.DataFrame) -> None:
+def _hatch_missing_heatmap_cells(ax: Axes, values: pd.DataFrame) -> None:
     missing = values.isna().to_numpy()
     for row, col in np.argwhere(missing):
         ax.add_patch(
@@ -380,11 +372,6 @@ def _summary_table(
     out["significant"] = out["q_value"].astype(float) < ALPHA
     out = out.merge(clade_summary, on="clade_group", how="left")
     return out
-
-
-def _term_level(term: object) -> str:
-    match = re.search(r"\[T\.(.*)\]$", str(term))
-    return match.group(1) if match else str(term)
 
 
 def _read_odds(path: Path) -> pd.DataFrame:

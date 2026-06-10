@@ -1,10 +1,5 @@
 """Reusable regression helpers for SSE association analyses.
-
-This module deliberately does not load data, filter rows, fill missing values,
-or otherwise prepare analysis frames. Notebook code should do all data
-preparation explicitly before calling these functions. Model fitting uses
-``missing="raise"`` so accidental missing values fail loudly instead of being
-silently dropped by patsy/statsmodels.
+Model fitting uses ``missing="raise"`` so accidental missing values fail loudly instead of being silently dropped by patsy/statsmodels.
 """
 
 from __future__ import annotations
@@ -12,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from types import SimpleNamespace
 import re
-from typing import Iterable, Sequence
+from typing import Iterable, Sequence, Literal
 
 import numpy as np
 import pandas as pd
@@ -32,6 +27,7 @@ __all__ = [
     "cluster_se_diagnostics",
     "fit_binomial_glm",
     "fit_conditional_logit",
+    "fit_custom_firth_logit",
     "fit_exposure_model",
     "fit_firth_logit",
     "make_formula",
@@ -299,7 +295,7 @@ def _firth_penalized_loglike(
     return _logistic_loglike(y, x, beta) + 0.5 * float(logdet)
 
 
-def fit_firth_logit(
+def fit_custom_firth_logit(
     data: pd.DataFrame,
     formula: str,
     *,
@@ -307,12 +303,12 @@ def fit_firth_logit(
     tol: float = 1e-6,
     max_step_halving: int = 25,
 ) -> FirthLogitResult:
-    """Fit Firth's bias-reduced logistic regression for sparse binary data.
+    """Fit Firth logistic regression with the original local solver.
 
     The implementation follows the standard adjusted-score iteration for
-    logistic regression. It is intended for the association notebook's sparse
-    fixed-effect models when exact conditional logistic regression is
-    computationally infeasible for very large window strata.
+    logistic regression. It is retained for validation against the external
+    ``firthmodels`` backend; production association analyses should use
+    :func:`fit_firth_logit`.
     """
     y_df, x_df = patsy.dmatrices(  # type: ignore
         formula,
@@ -397,6 +393,128 @@ def fit_firth_logit(
             "penalized_loglike": pll,
         },
     )
+
+
+def _binary_response(y: pd.Series) -> np.ndarray:
+    values = y.to_numpy()
+    observed = pd.Series(values).dropna().unique()
+    if not set(observed).issubset({0, 1, False, True}):
+        raise ValueError(
+            f"Firth logistic regression requires a 0/1 outcome: {observed!r}"
+        )
+    return values.astype(int)
+
+
+def _firth_design(
+    data: pd.DataFrame,
+    formula: str,
+) -> tuple[np.ndarray, pd.DataFrame]:
+    y_df, x_df = patsy.dmatrices(  # type: ignore
+        formula,
+        data=data,
+        return_type="dataframe",
+        NA_action="raise",
+    )
+    y = _binary_response(y_df.iloc[:, 0])
+    return y, x_df
+
+
+def _get_firth_logistic_regression():
+    try:
+        from firthmodels import FirthLogisticRegression
+    except ImportError as exc:  # pragma: no cover - depends on local env
+        raise ImportError(
+            "fit_firth_logit requires the optional `firthmodels` package. "
+            "Install it with `pip install firthmodels` or conda-forge."
+        ) from exc
+    return FirthLogisticRegression
+
+
+def _fit_firthmodels_design(
+    y: np.ndarray,
+    x_df: pd.DataFrame,
+    *,
+    maxiter: int,
+    tol: float,
+    max_step_halving: int,
+    backend: Literal['auto', 'numba', 'numpy']
+):
+    FirthLogisticRegression = _get_firth_logistic_regression()
+    estimator = FirthLogisticRegression(
+        backend=backend,
+        fit_intercept=False,
+        max_iter=maxiter,
+        max_halfstep=max_step_halving,
+        xtol=tol,
+        gtol=tol,
+    )
+    estimator.fit(x_df, y)
+    return estimator
+
+
+def fit_firth_logit(
+    data: pd.DataFrame,
+    formula: str,
+    *,
+    maxiter: int = 100,
+    tol: float = 1e-6,
+    max_step_halving: int = 25,
+    backend: Literal['auto', 'numba', 'numpy'] = "numpy",
+) -> FirthLogitResult:
+    """Fit Firth logistic regression through ``firthmodels``.
+
+    Patsy builds the full design matrix, including the intercept. The
+    ``firthmodels`` estimator is therefore called with ``fit_intercept=False``
+    so parameter names and ordering remain aligned with statsmodels-style
+    formula output.
+    """
+    y, x_df = _firth_design(data, formula)
+    estimator = _fit_firthmodels_design(
+        y,
+        x_df,
+        maxiter=maxiter,
+        tol=tol,
+        max_step_halving=max_step_halving,
+        backend=backend,
+    )
+    param_names = pd.Index(x_df.columns)
+    params = pd.Series(estimator.coef_, index=param_names)
+    bse = pd.Series(estimator.bse_, index=param_names)
+    pvalues = pd.Series(estimator.pvalues_, index=param_names)
+    cov_array = getattr(estimator, "_cov", None)
+    if cov_array is None:
+        cov_array = np.diag(np.square(bse.to_numpy(dtype=float)))
+    cov = pd.DataFrame(cov_array, index=param_names, columns=param_names)
+    llf = float(getattr(estimator, "loglik_", np.nan))
+    nobs = int(x_df.shape[0])
+    df_model = int(x_df.shape[1] - 1)
+
+    model = SimpleNamespace(
+        data=SimpleNamespace(design_info=x_df.design_info),
+        exog_names=list(param_names),
+    )
+    result = FirthLogitResult(
+        params=params,
+        bse=bse,
+        pvalues=pvalues,
+        cov=cov,
+        model=model,
+        nobs=nobs,
+        df_model=df_model,
+        df_resid=int(nobs - x_df.shape[1]),
+        llf=llf,
+        llnull=np.nan,
+        aic=float(-2 * llf + 2 * x_df.shape[1]),
+        bic_llf=np.nan,
+        converged=bool(getattr(estimator, "converged_", False)),
+        fit_history={
+            "iterations": getattr(estimator, "n_iter_", np.nan),
+            "penalized_loglike": llf,
+            "backend": "firthmodels",
+            "firthmodels_backend": backend,
+        },
+    )
+    return result
 
 
 def cluster_se_diagnostics(

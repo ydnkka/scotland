@@ -44,6 +44,7 @@ from .palettes import (
     CANDIDATE_DARK,
 )
 from .io import HIGH_PRIORITY_CANDIDATE_TIERS
+from .table_utils import read_table as _read_table
 
 BORDER = "#D0D7DE"
 GRAY = "#808080"
@@ -2588,16 +2589,6 @@ def plot_regression_wald_heatmap(
 
 
 # Focused odds-ratio displays ------------------------------------------------
-
-
-def _read_table(table: pd.DataFrame | str | Any) -> pd.DataFrame:
-    """Return a dataframe from an in-memory table or a CSV/parquet path."""
-    if isinstance(table, pd.DataFrame):
-        return table.copy()
-    path = str(table)
-    if path.endswith(".parquet"):
-        return pd.read_parquet(path)
-    return pd.read_csv(path)
 
 
 def _coerce_shapely_geometry(value: Any):

@@ -3,8 +3,9 @@
 ## Purpose
 
 This document covers the association analyses downstream of candidate
-superspreading-signature detection. Candidate status is defined upstream in
-`sse_detection.ipynb` from temporal cluster-transition graph features. The
+superspreading-signature detection. Candidate status is defined upstream by
+the detection workflow in `sse_detection/lib/sse_detection.py` from temporal
+cluster-transition graph features. The
 association analyses ask a descriptive question: after restricting the
 background to comparable cluster sizes, are candidate nodes associated with
 differences in sequence composition, geographic context, internal population
@@ -14,9 +15,8 @@ These models are not causal effect estimates. They describe associations with
 candidate-node membership under pre-specified adjustment sets and sensitivity
 analyses.
 
-The main notebooks stay intentionally light. They configure and run
-`sse_detection.lib.association_pipeline`, then display the exported summary
-tables. The preparation, fitting, multiple-testing adjustment, diagnostics, and
+`sse_detection.run_sse_association_analyses.py` configures and run
+`sse_detection.lib.association_pipeline`. The preparation, fitting, multiple-testing adjustment, diagnostics, and
 CSV export logic live in the reusable pipeline so the main analysis and
 sensitivity/context analyses use the same implementation.
 
@@ -35,7 +35,7 @@ sensitivity/context analyses use the same implementation.
 
 ## Inputs
 
-- `sse_detection/results/sse_outputs/node_stats.parquet`: node-level candidate
+- `sse_detection/results/sse_outputs/cluster_table.parquet`: node-level candidate
   labels, cluster summaries, entropy metrics, window metadata, variant labels,
   policy-period metadata, and local context summaries.
 - `data/processed/scotland_clustering_analysis_dataset.parquet`:
@@ -46,8 +46,8 @@ sensitivity/context analyses use the same implementation.
 - `utils.data.PERIOD_INTENSITY`: numeric policy-intensity scores used by the
   policy-era sensitivity model.
 - `sse_detection/lib/regression.py`: Firth logistic, GLM,
-  conditional-logit, Wald, odds-ratio, fit-statistic, and multiple-testing
-  helpers.
+  conditional-logit, likelihood-ratio/Wald test, odds-ratio, fit-statistic,
+  and multiple-testing helpers.
 - `sse_detection/lib/association_pipeline.py`: shared data-preparation,
   model-running, diagnostic, and CSV-export orchestration.
 
@@ -76,7 +76,7 @@ The policy-context analysis saves CSV tables to
 `sse_detection/results/policy_outputs`:
 
 - `policy_era_candidate_summary.csv`
-- `policy_era_category_summary.csv`
+- `policy_era_signature_summary.csv`
 - `policy_wald.csv`
 - `policy_odds_ratios.csv`
 - `policy_fit_stats.csv`
@@ -95,7 +95,7 @@ The vaccination-context analysis saves CSV tables to
 - `vaccination_node_fit_stats.csv`
 - `vaccination_mixing_age_conditional_node_features.csv`
 - `vaccination_mixing_age_conditional_summary.csv`
-- `vaccination_mixing_age_conditional_category_summary.csv`
+- `vaccination_mixing_age_conditional_signature_summary.csv`
 - `vaccination_mixing_age_conditional_wald.csv`
 - `vaccination_mixing_age_conditional_odds_ratios.csv`
 - `vaccination_mixing_age_conditional_fit_stats.csv`
@@ -116,7 +116,9 @@ odd-window retention used by the detection workflow. These rows are joined to
 eligible node status by `cluster_id`.
 
 For node-level models, the model frame is built directly from eligible
-`node_stats` rows. Node-level models include the internal mixing analysis,
+`cluster_table` rows. The loader also exposes these rows through the
+compatibility alias `node_stats`, which older association code and notes may
+still use. Node-level models include the internal mixing analysis,
 policy-context analysis, vaccination node-context analysis, and vaccination
 mixing analysis.
 
@@ -172,8 +174,9 @@ collinearity and can destabilise fitting.
 
 ### Node-Level Internal Mixing
 
-Node-level mixing models use entropy features from `node_stats`. The default
-main analysis uses null-model z-scores:
+Node-level mixing models use entropy features from `cluster_table` (also
+available as the `node_stats` compatibility alias). The default main analysis
+uses null-model z-scores:
 
 - `sex_entropy_z`
 - `age_entropy_z`
@@ -319,11 +322,21 @@ fixed effects are too restrictive for a given interpretation.
 
 ## Fitting Method
 
-The default method is Firth-penalised logistic regression. Exact conditional
-logistic regression stratified by `window_idx` was considered, but the
-sequence-level window strata are too large for the recursive exact-likelihood
-implementation in `statsmodels`. Firth penalisation reduces sparse-data and
-separation bias while retaining explicit adjustment terms.
+The default method is Firth-penalised logistic regression using the external
+`firthmodels` implementation. Exact conditional logistic regression stratified
+by `window_idx` was considered, but the sequence-level window strata are too
+large for the recursive exact-likelihood implementation in `statsmodels`.
+Firth penalisation reduces sparse-data and separation bias while retaining
+explicit adjustment terms.
+
+For Firth models, coefficient rows use the `firthmodels` coefficient estimates,
+standard errors, Wald p-values, and Wald confidence intervals. The omnibus
+`*_wald.csv` term-test tables use Wald tests computed from the `firthmodels`
+covariance matrix, preserving the historical file name and avoiding the
+prohibitive cost of constrained likelihood-ratio tests on the large
+fixed-effect sequence-level frames. The local adjusted-score Firth solver is
+retained only as a validation fallback; comparison checks showed close
+agreement in coefficient estimates but different standard errors and p-values.
 
 The pipeline also supports:
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from pathlib import Path
 import re
 from typing import Any, Iterable, Mapping, Sequence
@@ -41,6 +42,7 @@ from .regression import (
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+LOGGER = logging.getLogger(__name__)
 
 
 __all__ = [
@@ -401,7 +403,7 @@ def _iter_groups(
         if d.empty:
             continue
         if d[outcome].nunique(dropna=True) < 2:
-            print(f"Skipping {group_col}={value!r}: outcome does not vary", flush=True)
+            LOGGER.info("Skipping %s=%r: outcome does not vary", group_col, value)
             continue
         yield value, d
 
@@ -1014,9 +1016,14 @@ def _record_failure(
     row |= _group_metadata(group_col, group_label)
     failures.append(row)
     where = f", {group_col}={group_label!r}" if group_col else ""
-    print(
-        f"Failed {domain} {model_set} {predictor_set} {predictor}{where}: {error}",
-        flush=True,
+    LOGGER.info(
+        "Failed %s %s %s %s%s: %s",
+        domain,
+        model_set,
+        predictor_set,
+        predictor,
+        where,
+        error,
     )
 
 
@@ -1101,7 +1108,7 @@ def fit_single_composition_models(
                     **meta,
                 )
             )
-            print(f"Fitted {model_name}: {len(d):,} rows", flush=True)
+            LOGGER.info("Fitted %s: %s rows", model_name, f"{len(d):,}")
         except Exception as exc:  # keep other clade/predictor fits moving
             _record_failure(
                 failures,
@@ -1219,7 +1226,7 @@ def fit_joint_composition_model(
             **dropped_metadata(dropped_rows, dropped_strata),
         }
         fit_stats = model_fit_stats(result, model_name=model_name, formula=formula)
-        print(f"Fitted {model_name}: {len(d):,} rows", flush=True)
+        LOGGER.info("Fitted %s: %s rows", model_name, f"{len(d):,}")
         return {
             "wald": _concat_or_empty(wald_tables),
             "odds": add_model_metadata(odds, **common_meta),
@@ -1308,7 +1315,7 @@ def fit_single_mixing_models(
 
     for feature in mixing_features:
         if feature not in source.columns:
-            print(f"Skipping {feature}: not found", flush=True)
+            LOGGER.info("Skipping %s: not found", feature)
             continue
         try:
             d, dropped_rows, dropped_strata = _prepare_model_frame(
@@ -1359,7 +1366,7 @@ def fit_single_mixing_models(
                     **meta,
                 )
             )
-            print(f"Fitted {model_name}: {len(d):,} nodes", flush=True)
+            LOGGER.info("Fitted %s: %s nodes", model_name, f"{len(d):,}")
         except Exception as exc:
             _record_failure(
                 failures,
@@ -1438,7 +1445,7 @@ def fit_joint_mixing_model(
         odds = tidy_odds_ratios(result, model_name=model_name)
         odds = odds.loc[odds["term"].isin(features)].copy()
         fit_stats = model_fit_stats(result, model_name=model_name, formula=formula)
-        print(f"Fitted {model_name}: {len(d):,} nodes", flush=True)
+        LOGGER.info("Fitted %s: %s nodes", model_name, f"{len(d):,}")
         return {
             "wald": add_model_metadata(wald, **common_meta),
             "odds": add_model_metadata(odds, **common_meta),
@@ -1597,7 +1604,7 @@ def fit_single_exposure_specs(
                     **meta,
                 )
             )
-            print(f"Fitted {model_name}: {len(d):,} {n_label}", flush=True)
+            LOGGER.info("Fitted %s: %s %s", model_name, f"{len(d):,}", n_label)
         except Exception as exc:
             _record_failure(
                 failures,
@@ -1761,7 +1768,7 @@ def fit_joint_exposure_specs(
                     **fit_meta,
                 )
             )
-            print(f"Fitted {model_name}: {len(d):,} {n_label}", flush=True)
+            LOGGER.info("Fitted %s: %s %s", model_name, f"{len(d):,}", n_label)
         except Exception as exc:
             _record_failure(
                 failures,
@@ -1986,7 +1993,7 @@ def _export_summary_tables(
     for filename, table in summary_tables.items():
         path = result_path / filename
         clean_export_table(table).to_csv(path, index=False)
-        print(f"saved {filename}: {len(table):,} rows", flush=True)
+        LOGGER.info("saved %s: %s rows", filename, f"{len(table):,}")
 
 
 def clean_export_table(table: pd.DataFrame) -> pd.DataFrame:
@@ -2203,14 +2210,14 @@ def run_association_pipeline(
     for filename, table in summary_tables.items():
         path = result_path / filename
         clean_export_table(table).to_csv(path, index=False)
-        print(f"saved {filename}: {len(table):,} rows", flush=True)
+        LOGGER.info("saved %s: %s rows", filename, f"{len(table):,}")
 
     failures_df = pd.DataFrame(failures)
     if not failures_df.empty:
         clean_export_table(failures_df).to_csv(
             result_path / "model_failures.csv", index=False
         )
-        print(f"saved model_failures.csv: {len(failures_df):,} rows", flush=True)
+        LOGGER.info("saved model_failures.csv: %s rows", f"{len(failures_df):,}")
 
     frames.cluster_diagnostics.to_csv(
         result_path / "cluster_diagnostics.csv", index=False
@@ -2256,10 +2263,10 @@ def run_policy_analysis(
         run_composition=False,
     )
     node_base = add_policy_era(add_clade_group(frames.node_model_base))
-    print(
-        "Policy eligible nodes: "
-        f"{len(node_base):,}; candidates: {int(node_base['candidate'].sum()):,}",
-        flush=True,
+    LOGGER.info(
+        "Policy eligible nodes: %s; candidates: %s",
+        f"{len(node_base):,}",
+        f"{int(node_base['candidate'].sum()):,}",
     )
 
     failures: list[dict[str, object]] = []
@@ -2333,7 +2340,7 @@ def run_policy_analysis(
             result_path / "model_failures.csv",
             index=False,
         )
-        print(f"saved model_failures.csv: {len(failures_df):,} rows", flush=True)
+        LOGGER.info("saved model_failures.csv: %s rows", f"{len(failures_df):,}")
     frames.cluster_diagnostics.to_csv(
         result_path / "cluster_diagnostics.csv",
         index=False,
@@ -2400,10 +2407,10 @@ def run_vaccination_analysis(
         window_col=window_strata,
         age_col="age_band",
     )
-    print(
-        "Vaccination eligible nodes: "
-        f"{len(node_base):,}; candidates: {int(node_base['candidate'].sum()):,}",
-        flush=True,
+    LOGGER.info(
+        "Vaccination eligible nodes: %s; candidates: %s",
+        f"{len(node_base):,}",
+        f"{int(node_base['candidate'].sum()):,}",
     )
 
     failures: list[dict[str, object]] = []
@@ -2655,7 +2662,7 @@ def run_vaccination_analysis(
             result_path / "model_failures.csv",
             index=False,
         )
-        print(f"saved model_failures.csv: {len(failures_df):,} rows", flush=True)
+        LOGGER.info("saved model_failures.csv: %s rows", f"{len(failures_df):,}")
     frames.cluster_diagnostics.to_csv(
         result_path / "cluster_diagnostics.csv",
         index=False,

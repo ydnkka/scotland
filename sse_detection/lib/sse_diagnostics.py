@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 import pandas as pd
 
@@ -21,6 +23,7 @@ INELIGIBLE = "size_ineligible"
 
 SPIKE_THRESHOLD = 0.95  # top bin of a 20-bin histogram
 EXPECTED_SPIKE = 1 - SPIKE_THRESHOLD
+LOGGER = logging.getLogger(__name__)
 
 
 # --------------------------------------------------------------------------- #
@@ -102,22 +105,26 @@ def report_axis(df: pd.DataFrame, axis: str) -> None:
     p_col, n_col = cols["p"], cols["n"]
 
     bg = background_frame(df, p_col)
-    print(f"\n{'#' * 70}\n# AXIS: {axis}  (p = {p_col})\n{'#' * 70}")
-    print(f"Background nodes with valid p: {len(bg)}")
-    print(f"Spike bin = p > {SPIKE_THRESHOLD} (expected frac = {EXPECTED_SPIKE:.3f})\n")
+    LOGGER.info("\n%s\n# AXIS: %s  (p = %s)\n%s", "#" * 70, axis, p_col, "#" * 70)
+    LOGGER.info("Background nodes with valid p: %s", len(bg))
+    LOGGER.info(
+        "Spike bin = p > %s (expected frac = %.3f)\n",
+        SPIKE_THRESHOLD,
+        EXPECTED_SPIKE,
+    )
 
-    print("=== Overall background p histogram (obs/exp per bin) ===")
+    LOGGER.info("=== Overall background p histogram (obs/exp per bin) ===")
     with pd.option_context("display.float_format", lambda v: f"{v:.3f}"):
-        print(overall_uniformity(bg, p_col=p_col).to_string(index=False))
+        LOGGER.info("%s", overall_uniformity(bg, p_col=p_col).to_string(index=False))
 
-    print("\n=== Background p by number of present components ===")
+    LOGGER.info("\n=== Background p by number of present components ===")
     by_n = summarise_by_component_count(bg, n_col=n_col, p_col=p_col)
     with pd.option_context("display.float_format", lambda v: f"{v:.3f}"):
-        print(by_n.to_string(index=False))
+        LOGGER.info("%s", by_n.to_string(index=False))
 
-    print("\n=== Background p by cluster-size bucket ===")
+    LOGGER.info("\n=== Background p by cluster-size bucket ===")
     with pd.option_context("display.float_format", lambda v: f"{v:.3f}"):
-        print(summarise_by_size(bg, p_col=p_col).to_string(index=False))
+        LOGGER.info("%s", summarise_by_size(bg, p_col=p_col).to_string(index=False))
 
 
 def report_tier_sizes(df: pd.DataFrame) -> None:
@@ -126,8 +133,10 @@ def report_tier_sizes(df: pd.DataFrame) -> None:
     Checks whether burst/burden candidates pile up at the size floor, where
     low-information calls are most likely.
     """
-    print(
-        f"\n{'#' * 70}\n# Cluster-size distribution within high-priority tiers\n{'#' * 70}"
+    LOGGER.info(
+        "\n%s\n# Cluster-size distribution within high-priority tiers\n%s",
+        "#" * 70,
+        "#" * 70,
     )
     sub = df[df[TIER_COL].isin(HIGH_PRIORITY_TIERS)]
     summary = (
@@ -143,7 +152,7 @@ def report_tier_sizes(df: pd.DataFrame) -> None:
         .reset_index()
     )
     with pd.option_context("display.float_format", lambda v: f"{v:.1f}"):
-        print(summary.to_string(index=False))
+        LOGGER.info("%s", summary.to_string(index=False))
 
     # Fraction of each tier sitting in the bottom size band (floor noise check).
     floor = df.loc[df[TIER_COL] != INELIGIBLE, SIZE_COL].min()
@@ -153,9 +162,9 @@ def report_tier_sizes(df: pd.DataFrame) -> None:
         .groupby(TIER_COL, observed=True)["near_floor"]
         .mean()
     )
-    print(f"\nFraction within 2 of the size floor ({floor:.0f}):")
+    LOGGER.info("\nFraction within 2 of the size floor (%.0f):", floor)
     with pd.option_context("display.float_format", lambda v: f"{v:.3f}"):
-        print(frac.to_string())
+        LOGGER.info("%s", frac.to_string())
 
 
 def report_axis_correlation(df: pd.DataFrame) -> None:
@@ -163,14 +172,14 @@ def report_axis_correlation(df: pd.DataFrame) -> None:
     if len(score_cols) < 2:
         return
 
-    print("\nPairwise score correlations:")
+    LOGGER.info("\nPairwise score correlations:")
     for i, left in enumerate(score_cols):
         for right in score_cols[i + 1 :]:
             s = df[[left, right]].dropna()
             if len(s) < 2:
                 continue
             r = s[left].corr(s[right])
-            print(f"corr({left}, {right}) = {r:.3f}  (n={len(s)})")
+            LOGGER.info("corr(%s, %s) = %.3f  (n=%s)", left, right, r, len(s))
 
 
 def main(df: pd.DataFrame) -> None:

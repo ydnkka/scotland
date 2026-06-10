@@ -14,14 +14,16 @@ Inputs
 
 Usage
 -----
-    python sse_detection.py
+From the repository root:
+    ``python -m sse_detection.lib.sse_detection``
 """
 
 from __future__ import annotations
 
-import sys
 from collections import defaultdict
+import logging
 from pathlib import Path
+import sys
 from typing import Sequence
 
 import networkx as nx
@@ -31,16 +33,28 @@ import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.append(str(PROJECT_ROOT))
+if __package__ in {None, ""} and str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from utils import load_analysis_columns  # noqa: E402
-from entropy import (  # noqa: E402
-    cluster_socio_demo_entropy,
-    vaccination_mixing_features,
-    add_mixing_tertiles,
-    onward_edge_entropy,
-)
+
+try:
+    from .entropy import (  # noqa: E402
+        add_mixing_tertiles,
+        cluster_socio_demo_entropy,
+        onward_edge_entropy,
+        vaccination_mixing_features,
+    )
+except ImportError:  # pragma: no cover - direct script execution fallback
+    from entropy import (  # type: ignore[no-redef]  # noqa: E402
+        add_mixing_tertiles,
+        cluster_socio_demo_entropy,
+        onward_edge_entropy,
+        vaccination_mixing_features,
+    )
+
+
+LOGGER = logging.getLogger(__name__)
 
 RANDOM_SEED = 42
 N_ENTROPY_DRAWS = 1000
@@ -1525,13 +1539,13 @@ def add_sse_node_metrics(
 
 
 def main():
-    print("...........loading data")
+    LOGGER.info("...........loading data")
     df = load_sequence_data()
 
-    print("...........building network")
+    LOGGER.info("...........building network")
     edge_table, _, component_map = build_transition_network(df)
 
-    print("...........aggregating sequence data")
+    LOGGER.info("...........aggregating sequence data")
     cluster_stats = build_cluster_stats(df, edge_table)
     cluster_att = build_cluster_attributes(df)
     cluster_att["connected_components"] = cluster_att["cluster_id"].map(component_map)
@@ -1542,7 +1556,7 @@ def main():
         sequence_df=df,
     )
 
-    print("...........detecting SSEs")
+    LOGGER.info("...........detecting SSEs")
     sse_df = add_sse_node_metrics(cluster_table)
 
     out_path = PROJECT_ROOT / "sse_detection/results/sse_outputs"
@@ -1550,7 +1564,8 @@ def main():
     sse_df.to_parquet(out_path / "cluster_table.parquet")
     edge_table.to_parquet(out_path / "edge_table.parquet")
 
-    print("Done.")
+    LOGGER.info("Done.")
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     main()

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-import re
 from typing import Any
 
 from matplotlib.figure import Figure
@@ -27,6 +26,13 @@ from .palettes import (
     SSE_CATEGORY_ORDER,
     SSE_CATEGORY_PALETTE,
     TEAL_DARK,
+)
+from .table_utils import (
+    clean_strings,
+    forest_xlim as _forest_xlim,
+    pretty_text as _pretty_text,
+    read_table as _read_table,
+    term_level as _term_level,
 )
 
 __all__ = [
@@ -63,42 +69,8 @@ SSE_CATEGORY_LABELS = {
 }
 
 
-def _read_table(table: pd.DataFrame | str | Path | Any) -> pd.DataFrame:
-    if isinstance(table, pd.DataFrame):
-        return table.copy()
-    path = Path(table)
-    if path.suffix == ".parquet":
-        return pd.read_parquet(path)
-    return pd.read_csv(path, skipinitialspace=True)
-
-
-def _clean_strings(df: pd.DataFrame) -> pd.DataFrame:
-    out = df.copy()
-    out.columns = [str(col).strip() for col in out.columns]
-    for col in out.select_dtypes(include=["object", "string", "category"]).columns:
-        present = out[col].notna()
-        out.loc[present, col] = out.loc[present, col].astype(str).str.strip()
-    return out
-
-
-def _pretty_text(value: Any, label_map: dict[str, str] | None = None) -> str:
-    if pd.isna(value):
-        return ""
-    text = str(value)
-    if label_map and text in label_map:
-        return label_map[text]
-    return text.replace("_", " ").strip().capitalize()
-
-
-def _term_level(term: Any) -> str:
-    if pd.isna(term):
-        return ""
-    match = re.search(r"\[T\.(.*)\]$", str(term))
-    return match.group(1) if match else str(term)
-
-
 def _prepare_node_features(node_features: pd.DataFrame) -> pd.DataFrame:
-    df = _clean_strings(node_features)
+    df = clean_strings(node_features, include_categories=True)
     df["candidate"] = pd.to_numeric(df["candidate"], errors="coerce").fillna(0).astype(int)
     df["vaccination_mix_entropy_z"] = pd.to_numeric(
         df["vaccination_mix_entropy_z"],
@@ -109,7 +81,7 @@ def _prepare_node_features(node_features: pd.DataFrame) -> pd.DataFrame:
 
 
 def _prepare_summary(summary: pd.DataFrame) -> pd.DataFrame:
-    df = _clean_strings(summary)
+    df = clean_strings(summary, include_categories=True)
     df["vaccination_mix_tertile"] = pd.Categorical(
         df["vaccination_mix_tertile"],
         categories=VACCINATION_MIXING_TERTILE_ORDER,
@@ -122,7 +94,7 @@ def _prepare_summary(summary: pd.DataFrame) -> pd.DataFrame:
 
 
 def _prepare_category_mix(category_summary: pd.DataFrame) -> pd.DataFrame:
-    df = _clean_strings(category_summary)
+    df = clean_strings(category_summary, include_categories=True)
     category_col = "sse_signature" if "sse_signature" in df.columns else "sse_category"
     share_col = (
         "candidate_signature_share"
@@ -162,7 +134,7 @@ def _prepare_category_mix(category_summary: pd.DataFrame) -> pd.DataFrame:
 
 
 def _prepare_or_forest(odds_ratios: pd.DataFrame) -> pd.DataFrame:
-    df = _clean_strings(odds_ratios)
+    df = clean_strings(odds_ratios, include_categories=True)
     if "model_set" in df.columns:
         df = df.loc[df["model_set"].astype(str).eq("primary")].copy()
     if "predictor_set" in df.columns:
@@ -229,20 +201,6 @@ def _prepare_or_forest(odds_ratios: pd.DataFrame) -> pd.DataFrame:
         .dropna(subset=["odds_ratio"])
         .sort_values("order")
     )
-
-
-def _forest_xlim(panel: pd.DataFrame) -> tuple[float, float]:
-    values = pd.to_numeric(
-        pd.concat([panel["or_low"], panel["or_high"], pd.Series([1.0])]),
-        errors="coerce",
-    )
-    values = values[np.isfinite(values) & values.gt(0)]
-    if values.empty:
-        return (0.75, 1.35)
-    lo = float(values.min())
-    hi = float(values.max())
-    pad = max((np.log(hi) - np.log(lo)) * 0.12, 0.08)
-    return float(np.exp(np.log(lo) - pad)), float(np.exp(np.log(hi) + pad))
 
 
 def _plot_z_distribution_panel(ax: Any, node_features: pd.DataFrame) -> None:

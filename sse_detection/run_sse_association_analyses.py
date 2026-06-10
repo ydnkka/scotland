@@ -45,7 +45,7 @@ def load_association_lib() -> Any:
     """Import the analysis library only when an analysis is about to run."""
     global _SSELIB
     if _SSELIB is None:
-        from sse_detection import lib as sselib 
+        from sse_detection import lib as sselib
 
         _SSELIB = sselib
     return _SSELIB
@@ -63,6 +63,7 @@ class AnalysisSpec:
 
 def result_dir_for(
     *,
+    project_root: Path = PROJECT_ROOT,
     results_root: Path | None,
     result_subdir: str,
 ) -> Path:
@@ -70,7 +71,7 @@ def result_dir_for(
     root = (
         results_root
         if results_root is not None
-        else PROJECT_ROOT / "sse_detection" / "results"
+        else project_root / "sse_detection" / "results"
     )
     return root / result_subdir
 
@@ -272,7 +273,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--project-root",
         type=Path,
         default=PROJECT_ROOT,
-        help="Repository root containing config.yaml.",
+        help=(
+            "Repository root used to resolve default SSE input and result "
+            "directories."
+        ),
     )
     parser.add_argument(
         "--sse-output-dir",
@@ -373,9 +377,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.list:
         print_available_analyses()
         return 0
-    
-    output_dir = args.sse_output_dir.resolve() if args.sse_output_dir else None
-    results_root = args.results_root.resolve() if args.results_root else None
+
+    project_root = args.project_root.resolve()
+    output_dir = (
+        args.sse_output_dir.resolve()
+        if args.sse_output_dir
+        else project_root / "sse_detection" / "results" / "sse_outputs"
+    )
+    results_root = (
+        args.results_root.resolve()
+        if args.results_root
+        else project_root / "sse_detection" / "results"
+    )
 
     try:
         analysis_keys = selected_analyses(args.analyses)
@@ -389,6 +402,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     for key in analysis_keys:
         spec = ANALYSES[key]
         result_dir = result_dir_for(
+            project_root=project_root,
             results_root=results_root,
             result_subdir=spec.result_subdir,
         )
