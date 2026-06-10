@@ -4,9 +4,11 @@ Model fitting uses ``missing="raise"`` so accidental missing values fail loudly 
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from types import SimpleNamespace
 import re
+import warnings
 from typing import Iterable, Sequence, Literal
 
 import numpy as np
@@ -69,6 +71,7 @@ class FirthLogitResult:
     bic_llf: float
     converged: bool
     fit_history: dict[str, object]
+    fit_warnings: tuple[str, ...] = ()
 
     def cov_params(self) -> pd.DataFrame:
         return self.cov
@@ -448,7 +451,12 @@ def _fit_firthmodels_design(
         xtol=tol,
         gtol=tol,
     )
-    estimator.fit(x_df, y)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        estimator.fit(x_df, y)
+    estimator._sse_fit_warnings = tuple( # type: ignore
+        f"{warning.category.__name__}: {warning.message}" for warning in caught
+    )
     return estimator
 
 
@@ -488,6 +496,7 @@ def fit_firth_logit(
     llf = float(getattr(estimator, "loglik_", np.nan))
     nobs = int(x_df.shape[0])
     df_model = int(x_df.shape[1] - 1)
+    fit_warnings = tuple(getattr(estimator, "_sse_fit_warnings", ()))
 
     model = SimpleNamespace(
         data=SimpleNamespace(design_info=x_df.design_info),
@@ -512,9 +521,31 @@ def fit_firth_logit(
             "penalized_loglike": llf,
             "backend": "firthmodels",
             "firthmodels_backend": backend,
+            "warnings": fit_warnings,
+            "warning_count": len(fit_warnings),
         },
+        fit_warnings=fit_warnings,
     )
     return result
+
+
+def _warning_messages(result) -> tuple[str, ...]:
+    warning_values = getattr(result, "fit_warnings", None)
+    if warning_values is None:
+        fit_history = getattr(result, "fit_history", {})
+        if isinstance(fit_history, Mapping):
+            warning_values = fit_history.get("warnings", ())
+        else:
+            warning_values = ()
+
+    if isinstance(warning_values, str):
+        return (warning_values,) if warning_values else ()
+
+    try:
+        return tuple(str(value) for value in warning_values if str(value))
+    except TypeError:
+        text = str(warning_values)
+        return (text,) if text else ()
 
 
 def cluster_se_diagnostics(
@@ -752,6 +783,10 @@ def model_fit_stats(
         r2_mcfadden = np.nan
 
     bic_llf = getattr(result, "bic_llf", np.nan)
+    fit_history = getattr(result, "fit_history", {})
+    if not isinstance(fit_history, Mapping):
+        fit_history = {}
+    fit_warnings = _warning_messages(result)
     row = {
         "nobs": getattr(result, "nobs", np.nan),
         "df_model": getattr(result, "df_model", np.nan),
@@ -763,6 +798,9 @@ def model_fit_stats(
         "bic": bic_llf,
         "bic_llf": bic_llf,
         "converged": getattr(result, "converged", np.nan),
+        "iterations": fit_history.get("iterations", np.nan),
+        "fit_warning_count": len(fit_warnings),
+        "fit_warnings": " | ".join(fit_warnings),
     }
     if model_name is not None:
         row = {"model": model_name, **row}

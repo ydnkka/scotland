@@ -102,6 +102,9 @@ The vaccination-context analysis saves CSV tables to
 - `cluster_diagnostics.csv`
 - `model_failures.csv`, only when one or more fits fail
 
+All `*_fit_stats.csv` tables include the model formula, convergence flag,
+iteration count, and any captured fit warnings.
+
 ## Eligible Analysis Set
 
 All association analyses use the same candidate outcome and comparable
@@ -171,6 +174,13 @@ window-level surveillance adjusters:
 Do not combine the window-level surveillance adjusters with `C(window_idx)` in
 the same model. They are constants within window strata, so this creates rank
 collinearity and can destabilise fitting.
+
+The command-line runner exposes the main-analysis adjustment terms:
+
+- full primary adjustment: `python -m sse_detection.run_sse_association_analyses main`
+- time-only adjustment: `python -m sse_detection.run_sse_association_analyses main --variant-adjustment none --window-adjustment fixed-effects`
+- clade-only adjustment: `python -m sse_detection.run_sse_association_analyses main --variant-adjustment clade --window-adjustment none`
+- clade plus surveillance adjustment: `python -m sse_detection.run_sse_association_analyses main --variant-adjustment clade --window-adjustment surveillance`
 
 ### Node-Level Internal Mixing
 
@@ -334,9 +344,11 @@ standard errors, Wald p-values, and Wald confidence intervals. The omnibus
 `*_wald.csv` term-test tables use Wald tests computed from the `firthmodels`
 covariance matrix, preserving the historical file name and avoiding the
 prohibitive cost of constrained likelihood-ratio tests on the large
-fixed-effect sequence-level frames. The local adjusted-score Firth solver is
-retained only as a validation fallback; comparison checks showed close
-agreement in coefficient estimates but different standard errors and p-values.
+fixed-effect sequence-level frames. Firth backend warnings are captured in the
+fit-stat tables rather than printed as anonymous package warnings. The local
+adjusted-score Firth solver is retained only as a validation fallback;
+comparison checks showed close agreement in coefficient estimates but different
+standard errors and p-values.
 
 The pipeline also supports:
 

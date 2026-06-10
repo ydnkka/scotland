@@ -37,6 +37,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 
 DEFAULT_MODEL_METHOD = "firth_glm"
+DEFAULT_VARIANT_ADJUSTMENT = "clade"
+DEFAULT_WINDOW_ADJUSTMENT = "fixed-effects"
 DEFAULT_MIXING_REFERENCE = "per 1 null-model SD increase in entropy"
 _SSELIB: Any | None = None
 
@@ -82,6 +84,8 @@ def run_main_analysis(
     result_dir: Path,
     model_method: str,
     window_stride: int,
+    variant_adjuster: str | None,
+    window_adjustment: str,
 ) -> dict[str, Any]:
     """Run the primary overall composition and mixing association analysis."""
     sselib = load_association_lib()
@@ -89,8 +93,8 @@ def run_main_analysis(
         output_dir=output_dir,
         result_dir=result_dir,
         model_method=model_method,
-        variant_adjuster="clade",
-        window_adjustment="fixed_effects",
+        variant_adjuster=variant_adjuster,
+        window_adjustment=window_adjustment,
         mixing_reference=DEFAULT_MIXING_REFERENCE,
         window_stride=window_stride,
     )
@@ -154,19 +158,21 @@ def run_observed_entropy_sensitivity(
     result_dir: Path,
     model_method: str,
     window_stride: int,
+    variant_adjuster: str | None,
+    window_adjustment: str,
 ) -> dict[str, Any]:
     """Run the observed-normalised entropy mixing sensitivity analysis."""
     sselib = load_association_lib()
     mixing_model_sets = sselib.default_model_sets(
-        variant_adjuster="clade",
-        window_adjustment="fixed_effects",
+        variant_adjuster=variant_adjuster,
+        window_adjustment=window_adjustment,
     )
     return sselib.run_association_pipeline(
         output_dir=output_dir,
         result_dir=result_dir,
         model_method=model_method,
-        variant_adjuster="clade",
-        window_adjustment="fixed_effects",
+        variant_adjuster=variant_adjuster,
+        window_adjustment=window_adjustment,
         mixing_model_sets=mixing_model_sets,
         mixing_features=sselib.OBSERVED_MIXING_FEATURES_X10,
         mixing_reference=sselib.OBSERVED_MIXING_REFERENCE_X10,
@@ -303,6 +309,24 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Regression fitter to use for all selected analyses.",
     )
     parser.add_argument(
+        "--variant-adjustment",
+        default=DEFAULT_VARIANT_ADJUSTMENT,
+        choices=["clade", "none"],
+        help=(
+            "Variant adjustment for main and observed-entropy analyses. "
+            "Use 'none' to omit C(clade)."
+        ),
+    )
+    parser.add_argument(
+        "--window-adjustment",
+        default=DEFAULT_WINDOW_ADJUSTMENT,
+        choices=["fixed-effects", "surveillance", "none"],
+        help=(
+            "Time/window adjustment for main and observed-entropy analyses. "
+            "'fixed-effects' uses C(window_idx); 'none' omits window terms."
+        ),
+    )
+    parser.add_argument(
         "--window-stride",
         type=int,
         default=2,
@@ -343,10 +367,49 @@ def selected_analyses(values: Sequence[str] | None) -> tuple[str, ...]:
     return tuple(dict.fromkeys(values))
 
 
+def variant_adjuster_from_option(value: str) -> str | None:
+    if value == "none":
+        return None
+    return value
+
+
+def window_adjustment_from_option(value: str) -> str:
+    return value.replace("-", "_")
+
+
 def print_available_analyses() -> None:
     for key in DEFAULT_ANALYSIS_ORDER:
         spec = ANALYSES[key]
         print(f"{key}: {spec.label} -> {spec.result_subdir}")
+
+
+def _is_false_value(value: Any) -> bool:
+    if value is False:
+        return True
+    return str(value).strip().lower() == "false"
+
+
+def _is_positive_number(value: Any) -> bool:
+    try:
+        return float(value) > 0
+    except (TypeError, ValueError):
+        return False
+
+
+def fit_diagnostic_counts(summary_tables: dict[str, Any]) -> tuple[int, int]:
+    """Return counts of non-converged fits and fits with captured warnings."""
+    nonconverged = 0
+    warned = 0
+    for filename, table in summary_tables.items():
+        if not filename.endswith("_fit_stats.csv") or table.empty:
+            continue
+        if "converged" in table.columns:
+            nonconverged += sum(_is_false_value(value) for value in table["converged"])
+        if "fit_warning_count" in table.columns:
+            warned += sum(
+                _is_positive_number(value) for value in table["fit_warning_count"]
+            )
+    return nonconverged, warned
 
 
 def print_result_summary(
@@ -363,6 +426,12 @@ def print_result_summary(
 
     diagnostics = result["cluster_diagnostics"]
     print(f"  cluster_diagnostics.csv: {len(diagnostics):,} rows")
+
+    nonconverged, warned = fit_diagnostic_counts(result["summary_tables"])
+    if nonconverged:
+        print(f"  non-converged fits: {nonconverged:,}")
+    if warned:
+        print(f"  fits with captured warnings: {warned:,}")
 
     failures = result["failures"]
     if failures.empty:
@@ -395,6 +464,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
+    variant_adjuster = variant_adjuster_from_option(args.variant_adjustment)
+    window_adjustment = window_adjustment_from_option(args.window_adjustment)
 
     recorded_failures = False
     raised_failures: list[tuple[str, Exception]] = []
@@ -409,15 +480,25 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         print(f"\nRunning {spec.label}")
         print(f"Result directory: {result_dir}")
+        if key in {"main", "observed-entropy"}:
+            print(
+                "Adjustment: "
+                f"window={window_adjustment}, "
+                f"variant={variant_adjuster or 'none'}"
+            )
 
         started = time.perf_counter()
         try:
-            result = spec.run(
-                output_dir=output_dir,
-                result_dir=result_dir,
-                model_method=args.model_method,
-                window_stride=args.window_stride,
-            )
+            run_kwargs: dict[str, Any] = {
+                "output_dir": output_dir,
+                "result_dir": result_dir,
+                "model_method": args.model_method,
+                "window_stride": args.window_stride,
+            }
+            if key in {"main", "observed-entropy"}:
+                run_kwargs["variant_adjuster"] = variant_adjuster
+                run_kwargs["window_adjustment"] = window_adjustment
+            result = spec.run(**run_kwargs)
         except Exception as exc:
             print(f"FAILED {spec.label}: {exc}", file=sys.stderr)
             raised_failures.append((key, exc))

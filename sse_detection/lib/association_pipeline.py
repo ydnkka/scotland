@@ -1,5 +1,3 @@
-"""Parameterized association-regression runner for SSE sensitivity notebooks."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -326,6 +324,9 @@ TABLE_DISPLAY_COLUMNS = {
         "predictor",
         "r2_mcfadden",
         "converged",
+        "iterations",
+        "fit_warning_count",
+        "fit_warnings",
         "aic",
         "bic_llf",
         "log_likelihood",
@@ -620,12 +621,17 @@ def default_model_sets(
     window_adjustment: str = "fixed_effects",
 ) -> dict[str, list[str]]:
     """Build primary and expanded adjustment sets for association models."""
+    window_adjustment = window_adjustment.replace("-", "_")
     if window_adjustment == "fixed_effects":
         window_terms = ["C(window_idx)"]
     elif window_adjustment == "surveillance":
         window_terms = list(WINDOW_SURVEILLANCE_ADJUSTERS)
+    elif window_adjustment == "none":
+        window_terms = []
     else:
-        raise ValueError("window_adjustment must be 'fixed_effects' or 'surveillance'.")
+        raise ValueError(
+            "window_adjustment must be 'fixed_effects', 'surveillance', or 'none'."
+        )
 
     variant_terms = [f"C({variant_adjuster})"] if variant_adjuster else []
     primary = [*window_terms, *variant_terms]
