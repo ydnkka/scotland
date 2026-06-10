@@ -305,7 +305,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--model-method",
         default=DEFAULT_MODEL_METHOD,
-        choices=["firth_glm", "glm_clustered", "conditional_logit_by_window"],
+        choices=["firth_glm", "glm_clustered"],
         help="Regression fitter to use for all selected analyses.",
     )
     parser.add_argument(

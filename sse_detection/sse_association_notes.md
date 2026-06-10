@@ -45,9 +45,8 @@ sensitivity/context analyses use the same implementation.
   analyses.
 - `utils.data.PERIOD_INTENSITY`: numeric policy-intensity scores used by the
   policy-era sensitivity model.
-- `sse_detection/lib/regression.py`: Firth logistic, GLM,
-  conditional-logit, likelihood-ratio/Wald test, odds-ratio, fit-statistic,
-  and multiple-testing helpers.
+- `sse_detection/lib/regression.py`: Firth logistic, GLM, Wald test,
+  odds-ratio, fit-statistic, and multiple-testing helpers.
 - `sse_detection/lib/association_pipeline.py`: shared data-preparation,
   model-running, diagnostic, and CSV-export orchestration.
 
@@ -333,11 +332,8 @@ fixed effects are too restrictive for a given interpretation.
 ## Fitting Method
 
 The default method is Firth-penalised logistic regression using the external
-`firthmodels` implementation. Exact conditional logistic regression stratified
-by `window_idx` was considered, but the sequence-level window strata are too
-large for the recursive exact-likelihood implementation in `statsmodels`.
-Firth penalisation reduces sparse-data and separation bias while retaining
-explicit adjustment terms.
+`firthmodels` implementation. Firth penalisation reduces sparse-data and
+separation bias while retaining explicit adjustment terms.
 
 For Firth models, coefficient rows use the `firthmodels` coefficient estimates,
 standard errors, Wald p-values, and Wald confidence intervals. The omnibus
@@ -350,11 +346,8 @@ adjusted-score Firth solver is retained only as a validation fallback;
 comparison checks showed close agreement in coefficient estimates but different
 standard errors and p-values.
 
-The pipeline also supports:
-
-- `glm_clustered`: binomial GLM with cluster-robust standard errors.
-- `conditional_logit_by_window`: conditional logistic model stratified by
-  `window_idx`, mainly useful for smaller model frames.
+The pipeline also supports `glm_clustered`, a binomial GLM with cluster-robust
+standard errors.
 
 ## Filtering And Dropped Strata
 

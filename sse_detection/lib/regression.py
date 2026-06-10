@@ -18,7 +18,6 @@ from scipy.special import expit
 from scipy.stats import chi2, norm
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
-from statsmodels.discrete.conditional_models import ConditionalLogit
 
 
 __all__ = [
@@ -28,7 +27,6 @@ __all__ = [
     "categorical_term",
     "cluster_se_diagnostics",
     "fit_binomial_glm",
-    "fit_conditional_logit",
     "fit_custom_firth_logit",
     "fit_exposure_model",
     "fit_firth_logit",
@@ -214,68 +212,6 @@ def parameter_names_for_term(result, term: str) -> list[str]:
 
     categorical_token = f"{term}["
     return [name for name in params if name.startswith(categorical_token)]
-
-
-def fit_conditional_logit(
-    data: pd.DataFrame,
-    formula: str,
-    *,
-    strata_col: str,
-    maxiter: int = 100,
-    disp: bool = False,
-):
-    """Fit a conditional logistic model stratified by ``strata_col``.
-
-    This is intended as the association-analysis primary model when window
-    strata are nuisance parameters. Strata without outcome variation are
-    dropped before fitting and reported on the result as
-    ``_sse_diagnostics``.
-    """
-    y, x = patsy.dmatrices(  # type: ignore
-        formula,
-        data=data,
-        return_type="dataframe",
-        NA_action="raise",
-    )
-    design_info = x.design_info
-    original_columns = list(x.columns)
-    if "Intercept" in x.columns:
-        x = x.drop(columns="Intercept")
-    term_name_slices = {}
-    for term_name, term_slice in design_info.term_name_slices.items():
-        columns = [col for col in original_columns[term_slice] if col in x.columns]
-        if not columns:
-            continue
-        positions = [x.columns.get_loc(col) for col in columns]
-        term_name_slices[term_name] = slice(min(positions), max(positions) + 1)
-
-    groups = pd.Series(data.loc[x.index, strata_col], index=x.index)
-    outcome = y.iloc[:, 0]
-    varying = outcome.groupby(groups, dropna=False).transform("nunique").gt(1)
-    dropped_rows = int((~varying).sum())
-    dropped_strata = int(groups[~varying].nunique(dropna=False))
-
-    y_fit = outcome.loc[varying]
-    x_fit = x.loc[varying]
-    groups_fit = groups.loc[varying]
-
-    model = ConditionalLogit(
-        y_fit,
-        x_fit,
-        groups=groups_fit,
-        missing="raise",
-    )
-    result = model.fit(maxiter=maxiter, disp=disp)
-    result._patsy_term_name_slices = term_name_slices  # type: ignore
-    result._sse_diagnostics = {  # type: ignore
-        "strata_col": strata_col,
-        "input_rows": int(len(data)),
-        "model_rows": int(len(y_fit)),
-        "dropped_nonvarying_rows": dropped_rows,
-        "dropped_nonvarying_strata": dropped_strata,
-        "n_strata": int(groups_fit.nunique(dropna=False)),
-    }
-    return result
 
 
 def _logistic_loglike(y: np.ndarray, x: np.ndarray, beta: np.ndarray) -> float:

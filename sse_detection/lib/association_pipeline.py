@@ -27,7 +27,6 @@ from .regression import (
     categorical_term,
     cluster_se_diagnostics,
     fit_binomial_glm,
-    fit_conditional_logit,
     fit_firth_logit,
     make_formula,
     model_fit_stats,
@@ -820,8 +819,6 @@ def fit_association_result(
     cluster_se: str,
     window_strata: str,
 ):
-    if model_method == "conditional_logit_by_window":
-        return fit_conditional_logit(data, formula, strata_col=window_strata)
     if model_method == "firth_glm":
         return fit_firth_logit(data, formula)
     if model_method == "glm_clustered":
@@ -1048,10 +1045,7 @@ def fit_single_composition_models(
     wald_tables = []
     or_tables = []
     fit_tables = []
-    drop_window = (
-        _has_categorical_adjuster(adjusters, window_strata)
-        or model_method == "conditional_logit_by_window"
-    )
+    drop_window = _has_categorical_adjuster(adjusters, window_strata)
 
     for spec in COMPOSITION_SPECS:
         predictor = spec["column"]
@@ -1146,10 +1140,7 @@ def fit_joint_composition_model(
     group_label: object | None,
     failures: list[dict[str, object]],
 ) -> dict[str, pd.DataFrame]:
-    drop_window = (
-        _has_categorical_adjuster(adjusters, window_strata)
-        or model_method == "conditional_logit_by_window"
-    )
+    drop_window = _has_categorical_adjuster(adjusters, window_strata)
     predictors = [spec["column"] for spec in COMPOSITION_SPECS]
     try:
         d, dropped_rows, dropped_strata = _prepare_model_frame(
@@ -1314,10 +1305,7 @@ def fit_single_mixing_models(
     wald_tables = []
     or_tables = []
     fit_tables = []
-    drop_window = (
-        _has_categorical_adjuster(adjusters, window_strata)
-        or model_method == "conditional_logit_by_window"
-    )
+    drop_window = _has_categorical_adjuster(adjusters, window_strata)
 
     for feature in mixing_features:
         if feature not in source.columns:
@@ -1407,10 +1395,7 @@ def fit_joint_mixing_model(
     failures: list[dict[str, object]],
 ) -> dict[str, pd.DataFrame]:
     features = [feature for feature in mixing_features if feature in source.columns]
-    drop_window = (
-        _has_categorical_adjuster(adjusters, window_strata)
-        or model_method == "conditional_logit_by_window"
-    )
+    drop_window = _has_categorical_adjuster(adjusters, window_strata)
     try:
         d, dropped_rows, dropped_strata = _prepare_model_frame(
             source,
@@ -1540,10 +1525,7 @@ def fit_single_exposure_specs(
     wald_tables = []
     or_tables = []
     fit_tables = []
-    drop_window = (
-        _has_categorical_adjuster(adjusters, window_strata)
-        or model_method == "conditional_logit_by_window"
-    )
+    drop_window = _has_categorical_adjuster(adjusters, window_strata)
 
     for spec in specs:
         predictor = str(spec["column"])
@@ -1655,10 +1637,7 @@ def fit_joint_exposure_specs(
     wald_tables = []
     or_tables = []
     fit_tables = []
-    drop_window = (
-        _has_categorical_adjuster(adjusters, window_strata)
-        or model_method == "conditional_logit_by_window"
-    )
+    drop_window = _has_categorical_adjuster(adjusters, window_strata)
 
     for group in joint_groups:
         joint_name = str(group["name"])
