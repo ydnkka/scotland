@@ -48,7 +48,7 @@ __all__ = [
     "onward_edge_entropy",
     "vaccination_mixing_features",
     "load_sequence_data",
-    "BACKGROUND_COLOR",
+        "BACKGROUND_COLOR",
     "BACKGROUND_DARK",
     "BORDER",
     "CANDIDATE_COLOR",

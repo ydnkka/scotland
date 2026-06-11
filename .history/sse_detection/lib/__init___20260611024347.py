@@ -16,22 +16,7 @@ from .io import HIGH_PRIORITY_CANDIDATE_TIERS, SseOutputs, load_sse_outputs
 
 from .sse_detection import load_sequence_data
 
-from .palettes import (
-    BACKGROUND_COLOR,
-    BACKGROUND_DARK,
-    BORDER,
-    CANDIDATE_COLOR,
-    CANDIDATE_DARK,
-    GRAY,
-    GRAY_LIGHT,
-    GRID,
-    INK,
-    INK_SOFT,
-    ORANGE_DARK,
-    SSE_SIGNATURE_ORDER,
-    SSE_SIGNATURE_PALETTE,
-    TEAL_DARK,
-)
+from .p
 
 __all__ = [
     "HIGH_PRIORITY_CANDIDATE_TIERS",
@@ -48,18 +33,4 @@ __all__ = [
     "onward_edge_entropy",
     "vaccination_mixing_features",
     "load_sequence_data",
-    "BACKGROUND_COLOR",
-    "BACKGROUND_DARK",
-    "BORDER",
-    "CANDIDATE_COLOR",
-    "CANDIDATE_DARK",
-    "GRAY",
-    "GRAY_LIGHT",
-    "GRID",
-    "INK",
-    "INK_SOFT",
-    "ORANGE_DARK",
-    "SSE_SIGNATURE_ORDER",
-    "SSE_SIGNATURE_PALETTE",
-    "TEAL_DARK",
 ]
