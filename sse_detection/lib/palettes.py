@@ -1,24 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-__all__ = [
-    "BACKGROUND_COLOR",
-    "BACKGROUND_DARK",
-    "BORDER",
-    "CANDIDATE_COLOR",
-    "CANDIDATE_DARK",
-    "GRAY",
-    "GRAY_LIGHT",
-    "GRID",
-    "INK",
-    "INK_SOFT",
-    "ORANGE_DARK",
-    "SSE_SIGNATURE_ORDER",
-    "SSE_SIGNATURE_PALETTE",
-    "TEAL_DARK",
-]
-
-
 CANDIDATE_COLOR = "#C44E52"
 CANDIDATE_DARK = "#9C0207"
 BACKGROUND_COLOR = "#B0B0B0"

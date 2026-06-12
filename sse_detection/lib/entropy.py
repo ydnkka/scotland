@@ -28,23 +28,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-__all__ = [
-    "cluster_socio_demo_entropy",
-    "cluster_age_conditional_binary_entropy",
-    "onward_edge_entropy",
-    "observed_mixing_entropy_scales",
-    "add_observed_mixing_entropy_scales",
-    "add_mixing_tertiles",
-    "vaccination_mixing_features",
-    "add_vaccination_mixing_features",
-    "DEFAULT_MIXING_FEATURES",
-    "OBSERVED_MIXING_FEATURES",
-    "OBSERVED_MIXING_FEATURES_X10",
-    "MIXING_TERTILE_FEATURES",
-    "MIXING_TERTILE_ORDER",
-    "VACCINATION_MIXING_TERTILE_ORDER",
-]
-
 
 DEFAULT_MIXING_FEATURES = [
     "sex_entropy_z",
