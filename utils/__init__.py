@@ -17,7 +17,8 @@ policy
     Ordered policy-period helpers for Scotland COVID-19 restriction phases.
 """
 
-from . import data, policy, style
+from . import policy, style, data
+
 from .data import (
     QCStatus,
     VALID_QC_STATUSES,
@@ -25,7 +26,7 @@ from .data import (
     load_datazone_info,
     CLADES,
     CLADE_PALETTE,
-    PRIMARY_RESOLUTION
+    PRIMARY_RESOLUTION,
 )
 from .policy import (
     PERIOD_ORDER,

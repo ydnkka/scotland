@@ -71,24 +71,15 @@ from .bayesian_models import (
     write_summary_table,
 )
 
-from .palettes import (
-    BACKGROUND_COLOR,
-    BACKGROUND_DARK,
-    BORDER,
-    CANDIDATE_COLOR,
-    CANDIDATE_DARK,
-    GRAY,
-    GRAY_LIGHT,
-    GRID,
-    INK,
-    INK_SOFT,
-    ORANGE_DARK,
-    SSE_SIGNATURE_ORDER,
-    SSE_SIGNATURE_PALETTE,
-    TEAL_DARK,
-)
-
 from .sse_detection import load_sequence_data
+
+from .forest import (
+    ForestPlotResult,
+    plot_composition_primary_expanded_forest,
+    plot_logistic_mixing_primary_expanded_forest,
+    plot_logistic_composition_primary_expanded_forest,
+    plot_mixing_primary_expanded_forest,
+)
 
 
 __all__ = [
@@ -158,18 +149,9 @@ __all__ = [
     "split_formula_terms",
     "summarise_bambi_idata",
     "write_summary_table",
-    "BACKGROUND_COLOR",
-    "BACKGROUND_DARK",
-    "BORDER",
-    "CANDIDATE_COLOR",
-    "CANDIDATE_DARK",
-    "GRAY",
-    "GRAY_LIGHT",
-    "GRID",
-    "INK",
-    "INK_SOFT",
-    "ORANGE_DARK",
-    "SSE_SIGNATURE_ORDER",
-    "SSE_SIGNATURE_PALETTE",
-    "TEAL_DARK",
+    "plot_composition_primary_expanded_forest",
+    "plot_logistic_mixing_primary_expanded_forest",
+    "plot_logistic_composition_primary_expanded_forest",
+    "plot_mixing_primary_expanded_forest",
+    "ForestPlotResult",
 ]
