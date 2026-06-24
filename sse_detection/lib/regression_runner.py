@@ -358,7 +358,9 @@ class _TeeTextIO:
             stream.flush()
 
     def isatty(self) -> bool:
-        return any(getattr(stream, "isatty", lambda: False)() for stream in self._streams)
+        return any(
+            getattr(stream, "isatty", lambda: False)() for stream in self._streams
+        )
 
 
 @contextlib.contextmanager
