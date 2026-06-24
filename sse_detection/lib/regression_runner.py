@@ -73,6 +73,7 @@ class RegressionCliConfig:
     display_tables: bool = False
     print_diagnostics: bool = True
     log_file_name: str = "fit.log"
+    live_progress: bool = False
 
 
 def find_project_root(start: Path | str | None = None) -> Path:
@@ -289,7 +290,7 @@ def fit_save_and_log_frame(
     started_at = _now_iso()
     start = time.monotonic()
     try:
-        with redirect_model_output(log_path) as log_handle:
+        with redirect_model_output(log_path, echo=config.live_progress) as log_handle:
             write_model_log_header(frame, project_root=config.project_root)
             result = fit_prepared_model(
                 frame,
@@ -339,14 +340,40 @@ def fit_save_and_log_frame(
     }
 
 
+class _TeeTextIO:
+    """Write text to multiple streams while preserving terminal-like behavior."""
+
+    def __init__(self, *streams: TextIO) -> None:
+        self._streams = streams
+        self.encoding = getattr(streams[0], "encoding", None) if streams else None
+        self.errors = getattr(streams[0], "errors", None) if streams else None
+
+    def write(self, text: str) -> int:
+        for stream in self._streams:
+            stream.write(text)
+        return len(text)
+
+    def flush(self) -> None:
+        for stream in self._streams:
+            stream.flush()
+
+    def isatty(self) -> bool:
+        return any(getattr(stream, "isatty", lambda: False)() for stream in self._streams)
+
+
 @contextlib.contextmanager
-def redirect_model_output(log_path: Path) -> Iterator[TextIO]:
-    """Redirect stdout and stderr to one per-model log file."""
+def redirect_model_output(log_path: Path, *, echo: bool = False) -> Iterator[TextIO]:
+    """Redirect stdout and stderr to one per-model log file, optionally echoing live."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("w", encoding="utf-8") as log_handle:
+        stdout: TextIO = log_handle
+        stderr: TextIO = log_handle
+        if echo:
+            stdout = _TeeTextIO(log_handle, sys.stdout)  # type: ignore[assignment]
+            stderr = _TeeTextIO(log_handle, sys.stderr)  # type: ignore[assignment]
         with (
-            contextlib.redirect_stdout(log_handle),
-            contextlib.redirect_stderr(log_handle),
+            contextlib.redirect_stdout(stdout),
+            contextlib.redirect_stderr(stderr),
         ):
             yield log_handle
 
@@ -537,6 +564,11 @@ def build_domain_arg_parser(domain: Domain) -> argparse.ArgumentParser:
     parser.add_argument("--no-write-tables", action="store_true")
     parser.add_argument("--log-file-name", default="fit.log")
     parser.add_argument(
+        "--live-progress",
+        action="store_true",
+        help="Echo model fit output to the terminal as well as the per-model log file.",
+    )
+    parser.add_argument(
         "--jax-platforms",
         default="cpu",
         help="Default JAX_PLATFORMS value set before fitting.",
@@ -610,6 +642,7 @@ def main_for_domain(domain: Domain, argv: Sequence[str] | None = None) -> int:
         display_tables=args.display_tables,
         print_diagnostics=not args.quiet_diagnostics,
         log_file_name=args.log_file_name,
+        live_progress=args.live_progress,
     )
     run_domain_models(config)
     return 0
