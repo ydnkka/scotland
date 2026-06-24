@@ -45,7 +45,9 @@ EXCLUDE_OBSERVED_FEATURES = frozenset(
 )
 
 NULL_MIXING_FEATURES = [
-    feature for feature in DEFAULT_MIXING_FEATURES if feature not in EXCLUDE_NULL_FEATURES
+    feature
+    for feature in DEFAULT_MIXING_FEATURES
+    if feature not in EXCLUDE_NULL_FEATURES
 ]
 OBSERVED_MIXING_FEATURES = [
     feature
@@ -226,8 +228,7 @@ class PreparedRegressionRun:
             ]
             if len(matches) != 1:
                 raise ValueError(
-                    "Please specify outcome; selection matched "
-                    f"{len(matches)} frames."
+                    f"Please specify outcome; selection matched {len(matches)} frames."
                 )
             return matches[0]
         return self.frames[(domain, outcome, model_set)]
@@ -267,7 +268,9 @@ def prepare_regression_data(
     cluster_data["candidate"] = cluster_data["candidate_tier"].isin(
         HIGH_PRIORITY_CANDIDATE_TIERS
     )
-    candidate_sizes = cluster_data.loc[cluster_data["candidate"], "cluster_size"].dropna()
+    candidate_sizes = cluster_data.loc[
+        cluster_data["candidate"], "cluster_size"
+    ].dropna()
     if candidate_sizes.empty:
         raise ValueError("No high-priority candidate nodes were found.")
 
@@ -366,7 +369,9 @@ def prepare_regression_run(
                     family=family,
                     outcome=outcome,
                     sample=sample,
-                    categorical_vars=tuple(COMPOSITION_FEATURES) if domain == "composition" else (),
+                    categorical_vars=tuple(COMPOSITION_FEATURES)
+                    if domain == "composition"
+                    else (),
                     compact_category_vars=group_vars,
                 )
                 formula = formula_with_varying_intercepts(
@@ -488,7 +493,9 @@ def get_complete_case_data(
     outcome_kind: Literal["binary", "continuous"] = "continuous",
 ) -> pd.DataFrame:
     """Create a complete-case model frame with stable categorical dtypes."""
-    required_cols = _unique_preserve_order([outcome, *id_cols, *predictors, *group_vars])
+    required_cols = _unique_preserve_order(
+        [outcome, *id_cols, *predictors, *group_vars]
+    )
     missing_cols = [col for col in required_cols if col not in df.columns]
     if missing_cols:
         raise ValueError(f"Missing columns in dataframe: {missing_cols}")
@@ -499,7 +506,9 @@ def get_complete_case_data(
     else:
         out[outcome] = out[outcome].astype(float)
 
-    categorical_cols = _unique_preserve_order([*categorical_vars, *group_vars, *id_cols])
+    categorical_cols = _unique_preserve_order(
+        [*categorical_vars, *group_vars, *id_cols]
+    )
     for col in categorical_cols:
         if col in out.columns:
             out[col] = pd.Categorical(out[col], categories=_categories_from(df[col]))
@@ -557,7 +566,9 @@ def sample_rows_preserving_categories(
         col for col in _unique_preserve_order(categorical_vars or ()) if col in data
     ]
     selected_indices: set[object] = set()
-    seed_indices = _category_seed_indices(data, category_cols, random_state=random_state)
+    seed_indices = _category_seed_indices(
+        data, category_cols, random_state=random_state
+    )
     if len(seed_indices) > max_rows:
         raise ValueError(
             "max_rows is too small to include all observed categorical levels "
@@ -600,7 +611,9 @@ def sample_binary_outcome_data(
     category_cols = [
         col for col in _unique_preserve_order(categorical_vars or ()) if col in data
     ]
-    seed_indices = _category_seed_indices(data, category_cols, random_state=random_state)
+    seed_indices = _category_seed_indices(
+        data, category_cols, random_state=random_state
+    )
     if len(seed_indices) > max_rows:
         raise ValueError(
             "max_rows is too small to include all observed categorical levels "
@@ -888,9 +901,7 @@ def _category_seed_indices(
 ) -> list[Any]:
     missing_by_col = {
         col: {
-            level
-            for level in _categories_from(data[col])
-            if data[col].eq(level).any()
+            level for level in _categories_from(data[col]) if data[col].eq(level).any()
         }
         for col in category_cols
     }
@@ -907,11 +918,15 @@ def _category_seed_indices(
                 if missing_levels:
                     coverage += candidates[cover_col].isin(missing_levels).astype(int)
             best_indices = coverage.loc[coverage.eq(coverage.max())].index
-            idx = data.loc[best_indices].sample(
-                n=1,
-                random_state=random_state + len(seed_indices),
-                replace=False,
-            ).index[0]
+            idx = (
+                data.loc[best_indices]
+                .sample(
+                    n=1,
+                    random_state=random_state + len(seed_indices),
+                    replace=False,
+                )
+                .index[0]
+            )
             if idx not in selected_indices:
                 seed_indices.append(idx)
                 selected_indices.add(idx)

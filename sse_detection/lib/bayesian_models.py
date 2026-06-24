@@ -530,7 +530,9 @@ def posterior_probability_summary(
         prob_negative_df = prob_negative.to_dataframe(name=negative_label)
         prob_df = pd.concat([prob_positive_df, prob_negative_df], axis=1).reset_index()
         coord_cols = [
-            col for col in prob_df.columns if col not in {positive_label, negative_label}
+            col
+            for col in prob_df.columns
+            if col not in {positive_label, negative_label}
         ]
         for _, row in prob_df.iterrows():
             coords = ", ".join(str(row[col]) for col in coord_cols)
@@ -687,7 +689,9 @@ def available_posterior_vars(
 ) -> list[str]:
     """Resolve requested posterior variables against variables in ``idata``."""
     available = [str(var) for var in posterior_dataset(idata).data_vars]
-    formula_vars = posterior_vars_from_formula(formula) if formula is not None else available
+    formula_vars = (
+        posterior_vars_from_formula(formula) if formula is not None else available
+    )
     requested = list(formula_vars if var_names is None else var_names)
     if include_auxiliary and formula is not None:
         requested = _unique_preserve_order(
