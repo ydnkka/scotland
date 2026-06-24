@@ -234,19 +234,19 @@ python -m sse_detection.lib.composition_models
 
 Common options:
 
-| Option                                     | Purpose                                   |
-| ------------------------------------------ | ----------------------------------------- |
-| `--family`                                 | Select regression family                  |
-| `--model-set`                              | Select one or more model versions         |
-| `--outcome`                                | Select outcome                            |
-| `--sample-fraction`                        | Fit a fraction of complete-case rows      |
-| `--sample-rows`                            | Fit a fixed maximum number of rows        |
-| `--skip-existing`                          | Avoid refitting models with saved outputs |
-| `--continue-on-error`                      | Continue after a failed fit               |
-| `--save-idata`                             | Save ArviZ inference data as `idata.nc`   |
-| `--live-progress`                          | Show backend model fit output in the terminal              |
-| `--draws`, `--tune`, `--chains`, `--cores` | Sampler size and parallelism              |
-| `--target-accept`                          | PyMC NUTS target acceptance probability   |
+| Option                                     | Purpose                                       |
+| ------------------------------------------ | --------------------------------------------- |
+| `--family`                                 | Select regression family                      |
+| `--model-set`                              | Select one or more model versions             |
+| `--outcome`                                | Select outcome                                |
+| `--sample-fraction`                        | Fit a fraction of complete-case rows          |
+| `--sample-rows`                            | Fit a fixed maximum number of rows            |
+| `--skip-existing`                          | Avoid refitting models with saved outputs     |
+| `--continue-on-error`                      | Continue after a failed fit                   |
+| `--save-idata`                             | Save ArviZ inference data as `idata.nc`       |
+| `--live-progress`                          | Show backend model fit output in the terminal |
+| `--draws`, `--tune`, `--chains`, `--cores` | Sampler size and parallelism                  |
+| `--target-accept`                          | PyMC NUTS target acceptance probability       |
 
 `fit.log` is a structured fit report written by the runner. Bambi/PyMC backend
 stdout and stderr are not written to `fit.log`; by default they are suppressed.
@@ -313,13 +313,13 @@ Per-model files:
 
 Operational files used for parallel safety:
 
-| File or pattern                  | Meaning                                                                 |
-| -------------------------------- | ----------------------------------------------------------------------- |
-| `.saved_model_manifest.lock`     | Result-level lock while accumulated manifests are read, merged, written |
-| `.prepared_run_tables.lock`      | Family-level lock while prepared-run tables are written                 |
-| `.fit_frames.lock`               | Family-level lock used by `write_fit_frames(...)`                       |
-| `{model_dir}/.fit.lock`          | Per-model lock while one model is fitting and writing outputs           |
-| `.*.tmp*`                        | Temporary same-directory files used for atomic output replacement       |
+| File or pattern              | Meaning                                                                 |
+| ---------------------------- | ----------------------------------------------------------------------- |
+| `.saved_model_manifest.lock` | Result-level lock while accumulated manifests are read, merged, written |
+| `.prepared_run_tables.lock`  | Family-level lock while prepared-run tables are written                 |
+| `.fit_frames.lock`           | Family-level lock used by `write_fit_frames(...)`                       |
+| `{model_dir}/.fit.lock`      | Per-model lock while one model is fitting and writing outputs           |
+| `.*.tmp*`                    | Temporary same-directory files used for atomic output replacement       |
 
 The standard CSV, parquet, and NetCDF outputs are written via temporary files
 and then atomically replaced. This prevents downstream readers from seeing

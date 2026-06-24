@@ -319,10 +319,7 @@ def fit_save_and_log_frame(
                 ):
                     write_model_log_header(frame, project_root=config.project_root)
                     if config.live_progress:
-                        print(
-                            "Backend stdout/stderr: terminal only "
-                            "(--live-progress)."
-                        )
+                        print("Backend stdout/stderr: terminal only (--live-progress).")
                     else:
                         print("Backend stdout/stderr: suppressed from fit.log.")
                     print()
