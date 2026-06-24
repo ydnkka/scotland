@@ -5,6 +5,8 @@
 **/.ipynb_checkpoints
 **/.pytest_cache
 **/.history
+**/.agents
+**/.codex
 **/data
 **/figures
 **/tables

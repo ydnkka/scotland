@@ -236,11 +236,11 @@ Common options:
 
 | Option                                     | Purpose                                   |
 | ------------------------------------------ | ----------------------------------------- |
-| `--family logistic`                        | Select regression family                  |
-| `--model-set ...`                          | Select one or more model versions         |
-| `--outcome candidate`                      | Select outcome                            |
-| `--sample-fraction ...`                    | Fit a fraction of complete-case rows      |
-| `--sample-rows ...`                        | Fit a fixed maximum number of rows        |
+| `--family`                                 | Select regression family                  |
+| `--model-set`                              | Select one or more model versions         |
+| `--outcome`                                | Select outcome                            |
+| `--sample-fraction`                        | Fit a fraction of complete-case rows      |
+| `--sample-rows`                            | Fit a fixed maximum number of rows        |
 | `--skip-existing`                          | Avoid refitting models with saved outputs |
 | `--continue-on-error`                      | Continue after a failed fit               |
 | `--save-idata`                             | Save ArviZ inference data as `idata.nc`   |
