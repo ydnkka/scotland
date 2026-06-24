@@ -16,6 +16,7 @@ from typing import Iterable, Literal, Sequence, Any
 import numpy as np
 import pandas as pd
 
+from .concurrent_io import atomic_write_csv, atomic_write_parquet, exclusive_file_lock
 from .entropy import (
     DEFAULT_MIXING_FEATURES,
     OBSERVED_MIXING_FEATURES_X10,
@@ -791,19 +792,34 @@ def model_output_files(model_dir: Path | str) -> dict[str, Path]:
 def write_prepared_run_tables(prepared: PreparedRegressionRun) -> None:
     """Write run config, model grid, and fit-frame summary tables."""
     prepared.result_dir.mkdir(parents=True, exist_ok=True)
-    prepared.run_config.to_csv(prepared.result_dir / "run_config.csv", index=False)
-    prepared.model_grid.to_csv(prepared.result_dir / "model_grid.csv", index=False)
-    prepared.fit_frame_summary.to_csv(
-        prepared.result_dir / "fit_frame_summary.csv",
-        index=False,
-    )
-    for domain, table in prepared.model_grid.groupby("domain", sort=False):
-        table.to_csv(prepared.result_dir / f"{domain}_model_grid.csv", index=False)
-    for domain, table in prepared.fit_frame_summary.groupby("domain", sort=False):
-        table.to_csv(
-            prepared.result_dir / f"{domain}_fit_frame_summary.csv",
+    with exclusive_file_lock(prepared.result_dir / ".prepared_run_tables.lock"):
+        atomic_write_csv(
+            prepared.run_config,
+            prepared.result_dir / "run_config.csv",
             index=False,
         )
+        atomic_write_csv(
+            prepared.model_grid,
+            prepared.result_dir / "model_grid.csv",
+            index=False,
+        )
+        atomic_write_csv(
+            prepared.fit_frame_summary,
+            prepared.result_dir / "fit_frame_summary.csv",
+            index=False,
+        )
+        for domain, table in prepared.model_grid.groupby("domain", sort=False):
+            atomic_write_csv(
+                table,
+                prepared.result_dir / f"{domain}_model_grid.csv",
+                index=False,
+            )
+        for domain, table in prepared.fit_frame_summary.groupby("domain", sort=False):
+            atomic_write_csv(
+                table,
+                prepared.result_dir / f"{domain}_fit_frame_summary.csv",
+                index=False,
+            )
 
 
 def write_fit_frames(
@@ -813,22 +829,27 @@ def write_fit_frames(
 ) -> pd.DataFrame:
     """Write each prepared fitting frame below its model output directory."""
     manifest_rows = []
-    for frame in prepared.frames.values():
-        frame.output_dir.mkdir(parents=True, exist_ok=True)
-        path = frame.output_dir / file_name
-        frame.fit_df.to_parquet(path, index=False)
-        manifest_rows.append(
-            {
-                "family": frame.family,
-                "domain": frame.domain,
-                "outcome": frame.outcome,
-                "model_set": frame.model_set,
-                "fit_frame_path": str(path),
-                "fit_rows": len(frame.fit_df),
-            }
+    with exclusive_file_lock(prepared.result_dir / ".fit_frames.lock"):
+        for frame in prepared.frames.values():
+            frame.output_dir.mkdir(parents=True, exist_ok=True)
+            path = frame.output_dir / file_name
+            atomic_write_parquet(frame.fit_df, path, index=False)
+            manifest_rows.append(
+                {
+                    "family": frame.family,
+                    "domain": frame.domain,
+                    "outcome": frame.outcome,
+                    "model_set": frame.model_set,
+                    "fit_frame_path": str(path),
+                    "fit_rows": len(frame.fit_df),
+                }
+            )
+        manifest = pd.DataFrame(manifest_rows)
+        atomic_write_csv(
+            manifest,
+            prepared.result_dir / "fit_frame_manifest.csv",
+            index=False,
         )
-    manifest = pd.DataFrame(manifest_rows)
-    manifest.to_csv(prepared.result_dir / "fit_frame_manifest.csv", index=False)
     return manifest
 
 

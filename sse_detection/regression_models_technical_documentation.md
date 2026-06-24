@@ -244,8 +244,14 @@ Common options:
 | `--skip-existing`                          | Avoid refitting models with saved outputs |
 | `--continue-on-error`                      | Continue after a failed fit               |
 | `--save-idata`                             | Save ArviZ inference data as `idata.nc`   |
+| `--live-progress`                          | Show backend model fit output in the terminal              |
 | `--draws`, `--tune`, `--chains`, `--cores` | Sampler size and parallelism              |
 | `--target-accept`                          | PyMC NUTS target acceptance probability   |
+
+`fit.log` is a structured fit report written by the runner. Bambi/PyMC backend
+stdout and stderr are not written to `fit.log`; by default they are suppressed.
+Use `--live-progress` when you want sampler progress and backend messages shown
+live in the terminal during fitting.
 
 ## 8. Sampling and Fit Frames
 
@@ -280,7 +286,7 @@ Run-level files:
 | `mixing_selected_model_grid.csv`      | Latest selected model grid for the mixing script                     |
 | `composition_selected_model_grid.csv` | Latest selected model grid for the composition script                |
 | `saved_model_manifest.csv`            | Accumulated manifest of saved, skipped, or failed model attempts     |
-| `last_saved_model_manifest.csv`       | Manifest for the latest invocation only                              |
+| `last_saved_model_manifest.csv`       | Manifest for the latest manifest-writing invocation                  |
 | `logistic/`                           | Logistic prepared-run tables and model outputs                       |
 | `linear/`                             | Linear prepared-run tables and model outputs                         |
 
@@ -302,8 +308,22 @@ Per-model files:
 | `summary.csv`     | Posterior summaries for model parameters                                          |
 | `diagnostics.csv` | Divergences, BFMI, R-hat, ESS, and tree-depth checks                              |
 | `metadata.csv`    | Family, domain, outcome, formula, row count, outcome mean/rate, and sampling flag |
-| `fit.log`         | Captured stdout/stderr for the model fit                                          |
+| `fit.log`         | Structured runner report, diagnostics, saved outputs, and failure tracebacks      |
 | `idata.nc`        | Optional ArviZ inference data when `--save-idata` is used                         |
+
+Operational files used for parallel safety:
+
+| File or pattern                  | Meaning                                                                 |
+| -------------------------------- | ----------------------------------------------------------------------- |
+| `.saved_model_manifest.lock`     | Result-level lock while accumulated manifests are read, merged, written |
+| `.prepared_run_tables.lock`      | Family-level lock while prepared-run tables are written                 |
+| `.fit_frames.lock`               | Family-level lock used by `write_fit_frames(...)`                       |
+| `{model_dir}/.fit.lock`          | Per-model lock while one model is fitting and writing outputs           |
+| `.*.tmp*`                        | Temporary same-directory files used for atomic output replacement       |
+
+The standard CSV, parquet, and NetCDF outputs are written via temporary files
+and then atomically replaced. This prevents downstream readers from seeing
+partially written output files.
 
 Typical path layout:
 
@@ -453,7 +473,7 @@ The diagnostics table screens whether posterior summaries are trustworthy enough
 
 If diagnostics are weak:
 
-1. Inspect `fit.log` for sampler warnings.
+1. Inspect `fit.log` and `diagnostics.csv` for failure tracebacks and diagnostic warnings.
 2. Increase `--tune`.
 3. Raise `--target-accept`.
 4. Increase `--draws` or `--chains`.
@@ -493,7 +513,7 @@ Before reporting a model:
 1. Confirm the intended model appears in `model_grid.csv`.
 2. Confirm `fit_frame_summary.csv` has the expected row count and sampling status.
 3. Check `metadata.csv` for formula, row count, and outcome rate/mean.
-4. Read `fit.log` for warnings or fit failures.
+4. Read `fit.log` for the structured fit report and any failure traceback.
 5. Confirm `diagnostics.csv` has acceptable divergences, BFMI, R-hat, and ESS.
 6. Interpret `summary.csv` on the right scale: ORs for logistic, coefficients for linear.
 7. Compare primary and expanded models only after checking that their complete-case/sampled frames are comparable.
@@ -507,6 +527,14 @@ To add or change models:
 3. Rebuild prepared model grids and inspect complete-case rows.
 4. Fit the selected model script with `--skip-existing` when adding new models to an existing output directory.
 5. Review `fit.log`, `diagnostics.csv`, and `summary.csv` before using estimates in figures or text.
+
+Parallel runs:
+
+1. Different model selections can run in separate terminal sessions when they write to the same result root.
+2. Do not intentionally start the same exact family/domain/outcome/model-set combination twice. The second process is blocked by `{model_dir}/.fit.lock` and fails clearly unless `--continue-on-error` is set.
+3. Reduce `--cores` per process when running multiple terminals so the combined PyMC workers do not oversubscribe CPU or memory.
+4. If a process is force-killed, a stale `.fit.lock` can remain. Remove it only after confirming no matching model process is still running.
+5. In parallel runs, `last_saved_model_manifest.csv` is whichever invocation wrote the manifest most recently. Use `saved_model_manifest.csv` as the accumulated record.
 
 Keep responsibilities separated:
 

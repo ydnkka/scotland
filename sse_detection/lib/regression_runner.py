@@ -13,7 +13,7 @@ import os
 import sys
 import time
 import traceback
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Iterator, Sequence, TextIO
@@ -23,7 +23,14 @@ import pandas as pd
 from .bayesian_models import (
     BayesianFitConfig,
     fit_prepared_model,
+    print_diagnostic_report,
     save_prepared_model_result,
+)
+from .concurrent_io import (
+    LockAlreadyHeldError,
+    atomic_write_csv,
+    exclusive_create_lock,
+    exclusive_file_lock,
 )
 from .io import load_sse_outputs
 from .regression_prep import (
@@ -105,7 +112,8 @@ def run_domain_models(config: RegressionCliConfig) -> pd.DataFrame:
     config.result_dir.mkdir(parents=True, exist_ok=True)
 
     data = load_regression_data(config.sse_output_dir)
-    data.eligibility_summary.to_csv(
+    atomic_write_csv(
+        data.eligibility_summary,
         config.result_dir / "eligibility_summary.csv",
         index=False,
     )
@@ -162,7 +170,8 @@ def run_domain_models(config: RegressionCliConfig) -> pd.DataFrame:
 
     selected_grid = pd.DataFrame(selected_grid_rows)
     if not selected_grid.empty:
-        selected_grid.to_csv(
+        atomic_write_csv(
+            selected_grid,
             config.result_dir / f"{config.domain}_selected_model_grid.csv",
             index=False,
         )
@@ -231,6 +240,15 @@ def sample_for_domain(
     )
 
 
+def runner_fit_config(config: RegressionCliConfig) -> BayesianFitConfig:
+    """Return fit settings adjusted for the runner's backend-output policy."""
+    return replace(
+        config.fit_config,
+        progressbar=config.live_progress,
+        quiet=not config.live_progress,
+    )
+
+
 def resolve_model_sets(
     domain: Domain,
     requested: Sequence[str] | None,
@@ -272,43 +290,88 @@ def fit_save_and_log_frame(
 ) -> dict[str, object]:
     """Fit one prepared frame, capture prints, save outputs, and return manifest."""
     log_path = model_log_path(frame, config.log_file_name)
-    if config.skip_existing and model_outputs_exist(
-        frame,
-        save_idata=config.save_idata,
-    ):
-        print(f"Skipping existing model: {frame_key(frame)}")
-        return {
-            **base_manifest_row(frame, log_path=log_path),
-            "status": "skipped_existing",
-            "started_at": _now_iso(),
-            "finished_at": _now_iso(),
-            "elapsed_seconds": 0.0,
-        }
-
-    print(f"Fitting {frame_key(frame)}")
-    print(f"  log: {log_path}")
     started_at = _now_iso()
     start = time.monotonic()
     try:
-        with redirect_model_output(log_path, echo=config.live_progress) as log_handle:
-            write_model_log_header(frame, project_root=config.project_root)
-            result = fit_prepared_model(
-                frame,
-                config=config.fit_config,
-                display_tables=config.display_tables,
-                print_diagnostics=config.print_diagnostics,
-            )
-            manifest_row = save_prepared_model_result(
-                result,
+        with exclusive_create_lock(
+            model_lock_path(frame),
+            details=f"model={frame_key(frame)}\nlog={log_path}",
+        ):
+            if config.skip_existing and model_outputs_exist(
                 frame,
                 save_idata=config.save_idata,
-            )
-            print()
-            print("Saved outputs")
-            for label, path in model_output_files(frame.output_dir).items():
-                if path.exists():
-                    print(f"  {label}: {path}")
-            log_handle.flush()
+            ):
+                print(f"Skipping existing model: {frame_key(frame)}")
+                return {
+                    **base_manifest_row(frame, log_path=log_path),
+                    "status": "skipped_existing",
+                    "started_at": started_at,
+                    "finished_at": _now_iso(),
+                    "elapsed_seconds": time.monotonic() - start,
+                }
+
+            print(f"Fitting {frame_key(frame)}")
+            print(f"  log: {log_path}")
+            with log_path.open("w", encoding="utf-8") as log_handle:
+                with (
+                    contextlib.redirect_stdout(log_handle),
+                    contextlib.redirect_stderr(log_handle),
+                ):
+                    write_model_log_header(frame, project_root=config.project_root)
+                    if config.live_progress:
+                        print(
+                            "Backend stdout/stderr: terminal only "
+                            "(--live-progress)."
+                        )
+                    else:
+                        print("Backend stdout/stderr: suppressed from fit.log.")
+                    print()
+                log_handle.flush()
+
+            with suppress_backend_output(live=config.live_progress):
+                result = fit_prepared_model(
+                    frame,
+                    config=runner_fit_config(config),
+                    display_tables=False,
+                    print_diagnostics=False,
+                )
+
+            with log_path.open("a", encoding="utf-8") as log_handle:
+                with (
+                    contextlib.redirect_stdout(log_handle),
+                    contextlib.redirect_stderr(log_handle),
+                ):
+                    if config.print_diagnostics:
+                        print_diagnostic_report(
+                            result.diagnostics,
+                            result.summary,
+                            display_tables=config.display_tables,
+                        )
+                    manifest_row = save_prepared_model_result(
+                        result,
+                        frame,
+                        save_idata=config.save_idata,
+                    )
+                    print()
+                    print("Saved outputs")
+                    for label, path in model_output_files(frame.output_dir).items():
+                        if path.exists():
+                            print(f"  {label}: {path}")
+                log_handle.flush()
+    except LockAlreadyHeldError as exc:
+        elapsed = time.monotonic() - start
+        row = {
+            **base_manifest_row(frame, log_path=log_path),
+            "status": "locked",
+            "error": str(exc),
+            "started_at": started_at,
+            "finished_at": _now_iso(),
+            "elapsed_seconds": elapsed,
+        }
+        if config.continue_on_error:
+            print(f"Locked {frame_key(frame)}; {exc}")
+            return row
+        raise
     except Exception as exc:
         elapsed = time.monotonic() - start
         with log_path.open("a", encoding="utf-8") as log_handle:
@@ -380,6 +443,21 @@ def redirect_model_output(log_path: Path, *, echo: bool = False) -> Iterator[Tex
             yield log_handle
 
 
+@contextlib.contextmanager
+def suppress_backend_output(*, live: bool) -> Iterator[None]:
+    """Show backend output live or suppress it so fit logs remain readable."""
+    if live:
+        yield
+        return
+
+    with Path(os.devnull).open("w", encoding="utf-8") as sink:
+        with (
+            contextlib.redirect_stdout(sink),
+            contextlib.redirect_stderr(sink),
+        ):
+            yield
+
+
 def write_model_log_header(
     frame: PreparedModelFrame,
     *,
@@ -415,6 +493,11 @@ def model_outputs_exist(frame: PreparedModelFrame, *, save_idata: bool) -> bool:
 def model_log_path(frame: PreparedModelFrame, log_file_name: str = "fit.log") -> Path:
     """Return the per-model log path."""
     return frame.output_dir / log_file_name
+
+
+def model_lock_path(frame: PreparedModelFrame) -> Path:
+    """Return the fail-fast lock path for one model output directory."""
+    return frame.output_dir / ".fit.lock"
 
 
 def frame_key(frame: PreparedModelFrame) -> str:
@@ -466,24 +549,35 @@ def write_saved_model_manifest(
         return manifest
     result_dir = Path(result_dir)
     result_dir.mkdir(parents=True, exist_ok=True)
-    manifest.to_csv(result_dir / "last_saved_model_manifest.csv", index=False)
-
-    combined = _merge_existing_manifest(
-        result_dir / "saved_model_manifest.csv",
-        manifest,
-    )
-    combined.to_csv(result_dir / "saved_model_manifest.csv", index=False)
-    for family, family_table in combined.groupby("family", sort=False):
-        family_table.to_csv(
-            result_dir / f"{family}_saved_model_manifest.csv",
+    with exclusive_file_lock(result_dir / ".saved_model_manifest.lock"):
+        atomic_write_csv(
+            manifest,
+            result_dir / "last_saved_model_manifest.csv",
             index=False,
         )
-        family_dir = result_dir / str(family)
-        if family_dir.exists():
-            family_table.to_csv(
-                family_dir / "saved_model_manifest.csv",
+
+        combined = _merge_existing_manifest(
+            result_dir / "saved_model_manifest.csv",
+            manifest,
+        )
+        atomic_write_csv(
+            combined,
+            result_dir / "saved_model_manifest.csv",
+            index=False,
+        )
+        for family, family_table in combined.groupby("family", sort=False):
+            atomic_write_csv(
+                family_table,
+                result_dir / f"{family}_saved_model_manifest.csv",
                 index=False,
             )
+            family_dir = result_dir / str(family)
+            if family_dir.exists():
+                atomic_write_csv(
+                    family_table,
+                    family_dir / "saved_model_manifest.csv",
+                    index=False,
+                )
     return combined
 
 
@@ -568,7 +662,7 @@ def build_domain_arg_parser(domain: Domain) -> argparse.ArgumentParser:
     parser.add_argument(
         "--live-progress",
         action="store_true",
-        help="Echo model fit output to the terminal as well as the per-model log file.",
+        help="Show backend model fit output in the terminal; keep fit.log clean.",
     )
     parser.add_argument(
         "--jax-platforms",
@@ -622,6 +716,8 @@ def main_for_domain(domain: Domain, argv: Sequence[str] | None = None) -> int:
         residual_sigma=args.residual_sigma,
         log_likelihood=not args.no_log_likelihood,
         noncentered=not args.centered,
+        progressbar=args.live_progress,
+        quiet=not args.live_progress,
     )
     config = RegressionCliConfig(
         project_root=project_root,
@@ -751,6 +847,7 @@ __all__ = [
     "load_regression_data",
     "main_for_domain",
     "model_log_path",
+    "model_lock_path",
     "model_outputs_exist",
     "outcomes_for_family",
     "prepare_domain_regression_run",
@@ -758,6 +855,7 @@ __all__ = [
     "redirect_model_output",
     "resolve_model_sets",
     "run_domain_models",
+    "runner_fit_config",
     "sample_for_domain",
     "write_model_log_header",
     "write_saved_model_manifest",

@@ -11,6 +11,11 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+from .concurrent_io import (
+    atomic_write_csv,
+    atomic_write_netcdf,
+    exclusive_file_lock,
+)
 from .regression_prep import GROUP_VARS, PreparedModelFrame, PreparedRegressionRun
 
 
@@ -35,6 +40,8 @@ class BayesianFitConfig:
     residual_sigma: float | None = None
     log_likelihood: bool = True
     noncentered: bool = True
+    progressbar: bool = False
+    quiet: bool = True
 
 
 @dataclass
@@ -284,6 +291,8 @@ def fit_bayesian_model(
         "inference_method": inference_method,
         "target_accept": config.target_accept,
         "random_seed": config.random_seed,
+        "progressbar": config.progressbar,
+        "quiet": config.quiet,
     }
     try:
         idata = model.fit(**fit_kwargs)
@@ -569,7 +578,7 @@ def save_model_result(
             print(f"Warning: '{key}' not found or not a DataFrame.")
 
     if save_idata and result_dict.get("idata") is not None:
-        result_dict["idata"].to_netcdf(model_dir / "idata.nc")  # type: ignore[union-attr]
+        atomic_write_netcdf(result_dict["idata"], model_dir / "idata.nc")
 
     metadata = pd.DataFrame(
         [
@@ -587,7 +596,7 @@ def save_model_result(
             }
         ]
     )
-    metadata.to_csv(model_dir / "metadata.csv", index=False)
+    atomic_write_csv(metadata, model_dir / "metadata.csv", index=False)
 
     return {
         "family": result_dict.get("family"),
@@ -637,12 +646,18 @@ def save_prepared_run_results(
         )
     manifest = pd.DataFrame(manifest_rows)
     prepared.result_dir.mkdir(parents=True, exist_ok=True)
-    manifest.to_csv(prepared.result_dir / "saved_model_manifest.csv", index=False)
-    for domain, table in manifest.groupby("domain", sort=False):
-        table.to_csv(
-            prepared.result_dir / f"{domain}_saved_model_manifest.csv",
+    with exclusive_file_lock(prepared.result_dir / ".saved_model_manifest.lock"):
+        atomic_write_csv(
+            manifest,
+            prepared.result_dir / "saved_model_manifest.csv",
             index=False,
         )
+        for domain, table in manifest.groupby("domain", sort=False):
+            atomic_write_csv(
+                table,
+                prepared.result_dir / f"{domain}_saved_model_manifest.csv",
+                index=False,
+            )
     return manifest
 
 
@@ -652,7 +667,7 @@ def write_summary_table(summary: pd.DataFrame, path: Path | str) -> None:
     if "parameter" not in out.columns:
         out.insert(0, "parameter", out.index.astype(str))
     Path(path).parent.mkdir(parents=True, exist_ok=True)
-    out.to_csv(path, index=False)
+    atomic_write_csv(out, path, index=False)
 
 
 def print_diagnostic_report(
