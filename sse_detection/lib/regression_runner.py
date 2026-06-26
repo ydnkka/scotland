@@ -50,7 +50,7 @@ from .regression_prep import (
 
 DEFAULT_SSE_OUTPUT_RELATIVE_DIR = Path("sse_detection") / "results" / "sse_outputs"
 DEFAULT_RESULT_RELATIVE_DIR = (
-    Path("sse_detection") / "results" / "bayesian_socio_geo_demo_regression"
+    Path("sse_detection") / "results" / "bayesian_outputs"
 )
 ALL_FAMILIES: tuple[RegressionFamily, ...] = ("logistic", "linear")
 ALL_OUTCOMES = ("candidate", *SCORE_OUTCOMES)
