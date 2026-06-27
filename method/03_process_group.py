@@ -159,7 +159,7 @@ def process_group(
         logging.info("%s: no usable edges → %d isolates written", stem, len(group_ids))
         return out_path
 
-    # Epilink compatibility scores (edge weights)
+    # EpiLink compatibility scores (edge weights)
     try:
         df["weight"] = estimate_epilink_compatibility(
             genetic_distance=df["snp_distance"].to_numpy(dtype=float),
