@@ -1,7 +1,7 @@
 """Policy-period definitions and helpers for Scottish COVID-19 restrictions.
 
 The exported period table assigns ordered restriction phases to calendar dates
-and exposes compact labels/intensity scores for plotting and modelling.
+and exposes compact labels/stringency scores for plotting and modelling.
 """
 
 from __future__ import annotations
@@ -14,32 +14,34 @@ __all__ = [
     "PERIOD_ORDER",
     "POLICY_PERIODS",
     "PERIOD_LABELS",
-    "PERIOD_INTENSITY",
+    "PERIOD_STRINGENCY",
     "assign_period",
     "attach_period",
 ]
 
+#  Mean stringency index values for each policy period, derived from the
+#  OxCGRT Stringency Index (<https://github.com/OxCGRT/covid-policy-dataset/>),
+#  File: `timeseries_indices/OxCGRT_timeseries_StringencyIndex_v1.csv`
 
-_PERIOD_CODES = [
-    "E0",
-    "L1",
-    "P1",
-    "P2",
-    "P3",
-    "T1",
-    "F5",
-    "L2",
-    "SL",
-    "L3",
-    "L21",
-    "L0",
-    "NN",
-    "OM",
-    "FE",
-    "PR",
-]
+stringency_index = {
+    "E0": np.float64(23.911739130434785),
+    "L1": np.float64(79.63000000000008),
+    "P1": np.float64(75.13238095238096),
+    "P2": np.float64(76.45619047619047),
+    "P3": np.float64(67.64571428571442),
+    "T1": np.float64(64.80999999999996),
+    "F5": np.float64(70.88968750000001),
+    "L2": np.float64(85.53586206896566),
+    "SL": np.float64(69.90375000000003),
+    "L3": np.float64(58.330000000000005),
+    "L21": np.float64(56.13063492063501),
+    "L0": np.float64(52.77999999999999),
+    "NN": np.float64(31.637857142857182),
+    "OM": np.float64(34.83857142857142),
+    "FE": np.float64(19.786666666666626),
+    "PR": np.float64(8.184418604651126),
+}
 
-PERIOD_ORDER: list[str] = _PERIOD_CODES
 
 POLICY_PERIODS: pd.DataFrame = pd.DataFrame(
     {
@@ -119,13 +121,15 @@ POLICY_PERIODS: pd.DataFrame = pd.DataFrame(
                 "2023-05-05",
             ]
         ).normalize(),
-        "intensity": [15, 100, 72, 52, 30, 55, 65, 95, 65, 55, 38, 20, 10, 42, 15, 3],
     }
 )
 
+PERIOD_ORDER: list[str] = POLICY_PERIODS["period_code"].tolist()
+POLICY_PERIODS["policy_stringency"] = POLICY_PERIODS["period_code"].map(stringency_index)
+
 POLICY_PERIODS["period_code"] = pd.Categorical(
     POLICY_PERIODS["period_code"],
-    categories=_PERIOD_CODES,
+    categories=PERIOD_ORDER,
     ordered=True,
 )
 
@@ -136,10 +140,10 @@ PERIOD_LABELS: dict[str, str] = dict(
     )
 )
 
-PERIOD_INTENSITY: dict[str, int] = dict(
+PERIOD_STRINGENCY: dict[str, int] = dict(
     zip(
         POLICY_PERIODS["period_code"].astype(str),
-        POLICY_PERIODS["intensity"],
+        POLICY_PERIODS["policy_stringency"],
     )
 )
 
@@ -167,14 +171,14 @@ def assign_period(dates: pd.Series) -> pd.Series:
         codes[mask.to_numpy()] = str(row["period_code"])
 
     return pd.Series(
-        pd.Categorical(codes, categories=_PERIOD_CODES, ordered=True),
+        pd.Categorical(codes, categories=PERIOD_ORDER, ordered=True),
         index=dates.index,
         name="policy_period",
     )
 
 
 def attach_period(df: pd.DataFrame, date_col: str) -> pd.DataFrame:
-    """Attach policy period code, label, and intensity using the given date column.
+    """Attach policy period code, label, and stringency using the given date column.
 
     Parameters
     ----------
@@ -188,7 +192,7 @@ def attach_period(df: pd.DataFrame, date_col: str) -> pd.DataFrame:
     -------
     pandas.DataFrame
         A copy of ``df`` with three new columns:
-        ``policy_period``, ``policy_period_label``, and ``policy_intensity``.
+        ``policy_period``, ``policy_period_label``, and ``policy_stringency``.
     """
     result = df.copy()
     result["policy_period"] = assign_period(result[date_col])
@@ -197,13 +201,13 @@ def attach_period(df: pd.DataFrame, date_col: str) -> pd.DataFrame:
         [
             "period_code",
             "period_label",
-            "intensity",
+            "policy_stringency",
         ]
     ].rename(
         columns={
             "period_code": "policy_period",
             "period_label": "policy_period_label",
-            "intensity": "policy_intensity",
+            "policy_stringency": "policy_stringency",
         }
     )
 

@@ -33,10 +33,10 @@ from utils import (  # noqa: E402
     save_figure,
 )
 
-POLICY_INTENSITY_CMAP = plt.get_cmap("RdYlGn_r")
-POLICY_INTENSITY_NORM = colors.Normalize(
-    vmin=POLICY_PERIODS["intensity"].min(),
-    vmax=POLICY_PERIODS["intensity"].max(),
+POLICY_STRINGENCY_CMAP = plt.get_cmap("RdYlGn_r")
+POLICY_STRINGENCY_NORM = colors.Normalize(
+    vmin=1,
+    vmax=100,
 )
 
 
@@ -120,9 +120,9 @@ def configure_date_axis(ax: Axes, dates: pd.Series):
         ax.xaxis.set_minor_locator(mdates.MonthLocator(interval=3))
 
 
-def policy_intensity_color(intensity) -> tuple[float, float, float, float]:
-    """Map policy intensity to the shared policy strip colour scale."""
-    return POLICY_INTENSITY_CMAP(POLICY_INTENSITY_NORM(float(intensity)))
+def policy_stringency_color(stringency) -> tuple[float, float, float, float]:
+    """Map policy stringency to the shared policy strip colour scale."""
+    return POLICY_STRINGENCY_CMAP(POLICY_STRINGENCY_NORM(float(stringency)))
 
 
 def add_policy_background(
@@ -144,7 +144,7 @@ def add_policy_background(
         if start > end:
             continue
 
-        shade_color = policy_intensity_color(row.intensity)
+        shade_color = policy_stringency_color(row.policy_stringency)
         shade_alpha = 0.25
 
         if shade_alpha > 0:
@@ -161,7 +161,7 @@ def add_policy_background(
 
 
 def add_policy_strip(ax: Axes, dates: pd.Series):
-    """Draw a horizontal policy-period strip with intensity-coloured segments."""
+    """Draw a horizontal policy-period strip with stringency-coloured segments."""
     dates = dates.dropna()
     if dates.empty:
         return
@@ -186,7 +186,7 @@ def add_policy_strip(ax: Axes, dates: pd.Series):
         ax.broken_barh(
             [(float(mdates.date2num(start)), float(width_days))],
             (0.08, 0.84),
-            facecolors=[policy_intensity_color(row["intensity"])],
+            facecolors=[policy_stringency_color(row["policy_stringency"])],
             edgecolors="white",
             linewidth=0.45,
         )
@@ -213,12 +213,12 @@ def add_policy_strip(ax: Axes, dates: pd.Series):
     ax.tick_params(axis="x", which="both", bottom=False, labelbottom=False)
 
 
-def add_policy_intensity_colorbar(
+def add_policy_stringency_colorbar(
     fig: Figure,
     ax_policy: Axes,
     ax_top: Axes,
 ) -> Axes:
-    """Add a slim intensity colour bar spanning the policy strip and panel A."""
+    """Add a slim stringency colour bar spanning the policy strip and panel A."""
     policy_box = ax_policy.get_position()
     top_box = ax_top.get_position()
     full_height = policy_box.y1 - top_box.y0
@@ -234,12 +234,12 @@ def add_policy_intensity_colorbar(
     )
 
     scalar = plt.cm.ScalarMappable(
-        norm=POLICY_INTENSITY_NORM,
-        cmap=POLICY_INTENSITY_CMAP,
+        norm=POLICY_STRINGENCY_NORM,
+        cmap=POLICY_STRINGENCY_CMAP,
     )
     scalar.set_array([])
     cbar = fig.colorbar(scalar, cax=cax, orientation="vertical")
-    cbar.set_label("Restriction intensity", fontsize=7, labelpad=5)
+    cbar.set_label("Restriction stringency", fontsize=7, labelpad=5)
     cbar.set_ticks([10, 30, 55, 75, 95])
     cbar.ax.tick_params(labelsize=6.5, length=2.2, width=0.6, pad=1.5)
     outline = getattr(cbar, "outline", None)
@@ -303,7 +303,7 @@ def plot_sequences_with_policy(
         smoothed,
         color="#0b1f3b",
         lw=1.8,
-        label="7-day smoothed count",
+        label="7-day rolling mean",
         zorder=6,
     )
     ax.set_ylabel("Number of sequences")
@@ -529,6 +529,7 @@ def main() -> None:
     sequences = load_analysis_columns(
         ["sequence_id", "collection_date", "clade", "wn_prop_sequenced"],
         window_stride=3,
+        qc=None,
     )
     sequences["variant"] = (
         sequences["clade"].map(CLADES).fillna("Other")
@@ -556,7 +557,7 @@ def main() -> None:
     plot_sequences_with_policy(timeline, ax=ax_top, show_xlabel=False)
     ax_top.tick_params(axis="x", labelbottom=False)
     place_policy_strip_flush(ax_policy, ax_top)
-    add_policy_intensity_colorbar(fig, ax_policy, ax_top)
+    add_policy_stringency_colorbar(fig, ax_policy, ax_top)
 
     (
         clade_freq,

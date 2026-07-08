@@ -7,6 +7,7 @@ rolling-window stride used by the notebooks.
 
 from __future__ import annotations
 
+from collections.abc import Iterable as IterableABC
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Literal
@@ -25,7 +26,9 @@ __all__ = [
     "CLADE_PALETTE",
     "VALID_QC_STATUSES",
     "load_analysis_columns",
+    "load_pairwise_edges",
     "load_datazone_info",
+    "pango_lineages_for_clades",
 ]
 
 
@@ -41,7 +44,7 @@ SIMD_GROUP_COLUMNS: dict[str, int] = {
 }
 SIMD_WEIGHTING_COLUMNS: set[str] = {"datazone", "dz_simd_rank", "dz_population"}
 
-CLADES : dict[str, str] = {
+CLADES: dict[str, str] = {
     "20B": "20B",
     "20A": "20A",
     "20E": "20E (EU1)",
@@ -53,7 +56,7 @@ CLADES : dict[str, str] = {
     "22B": "22B (Omicron)",
     "22A": "22A (Omicron)",
     "22C": "22C (Omicron)",
-    "22E": "22E (Omicron)"
+    "22E": "22E (Omicron)",
 }
 
 CLADE_PALETTE: dict[str, str] = {
@@ -61,18 +64,14 @@ CLADE_PALETTE: dict[str, str] = {
     "20B": "#66CCEE",
     "20E (EU1)": "#EE6677",
     "20I (Alpha)": "#117733",
-
     "21I (Delta)": "#AA3377",
     "21J (Delta)": "#CCBB44",
-
     "21K (Omicron)": "#63A227",
     "21L (Omicron)": "#BBBBBB",
-
     "22A (Omicron)": "#777777",
     "22B (Omicron)": "#EE7733",
     "22C (Omicron)": "#882255",
     "22E (Omicron)": "#332288",
-
     "Other": "#DDDDDD",
 }
 
@@ -160,6 +159,7 @@ class Paths:
 
     root: Path
     analysis_dataset: Path
+    pairwise_distances_dataset: Path
     geography: Path
 
     @classmethod
@@ -174,6 +174,13 @@ class Paths:
         return cls(
             root=root,
             analysis_dataset=root / proc["analysis_dataset"],
+            pairwise_distances_dataset=(
+                root
+                / proc.get(
+                    "pairwise_distances_dataset",
+                    "data/processed/pairwise_distances_dataset",
+                )
+            ),
             geography=root / proc["geography"],
         )
 
@@ -193,6 +200,89 @@ def _normalise_qc(qc: QCStatus | Iterable[QCStatus] | None) -> list[str] | None:
         )
 
     return qc_values
+
+
+def _as_list(value: object | Iterable[object] | None) -> list[object] | None:
+    """Return scalar or iterable input as a list, treating strings as scalars."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, IterableABC):
+        return list(value)
+    return [value]
+
+
+def _normalise_str_values(
+    values: object | Iterable[object] | None,
+    *,
+    name: str,
+) -> list[str] | None:
+    """Return string filter values with duplicates removed in input order."""
+    raw_values = _as_list(values)
+    if raw_values is None:
+        return None
+
+    out: list[str] = []
+    for value in raw_values:
+        if value is None:
+            raise ValueError(f"{name} cannot contain None")
+        out.append(str(value))
+
+    return list(dict.fromkeys(out))
+
+
+def _normalise_clades(
+    clades: object | Iterable[object] | None,
+) -> list[str] | None:
+    """Return raw Nextclade clade labels, accepting display labels as aliases."""
+    values = _normalise_str_values(clades, name="clades")
+    if values is None:
+        return None
+
+    display_to_raw = {display: raw for raw, display in CLADES.items()}
+    return [display_to_raw.get(value, value) for value in values]
+
+
+def _normalise_window_ids(
+    windows: object | Iterable[object] | None,
+) -> list[str] | None:
+    """Normalise window IDs to the processed pairwise format, e.g. ``W095``."""
+    raw_windows = _as_list(windows)
+    if raw_windows is None:
+        return None
+
+    out: list[str] = []
+    for window in raw_windows:
+        if window is None:
+            raise ValueError("windows cannot contain None")
+
+        if isinstance(window, (int, np.integer)):
+            window_idx = int(window)
+            if window_idx < 1:
+                raise ValueError("window indices must be positive")
+            out.append(f"W{window_idx:03d}")
+            continue
+
+        value = str(window).strip()
+        if not value:
+            raise ValueError("windows cannot contain empty strings")
+
+        upper_value = value.upper()
+        if upper_value.startswith("W") and upper_value[1:].isdigit():
+            window_idx = int(upper_value[1:])
+            if window_idx < 1:
+                raise ValueError("window indices must be positive")
+            out.append(f"W{window_idx:03d}")
+        elif value.isdigit():
+            window_idx = int(value)
+            if window_idx < 1:
+                raise ValueError("window indices must be positive")
+            out.append(f"W{window_idx:03d}")
+        else:
+            out.append(value)
+
+    return list(dict.fromkeys(out))
 
 
 def _select_window_stride(
@@ -277,8 +367,7 @@ def _apply_weighted_simd_groups(
     missing = ({rank_col, pop_col} | set(simd_cols)) - set(df.columns)
     if missing:
         raise KeyError(
-            "Population-weighted SIMD grouping requires columns: "
-            f"{sorted(missing)}"
+            f"Population-weighted SIMD grouping requires columns: {sorted(missing)}"
         )
 
     out = df.copy()
@@ -483,9 +572,10 @@ def load_analysis_columns(
 
     if add_policy:
         df = attach_period(df, "collection_date")
-        df["policy_era"] = df["policy_period"].map(
-            POLICY_ERA_BY_PERIOD).fillna(df["policy_period"])
-    
+        df["policy_era"] = (
+            df["policy_period"].map(POLICY_ERA_BY_PERIOD).fillna(df["policy_period"])
+        )
+
     if "test_reason" in df.columns:
         df["test_reason"] = df["test_reason"].replace(TEST_REASON_MAP).fillna("other")
 
@@ -501,6 +591,261 @@ def load_analysis_columns(
             df[col] = df[col].fillna(value)
 
     return df
+
+
+def pango_lineages_for_clades(
+    clades: str | Iterable[str],
+    *,
+    windows: str | int | Iterable[str | int] | None = None,
+    resolution: float | None = PRIMARY_RESOLUTION,
+    qc: QCStatus | Iterable[QCStatus] | None = "good",
+    paths: Paths | None = None,
+) -> list[str]:
+    """Resolve Nextclade clade labels to Pango lineages in the analysis dataset.
+
+    Parameters
+    ----------
+    clades:
+        One or more raw clade labels such as ``"21L"``. Display labels from
+        ``CLADES`` such as ``"21L (Omicron)"`` are also accepted.
+    windows:
+        Optional rolling-window IDs or indices used to restrict the lookup.
+        Integer-like inputs are normalised to the ``W001`` style used by the
+        pairwise dataset.
+    resolution:
+        Leiden resolution filter applied to the analysis dataset before
+        resolving lineages. Pass ``None`` to skip this filter.
+    qc:
+        Nextclade QC filter applied before resolving lineages. Pass ``None`` to
+        skip this filter.
+    paths:
+        Optional resolved path bundle. Mostly useful for tests.
+
+    Returns
+    -------
+    list[str]
+        Sorted unique Pango lineage labels associated with the requested clades.
+    """
+    paths = paths or Paths.from_config()
+    clade_values = _normalise_clades(clades)
+    if clade_values is None:
+        raise ValueError("clades must contain at least one value")
+
+    window_ids = _normalise_window_ids(windows)
+    qc_values = _normalise_qc(qc)
+
+    need = {"clade", "pango_lineage"}
+    if window_ids is not None:
+        need.add("window_id")
+    if resolution is not None:
+        need.add("resolution")
+    if qc_values is not None:
+        need.add("nextclade_qc")
+
+    df = pd.read_parquet(paths.analysis_dataset, columns=list(need))
+
+    if resolution is not None:
+        df = df.loc[df["resolution"] == resolution]
+    if qc_values is not None:
+        df = df.loc[df["nextclade_qc"].isin(qc_values)]
+    if window_ids is not None:
+        df = df.loc[df["window_id"].isin(window_ids)]
+
+    lineages = sorted(
+        df.loc[df["clade"].isin(clade_values), "pango_lineage"]
+        .dropna()
+        .astype(str)
+        .unique()
+    )
+
+    if not lineages:
+        detail = f"clades={clade_values}"
+        if window_ids is not None:
+            detail += f", windows={window_ids}"
+        raise ValueError(f"No Pango lineages found for {detail}.")
+
+    return lineages
+
+
+def _resolve_pairwise_lineages(
+    *,
+    clades: str | Iterable[str] | None,
+    pango_lineages: str | Iterable[str] | None,
+    windows: list[str] | None,
+    resolution: float | None,
+    qc: QCStatus | Iterable[QCStatus] | None,
+    paths: Paths,
+) -> list[str] | None:
+    """Resolve direct and clade-derived Pango lineage filters."""
+    direct_lineages = _normalise_str_values(
+        pango_lineages,
+        name="pango_lineages",
+    )
+
+    clade_lineages = None
+    if clades is not None:
+        clade_lineages = pango_lineages_for_clades(
+            clades,
+            windows=windows,
+            resolution=resolution,
+            qc=qc,
+            paths=paths,
+        )
+
+    if direct_lineages is None:
+        return clade_lineages
+    if clade_lineages is None:
+        return direct_lineages
+
+    retained = sorted(set(direct_lineages) & set(clade_lineages))
+    if not retained:
+        raise ValueError(
+            "No Pango lineages remain after intersecting direct lineage and "
+            "clade-derived lineage filters."
+        )
+    return retained
+
+
+def _pairwise_filter_expression(
+    *,
+    window_ids: list[str] | None,
+    pango_lineages: list[str] | None,
+    compatibility_threshold: float | None,
+    score_column: str,
+):
+    """Build a PyArrow dataset filter expression."""
+    import pyarrow.compute as pc
+
+    expr = None
+
+    if window_ids is not None:
+        window_expr = pc.field("window_id").isin(window_ids)
+        expr = window_expr if expr is None else expr & window_expr
+
+    if pango_lineages is not None:
+        lineage_expr = pc.field("pango_lineage").isin(pango_lineages)
+        expr = lineage_expr if expr is None else expr & lineage_expr
+
+    if compatibility_threshold is not None:
+        score_expr = pc.field(score_column) > float(compatibility_threshold)
+        expr = score_expr if expr is None else expr & score_expr
+
+    return expr
+
+
+def _read_pairwise_dataset(
+    path: Path,
+    *,
+    columns: list[str],
+    window_ids: list[str] | None,
+    pango_lineages: list[str] | None,
+    compatibility_threshold: float | None,
+    score_column: str,
+) -> pd.DataFrame:
+    """Read pairwise edges with PyArrow dataset projection and filter pushdown."""
+    import pyarrow.dataset as ds
+
+    dataset = ds.dataset(path, format="parquet")
+    table = dataset.to_table(
+        columns=columns,
+        filter=_pairwise_filter_expression(
+            window_ids=window_ids,
+            pango_lineages=pango_lineages,
+            compatibility_threshold=compatibility_threshold,
+            score_column=score_column,
+        ),
+    )
+
+    return table.to_pandas()
+
+
+def load_pairwise_edges(
+    columns: Iterable[str] | None = None,
+    *,
+    windows: str | int | Iterable[str | int] | None = None,
+    clades: str | Iterable[str] | None = None,
+    pango_lineages: str | Iterable[str] | None = None,
+    compatibility_threshold: float | None = 0.0001,
+    score_column: str = "epilink_compatibility",
+    pairwise_dataset: str | Path | None = None,
+    clade_resolution: float | None = PRIMARY_RESOLUTION,
+    clade_qc: QCStatus | Iterable[QCStatus] | None = "good",
+) -> pd.DataFrame:
+    """Load pairwise EpiLink edges using PyArrow pushdown filters.
+
+    Parameters
+    ----------
+    columns:
+        Pairwise columns to return. Defaults to ``window_id``,
+        ``pango_lineage``, ``id1``, ``id2``, and ``epilink_compatibility``.
+    windows:
+        Optional window IDs or indices. Inputs such as ``95``, ``"95"``,
+        ``"W95"``, and ``"W095"`` are all normalised to ``"W095"``.
+    clades:
+        Optional Nextclade clade labels. These are resolved to Pango lineages by
+        looking up ``clade`` and ``pango_lineage`` in the individual analysis
+        dataset, then applying the resulting lineage list to the pairwise
+        dataset.
+    pango_lineages:
+        Optional direct Pango lineage filter. If both ``clades`` and
+        ``pango_lineages`` are supplied, the filters are intersected.
+    compatibility_threshold:
+        Sparsification threshold for ``score_column``. Rows are retained where
+        ``score_column > compatibility_threshold``. Pass ``None`` to skip score
+        sparsification.
+    score_column:
+        Pairwise compatibility score column used for sparsification.
+    pairwise_dataset:
+        Optional override for the pairwise parquet dataset path.
+    clade_resolution, clade_qc:
+        Filters applied to the analysis dataset when resolving ``clades`` to
+        Pango lineages. They do not filter the pairwise rows directly.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Pairwise edge rows matching the requested filters.
+
+    Notes
+    -----
+    Broad filters can still return very large edge sets. Prefer combining
+    ``windows``, ``clades`` or ``pango_lineages``, and
+    ``compatibility_threshold`` for interactive notebook work.
+    """
+    if compatibility_threshold is not None and compatibility_threshold < 0:
+        raise ValueError("compatibility_threshold must be non-negative or None")
+
+    paths = Paths.from_config()
+    pairwise_path = (
+        Path(pairwise_dataset) if pairwise_dataset else paths.pairwise_distances_dataset
+    )
+    if not pairwise_path.exists():
+        raise FileNotFoundError(f"Pairwise dataset not found: {pairwise_path}")
+
+    selected_columns = list(
+        columns
+        if columns is not None
+        else ["window_id", "pango_lineage", "id1", "id2", score_column]
+    )
+
+    window_ids = _normalise_window_ids(windows)
+    lineage_values = _resolve_pairwise_lineages(
+        clades=clades,
+        pango_lineages=pango_lineages,
+        windows=window_ids,
+        resolution=clade_resolution,
+        qc=clade_qc,
+        paths=paths,
+    )
+
+    return _read_pairwise_dataset(
+        pairwise_path,
+        columns=selected_columns,
+        window_ids=window_ids,
+        pango_lineages=lineage_values,
+        compatibility_threshold=compatibility_threshold,
+        score_column=score_column,
+    )
 
 
 def load_datazone_info(

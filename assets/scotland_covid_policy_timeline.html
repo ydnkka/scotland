@@ -1,4 +1,4 @@
-<h2 class="sr-only">Scotland COVID-19 policy timeline, March 2020 to May 2023. 16 phases colour-coded by restriction intensity. Select any segment or row to review policy details.</h2>
+<h2 class="sr-only">Scotland COVID-19 policy timeline, March 2020 to May 2023. 16 phases colour-coded by rounded mean daily OxCGRT Stringency Index. Select any segment or row to review policy details.</h2>
 <style>
 .stl-shell{display:grid;gap:16px;padding:.35rem 0 0}
 .stl-intro{position:relative;overflow:hidden;padding:18px 20px;border:1px solid var(--color-border-secondary,#d7dee8);border-radius:18px;background:linear-gradient(135deg,rgba(26,112,80,.12),rgba(168,50,24,.1) 52%,rgba(58,120,24,.08)),var(--color-background-secondary,#f7f9fc);box-shadow:0 14px 30px rgba(15,23,42,.08)}
@@ -90,7 +90,7 @@ function rgba(hex,a){
   return 'rgba('+r+','+g+','+b+','+a+')';
 }
 const P=[
-  {c:'E0',l:'Emergence',s:'2020-03-01',e:'2020-03-23',i:15,d:[
+  {c:'E0',l:'Emergence',s:'2020-03-01',e:'2020-03-23',i:24,d:[
     'First positive case confirmed (1 Mar)',
     'WHO declared COVID-19 a pandemic (11 Mar)',
     'First death in Scotland (13 Mar)',
@@ -98,7 +98,7 @@ const P=[
     'Pubs, restaurants and gyms ordered closed (20 Mar)',
     'Mass events (500+ people) cancelled (15 Mar)',
     '2m social distancing guidance introduced']},
-  {c:'L1',l:'First lockdown',s:'2020-03-24',e:'2020-05-28',i:100,d:[
+  {c:'L1',l:'First lockdown',s:'2020-03-24',e:'2020-05-28',i:80,d:[
     '"Stay at home" as a legal requirement (24 Mar)',
     'Leave home for essential purposes only',
     'Exercise once daily, close to home only',
@@ -108,20 +108,20 @@ const P=[
     '2m social distancing enforced by police',
     'NHS placed on emergency footing',
     'First weekly death reduction recorded (week ending 3 May)']},
-  {c:'P1',l:'Route map phase 1',s:'2020-05-29',e:'2020-06-18',i:72,d:[
+  {c:'P1',l:'Route map phase 1',s:'2020-05-29',e:'2020-06-18',i:75,d:[
     'Exercise outdoors more than once per day allowed',
     'Garden centres, DIY, homeware stores reopened',
     'Outdoor gatherings: up to 8 from 2 households',
     'Stay near home guidance maintained',
     'Schools remained closed',
     'No indoor household mixing permitted']},
-  {c:'P2',l:'Route map phase 2',s:'2020-06-19',e:'2020-07-09',i:52,d:[
+  {c:'P2',l:'Route map phase 2',s:'2020-06-19',e:'2020-07-09',i:76,d:[
     'Non-essential high street retail reopened',
     'Face coverings mandatory on public transport (22 Jun)',
     'Places of worship opened for individual prayer',
     'Outdoor gatherings: up to 8 from 3 households',
     'No indoor household mixing']},
-  {c:'P3',l:'Route map phase 3',s:'2020-07-10',e:'2020-10-01',i:30,d:[
+  {c:'P3',l:'Route map phase 3',s:'2020-07-10',e:'2020-10-01',i:68,d:[
     'Hospitality, tourism accommodation, hairdressers reopened (15 Jul)',
     'Cinemas, visitor attractions reopened',
     'Face coverings mandatory in shops (10 Jul)',
@@ -129,14 +129,14 @@ const P=[
     'Schools fully reopened (11 Aug)',
     'Aberdeen local lockdown (5-28 Aug)',
     '10pm hospitality curfew introduced (24 Sep)']},
-  {c:'T1',l:'Pre-tier tightening',s:'2020-10-02',e:'2020-11-01',i:55,d:[
+  {c:'T1',l:'Pre-tier tightening',s:'2020-10-02',e:'2020-11-01',i:65,d:[
     '16-day national restrictions from 9 Oct',
     'Central Belt hospitality closed indoors; no alcohol',
     'Hospitality capped to 6am-6pm nationally',
     'Indoor group exercise and contact sports paused',
     'Shops returned to 2m distancing nationally',
     'Casinos, snooker halls, bingo halls closed']},
-  {c:'F5',l:'Five-tier framework',s:'2020-11-02',e:'2021-01-04',i:65,d:[
+  {c:'F5',l:'Five-tier framework',s:'2020-11-02',e:'2021-01-04',i:71,d:[
     'Tiered protection levels (0-4) by local authority (2 Nov)',
     'Most areas at Levels 1-3; Central Belt at Level 3',
     'Pfizer/BioNTech vaccine approved by MHRA (2 Dec)',
@@ -144,7 +144,7 @@ const P=[
     'AstraZeneca vaccine approved (30 Dec)',
     'All Scotland moved to Level 4 from Boxing Day',
     'Travel between Scotland and rest of UK restricted (20 Dec)']},
-  {c:'L2',l:'Second lockdown',s:'2021-01-05',e:'2021-04-01',i:95,d:[
+  {c:'L2',l:'Second lockdown',s:'2021-01-05',e:'2021-04-01',i:86,d:[
     '"Stay at home" legal requirement reinstated - mainland (5 Jan)',
     'Schools closed until mid-February',
     'All international travel corridors suspended (18 Jan)',
@@ -153,38 +153,38 @@ const P=[
     'P1-P3 pupils returned full-time (22 Feb)',
     'All primary pupils returned (15 Mar)',
     'P.1 (Brazil) variant detected in Scotland (26 Feb)']},
-  {c:'SL',l:'Stay local - Level 3',s:'2021-04-02',e:'2021-04-25',i:65,d:[
+  {c:'SL',l:'Stay local - Level 3',s:'2021-04-02',e:'2021-04-25',i:70,d:[
     '"Stay at home" replaced by "stay local" (2 Apr)',
     'Non-essential journeys within local authority allowed',
     'Hairdressers, garden centres, click-and-collect reopened (5 Apr)',
     'Outdoor socialising: up to 6 from 6 households (16 Apr)',
     'Travel within Scotland for outdoor recreation (16 Apr)']},
-  {c:'L3',l:'Level 3',s:'2021-04-26',e:'2021-05-16',i:55,d:[
+  {c:'L3',l:'Level 3',s:'2021-04-26',e:'2021-05-16',i:58,d:[
     'All Scotland moved to Level 3 (26 Apr)',
     'Hospitality reopened (outdoors unrestricted; indoors limited)',
     'Tourist accommodation reopened',
     'Indoor household gathering: 6 from 2 households',
     'All retail and leisure open with mitigations']},
-  {c:'L21',l:'Level 2 / Level 1',s:'2021-05-17',e:'2021-07-18',i:38,d:[
+  {c:'L21',l:'Level 2 / Level 1',s:'2021-05-17',e:'2021-07-18',i:56,d:[
     'Most mainland Scotland moved to Level 2 (17 May); islands to Level 1',
     'Glasgow and Moray remained Level 3 until early June',
     'Indoor gathering: 6 from 3 households (Level 2)',
     'Delta variant (B.1.617.2) declared variant of concern',
     'Two thirds of eligible adults received first dose (14 May)']},
-  {c:'L0',l:'Level 0',s:'2021-07-19',e:'2021-08-08',i:20,d:[
+  {c:'L0',l:'Level 0',s:'2021-07-19',e:'2021-08-08',i:53,d:[
     'All Scotland moved to Level 0 (19 Jul)',
     '1m physical distancing required indoors',
     'Informal outdoor gatherings: 15 from 15 households',
     'Face coverings legally required indoors',
     'Nightclubs remained closed; table service required']},
-  {c:'NN',l:'Near-normal',s:'2021-08-09',e:'2021-11-28',i:10,d:[
+  {c:'NN',l:'Near-normal',s:'2021-08-09',e:'2021-11-28',i:32,d:[
     'Legal physical distancing requirements removed (9 Aug)',
     'Nightclubs reopened',
     'Face coverings still legally required indoors',
     'Vaccine certification scheme began (1 Oct): nightclubs and large events',
     'COVID-19 booster programme launched (20 Sep)',
     'More than 10 million PCR tests completed in Scotland (21 Sep)']},
-  {c:'OM',l:'Omicron wave',s:'2021-11-29',e:'2022-01-23',i:42,d:[
+  {c:'OM',l:'Omicron wave',s:'2021-11-29',e:'2022-01-23',i:35,d:[
     'First Omicron cases identified in Scotland (29 Nov)',
     'UK alert level raised to Level 4 (10 Dec)',
     '1m distancing reinstated in hospitality and leisure (27 Dec)',
@@ -193,14 +193,14 @@ const P=[
     'Outdoor events capped at 500 persons',
     'Household contacts required to isolate regardless of vaccination',
     'More than 70% of eligible adults received booster by 22 Dec']},
-  {c:'FE',l:'Final easing',s:'2022-01-24',e:'2022-04-17',i:15,d:[
+  {c:'FE',l:'Final easing',s:'2022-01-24',e:'2022-04-17',i:20,d:[
     'Nightclubs reopened; social distancing dropped (24 Jan)',
     'Vaccine certification scheme ended (28 Feb)',
     'Face coverings in school classrooms ended (28 Feb)',
     'Remaining business legal requirements ended (21 Mar)',
     'All international travel restrictions removed (18 Mar)',
     'Face covering legal requirement (indoor public) ended (18 Apr)']},
-  {c:'PR',l:'Post-restriction',s:'2022-04-18',e:'2023-05-05',i:3,d:[
+  {c:'PR',l:'Post-restriction',s:'2022-04-18',e:'2023-05-05',i:8,d:[
     'Mass symptomatic PCR testing ended (30 Apr 2022)',
     'Testing sites closed (30 Apr 2022)',
     'Shielding list ended (31 May 2022)',
@@ -233,6 +233,7 @@ function renderIntro(){
     +'<span class="stl-source-label">Sources</span>'
     +'<a class="stl-link" href="https://spice-spotlight.scot/2023/05/10/timeline-of-coronavirus-covid-19-in-scotland/" target="_blank" rel="noopener noreferrer">SPICe timeline</a>'
     +'<a class="stl-link" href="https://www.covid19inquiry.scot/covid-19-pandemic-scotland-timeline-key-dates" target="_blank" rel="noopener noreferrer">Scottish COVID-19 Inquiry key dates</a>'
+    +'<a class="stl-link" href="https://github.com/OxCGRT/covid-policy-dataset/tree/main/data/timeseries_indices" target="_blank" rel="noopener noreferrer">OxCGRT Stringency Index</a>'
     +'</div>'
     +'</div>';
 }
@@ -270,7 +271,7 @@ function showP(i,scroll){
 function build(){
   const lg=[{v:3,l:'Minimal'},{v:20,l:'Light'},{v:42,l:'Moderate'},{v:62,l:'Significant'},{v:82,l:'Severe'},{v:95,l:'Full lockdown'}];
   let h='';
-  h+='<section class="stl-card"><div class="stl-card-head"><div><h4 class="stl-card-title">Restriction intensity over time</h4><p class="stl-card-copy">Darker tones indicate stricter controls. Select a segment or a row below to inspect the key policies and turning points for that phase.</p></div></div>';
+  h+='<section class="stl-card"><div class="stl-card-head"><div><h4 class="stl-card-title">Restriction intensity over time</h4><p class="stl-card-copy">Darker tones indicate stricter controls. Intensity is the rounded mean daily OxCGRT Stringency Index for each policy period.</p></div></div>';
   h+='<div class="stl-legend"><span class="stl-legend-tag">Intensity scale</span>';
   lg.forEach(item=>{
     h+='<span class="stl-pill"><span class="stl-dot" style="background:'+ic(item.v)+'"></span>'+esc(item.l)+'</span>';
@@ -288,7 +289,7 @@ function build(){
     h+='<div class="stl-axis-mark" style="left:'+left+'%"><div class="stl-axis-line"></div><div class="stl-axis-label">'+esc(mark[1])+'</div></div>';
   });
   h+='</div></div><div id="stl-detail" class="stl-detail"></div></section>';
-  h+='<section class="stl-card"><div class="stl-card-head"><div><h4 class="stl-card-title">Policy periods</h4><p class="stl-card-copy">A compact list of the same phases, with duration and relative restriction intensity for quick comparison.</p></div></div><div class="stl-list-wrap">';
+  h+='<section class="stl-card"><div class="stl-card-head"><div><h4 class="stl-card-title">Policy periods</h4><p class="stl-card-copy">A compact list of the same phases, with duration and rounded mean daily OxCGRT Stringency Index for quick comparison.</p></div></div><div class="stl-list-wrap">';
   h+='<div class="stl-grid-head"><span></span><span>Code</span><span>Period</span><span>Date range</span><span class="stl-right">Days</span><span class="stl-right">Int.</span></div>';
   P.forEach((p,i)=>{
     const days=nd(p.s,p.e);
