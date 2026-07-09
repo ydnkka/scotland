@@ -90,6 +90,27 @@ For undirected compatibility networks, each edge is represented in both
 directions before computing the matrix. For the temporal transition graph, edge
 orientation is retained.
 
+When `build_mixing.py` is run with `--n-permutations B`, the compatibility
+assortativity table also includes an empirical permutation test for each
+window-attribute pair. The test holds the observed compatibility edge list,
+edge weights, and category counts fixed, then randomly permutes vertex labels
+across the vertices used by that window before recomputing assortativity. This
+tests whether the observed edge-weighted same-category mixing is stronger than
+would be expected from the same weighted network topology and the same marginal
+label distribution. The reported p-value is two-sided:
+
+```text
+p = (count(|r_permuted| >= |r_observed|) + 1) / (B + 1)
+```
+
+Permutation output columns are added only when `B > 0`: `n_permutations`,
+`permutation_p_value`, `null_assortativity_mean`, and
+`null_assortativity_std`. Missing attribute labels are dropped from the
+edge-level calculation by default; passing `--missing-label` keeps them as an
+explicit category. The base `--permutation-seed` is made stable per window and
+attribute, so reruns with the same inputs, seed, and permutation count are
+deterministic while parallel window execution can complete in any order.
+
 Degree and strength assortativity are separate topology diagnostics. They
 summarise whether highly connected or high-strength sequences connect to
 similarly connected/high-strength sequences, rather than whether metadata
