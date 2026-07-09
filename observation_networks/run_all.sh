@@ -9,7 +9,7 @@ Usage:
   bash observation_networks/run_all.sh [options]
 
 Options:
-  --workers N                  Worker processes for build_mixing. Default: all CPUs.
+  --workers N                  Worker processes for build_mixing. Default: build_mixing default.
   --log-level LEVEL            Python log level. Default: INFO.
   --conda-env NAME             Run via `conda run -n NAME python`.
   --python PATH                Python executable. Ignored if --conda-env is used.
@@ -19,6 +19,7 @@ Options:
   --mixing-permutations N      Permutations for compatibility assortativity p-values.
   --mixing-permutation-seed N  Base seed for compatibility permutation p-values.
   --mixing-missing-label LABEL Missing node-attribute label passed to build_mixing.
+  --mixing-progress-every N    Log build_mixing progress every N pairwise files.
   --skip-simd                  Skip SIMD population-weighting validation.
   --skip-tables                Skip core observation/transition tables.
   --skip-mixing                Skip compatibility-network mixing.
@@ -48,6 +49,7 @@ max_mixing_windows=""
 mixing_permutations=""
 mixing_permutation_seed=""
 mixing_missing_label=""
+mixing_progress_every=""
 skip_simd=0
 skip_tables=0
 skip_mixing=0
@@ -95,6 +97,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --mixing-missing-label)
       mixing_missing_label="${2:?--mixing-missing-label requires a value}"
+      shift 2
+      ;;
+    --mixing-progress-every)
+      mixing_progress_every="${2:?--mixing-progress-every requires a value}"
       shift 2
       ;;
     --skip-simd)
@@ -189,6 +195,9 @@ if [[ "${skip_mixing}" -eq 0 ]]; then
   fi
   if [[ -n "${mixing_missing_label}" ]]; then
     mixing_args+=(--missing-label "${mixing_missing_label}")
+  fi
+  if [[ -n "${mixing_progress_every}" ]]; then
+    mixing_args+=(--progress-every "${mixing_progress_every}")
   fi
   run_cmd "${python_cmd[@]}" -m observation_networks.build_mixing "${mixing_args[@]}"
 fi

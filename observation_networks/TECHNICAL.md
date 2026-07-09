@@ -13,7 +13,8 @@ The Chapter 4 analysis uses:
 - Leiden resolution `0.3`;
 - population-weighted SIMD groupings from `utils.load_analysis_columns`;
 - all rolling windows for observation, coverage, cluster, and compatibility
-  network summaries;
+  network summaries, with compatibility summaries partitioned by Pango lineage
+  within each window;
 - alternate retained windows, stride `2`, for the temporal transition graph so
   that its input matches Chapter 5.
 
@@ -48,14 +49,28 @@ The Chapter 4 analysis uses:
 `build_mixing.py` writes:
 
 - `compatibility_mixing_matrix`: weighted categorical mixing matrices for the
-  within-window compatibility network.
+  within-window, within-lineage compatibility network.
 - `compatibility_assortativity`: scalar assortativity summaries derived from
   those matrices. When `build_mixing.py` is run with `--n-permutations`,
   this table also includes empirical permutation p-values and null-distribution
   summary columns.
 - `compatibility_degree_assortativity`: topology diagnostics for each
-  compatibility window, including degree assortativity, edge-weighted degree
-  assortativity, and weighted strength assortativity.
+  compatibility window-lineage network, including degree assortativity,
+  edge-weighted degree assortativity, and weighted strength assortativity.
+
+The compatibility build is chunked by the per-group pairwise parquet files in
+`data/processed/pairwise_distances_dataset`. Each worker reads one physical
+pairwise file with `utils.load_pairwise_edges`, computes the three compatibility
+tables for that window-lineage group, and writes same-stem intermediate parquet
+chunks under:
+
+- `observation_networks/results/intermediate/mixing_matrix`;
+- `observation_networks/results/intermediate/comp_assortativity`;
+- `observation_networks/results/intermediate/deg_assortativity`.
+
+Existing same-stem intermediate chunks are skipped unless `--force` is passed.
+After worker completion, the selected intermediate chunks are concatenated into
+the final `compatibility_*` tables under `observation_networks/results/tables`.
 
 `build_simd_validation.py` writes:
 
@@ -92,12 +107,13 @@ orientation is retained.
 
 When `build_mixing.py` is run with `--n-permutations B`, the compatibility
 assortativity table also includes an empirical permutation test for each
-window-attribute pair. The test holds the observed compatibility edge list,
+window-lineage-attribute group. The test holds the observed compatibility edge list,
 edge weights, and category counts fixed, then randomly permutes vertex labels
-across the vertices used by that window before recomputing assortativity. This
-tests whether the observed edge-weighted same-category mixing is stronger than
-would be expected from the same weighted network topology and the same marginal
-label distribution. The reported p-value is two-sided:
+across the vertices used by that window-lineage network before recomputing
+assortativity. This tests whether the observed edge-weighted same-category
+mixing is stronger than would be expected from the same weighted network
+topology and the same marginal label distribution. The reported p-value is
+two-sided:
 
 ```text
 p = (count(|r_permuted| >= |r_observed|) + 1) / (B + 1)
@@ -107,9 +123,10 @@ Permutation output columns are added only when `B > 0`: `n_permutations`,
 `permutation_p_value`, `null_assortativity_mean`, and
 `null_assortativity_std`. Missing attribute labels are dropped from the
 edge-level calculation by default; passing `--missing-label` keeps them as an
-explicit category. The base `--permutation-seed` is made stable per window and
-attribute, so reruns with the same inputs, seed, and permutation count are
-deterministic while parallel window execution can complete in any order.
+explicit category. The base `--permutation-seed` is made stable per
+window-lineage group and attribute, so reruns with the same inputs, seed, and
+permutation count are deterministic while parallel file execution can complete
+in any order.
 
 Degree and strength assortativity are separate topology diagnostics. They
 summarise whether highly connected or high-strength sequences connect to

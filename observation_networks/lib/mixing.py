@@ -111,9 +111,12 @@ def _dense_mixing_for_categories(
 
     source_groups = category_indices[source_vertices]
     target_groups = category_indices[target_vertices]
-    np.add.at(matrix, (source_groups, target_groups), edge_weights)
+    flat = source_groups * n_categories + target_groups
+    matrix = np.bincount(
+        flat, weights=edge_weights, minlength=n_categories * n_categories
+    ).reshape(n_categories, n_categories)
     if symmetric:
-        np.add.at(matrix, (target_groups, source_groups), edge_weights)
+        matrix = matrix + matrix.T
     return matrix
 
 
@@ -149,7 +152,7 @@ def _edge_arrays_from_edge_table(
     work = edges[[source_col, target_col]].copy()
     work["_edge_weight"] = _as_finite_weight_array(edges, weight_col=weight_col)
     work = work.dropna(subset=[source_col, target_col])
-    work = work.loc[work["_edge_weight"].gt(0)].copy()
+    work = work.loc[work["_edge_weight"].gt(0)]
 
     if work.empty:
         return {
@@ -349,7 +352,7 @@ def weighted_nominal_assortativity_permutation(
     finite_null = null_distribution[np.isfinite(null_distribution)]
     total_weight = mixing_matrix.sum()
     normalized_mixing = (
-        mixing_matrix / total_weight if total_weight > 0 else mixing_matrix.copy()
+        mixing_matrix / total_weight if total_weight > 0 else mixing_matrix
     )
     return {
         "observed_r": r_obs,
@@ -452,13 +455,16 @@ def degree_strength_assortativity_from_edge_arrays(
             "strength_assortativity": np.nan,
         }
 
-    degree = np.zeros(n_vertices, dtype=float)
-    strength = np.zeros(n_vertices, dtype=float)
-    ones = np.ones_like(edge_weights, dtype=float)
-    np.add.at(degree, source_vertices, ones)
-    np.add.at(degree, target_vertices, ones)
-    np.add.at(strength, source_vertices, edge_weights)
-    np.add.at(strength, target_vertices, edge_weights)
+    degree = (
+        np.bincount(source_vertices, minlength=n_vertices)
+        + np.bincount(target_vertices, minlength=n_vertices)
+    ).astype(float)
+
+    strength = (
+        np.bincount(source_vertices, weights=edge_weights, minlength=n_vertices)
+        + np.bincount(target_vertices, weights=edge_weights, minlength=n_vertices)
+    )
+
 
     source_degree = degree[source_vertices]
     target_degree = degree[target_vertices]
