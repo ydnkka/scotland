@@ -35,6 +35,12 @@ from .lib.mixing import (
 LOGGER = logging.getLogger(__name__)
 
 
+def _format_window_progress(processed: int, total: int) -> str:
+    if total <= 0:
+        return "0/0 windows (0.0%)"
+    return f"{processed:,}/{total:,} windows ({processed / total:.1%})"
+
+
 def _normalise_window(value: str) -> str:
     value = str(value).strip()
     upper = value.upper()
@@ -212,6 +218,11 @@ def main() -> int:
         )
 
     results: dict[str, tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]] = {}
+    total_tasks = len(tasks)
+    LOGGER.info(
+        "Processing compatibility mixing for %s",
+        _format_window_progress(0, total_tasks),
+    )
 
     def _record(window_id: str, status: str, matrix, summary, topology) -> None:
         if status == "ok":
@@ -221,19 +232,32 @@ def main() -> int:
 
     if args.workers == 1:
         # Serial path.
-        for task in tasks:
+        for processed, task in enumerate(tasks, start=1):
             window_id = task[0]
-            LOGGER.info("Processing compatibility mixing for %s", window_id)
+            LOGGER.info(
+                "Processing compatibility mixing for %s (%s)",
+                window_id,
+                _format_window_progress(processed - 1, total_tasks),
+            )
             _record(window_id, *_process_window(*task))
+            LOGGER.info(
+                "Finished compatibility mixing for %s (%s)",
+                window_id,
+                _format_window_progress(processed, total_tasks),
+            )
     else:
         with ProcessPoolExecutor(max_workers=args.workers) as executor:
             future_to_window = {
                 executor.submit(_process_window, *task): task[0] for task in tasks
             }
-            for future in as_completed(future_to_window):
+            for processed, future in enumerate(as_completed(future_to_window), start=1):
                 window_id = future_to_window[future]
-                LOGGER.info("Completed compatibility mixing for %s", window_id)
                 _record(window_id, *future.result())
+                LOGGER.info(
+                    "Finished compatibility mixing for %s (%s)",
+                    window_id,
+                    _format_window_progress(processed, total_tasks),
+                )
 
     # Reassemble in the original window order for deterministic output.
     matrix_parts = [results[w][0] for w in windows if w in results]
