@@ -1,0 +1,222 @@
+"""Build compatibility-network mixing matrices and assortativity summaries.
+
+Pairwise compatibility edge scans can be large. For development, pass a small
+window set, for example:
+
+    python -m observation_networks.build_mixing --windows W080 W081
+
+For the full Chapter 4 run:
+
+    python -m observation_networks.build_mixing --all-windows --workers 5
+"""
+
+from __future__ import annotations
+
+import argparse
+import logging
+from concurrent.futures import ProcessPoolExecutor, as_completed
+
+import pandas as pd
+
+from .lib.config import DEFAULT_MIXING_ATTRIBUTES
+from .lib.io import (
+    ensure_results_dirs,
+    load_chapter4_sequence_data,
+    load_pairwise_compatibility_edges,
+    write_table,
+)
+from .lib.mixing import build_mixing_for_edge_table, specs_by_name
+
+
+LOGGER = logging.getLogger(__name__)
+
+
+def _normalise_window(value: str) -> str:
+    value = str(value).strip()
+    upper = value.upper()
+    if upper.startswith("W") and upper[1:].isdigit():
+        return f"W{int(upper[1:]):03d}"
+    if upper.isdigit():
+        return f"W{int(upper):03d}"
+    return value
+
+
+def _process_window(
+    window_id: str,
+    nodes: pd.DataFrame,
+    attributes,
+    compatibility_threshold: float,
+    missing_label: str | None,
+) -> tuple[str, pd.DataFrame | None, pd.DataFrame | None]:
+    """Build the mixing matrix/summary for a single window.
+
+    Runs inside a worker process, so it must only use picklable arguments and
+    module-level imports. Returns a status string plus the result frames so the
+    parent process can do all the logging with the configured handlers.
+    """
+    edges = load_pairwise_compatibility_edges(
+        windows=window_id,
+        compatibility_threshold=compatibility_threshold,
+    )
+    if edges.empty:
+        return "no_edges", None, None
+
+    matrix, summary = build_mixing_for_edge_table(
+        edges,
+        nodes,
+        attributes=attributes,
+        node_id_col="sequence_id",
+        source_col="id1",
+        target_col="id2",
+        weight_col="epilink_compatibility",
+        group_cols=("window_id",),
+        symmetric=True,
+        missing_label=missing_label,
+    )
+    return "ok", matrix, summary
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--windows",
+        nargs="*",
+        help="Specific windows to process, e.g. W080 W081 or 80 81.",
+    )
+    parser.add_argument(
+        "--all-windows",
+        action="store_true",
+        help="Process every available retained analysis window.",
+    )
+    parser.add_argument(
+        "--max-windows",
+        type=int,
+        default=None,
+        help="Optional cap for development runs after window selection.",
+    )
+    parser.add_argument(
+        "--attributes",
+        nargs="*",
+        default=None,
+        help=(
+            "Attribute names to process. Defaults to all: "
+            + ", ".join(spec.name for spec in DEFAULT_MIXING_ATTRIBUTES)
+        ),
+    )
+    parser.add_argument(
+        "--compatibility-threshold",
+        type=float,
+        default=0.0001,
+        help="EpiLink compatibility threshold passed to utils.load_pairwise_edges.",
+    )
+    parser.add_argument(
+        "--missing-label",
+        default=None,
+        help="Optional label for missing node attributes. Default drops missing pairs.",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=None,
+        help=(
+            "Number of worker processes. Default uses all CPUs. "
+            "Use 1 to run serially (easier debugging/profiling)."
+        ),
+    )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=("DEBUG", "INFO", "WARNING", "ERROR"),
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    logging.basicConfig(level=args.log_level, format="%(levelname)s: %(message)s")
+    ensure_results_dirs()
+
+    if not args.all_windows and not args.windows:
+        raise SystemExit("Specify --windows or --all-windows.")
+
+    attributes = specs_by_name(args.attributes)
+    attr_cols = [spec.column for spec in attributes]
+    columns = ["window_id", "window_idx", "sequence_id", *attr_cols]
+    sequence_df = load_chapter4_sequence_data(columns=columns, add_policy=False)
+
+    if args.all_windows:
+        windows = sorted(sequence_df["window_id"].dropna().unique())
+    else:
+        windows = [_normalise_window(window) for window in args.windows]
+
+    if args.max_windows is not None:
+        windows = windows[: args.max_windows]
+
+    # Build the per-window tasks up front (slice node rows once each).
+    tasks: list[tuple] = []
+    for window_id in windows:
+        nodes = sequence_df.loc[sequence_df["window_id"].eq(window_id)].copy()
+        if nodes.empty:
+            LOGGER.warning("Skipping %s: no node rows found", window_id)
+            continue
+        tasks.append(
+            (
+                window_id,
+                nodes,
+                attributes,
+                args.compatibility_threshold,
+                args.missing_label,
+            )
+        )
+
+    results: dict[str, tuple[pd.DataFrame, pd.DataFrame]] = {}
+
+    def _record(window_id: str, status: str, matrix, summary) -> None:
+        if status == "ok":
+            results[window_id] = (matrix, summary)
+        elif status == "no_edges":
+            LOGGER.warning("Skipping %s: no compatibility edges found", window_id)
+
+    if args.workers == 1:
+        # Serial path.
+        for task in tasks:
+            window_id = task[0]
+            LOGGER.info("Processing compatibility mixing for %s", window_id)
+            _record(window_id, *_process_window(*task))
+    else:
+        with ProcessPoolExecutor(max_workers=args.workers) as executor:
+            future_to_window = {
+                executor.submit(_process_window, *task): task[0] for task in tasks
+            }
+            for future in as_completed(future_to_window):
+                window_id = future_to_window[future]
+                LOGGER.info("Completed compatibility mixing for %s", window_id)
+                _record(window_id, *future.result())
+
+    # Reassemble in the original window order for deterministic output.
+    matrix_parts = [results[w][0] for w in windows if w in results]
+    summary_parts = [results[w][1] for w in windows if w in results]
+
+    matrix_table = (
+        pd.concat(matrix_parts, ignore_index=True, sort=False)
+        if matrix_parts
+        else pd.DataFrame()
+    )
+    summary_table = (
+        pd.concat(summary_parts, ignore_index=True, sort=False)
+        if summary_parts
+        else pd.DataFrame()
+    )
+
+    LOGGER.info("Writing compatibility mixing outputs")
+    write_table(matrix_table, "compatibility_mixing_matrix", formats=("parquet",))
+    write_table(
+        summary_table,
+        "compatibility_assortativity",
+        formats=("csv", "parquet"),
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

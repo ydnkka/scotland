@@ -1,4 +1,4 @@
-# Detection Framework: Rationale
+# SSE Detection Rationale
 
 ## Overview
 

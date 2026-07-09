@@ -2,6 +2,8 @@
 
 This document describes the socio-geodemographic Bayesian regression workflow used for SSE candidate, burst-score, and burden-score analyses.
 
+For the directory map, main detector command, and top-level output locations, start with `README.md`. For the detector rationale, null calibration, candidate interpretation, and detection/characterisation boundary, use `DETECTION_RATIONALE.md`. This document is intentionally the detailed implementation and reporting contract for the Bayesian model layer after candidate status has already been assigned.
+
 It covers:
 
 - How the regression code is structured.
@@ -11,37 +13,37 @@ It covers:
 - How to interpret posterior summaries and diagnostics.
 - Maintenance notes for changing or extending the models.
 
-## Content <!-- omit in toc -->
+## 1. Content <!-- omit in toc -->
 
 <!-- TOC tocDepth:2..3 chapterDepth:2..6 -->
 
-- [1. Workflow Structure](#1-workflow-structure)
-- [2. Data Inputs](#2-data-inputs)
-- [3. Model Domains](#3-model-domains)
-  - [3.1. Mixing Models](#31-mixing-models)
-  - [3.2. Composition Models](#32-composition-models)
-- [4. Outcomes and Families](#4-outcomes-and-families)
-- [5. Predictor Groups](#5-predictor-groups)
-- [6. Model Specification Inspection](#6-model-specification-inspection)
-- [7. Running Models](#7-running-models)
-- [8. Sampling and Fit Frames](#8-sampling-and-fit-frames)
-- [9. Output Structure](#9-output-structure)
-- [10. Priors and Fitting Defaults](#10-priors-and-fitting-defaults)
-  - [10.1. Logistic Models](#101-logistic-models)
-  - [10.2. Linear Models](#102-linear-models)
-- [11. Interpreting `summary.csv`](#11-interpreting-summarycsv)
+- [2. Workflow Structure](#2-workflow-structure)
+- [3. Data Inputs](#3-data-inputs)
+- [4. Model Domains](#4-model-domains)
+  - [4.1. Mixing Models](#41-mixing-models)
+  - [4.2. Composition Models](#42-composition-models)
+- [5. Outcomes and Families](#5-outcomes-and-families)
+- [6. Predictor Groups](#6-predictor-groups)
+- [7. Model Specification Inspection](#7-model-specification-inspection)
+- [8. Running Models](#8-running-models)
+- [9. Sampling and Fit Frames](#9-sampling-and-fit-frames)
+- [10. Output Structure](#10-output-structure)
+- [11. Priors and Fitting Defaults](#11-priors-and-fitting-defaults)
   - [11.1. Logistic Models](#111-logistic-models)
   - [11.2. Linear Models](#112-linear-models)
-- [12. Interpreting Categorical Composition Terms](#12-interpreting-categorical-composition-terms)
-- [13. Interpreting Diagnostics](#13-interpreting-diagnostics)
-- [14. Comparing Primary and Expanded Models](#14-comparing-primary-and-expanded-models)
-- [15. Interpretation Caveats](#15-interpretation-caveats)
-- [16. Quality-Control Checklist](#16-quality-control-checklist)
-- [17. Maintenance Guide](#17-maintenance-guide)
+- [12. Interpreting `summary.csv`](#12-interpreting-summarycsv)
+  - [12.1. Logistic Models](#121-logistic-models)
+  - [12.2. Linear Models](#122-linear-models)
+- [13. Interpreting Categorical Composition Terms](#13-interpreting-categorical-composition-terms)
+- [14. Interpreting Diagnostics](#14-interpreting-diagnostics)
+- [15. Comparing Primary and Expanded Models](#15-comparing-primary-and-expanded-models)
+- [16. Interpretation Caveats](#16-interpretation-caveats)
+- [17. Quality-Control Checklist](#17-quality-control-checklist)
+- [18. Maintenance Guide](#18-maintenance-guide)
 
 <!-- /TOC -->
 
-## 1. Workflow Structure
+## 2. Workflow Structure
 
 The regression workflow is split into three layers:
 
@@ -57,7 +59,7 @@ The regression workflow is split into three layers:
 
    Provide repeatable command-line orchestration for running one model version or all model versions, with per-model logs.
 
-## 2. Data Inputs
+## 3. Data Inputs
 
 The regression workflow starts from:
 
@@ -89,9 +91,9 @@ The preparation step also adds:
 - candidate labels;
 - cluster-level burst and burden score outcomes merged onto sequence-level rows.
 
-## 3. Model Domains
+## 4. Model Domains
 
-### 3.1. Mixing Models
+### 4.1. Mixing Models
 
 Mixing models are node-level regressions. Each row is an eligible cluster/node.
 
@@ -106,7 +108,7 @@ Available model sets:
 | `observed_primary`  | Observed mixing entropy scales                                            |
 | `observed_expanded` | Observed mixing entropy scales plus epidemic-context adjusters            |
 
-### 3.2. Composition Models
+### 4.2. Composition Models
 
 Composition models are sequence-level regressions. Each row is a sequence-window record that inherits candidate and score outcomes from its cluster.
 
@@ -121,7 +123,7 @@ Available model sets:
 
 Composition predictors are categorical and use treatment coding. Each coefficient is interpreted relative to the configured reference category.
 
-## 4. Outcomes and Families
+## 5. Outcomes and Families
 
 There are two regression families:
 
@@ -143,7 +145,7 @@ All models include varying intercepts for:
 
 These group intercepts adjust for broad policy-period and variant/clade structure.
 
-## 5. Predictor Groups
+## 6. Predictor Groups
 
 The definitive predictor definitions live in `sse_detection/lib/regression_prep.py`.
 
@@ -175,7 +177,7 @@ dz_health_board
 
 The references for categorical composition contrasts are defined in `COMPOSITION_SPECS` and exposed through `COMPOSITION_FEATURES`.
 
-## 6. Model Specification Inspection
+## 7. Model Specification Inspection
 
 To inspect the live model specifications from Python:
 
@@ -202,7 +204,7 @@ print(model_spec_table("mixing"))
 print(model_spec_table("composition"))
 ```
 
-## 7. Running Models
+## 8. Running Models
 
 List available model selectors:
 
@@ -253,7 +255,7 @@ stdout and stderr are not written to `fit.log`; by default they are suppressed.
 Use `--live-progress` when you want sampler progress and backend messages shown
 live in the terminal during fitting.
 
-## 8. Sampling and Fit Frames
+## 9. Sampling and Fit Frames
 
 The scripts default to `--sample-fraction 1.0`, so the complete-case data are used unless another sampling option is specified.
 
@@ -270,12 +272,12 @@ metadata.csv
 
 before comparing estimates across models. Complete-case filtering and sampling can change the fitted population.
 
-## 9. Output Structure
+## 10. Output Structure
 
 The default output root is:
 
 ```text
-sse_detection/results/bayesian_socio_geo_demo_regression/
+sse_detection/results/bayesian_outputs/
 ```
 
 Run-level files:
@@ -328,7 +330,7 @@ partially written output files.
 Typical path layout:
 
 ```text
-sse_detection/results/bayesian_socio_geo_demo_regression/
+sse_detection/results/bayesian_outputs/
   logistic/
     mixing/
       null_primary/
@@ -358,18 +360,18 @@ sse_detection/results/bayesian_socio_geo_demo_regression/
           ...
 ```
 
-## 10. Priors and Fitting Defaults
+## 11. Priors and Fitting Defaults
 
 Priors are configured in `BayesianFitConfig` and applied by `fit_bayesian_model(...)`.
 
-### 10.1. Logistic Models
+### 11.1. Logistic Models
 
 - Bernoulli likelihood.
 - Intercept prior centered at the logit of the observed outcome rate.
 - Fixed effects use Normal priors centered at 0.
 - Varying intercepts use Normal priors with HalfNormal SD priors.
 
-### 10.2. Linear Models
+### 11.2. Linear Models
 
 - Gaussian likelihood.
 - Intercept prior centered at the observed outcome mean.
@@ -391,7 +393,7 @@ inference_method = pymc
 
 Override these with script flags when needed.
 
-## 11. Interpreting `summary.csv`
+## 12. Interpreting `summary.csv`
 
 `summary.csv` is generated from ArviZ posterior summaries, with additional scale and direction summaries.
 
@@ -406,7 +408,7 @@ Common columns:
 | `r_hat`                | Chain convergence diagnostic             |
 | `ess_bulk`, `ess_tail` | Effective sample-size diagnostics        |
 
-### 11.1. Logistic Models
+### 12.1. Logistic Models
 
 Logistic coefficients are on the log-odds scale.
 
@@ -423,7 +425,7 @@ For standardized continuous predictors ending in `_z`, the odds ratio correspond
 
 For categorical predictors, odds ratios compare each level to the configured reference level.
 
-### 11.2. Linear Models
+### 12.2. Linear Models
 
 Linear coefficients are expected changes in `burst_score` or `burden_score`, conditional on the other model terms.
 
@@ -438,7 +440,7 @@ For standardized predictors ending in `_z`, the coefficient is the expected outc
 
 For categorical predictors, coefficients compare each level to the configured reference level.
 
-## 12. Interpreting Categorical Composition Terms
+## 13. Interpreting Categorical Composition Terms
 
 Composition terms use treatment coding, for example:
 
@@ -458,7 +460,7 @@ means the expected difference for `Female` relative to `Male`, conditional on th
 
 These are not marginal population differences unless the model has been post-processed to estimate marginal contrasts.
 
-## 13. Interpreting Diagnostics
+## 14. Interpreting Diagnostics
 
 The diagnostics table screens whether posterior summaries are trustworthy enough to interpret.
 
@@ -480,7 +482,7 @@ If diagnostics are weak:
 5. Check sparse categories, quasi-separation, or highly collinear predictors.
 6. Consider simplifying the model.
 
-## 14. Comparing Primary and Expanded Models
+## 15. Comparing Primary and Expanded Models
 
 Primary models estimate associations using only focal mixing or composition predictors plus group intercepts.
 
@@ -496,7 +498,7 @@ Use the expanded model to assess whether focal associations are robust to these 
 
 Changes between primary and expanded estimates can indicate confounding or mediation-like structure. They should not be treated as causal decomposition without a separate causal design.
 
-## 15. Interpretation Caveats
+## 16. Interpretation Caveats
 
 - These are observational association models, not causal effect estimates.
 - Sequence-level composition models repeat cluster-level outcomes across sequence-window rows, so rows are not independent biological outcomes in the same way as unique clusters.
@@ -506,7 +508,7 @@ Changes between primary and expanded estimates can indicate confounding or media
 - Large posterior directional probabilities are evidence of association under the model, not proof of practical importance.
 - Effect sizes, credible intervals, diagnostics, and fitted-row definitions should be reviewed together.
 
-## 16. Quality-Control Checklist
+## 17. Quality-Control Checklist
 
 Before reporting a model:
 
@@ -518,7 +520,7 @@ Before reporting a model:
 6. Interpret `summary.csv` on the right scale: ORs for logistic, coefficients for linear.
 7. Compare primary and expanded models only after checking that their complete-case/sampled frames are comparable.
 
-## 17. Maintenance Guide
+## 18. Maintenance Guide
 
 To add or change models:
 

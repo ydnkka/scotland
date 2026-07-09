@@ -37,12 +37,44 @@ PRIMARY_RESOLUTION: float = 0.3
 QCStatus = Literal["good", "mediocre", "bad"]
 VALID_QC_STATUSES: set[str] = {"good", "mediocre", "bad"}
 
-SIMD_GROUP_COLUMNS: dict[str, int] = {
+SIMD_GROUP_SIZES: dict[str, int] = {
+    "quintile": 5,
+    "decile": 10,
+    "vigintile": 20,
+}
+SIMD_BASE_GROUP_COLUMNS: dict[str, int] = {
     "dz_simd_quintile": 5,
     "dz_simd_decile": 10,
     "dz_simd_vigintile": 20,
 }
-SIMD_WEIGHTING_COLUMNS: set[str] = {"datazone", "dz_simd_rank", "dz_population"}
+SIMD_DOMAIN_RANK_COLUMNS: dict[str, str] = {
+    "income": "dz_simd_income_rank",
+    "employment": "dz_simd_employment_rank",
+    "education": "dz_simd_education_rank",
+    "health": "dz_simd_health_rank",
+    "access": "dz_simd_access_rank",
+    "crime": "dz_simd_crime_rank",
+    "housing": "dz_simd_housing_rank",
+}
+SIMD_GROUP_RANK_COLUMNS: dict[str, str] = {
+    **{col: "dz_simd_rank" for col in SIMD_BASE_GROUP_COLUMNS},
+    **{
+        f"dz_simd_{domain}_{group_name}": rank_col
+        for domain, rank_col in SIMD_DOMAIN_RANK_COLUMNS.items()
+        for group_name in SIMD_GROUP_SIZES
+    },
+}
+SIMD_GROUP_COLUMNS: dict[str, int] = {
+    **SIMD_BASE_GROUP_COLUMNS,
+    **{
+        f"dz_simd_{domain}_{group_name}": n_groups
+        for domain in SIMD_DOMAIN_RANK_COLUMNS
+        for group_name, n_groups in SIMD_GROUP_SIZES.items()
+    },
+}
+SIMD_COMPUTED_GROUP_COLUMNS: set[str] = (
+    set(SIMD_GROUP_COLUMNS) - set(SIMD_BASE_GROUP_COLUMNS)
+)
 
 CLADES: dict[str, str] = {
     "20B": "20B",
@@ -348,87 +380,151 @@ def _requested_simd_group_columns(
     return set(columns) & set(SIMD_GROUP_COLUMNS)
 
 
-def _apply_weighted_simd_groups(
+def _computed_simd_group_columns(
+    simd_cols: Iterable[str],
+    *,
+    weighted: bool,
+) -> set[str]:
+    """Return group columns that must be computed rather than read as stored."""
+    simd_cols = set(simd_cols)
+    if weighted:
+        return simd_cols
+    return simd_cols & SIMD_COMPUTED_GROUP_COLUMNS
+
+
+def _required_simd_group_source_columns(
+    simd_cols: Iterable[str],
+    *,
+    weighted: bool,
+) -> set[str]:
+    """Return rank/population columns needed to compute SIMD groups."""
+    simd_cols = set(simd_cols)
+    if not simd_cols:
+        return set()
+
+    required = {SIMD_GROUP_RANK_COLUMNS[col] for col in simd_cols}
+    if weighted:
+        required.add("dz_population")
+    return required
+
+
+def _apply_simd_groups(
     df: pd.DataFrame,
     simd_cols: Iterable[str],
     *,
-    rank_col: str = "dz_simd_rank",
+    weighted: bool,
     pop_col: str = "dz_population",
 ) -> pd.DataFrame:
-    """Replace requested SIMD group columns with population-weighted groups.
+    """Replace requested SIMD group columns with rank-derived groups.
 
-    The ranking itself is unchanged: Data Zones are sorted by the Scottish
-    Government SIMD rank, then split into equal population shares.
+    The ranking itself is unchanged: Data Zones are sorted by the matching
+    Scottish Government SIMD rank. With ``weighted=True``, the sorted zones are
+    split into equal population shares; otherwise, they are split into equal
+    numbers of Data Zones.
     """
     simd_cols = list(simd_cols)
     if not simd_cols:
         return df
 
-    missing = ({rank_col, pop_col} | set(simd_cols)) - set(df.columns)
+    unknown = set(simd_cols) - set(SIMD_GROUP_COLUMNS)
+    if unknown:
+        raise ValueError(f"Unsupported SIMD grouping column(s): {sorted(unknown)}")
+
+    missing = _required_simd_group_source_columns(simd_cols, weighted=weighted) - set(
+        df.columns
+    )
     if missing:
         raise KeyError(
-            f"Population-weighted SIMD grouping requires columns: {sorted(missing)}"
+            f"SIMD grouping requires source columns: {sorted(missing)}"
         )
 
     out = df.copy()
-    valid = out[rank_col].notna() & out[pop_col].notna()
+    for rank_col in sorted({SIMD_GROUP_RANK_COLUMNS[col] for col in simd_cols}):
+        rank_cols = [
+            col for col in simd_cols if SIMD_GROUP_RANK_COLUMNS[col] == rank_col
+        ]
+        valid = out[rank_col].notna()
+        if weighted:
+            valid &= out[pop_col].notna()
 
-    if not valid.all():
-        missing_n = int((~valid).sum())
-        raise ValueError(
-            f"Cannot compute population-weighted SIMD groups with {missing_n} "
-            "missing rank/population row(s)."
-        )
+        if not valid.all():
+            missing_n = int((~valid).sum())
+            raise ValueError(
+                f"Cannot compute SIMD groups from {rank_col!r} with {missing_n} "
+                "missing rank/population row(s)."
+            )
 
-    if (out[pop_col] < 0).any():
-        raise ValueError(f"Negative values found in {pop_col}")
+        if weighted and (out[pop_col] < 0).any():
+            raise ValueError(f"Negative values found in {pop_col}")
 
-    total_pop = out[pop_col].sum()
-    if total_pop <= 0:
-        raise ValueError("Total population must be greater than zero")
+        ordered = out.sort_values(rank_col, ascending=True)
+        if weighted:
+            total_pop = ordered[pop_col].sum()
+            if total_pop <= 0:
+                raise ValueError("Total population must be greater than zero")
+            cum_prop = ordered[pop_col].cumsum() / total_pop
+        else:
+            cum_prop = pd.Series(
+                np.arange(1, len(ordered) + 1, dtype=float) / len(ordered),
+                index=ordered.index,
+            )
 
-    ordered = out.sort_values(rank_col, ascending=True)
-    cum_prop = ordered[pop_col].cumsum() / total_pop
-
-    for col in simd_cols:
-        n_groups = SIMD_GROUP_COLUMNS[col]
-        weighted = np.ceil(cum_prop * n_groups).astype(int).clip(1, n_groups)
-        out.loc[ordered.index, col] = weighted.to_numpy()
+        for col in rank_cols:
+            n_groups = SIMD_GROUP_COLUMNS[col]
+            group_values = np.ceil(cum_prop * n_groups).astype(int).clip(1, n_groups)
+            out.loc[ordered.index, col] = group_values
 
     return out
 
 
-def _weighted_simd_lookup(paths: Paths, simd_cols: Iterable[str]) -> pd.DataFrame:
-    """Build a datazone lookup with requested SIMD groups population-weighted."""
+def _simd_group_lookup(
+    paths: Paths,
+    simd_cols: Iterable[str],
+    *,
+    weighted: bool,
+) -> pd.DataFrame:
+    """Build a datazone lookup with requested SIMD grouping columns."""
     simd_cols = list(simd_cols)
+    source_cols = _required_simd_group_source_columns(simd_cols, weighted=weighted)
     lookup = pd.read_parquet(
         paths.geography,
-        columns=list({"dz_population", "dz_simd_rank", *simd_cols}),
+        columns=list(source_cols),
     )
-    lookup = _apply_weighted_simd_groups(lookup, simd_cols)
+    lookup = _apply_simd_groups(lookup, simd_cols, weighted=weighted)
     return lookup.reset_index()[["datazone", *simd_cols]]
 
 
-def _attach_weighted_simd_groups(
+def _attach_simd_groups(
     df: pd.DataFrame,
     simd_cols: Iterable[str],
     *,
     paths: Paths,
+    weighted: bool,
 ) -> pd.DataFrame:
     """Overwrite SIMD group columns in an analysis frame using a datazone lookup."""
     simd_cols = list(simd_cols)
     if not simd_cols:
         return df
     if "datazone" not in df.columns:
-        raise KeyError("'datazone' is required to attach weighted SIMD groups")
+        raise KeyError("'datazone' is required to attach SIMD groups")
 
     out = df.copy()
-    lookup = _weighted_simd_lookup(paths, simd_cols).set_index("datazone")
+    lookup = _simd_group_lookup(paths, simd_cols, weighted=weighted).set_index(
+        "datazone"
+    )
 
     for col in simd_cols:
         out[col] = out["datazone"].map(lookup[col])
 
     return out
+
+
+def _apply_weighted_simd_groups(
+    df: pd.DataFrame,
+    simd_cols: Iterable[str],
+) -> pd.DataFrame:
+    """Replace requested SIMD group columns with population-weighted groups."""
+    return _apply_simd_groups(df, simd_cols, weighted=True)
 
 
 def load_analysis_columns(
@@ -473,11 +569,14 @@ def load_analysis_columns(
         If True with ``window_stride``, renumber retained ``window_idx`` values
         to 1..N and rebuild ``window_id`` where present.
     weighted_simd:
-        If True, replace any requested SIMD grouping columns
-        ``dz_simd_quintile``, ``dz_simd_decile``, or ``dz_simd_vigintile``
-        with population-weighted groups while retaining the same column names.
-        The weighting uses all datazones in the configured geography parquet,
-        not just rows retained after sequence-level filters.
+        If True, replace any requested SIMD grouping columns with
+        population-weighted groups while retaining the same column names. This
+        includes the overall columns ``dz_simd_quintile``, ``dz_simd_decile``,
+        and ``dz_simd_vigintile``, plus computed domain columns such as
+        ``dz_simd_income_quintile``. The weighting uses all datazones in the
+        configured geography parquet, not just rows retained after
+        sequence-level filters. If False, computed domain group columns are
+        still derived from their rank columns, but without population weights.
 
     Notes
     -----
@@ -510,6 +609,12 @@ def load_analysis_columns(
     "hb_icu_occupancy_ge28d", "hb_daily_reinfections",
     "hb_reinfection_rate"
 
+    Computed on request:
+    ``dz_simd_<domain>_<group>``, where domain is one of
+    ``income``, ``employment``, ``education``, ``health``, ``access``,
+    ``crime``, or ``housing`` and group is ``quintile``, ``decile``, or
+    ``vigintile``.
+
     Returns
     -------
     pandas.DataFrame
@@ -525,9 +630,13 @@ def load_analysis_columns(
     need = {"sequence_id", "collection_date", "pango_lineage"}
     requested = set(columns or [])
     simd_cols = _requested_simd_group_columns(requested, all_cols=all_cols)
+    computed_simd_cols = _computed_simd_group_columns(
+        simd_cols,
+        weighted=weighted_simd,
+    )
 
     if columns is not None:
-        need.update(requested)
+        need.update(requested - computed_simd_cols)
 
     if window_stride is not None:
         need.add("window_idx")
@@ -540,9 +649,9 @@ def load_analysis_columns(
     if qc_values is not None:
         need.add("nextclade_qc")
 
-    output_columns = set(need)
-    if weighted_simd and simd_cols:
-        need.update(SIMD_WEIGHTING_COLUMNS)
+    output_columns = set(need) | computed_simd_cols
+    if computed_simd_cols:
+        need.add("datazone")
 
     read_columns = None if all_cols else list(need)
 
@@ -564,10 +673,15 @@ def load_analysis_columns(
 
     df = df.reset_index(drop=True)
 
-    if weighted_simd and simd_cols:
-        df = _attach_weighted_simd_groups(df, simd_cols, paths=paths)
+    if computed_simd_cols:
+        df = _attach_simd_groups(
+            df,
+            computed_simd_cols,
+            paths=paths,
+            weighted=weighted_simd,
+        )
         if not all_cols:
-            drop_cols = SIMD_WEIGHTING_COLUMNS - output_columns
+            drop_cols = {"datazone"} - output_columns
             df = df.drop(columns=[c for c in drop_cols if c in df.columns])
 
     if add_policy:
@@ -860,9 +974,13 @@ def load_datazone_info(
         Names of columns to read. ``datazone`` and ``geometry`` are added
         automatically.
     weighted_simd:
-        If True, replace any requested SIMD grouping columns
-        ``dz_simd_quintile``, ``dz_simd_decile``, or ``dz_simd_vigintile``
-        with population-weighted groups while retaining the same column names.
+        If True, replace any requested SIMD grouping columns with
+        population-weighted groups while retaining the same column names. This
+        includes the overall columns ``dz_simd_quintile``, ``dz_simd_decile``,
+        and ``dz_simd_vigintile``, plus computed domain columns such as
+        ``dz_simd_income_quintile``. If False, computed domain group columns
+        are still derived from their rank columns, but without population
+        weights.
 
     Notes
     -----
@@ -875,6 +993,12 @@ def load_datazone_info(
     "dz_simd_education_rank", "dz_simd_health_rank", "dz_simd_access_rank",
     "dz_simd_crime_rank", "dz_simd_housing_rank"
 
+    Computed on request:
+    ``dz_simd_<domain>_<group>``, where domain is one of
+    ``income``, ``employment``, ``education``, ``health``, ``access``,
+    ``crime``, or ``housing`` and group is ``quintile``, ``decile``, or
+    ``vigintile``.
+
     Returns
     -------
     geopandas.GeoDataFrame
@@ -883,18 +1007,34 @@ def load_datazone_info(
 
     need = {"datazone", "geometry"}
     requested = set(columns)
-    need.update(requested)
     simd_cols = _requested_simd_group_columns(requested)
+    computed_simd_cols = _computed_simd_group_columns(
+        simd_cols,
+        weighted=weighted_simd,
+    )
+    need.update(requested - computed_simd_cols)
 
     output_columns = set(need)
-    if weighted_simd and simd_cols:
-        need.update(SIMD_WEIGHTING_COLUMNS)
+    if computed_simd_cols:
+        output_columns |= computed_simd_cols
+        need.update(
+            _required_simd_group_source_columns(
+                computed_simd_cols,
+                weighted=weighted_simd,
+            )
+        )
 
     df = gpd.read_parquet(paths.geography, columns=list(need))
 
-    if weighted_simd and simd_cols:
-        df = _apply_weighted_simd_groups(df, simd_cols)
-        drop_cols = SIMD_WEIGHTING_COLUMNS - output_columns
+    if computed_simd_cols:
+        df = _apply_simd_groups(df, computed_simd_cols, weighted=weighted_simd)
+        drop_cols = (
+            _required_simd_group_source_columns(
+                computed_simd_cols,
+                weighted=weighted_simd,
+            )
+            - output_columns
+        )
         df = df.drop(columns=[c for c in drop_cols if c in df.columns])
 
     return df  # type: ignore[return-value]
