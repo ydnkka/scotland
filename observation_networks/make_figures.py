@@ -9,6 +9,7 @@ from .lib.figures import (
     plot_assortativity_over_time,
     plot_clade_frequencies,
     plot_cluster_size_summary,
+    plot_degree_assortativity_over_time,
     plot_transition_window_summary,
     plot_window_coverage,
 )
@@ -64,6 +65,11 @@ def main() -> int:
             "compatibility_assortativity",
             plot_assortativity_over_time,
             "compatibility_assortativity",
+        ),
+        (
+            "compatibility_degree_assortativity",
+            plot_degree_assortativity_over_time,
+            "compatibility_degree_assortativity",
         ),
     ]
     for name, func, table_name in jobs:

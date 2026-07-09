@@ -173,6 +173,33 @@ POLICY_ERA_BY_PERIOD = {
     "PR": "post_restriction",
 }
 
+# Aligning 5-year census/health bands to Scottish infectious disease brackets
+# "Because raw data was aggregated in 5-year intervals, age 15 was grouped into the 15-24 young-adult band rather than the 5-15 school-age band, closely approximating Public Health Scotland's youth surveillance frameworks."
+AGE_GROUP_MAP = {
+    "00-04": "00-04",  # Infants/Toddlers (RSV/Rotavirus)
+    "05-09": "05-14",  # School-age (Primary school mixing)
+    "10-14": "05-14",  # School-age (Secondary school mixing)
+    
+    # NOTE: 15-19 includes 15 (school) and 16-19 (young adult). 
+    # In Scottish data, 15-19 is usually kept together or grouped with 20-24 
+    # to capture the broader "Youth/Higher Education" transition.
+    "15-19": "15-24",  
+    "20-24": "15-24",  # Young Adults / University / High Social Mixing
+    
+    "25-29": "25-64",  # Working-age Adults
+    "30-34": "25-64",
+    "35-39": "25-64",
+    "40-44": "25-64",
+    "45-49": "25-64",
+    "50-54": "25-64",
+    "55-59": "25-64",
+    "60-64": "25-64",
+    
+    "65-69": "65-74",  # "Young-Old" / Post-retirement / Elevated COVID Risk
+    "70-74": "65-74",  
+    
+    "75+"  : "75+",    # Older Adults / Highest Clinical Vulnerability
+}
 
 def repo_root(start: Path | None = None) -> Path:
     """Walk up from *start* until ``config.yaml`` is found."""
@@ -519,14 +546,6 @@ def _attach_simd_groups(
     return out
 
 
-def _apply_weighted_simd_groups(
-    df: pd.DataFrame,
-    simd_cols: Iterable[str],
-) -> pd.DataFrame:
-    """Replace requested SIMD group columns with population-weighted groups."""
-    return _apply_simd_groups(df, simd_cols, weighted=True)
-
-
 def load_analysis_columns(
     columns: Iterable[str] | None = None,
     all_cols: bool = False,
@@ -587,7 +606,7 @@ def load_analysis_columns(
     "cluster_id", "cluster_size", "cluster_n_datazones",
     "cluster_start_date", "cluster_end_date", "cluster_duration_days",
     "collection_date", "datazone", "dz_xcoord", "dz_ycoord", "sex",
-    "is_female", "age_band", "age_midpoint", "is_vaccinated",
+    "is_female", "age_band", "age_group", "age_midpoint", "is_vaccinated",
     "vacc_dose_number", "vacc_date_prior", "vacc_product_name",
     "vacc_booster", "days_since_vaccination", "test_reason",
     "is_reinfection", "pango_lineage", "clade", "who_voc", "nextclade_qc",
@@ -634,9 +653,13 @@ def load_analysis_columns(
         simd_cols,
         weighted=weighted_simd,
     )
+    computed_age_cols = {"age_group"} & requested
 
     if columns is not None:
-        need.update(requested - computed_simd_cols)
+        need.update(requested - computed_simd_cols - computed_age_cols)
+
+    if "age_group" in requested:
+        need.add("age_band")
 
     if window_stride is not None:
         need.add("window_idx")
@@ -656,6 +679,11 @@ def load_analysis_columns(
     read_columns = None if all_cols else list(need)
 
     df = pd.read_parquet(paths.analysis_dataset, columns=read_columns)
+
+    if all_cols or "age_group" in requested:
+        df["age_group"] = df["age_band"].map(AGE_GROUP_MAP).fillna("unknown")
+        if not all_cols and "age_band" not in requested:
+            df = df.drop(columns="age_band")
 
     if resolution is not None:
         df = df.loc[df["resolution"] == resolution]

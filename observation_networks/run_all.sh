@@ -16,6 +16,9 @@ Options:
   --max-windows N              Development cap for build_tables main windows.
   --max-transition-windows N   Development cap for build_tables transition windows.
   --max-mixing-windows N       Development cap for build_mixing windows.
+  --mixing-permutations N      Permutations for compatibility assortativity p-values.
+  --mixing-permutation-seed N  Base seed for compatibility permutation p-values.
+  --mixing-missing-label LABEL Missing node-attribute label passed to build_mixing.
   --skip-simd                  Skip SIMD population-weighting validation.
   --skip-tables                Skip core observation/transition tables.
   --skip-mixing                Skip compatibility-network mixing.
@@ -42,6 +45,9 @@ python_bin="${PYTHON:-python}"
 max_windows=""
 max_transition_windows=""
 max_mixing_windows=""
+mixing_permutations=""
+mixing_permutation_seed=""
+mixing_missing_label=""
 skip_simd=0
 skip_tables=0
 skip_mixing=0
@@ -77,6 +83,18 @@ while [[ $# -gt 0 ]]; do
       ;;
     --max-mixing-windows)
       max_mixing_windows="${2:?--max-mixing-windows requires a value}"
+      shift 2
+      ;;
+    --mixing-permutations)
+      mixing_permutations="${2:?--mixing-permutations requires a value}"
+      shift 2
+      ;;
+    --mixing-permutation-seed)
+      mixing_permutation_seed="${2:?--mixing-permutation-seed requires a value}"
+      shift 2
+      ;;
+    --mixing-missing-label)
+      mixing_missing_label="${2:?--mixing-missing-label requires a value}"
       shift 2
       ;;
     --skip-simd)
@@ -162,6 +180,15 @@ if [[ "${skip_mixing}" -eq 0 ]]; then
   fi
   if [[ -n "${max_mixing_windows}" ]]; then
     mixing_args+=(--max-windows "${max_mixing_windows}")
+  fi
+  if [[ -n "${mixing_permutations}" ]]; then
+    mixing_args+=(--n-permutations "${mixing_permutations}")
+  fi
+  if [[ -n "${mixing_permutation_seed}" ]]; then
+    mixing_args+=(--permutation-seed "${mixing_permutation_seed}")
+  fi
+  if [[ -n "${mixing_missing_label}" ]]; then
+    mixing_args+=(--missing-label "${mixing_missing_label}")
   fi
   run_cmd "${python_cmd[@]}" -m observation_networks.build_mixing "${mixing_args[@]}"
 fi

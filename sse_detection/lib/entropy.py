@@ -222,7 +222,8 @@ def _empirical_tail_p_values(
         nulls = np.sort(null_values)
         n_null = nulls.size
         lower_count = np.searchsorted(nulls, observed, side="right")
-        upper_count = n_null - np.searchsorted(nulls, observed, side="left")
+        # upper_count = n_null - np.searchsorted(nulls, observed, side="left")
+        upper_count = np.subtract(n_null, np.searchsorted(nulls, observed, side="left"))
         lower_p = (1 + lower_count) / (n_null + 1)
         upper_p = (1 + upper_count) / (n_null + 1)
     else:

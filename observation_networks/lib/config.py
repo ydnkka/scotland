@@ -32,6 +32,7 @@ class AttributeSpec:
 DEFAULT_MIXING_ATTRIBUTES: tuple[AttributeSpec, ...] = (
     AttributeSpec("sex", "sex", "Sex"),
     AttributeSpec("age_band", "age_band", "Age band", ordered=True),
+    AttributeSpec("age_group", "age_group", "Age group", ordered=True),
     AttributeSpec("simd_quintile", "dz_simd_quintile", "SIMD quintile", ordered=True),
     AttributeSpec("urban_rural", "dz_urban_rural_class", "Urban/rural class"),
     AttributeSpec("local_authority", "dz_local_authority", "Local authority"),
@@ -61,6 +62,7 @@ CHAPTER4_COLUMNS: tuple[str, ...] = (
     "sex",
     "is_female",
     "age_band",
+    "age_group",
     "age_midpoint",
     "is_vaccinated",
     "vacc_dose_number",

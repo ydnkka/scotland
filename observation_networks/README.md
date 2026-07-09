@@ -60,11 +60,20 @@ Build compatibility-network mixing for a small development window set:
 python -m observation_networks.build_mixing --windows W080 W081
 ```
 
+Add empirical permutation p-values for assortativity:
+
+```bash
+python -m observation_networks.build_mixing --windows W080 --n-permutations 1000 --missing-label Unknown
+```
+
 Build compatibility-network mixing for all retained windows:
 
 ```bash
 python -m observation_networks.build_mixing --all-windows --workers 5
 ```
+
+This also writes the compatibility-network degree/strength assortativity
+diagnostic table used for the topology figure.
 
 Build the SIMD population-weighting validation tables:
 

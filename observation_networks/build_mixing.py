@@ -25,7 +25,11 @@ from .lib.io import (
     load_pairwise_compatibility_edges,
     write_table,
 )
-from .lib.mixing import build_mixing_for_edge_table, specs_by_name
+from .lib.mixing import (
+    build_degree_assortativity_for_edge_table,
+    build_mixing_for_edge_table,
+    specs_by_name,
+)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -47,7 +51,9 @@ def _process_window(
     attributes,
     compatibility_threshold: float,
     missing_label: str | None,
-) -> tuple[str, pd.DataFrame | None, pd.DataFrame | None]:
+    n_permutations: int,
+    permutation_seed: int | None,
+) -> tuple[str, pd.DataFrame | None, pd.DataFrame | None, pd.DataFrame | None]:
     """Build the mixing matrix/summary for a single window.
 
     Runs inside a worker process, so it must only use picklable arguments and
@@ -59,7 +65,15 @@ def _process_window(
         compatibility_threshold=compatibility_threshold,
     )
     if edges.empty:
-        return "no_edges", None, None
+        return "no_edges", None, None, None
+
+    topology = build_degree_assortativity_for_edge_table(
+        edges,
+        source_col="id1",
+        target_col="id2",
+        weight_col="epilink_compatibility",
+        group_cols=("window_id",),
+    )
 
     matrix, summary = build_mixing_for_edge_table(
         edges,
@@ -72,8 +86,10 @@ def _process_window(
         group_cols=("window_id",),
         symmetric=True,
         missing_label=missing_label,
+        n_permutations=n_permutations,
+        seed=permutation_seed,
     )
-    return "ok", matrix, summary
+    return "ok", matrix, summary, topology
 
 
 def parse_args() -> argparse.Namespace:
@@ -115,6 +131,23 @@ def parse_args() -> argparse.Namespace:
         help="Optional label for missing node attributes. Default drops missing pairs.",
     )
     parser.add_argument(
+        "--n-permutations",
+        "--permutations",
+        dest="n_permutations",
+        type=int,
+        default=0,
+        help=(
+            "Number of vertex-label permutations for empirical p-values. "
+            "Default 0 computes only observed assortativity."
+        ),
+    )
+    parser.add_argument(
+        "--permutation-seed",
+        type=int,
+        default=42,
+        help="Base random seed for deterministic permutation p-values.",
+    )
+    parser.add_argument(
         "--workers",
         type=int,
         default=None,
@@ -138,6 +171,13 @@ def main() -> int:
 
     if not args.all_windows and not args.windows:
         raise SystemExit("Specify --windows or --all-windows.")
+    if args.n_permutations < 0:
+        raise SystemExit("--n-permutations must be non-negative.")
+    if args.n_permutations > 0:
+        LOGGER.info(
+            "Computing permutation p-values with %s permutations",
+            f"{args.n_permutations:,}",
+        )
 
     attributes = specs_by_name(args.attributes)
     attr_cols = [spec.column for spec in attributes]
@@ -166,14 +206,16 @@ def main() -> int:
                 attributes,
                 args.compatibility_threshold,
                 args.missing_label,
+                args.n_permutations,
+                args.permutation_seed,
             )
         )
 
-    results: dict[str, tuple[pd.DataFrame, pd.DataFrame]] = {}
+    results: dict[str, tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]] = {}
 
-    def _record(window_id: str, status: str, matrix, summary) -> None:
+    def _record(window_id: str, status: str, matrix, summary, topology) -> None:
         if status == "ok":
-            results[window_id] = (matrix, summary)
+            results[window_id] = (matrix, summary, topology)
         elif status == "no_edges":
             LOGGER.warning("Skipping %s: no compatibility edges found", window_id)
 
@@ -196,6 +238,7 @@ def main() -> int:
     # Reassemble in the original window order for deterministic output.
     matrix_parts = [results[w][0] for w in windows if w in results]
     summary_parts = [results[w][1] for w in windows if w in results]
+    topology_parts = [results[w][2] for w in windows if w in results]
 
     matrix_table = (
         pd.concat(matrix_parts, ignore_index=True, sort=False)
@@ -207,12 +250,22 @@ def main() -> int:
         if summary_parts
         else pd.DataFrame()
     )
+    topology_table = (
+        pd.concat(topology_parts, ignore_index=True, sort=False)
+        if topology_parts
+        else pd.DataFrame()
+    )
 
     LOGGER.info("Writing compatibility mixing outputs")
     write_table(matrix_table, "compatibility_mixing_matrix", formats=("parquet",))
     write_table(
         summary_table,
         "compatibility_assortativity",
+        formats=("csv", "parquet"),
+    )
+    write_table(
+        topology_table,
+        "compatibility_degree_assortativity",
         formats=("csv", "parquet"),
     )
     return 0

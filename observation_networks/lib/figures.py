@@ -149,6 +149,53 @@ def plot_assortativity_over_time(
     return save_figure(fig, out_path, width="double", save_png=True)
 
 
+def plot_degree_assortativity_over_time(
+    degree_assortativity: pd.DataFrame,
+    *,
+    out_path: Path = FIGURES_DIR / "compatibility_degree_assortativity",
+) -> dict[str, Path]:
+    """Plot degree/strength assortativity diagnostics over windows."""
+    if "window_id" not in degree_assortativity.columns:
+        raise KeyError("degree_assortativity needs 'window_id'")
+    work = degree_assortativity.copy()
+    work["window_idx_plot"] = (
+        work["window_id"].astype(str).str.extract(r"(\d+)").astype(float)
+    )
+    metrics = {
+        "degree_assortativity": "Degree",
+        "weighted_degree_assortativity": "Degree, edge-weighted",
+        "strength_assortativity": "Strength, edge-weighted",
+    }
+    available = [metric for metric in metrics if metric in work.columns]
+    if not available:
+        raise KeyError("degree_assortativity has no assortativity metric columns")
+
+    long = work.melt(
+        id_vars=["window_idx_plot"],
+        value_vars=available,
+        var_name="metric",
+        value_name="assortativity",
+    )
+    long["metric_label"] = long["metric"].map(metrics)
+    long = long.sort_values(["metric_label", "window_idx_plot"])
+
+    fig, ax = new_figure("double", height_in=3.0)
+    sns.lineplot(
+        data=long,
+        x="window_idx_plot",
+        y="assortativity",
+        hue="metric_label",
+        ax=ax,
+        lw=1.1,
+        errorbar=None,
+    )
+    ax.axhline(0, color="#777777", lw=0.7, ls=":")
+    ax.set_xlabel("Window index")
+    ax.set_ylabel("Degree/strength assortativity")
+    ax.legend(title="", loc="center left", bbox_to_anchor=(1.01, 0.5))
+    return save_figure(fig, out_path, width="double", save_png=True)
+
+
 def plot_transition_window_summary(
     transition_window_summary: pd.DataFrame,
     *,

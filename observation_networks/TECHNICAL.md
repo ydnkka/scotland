@@ -50,7 +50,12 @@ The Chapter 4 analysis uses:
 - `compatibility_mixing_matrix`: weighted categorical mixing matrices for the
   within-window compatibility network.
 - `compatibility_assortativity`: scalar assortativity summaries derived from
-  those matrices.
+  those matrices. When `build_mixing.py` is run with `--n-permutations`,
+  this table also includes empirical permutation p-values and null-distribution
+  summary columns.
+- `compatibility_degree_assortativity`: topology diagnostics for each
+  compatibility window, including degree assortativity, edge-weighted degree
+  assortativity, and weighted strength assortativity.
 
 `build_simd_validation.py` writes:
 
@@ -84,6 +89,11 @@ r = (observed same-category edge mass - expected same-category edge mass)
 For undirected compatibility networks, each edge is represented in both
 directions before computing the matrix. For the temporal transition graph, edge
 orientation is retained.
+
+Degree and strength assortativity are separate topology diagnostics. They
+summarise whether highly connected or high-strength sequences connect to
+similarly connected/high-strength sequences, rather than whether metadata
+categories mix assortatively.
 
 ## Disclosure
 
