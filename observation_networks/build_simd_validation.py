@@ -11,7 +11,7 @@ import argparse
 import logging
 
 from .lib.io import ensure_results_dirs, write_table
-from .lib.simd import build_simd_validation_tables, write_appendix_table
+from .lib.simd import build_simd_validation_tables
 
 
 LOGGER = logging.getLogger(__name__)
@@ -25,11 +25,6 @@ def parse_args() -> argparse.Namespace:
         default=5,
         choices=(5, 10, 20),
         help="SIMD grouping granularity. Default: 5 quintiles.",
-    )
-    parser.add_argument(
-        "--no-tex",
-        action="store_true",
-        help="Skip writing the compact LaTeX appendix table.",
     )
     parser.add_argument(
         "--log-level",
@@ -74,16 +69,8 @@ def main() -> int:
         LOGGER.info("Writing %s (%s rows)", name, f"{len(table):,}")
         write_table(table, name, formats=formats)
 
-    if not args.no_tex:
-        path = write_appendix_table(
-            tables.group_summary,
-            n_groups=args.n_groups,
-        )
-        LOGGER.info("Writing %s", path)
-
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

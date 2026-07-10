@@ -6,9 +6,10 @@ from pathlib import Path
 import argparse
 import re
 import sys
+from typing import Any
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
+from matplotlib.image import AxesImage
+from matplotlib.axes import Axes
 import numpy as np
 import pandas as pd
 
@@ -17,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (
     Paths,
     add_common_args,
-    configure_matplotlib,
+    new_blank_figure,
     panel_label,
     paths_from_args,
     read_table,
@@ -25,7 +26,7 @@ from common import (
 )
 
 
-def display_matrix_category(attribute: str, value: object) -> str:
+def display_matrix_category(attribute: str, value: Any) -> str:
     if attribute == "simd_quintile":
         try:
             numeric = float(value)
@@ -56,8 +57,12 @@ def matrix_order(
         ]
         return [value for value in preferred if value in categories]
     if attribute == "health_board" and grouped is not None:
-        row_totals = grouped.groupby("source_category", dropna=False)["edge_weight"].sum()
-        col_totals = grouped.groupby("target_category", dropna=False)["edge_weight"].sum()
+        row_totals = grouped.groupby("source_category", dropna=False)[
+            "edge_weight"
+        ].sum()
+        col_totals = grouped.groupby("target_category", dropna=False)[
+            "edge_weight"
+        ].sum()
         totals = row_totals.add(col_totals, fill_value=0.0)
         return totals.sort_values(ascending=False).index.astype(str).tolist()
 
@@ -111,13 +116,13 @@ def aggregate_row_matrix(
 
 
 def draw_matrix_heatmap(
-    ax: mpl.axes.Axes,
+    ax: Axes,
     matrix: pd.DataFrame,
     *,
     title: str,
     vmax: float | None = None,
     label_size: float = 7.0,
-) -> mpl.image.AxesImage:
+) -> AxesImage:
     values = matrix.to_numpy(dtype=float)
     vmax = vmax or np.nanquantile(values, 0.98)
     image = ax.imshow(values, cmap="Blues", vmin=0, vmax=vmax, aspect="auto")
@@ -141,7 +146,12 @@ def build(paths: Paths) -> None:
     matrices = [aggregate_row_matrix(compatibility, attr)[0] for attr, *_ in panels]
     vmax = max(np.nanquantile(matrix.to_numpy(), 0.98) for matrix in matrices)
 
-    fig = plt.figure(figsize=(9.4, 8.2), constrained_layout=True)
+    fig = new_blank_figure(
+        "double",
+        width_in=9.4,
+        height_in=8.2,
+        constrained_layout=True,
+    )
     grid = fig.add_gridspec(3, 3, width_ratios=[1.0, 1.65, 0.045])
     colorbar_axis = fig.add_subplot(grid[:, 2])
     for attr, title, label, grid_position, label_size in panels:
@@ -166,7 +176,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_args(parser)
     args = parser.parse_args()
-    configure_matplotlib()
     paths = paths_from_args(args)
     build(paths)
     print(f"Wrote fig04_mixing_matrices to {paths.figure_dir}")
@@ -175,4 +184,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

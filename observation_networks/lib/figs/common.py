@@ -5,21 +5,27 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import argparse
+import sys
+from typing import Any
 
-import matplotlib as mpl
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 import pandas as pd
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_TABLE_DIR = Path(
-    "/Users/ydnkka/Desktop/PhD Project/projects/scotland/"
-    "observation_networks/results/tables"
-)
-FIGURE_DIR = REPO_ROOT / "thesis/figures/observation_networks"
-LATEX_TABLE_DIR = REPO_ROOT / "thesis/tables/observation_networks"
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from utils import new_figure as styled_new_figure  # noqa: E402
+from utils import save_figure as styled_save_figure  # noqa: E402
+from utils import add_panel_labels as styled_add_panel_labels  # noqa: E402
+
+DEFAULT_TABLE_DIR = PROJECT_ROOT / "observation_networks/results/tables"
+FIGURE_DIR = PROJECT_ROOT / "observation_networks/results/figures"
 
 POLICY_ORDER = [
     "P2",
@@ -75,24 +81,20 @@ POLICY_COLORS = {
 class Paths:
     table_dir: Path
     figure_dir: Path = FIGURE_DIR
-    latex_table_dir: Path = LATEX_TABLE_DIR
 
 
-def configure_matplotlib() -> None:
-    mpl.rcParams.update(
-        {
-            "figure.dpi": 120,
-            "savefig.dpi": 300,
-            "font.size": 9,
-            "axes.titlesize": 10,
-            "axes.labelsize": 9,
-            "axes.spines.top": False,
-            "axes.spines.right": False,
-            "legend.frameon": False,
-            "pdf.fonttype": 42,
-            "ps.fonttype": 42,
-        }
-    )
+def new_figure(*args: Any, **kwargs: Any) -> tuple[Figure, Any]:
+    return styled_new_figure(*args, **kwargs)
+
+
+def new_blank_figure(*args: Any, **kwargs: Any) -> Figure:
+    fig, ax = styled_new_figure(*args, **kwargs)
+    ax.remove()
+    return fig
+
+
+def add_panel_labels(*args: Any, **kwargs: Any) -> None:
+    styled_add_panel_labels(*args, **kwargs)
 
 
 def read_table(paths: Paths, name: str) -> pd.DataFrame:
@@ -106,21 +108,28 @@ def read_table(paths: Paths, name: str) -> pd.DataFrame:
 
 
 def save_figure(
-    fig: mpl.figure.Figure,
+    fig: Figure,
     paths: Paths,
     name: str,
     *,
     tight: bool = True,
-) -> None:
+) -> dict[str, Path]:
     paths.figure_dir.mkdir(parents=True, exist_ok=True)
     if tight:
         fig.tight_layout()
-    fig.savefig(paths.figure_dir / f"{name}.png", bbox_inches="tight")
-    fig.savefig(paths.figure_dir / f"{name}.pdf", bbox_inches="tight")
-    plt.close(fig)
+    width_in, height_in = fig.get_size_inches()
+    return styled_save_figure(
+        fig,
+        paths.figure_dir / name,
+        width="double",
+        width_in=float(width_in),
+        height_in=float(height_in),
+        save_pdf=True,
+        save_png=True,
+    )
 
 
-def panel_label(ax: mpl.axes.Axes, label: str) -> None:
+def panel_label(ax: Axes, label: str) -> None:
     ax.text(
         -0.08,
         1.08,
@@ -151,7 +160,7 @@ def sort_by_policy(df: pd.DataFrame, column: str = "policy_period") -> pd.DataFr
     return out.sort_values(["_policy_sort", column]).drop(columns="_policy_sort")
 
 
-def add_policy_bands(ax: mpl.axes.Axes, window_coverage: pd.DataFrame) -> None:
+def add_policy_bands(ax: Axes, window_coverage: pd.DataFrame) -> None:
     if "policy_period" not in window_coverage.columns:
         return
     work = window_coverage[["wn_mid_date", "policy_period"]].dropna().copy()
@@ -172,7 +181,7 @@ def add_policy_bands(ax: mpl.axes.Axes, window_coverage: pd.DataFrame) -> None:
         )
 
 
-def date_axis(ax: mpl.axes.Axes) -> None:
+def date_axis(ax: Axes) -> None:
     ax.xaxis.set_major_locator(mdates.MonthLocator(interval=4))
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%b\n%Y"))
 
@@ -188,4 +197,3 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
 
 def paths_from_args(args: argparse.Namespace) -> Paths:
     return Paths(table_dir=args.table_dir)
-

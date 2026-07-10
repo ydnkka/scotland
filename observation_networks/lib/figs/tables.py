@@ -6,6 +6,7 @@ from pathlib import Path
 import argparse
 import sys
 import textwrap
+from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -21,6 +22,28 @@ from common import (
     sort_by_policy,
     window_idx_from_id,
 )
+from observation_networks.lib.config import TABLES_DIR  # noqa: E402
+
+
+SIMD_GROUP_LABELS = {
+    5: "quintile",
+    10: "decile",
+    20: "vigintile",
+}
+TABLE_NAMES = {
+    "cohort_objects": "tab_ch4_cohort_objects",
+    "policy_denominators": "tab_ch4_policy_denominators",
+    "cluster_period_summary": "tab_ch4_cluster_period_summary",
+    "assortativity_summary": "tab_ch4_assortativity_summary",
+    "simd_population_weighting": "simd_population_weighting_appendix_table",
+}
+TABLE_LABELS = {
+    "cohort_objects": "tab:ch4_cohort_objects",
+    "policy_denominators": "tab:ch4_policy_denominators",
+    "cluster_period_summary": "tab:ch4_cluster_period_summary",
+    "assortativity_summary": "tab:ch4_assortativity_summary",
+    "simd_population_weighting": "tab:simd_population_weighting_validation",
+}
 
 
 def fmt_int(value: float | int | str | None) -> str:
@@ -86,7 +109,7 @@ def write_latex_table(
     column_spec: str | None = None,
     small: bool = True,
 ) -> None:
-    paths.latex_table_dir.mkdir(parents=True, exist_ok=True)
+    paths.figure_dir.mkdir(parents=True, exist_ok=True)
     column_spec = column_spec or ("l" * len(columns))
     size = "\\small\n" if small else ""
     header = " & ".join(f"\\textbf{{{latex_escape(col)}}}" for col in columns)
@@ -111,7 +134,84 @@ def write_latex_table(
         \end{{table}}
         """
     ).strip()
-    (paths.latex_table_dir / f"{name}.tex").write_text(content + "\n")
+    (paths.figure_dir / f"{name}.tex").write_text(content + "\n")
+
+
+def simd_appendix_table_tex(
+    group_summary: pd.DataFrame,
+    *,
+    n_groups: int = 5,
+    caption: str | None = None,
+    label: str = TABLE_LABELS["simd_population_weighting"],
+) -> str:
+    """Render a compact LaTeX table for the SIMD validation appendix."""
+    group_name = SIMD_GROUP_LABELS.get(n_groups, f"{n_groups}-group")
+    caption = caption or (
+        f"Validation of national population-weighted SIMD {group_name} groupings."
+    )
+
+    methods = ["equal_datazone", "population_weighted"]
+    display = group_summary.loc[group_summary["grouping_method"].isin(methods)].copy()
+    display["rank_range"] = (
+        display["first_simd_rank"].astype(int).astype(str)
+        + "--"
+        + display["last_simd_rank"].astype(int).astype(str)
+    )
+
+    lines = [
+        "\\begin{table}[htbp]",
+        "\\centering",
+        f"\\caption{{{caption}}}",
+        f"\\label{{{label}}}",
+        "\\begin{tabular}{llrrrr}",
+        "\\toprule",
+        "Grouping & SIMD group & Data Zones & Population & Population (\\%) & SIMD rank range \\\\",
+        "\\midrule",
+    ]
+    for row in display.itertuples(index=False):
+        lines.append(
+            " & ".join(
+                [
+                    str(row.grouping_method_label),
+                    str(int(row.simd_group)),
+                    f"{int(row.n_datazones):,}",
+                    f"{int(row.total_population):,}",
+                    f"{float(row.pct_population):.1f}",
+                    str(row.rank_range),
+                ]
+            )
+            + " \\\\"
+        )
+    lines.extend(
+        [
+            "\\bottomrule",
+            "\\end{tabular}",
+            "\\end{table}",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def write_simd_appendix_table(
+    group_summary: pd.DataFrame,
+    *,
+    n_groups: int = 5,
+    path: Path | None = None,
+) -> Path:
+    """Write the SIMD validation LaTeX appendix table and return its path."""
+    path = path or TABLES_DIR / f"{TABLE_NAMES['simd_population_weighting']}.tex"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(simd_appendix_table_tex(group_summary, n_groups=n_groups))
+    return path
+
+
+def write_simd_population_weighting_table(paths: Paths) -> Path:
+    group_summary = read_table(paths, "simd_population_weighting_group_summary")
+    return write_simd_appendix_table(
+        group_summary,
+        path=paths.figure_dir / f"{TABLE_NAMES['simd_population_weighting']}.tex",
+    )
 
 
 def weighted_mean(values: pd.Series, weights: pd.Series) -> float:
@@ -303,9 +403,9 @@ def write_cohort_table(paths: Paths) -> None:
     ]
     write_latex_table(
         paths,
-        "tab_ch4_cohort_objects",
+        TABLE_NAMES["cohort_objects"],
         caption="Chapter 4 analysis cohort and graph object counts",
-        label="tab:ch4_cohort_objects",
+        label=TABLE_LABELS["cohort_objects"],
         columns=["Quantity", "Value"],
         rows=rows,
         column_spec="lr",
@@ -330,9 +430,9 @@ def write_policy_denominator_table(paths: Paths) -> None:
         )
     write_latex_table(
         paths,
-        "tab_ch4_policy_denominators",
+        TABLE_NAMES["policy_denominators"],
         caption="Rolling-window observation denominators by policy period",
-        label="tab:ch4_policy_denominators",
+        label=TABLE_LABELS["policy_denominators"],
         columns=[
             "Period",
             "Windows",
@@ -364,9 +464,9 @@ def write_cluster_period_table(paths: Paths) -> None:
         )
     write_latex_table(
         paths,
-        "tab_ch4_cluster_period_summary",
+        TABLE_NAMES["cluster_period_summary"],
         caption="Window-level EpiLink cluster summaries by policy period",
-        label="tab:ch4_cluster_period_summary",
+        label=TABLE_LABELS["cluster_period_summary"],
         columns=[
             "Period",
             "Clusters",
@@ -407,9 +507,9 @@ def write_assortativity_summary_table(paths: Paths) -> None:
             )
     write_latex_table(
         paths,
-        "tab_ch4_assortativity_summary",
+        TABLE_NAMES["assortativity_summary"],
         caption="Weighted assortativity summaries with compatibility confidence intervals",
-        label="tab:ch4_assortativity_summary",
+        label=TABLE_LABELS["assortativity_summary"],
         columns=[
             "Graph",
             "Attribute",
@@ -424,12 +524,19 @@ def write_assortativity_summary_table(paths: Paths) -> None:
     )
 
 
+TABLE_WRITERS: tuple[tuple[str, Callable[[Paths], object]], ...] = (
+    (TABLE_NAMES["cohort_objects"], write_cohort_table),
+    (TABLE_NAMES["policy_denominators"], write_policy_denominator_table),
+    (TABLE_NAMES["cluster_period_summary"], write_cluster_period_table),
+    (TABLE_NAMES["assortativity_summary"], write_assortativity_summary_table),
+    (TABLE_NAMES["simd_population_weighting"], write_simd_population_weighting_table),
+)
+
+
 def write_tables(paths: Paths) -> None:
-    paths.latex_table_dir.mkdir(parents=True, exist_ok=True)
-    write_cohort_table(paths)
-    write_policy_denominator_table(paths)
-    write_cluster_period_table(paths)
-    write_assortativity_summary_table(paths)
+    paths.figure_dir.mkdir(parents=True, exist_ok=True)
+    for _, write_table in TABLE_WRITERS:
+        write_table(paths)
 
 
 def main() -> int:
@@ -438,10 +545,9 @@ def main() -> int:
     args = parser.parse_args()
     paths = paths_from_args(args)
     write_tables(paths)
-    print(f"Wrote Chapter 4 LaTeX tables to {paths.latex_table_dir}")
+    print(f"Wrote Chapter 4 LaTeX tables to {paths.figure_dir}")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

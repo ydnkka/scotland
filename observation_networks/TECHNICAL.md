@@ -88,8 +88,9 @@ final compatibility tables.
   group difference.
 - `simd_population_weighting_diagnostics`: reproducibility checks and maximum
   population-share deviations.
-- `simd_population_weighting_appendix_table.tex`: compact LaTeX table for the
-  observation/network appendix.
+The compact `simd_population_weighting_appendix_table.tex` LaTeX fragment is
+rendered from `simd_population_weighting_group_summary` by
+`make_figures.py`/`lib/figs/tables.py`.
 
 ## Mixing And Assortativity
 

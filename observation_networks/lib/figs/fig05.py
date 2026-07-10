@@ -6,8 +6,8 @@ from pathlib import Path
 import argparse
 import sys
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
+from matplotlib.axes import Axes
 import numpy as np
 import pandas as pd
 
@@ -17,8 +17,8 @@ from common import (
     Paths,
     add_common_args,
     add_policy_bands,
-    configure_matplotlib,
     date_axis,
+    new_blank_figure,
     panel_label,
     paths_from_args,
     read_table,
@@ -44,7 +44,7 @@ ROLE_COLORS = {
     "Source": "#f58518",
     "Branching source": "#e45756",
     "Sink": "#54a24b",
-    "Merging sink": "#b279a2",
+    "Merging sink": "#e15ebc",
     "Linear continuation": "#8e6c8a",
     "Internal branching": "#ff9da6",
     "Internal merging": "#9d755d",
@@ -54,7 +54,7 @@ ROLE_COLORS = {
 
 
 def draw_role_edge(
-    ax: mpl.axes.Axes,
+    ax: Axes,
     start: tuple[float, float],
     end: tuple[float, float],
 ) -> None:
@@ -75,7 +75,7 @@ def draw_role_edge(
 
 
 def draw_role_cell(
-    ax: mpl.axes.Axes,
+    ax: Axes,
     *,
     col: int,
     row: int,
@@ -87,7 +87,7 @@ def draw_role_cell(
     x0 = col
     color = ROLE_COLORS[label]
     ax.add_patch(
-        mpl.patches.Rectangle(
+        Rectangle(
             (x0 + 0.03, y0 + 0.04),
             0.94,
             0.86,
@@ -133,7 +133,7 @@ def draw_role_cell(
     )
 
 
-def draw_graph_role_schematic(ax: mpl.axes.Axes) -> None:
+def draw_graph_role_schematic(ax: Axes) -> None:
     roles = [
         ("Isolated", 0, 0),
         ("Source", 0, 1),
@@ -187,8 +187,8 @@ def build(paths: Paths) -> None:
         on=["window_id", "window_idx"],
         how="left",
     )
-    nodes["role_group"] = nodes["primary_graph_role"].map(CLUSTER_ROLE_GROUPS).fillna(
-        "Other"
+    nodes["role_group"] = (
+        nodes["primary_graph_role"].map(CLUSTER_ROLE_GROUPS).fillna("Other")
     )
     role_counts = (
         nodes.groupby(["window_idx", "wn_mid_date", "role_group"], dropna=False)
@@ -213,7 +213,12 @@ def build(paths: Paths) -> None:
     ]
     role_pivot = role_pivot[[col for col in preferred_roles if col in role_pivot]]
 
-    fig = plt.figure(figsize=(8.2, 8.4), constrained_layout=True)
+    fig = new_blank_figure(
+        "double",
+        width_in=8.2,
+        height_in=8.4,
+        constrained_layout=True,
+    )
     grid = fig.add_gridspec(3, 2, height_ratios=[1.35, 1.0, 1.0])
 
     ax = fig.add_subplot(grid[0, :])
@@ -295,7 +300,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_args(parser)
     args = parser.parse_args()
-    configure_matplotlib()
     paths = paths_from_args(args)
     build(paths)
     print(f"Wrote fig05_transition_graph_baseline to {paths.figure_dir}")
@@ -304,4 +308,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

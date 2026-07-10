@@ -6,7 +6,6 @@ from pathlib import Path
 import argparse
 import sys
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -16,7 +15,7 @@ from common import (
     ATTRIBUTE_ORDER,
     Paths,
     add_common_args,
-    configure_matplotlib,
+    new_figure,
     paths_from_args,
     read_table,
     save_figure,
@@ -116,7 +115,7 @@ def compatibility_attribute_summary(paths: Paths) -> pd.DataFrame:
             group["edge_weight_total"],
             group["assortativity_se"],
         )
-        window_group = window_summary.loc[window_summary["attribute"].eq(attribute)]
+        window_group = window_summary.loc[window_summary["attribute"].eq(attribute)] # type: ignore
         rows.append(
             {
                 "attribute": attribute,
@@ -147,7 +146,7 @@ def build(paths: Paths) -> None:
         summary["ci_high"] - summary["weighted_mean"],
     ]
 
-    fig, ax = plt.subplots(figsize=(7.6, 4.2))
+    fig, ax = new_figure("double", width_in=7.6, height_in=4.2)
     ax.errorbar(
         summary["weighted_mean"],
         y_positions,
@@ -175,7 +174,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_args(parser)
     args = parser.parse_args()
-    configure_matplotlib()
     paths = paths_from_args(args)
     build(paths)
     print(f"Wrote sfig05_assortativity_confidence_intervals to {paths.figure_dir}")
@@ -184,4 +182,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

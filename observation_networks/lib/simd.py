@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 import sys
 
 import numpy as np
 import pandas as pd
 
-from .config import PROJECT_ROOT, TABLES_DIR
+from .config import PROJECT_ROOT
 
 
 if str(PROJECT_ROOT) not in sys.path:
@@ -23,13 +22,6 @@ SOURCE_GROUP_COLUMNS = {
     10: "dz_simd_decile",
     20: "dz_simd_vigintile",
 }
-
-GROUP_LABELS = {
-    5: "quintile",
-    10: "decile",
-    20: "vigintile",
-}
-
 
 @dataclass(frozen=True)
 class SimdValidationTables:
@@ -318,72 +310,3 @@ def build_simd_validation_tables(n_groups: int = 5) -> SimdValidationTables:
         change_summary=build_change_summary(assignments),
         diagnostics=build_diagnostics(assignments, group_summary),
     )
-
-
-def appendix_table_tex(
-    group_summary: pd.DataFrame,
-    *,
-    n_groups: int = 5,
-    caption: str | None = None,
-    label: str = "tab:simd_population_weighting_validation",
-) -> str:
-    """Render a compact LaTeX table for the appendix."""
-    group_name = GROUP_LABELS.get(n_groups, f"{n_groups}-group")
-    caption = caption or (
-        f"Validation of national population-weighted SIMD {group_name} groupings."
-    )
-
-    methods = ["equal_datazone", "population_weighted"]
-    display = group_summary.loc[group_summary["grouping_method"].isin(methods)].copy()
-    display["rank_range"] = (
-        display["first_simd_rank"].astype(int).astype(str)
-        + "--"
-        + display["last_simd_rank"].astype(int).astype(str)
-    )
-
-    lines = [
-        "\\begin{table}[htbp]",
-        "\\centering",
-        f"\\caption{{{caption}}}",
-        f"\\label{{{label}}}",
-        "\\begin{tabular}{llrrrr}",
-        "\\toprule",
-        "Grouping & SIMD group & Data Zones & Population & Population (\\%) & SIMD rank range \\\\",
-        "\\midrule",
-    ]
-    for row in display.itertuples(index=False):
-        lines.append(
-            " & ".join(
-                [
-                    str(row.grouping_method_label),
-                    str(int(row.simd_group)),
-                    f"{int(row.n_datazones):,}",
-                    f"{int(row.total_population):,}",
-                    f"{float(row.pct_population):.1f}",
-                    str(row.rank_range),
-                ]
-            )
-            + " \\\\"
-        )
-    lines.extend(
-        [
-            "\\bottomrule",
-            "\\end{tabular}",
-            "\\end{table}",
-            "",
-        ]
-    )
-    return "\n".join(lines)
-
-
-def write_appendix_table(
-    group_summary: pd.DataFrame,
-    *,
-    n_groups: int = 5,
-    path: Path | None = None,
-) -> Path:
-    """Write the LaTeX appendix table and return its path."""
-    path = path or TABLES_DIR / "simd_population_weighting_appendix_table.tex"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(appendix_table_tex(group_summary, n_groups=n_groups))
-    return path

@@ -6,8 +6,8 @@ from pathlib import Path
 import argparse
 import sys
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
+from matplotlib.image import AxesImage
+from matplotlib.axes import Axes
 from matplotlib.colors import TwoSlopeNorm
 import numpy as np
 import pandas as pd
@@ -18,7 +18,7 @@ from common import (
     ATTRIBUTE_ORDER,
     Paths,
     add_common_args,
-    configure_matplotlib,
+    new_blank_figure,
     panel_label,
     paths_from_args,
     read_table,
@@ -108,13 +108,13 @@ def ordered_attribute_pivot(
 
 
 def heatmap_with_window_ticks(
-    ax: mpl.axes.Axes,
+    ax: Axes,
     pivot: pd.DataFrame,
     *,
     title: str,
     vmin: float = -0.6,
     vmax: float = 0.6,
-) -> mpl.image.AxesImage:
+) -> AxesImage:
     norm = TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
     image = ax.imshow(pivot.to_numpy(), aspect="auto", cmap="RdBu_r", norm=norm)
     ax.set_title(title)
@@ -136,7 +136,12 @@ def build(paths: Paths) -> None:
     comp_pivot = ordered_attribute_pivot(comp)
     trans_pivot = ordered_attribute_pivot(trans)
 
-    fig = plt.figure(figsize=(8.7, 5.8), constrained_layout=True)
+    fig = new_blank_figure(
+        "double",
+        width_in=8.7,
+        height_in=5.8,
+        constrained_layout=True,
+    )
     grid = fig.add_gridspec(
         2,
         2,
@@ -168,7 +173,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_args(parser)
     args = parser.parse_args()
-    configure_matplotlib()
     paths = paths_from_args(args)
     build(paths)
     print(f"Wrote fig03_assortativity_baseline to {paths.figure_dir}")
@@ -177,4 +181,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

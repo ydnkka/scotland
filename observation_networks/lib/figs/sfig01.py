@@ -1,14 +1,8 @@
-"""Plot Leiden-resolution and sparsification sensitivity summaries.
-
-Run from the Scotland repository root:
-
-    python -m observation_networks.make_sensitivity_figures
-"""
+"""Build Chapter 4 Supplementary Figure 1: parameter sensitivity summaries."""
 
 from __future__ import annotations
 
 import argparse
-import logging
 from pathlib import Path
 import sys
 
@@ -16,25 +10,25 @@ import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.ticker import PercentFormatter
 
-from ..config import (
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from common import (  # noqa: E402
+    Paths,
+    add_common_args,
+    add_panel_labels,
+    new_figure,
+    paths_from_args,
+    read_table,
+    save_figure,
+)
+
+from observation_networks.lib.config import (  # noqa: E402
     ANALYSIS_RESOLUTION,
-    FIGURES_DIR,
-    PROJECT_ROOT,
     SPARSIFICATION_THRESHOLD,
 )
-from ..io import ensure_results_dirs, read_table
-
-
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from utils import add_panel_labels, new_figure, save_figure  # noqa: E402
-
-
-LOGGER = logging.getLogger(__name__)
 
 BASELINE_THRESHOLD = SPARSIFICATION_THRESHOLD
-FIGURE_NAME = "parameter_sensitivity_grid"
+FIGURE_NAME = "sfig01_parameter_sensitivity"
 LEIDEN_SUMMARY_TABLE = "leiden_resolution_sensitivity_summary"
 SPARSIFICATION_SUMMARY_TABLE = "sparsification_threshold_sensitivity_summary"
 SPARSIFICATION_DETAIL_TABLE = "sparsification_threshold_sensitivity"
@@ -48,46 +42,7 @@ REFERENCE_COLOR = "#555555"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--out-path",
-        type=Path,
-        default=FIGURES_DIR / FIGURE_NAME,
-        help="Output path without extension.",
-    )
-    parser.add_argument(
-        "--baseline-resolution",
-        type=float,
-        default=ANALYSIS_RESOLUTION,
-        help="Leiden resolution reference line. Default: Chapter 4 baseline.",
-    )
-    parser.add_argument(
-        "--baseline-threshold",
-        type=float,
-        default=BASELINE_THRESHOLD,
-        help="Sparsification threshold reference line. Default: Chapter 4 baseline.",
-    )
-    parser.add_argument(
-        "--max-background-groups",
-        type=int,
-        default=300,
-        help="Maximum pairwise groups shown as faint background curves.",
-    )
-    parser.add_argument(
-        "--background-seed",
-        type=int,
-        default=42,
-        help="Random seed for background pairwise-group curve sampling.",
-    )
-    parser.add_argument(
-        "--no-png",
-        action="store_true",
-        help="Only write PDF output.",
-    )
-    parser.add_argument(
-        "--log-level",
-        default="INFO",
-        choices=("DEBUG", "INFO", "WARNING", "ERROR"),
-    )
+    add_common_args(parser)
     return parser.parse_args()
 
 
@@ -346,12 +301,11 @@ def plot_parameter_sensitivity_grid(
     sparsification_summary: pd.DataFrame,
     sparsification_detail: pd.DataFrame,
     *,
+    paths: Paths,
     baseline_resolution: float = ANALYSIS_RESOLUTION,
     baseline_threshold: float = BASELINE_THRESHOLD,
     max_background_groups: int = 300,
     background_seed: int = 42,
-    out_path: Path = FIGURES_DIR / FIGURE_NAME,
-    save_png: bool = True,
 ) -> dict[str, Path]:
     """Plot the 3x2 Leiden and sparsification sensitivity grid."""
     leiden = leiden_summary.sort_values("resolution").copy()
@@ -406,34 +360,26 @@ def plot_parameter_sensitivity_grid(
         ax.tick_params(axis="both", which="major", length=3)
 
     add_panel_labels(axes.flat, x=-0.12, y=1.08, size="medium")
-    return save_figure(fig, out_path, width="double", save_png=save_png)
+    return save_figure(fig, paths, FIGURE_NAME, tight=False)
+
+
+def build(paths: Paths) -> dict[str, Path]:
+    leiden = read_table(paths, LEIDEN_SUMMARY_TABLE)
+    sparsification_summary = read_table(paths, SPARSIFICATION_SUMMARY_TABLE)
+    sparsification_detail = read_table(paths, SPARSIFICATION_DETAIL_TABLE)
+    return plot_parameter_sensitivity_grid(
+        leiden,
+        sparsification_summary,
+        sparsification_detail,
+        paths=paths,
+    )
 
 
 def main() -> int:
     args = parse_args()
-    logging.basicConfig(level=args.log_level, format="%(levelname)s: %(message)s")
-    logging.getLogger("fontTools").setLevel(logging.WARNING)
-    ensure_results_dirs()
-
-    LOGGER.info("Reading sensitivity tables")
-    leiden = read_table(LEIDEN_SUMMARY_TABLE)
-    sparsification_summary = read_table(SPARSIFICATION_SUMMARY_TABLE)
-    sparsification_detail = read_table(SPARSIFICATION_DETAIL_TABLE)
-
-    LOGGER.info("Writing sensitivity grid figure")
-    paths = plot_parameter_sensitivity_grid(
-        leiden,
-        sparsification_summary,
-        sparsification_detail,
-        baseline_resolution=args.baseline_resolution,
-        baseline_threshold=args.baseline_threshold,
-        max_background_groups=args.max_background_groups,
-        background_seed=args.background_seed,
-        out_path=args.out_path,
-        save_png=not args.no_png,
-    )
-    for kind, path in paths.items():
-        LOGGER.info("Wrote %s: %s", kind, path)
+    paths = paths_from_args(args)
+    build(paths)
+    print(f"Wrote {FIGURE_NAME} to {paths.figure_dir}")
     return 0
 
 

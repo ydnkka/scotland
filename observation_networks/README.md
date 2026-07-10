@@ -22,14 +22,17 @@ detector. It should not create or consume candidate labels.
 - `lib/simd.py`: SIMD population-weighting validation tables for the appendix.
 - `lib/transition_graph.py`: alternate-window temporal cluster-transition graph
   construction and baseline summaries.
-- `lib/figures.py`: reusable figure builders using `utils.style`.
+- `lib/figures.py`: orchestration layer for the thesis figure scripts in
+  `lib/figs/`.
+- `lib/figs/`: thesis figure and LaTeX table builders using `utils.style`.
 - `build_tables.py`: builds the standard Chapter 4 tables.
 - `build_mixing.py`: builds compatibility-network mixing matrices from sparse
   pairwise EpiLink edges, processing one window-lineage pairwise parquet file
   per worker and concatenating the intermediate chunks.
 - `build_simd_validation.py`: builds compact population-weighted SIMD validation
   tables for the appendix.
-- `make_figures.py`: rebuilds figures from saved tables.
+- `make_figures.py`: rebuilds figures and LaTeX table fragments from saved
+  tables.
 - `TECHNICAL.md`: analysis contract and output definitions.
 
 Generated files are written under `observation_networks/results/`, which is

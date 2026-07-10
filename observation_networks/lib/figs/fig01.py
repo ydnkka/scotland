@@ -9,8 +9,9 @@ import re
 import sys
 import textwrap
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
+
+from matplotlib.patches import Patch
+from matplotlib.axes import Axes
 from matplotlib.ticker import PercentFormatter
 import numpy as np
 import pandas as pd
@@ -21,7 +22,7 @@ from common import (
     POLICY_COLORS,
     Paths,
     add_common_args,
-    configure_matplotlib,
+    new_blank_figure,
     ordered_policy_values,
     panel_label,
     paths_from_args,
@@ -97,7 +98,7 @@ def wrap_labels(labels: pd.Index | list[object], width: int) -> list[str]:
 
 
 def plot_policy_stacked_bars(
-    ax: mpl.axes.Axes,
+    ax: Axes,
     shares: pd.DataFrame,
     *,
     title: str,
@@ -149,7 +150,7 @@ def build(paths: Paths) -> None:
     health_right = health_board.iloc[health_split:]
     health_x_max = float(health_board.sum(axis=1).max()) * 1.12
 
-    fig = plt.figure(figsize=(8.8, 8.6))
+    fig = new_blank_figure("double", width_in=8.8, height_in=8.6)
     grid = fig.add_gridspec(
         3,
         2,
@@ -221,7 +222,7 @@ def build(paths: Paths) -> None:
         if idx < len(legend_bottom):
             legend_columns.append(legend_bottom[idx])
     handles = [
-        mpl.patches.Patch(
+        Patch(
             facecolor=POLICY_COLORS.get(str(period), "#999999"),
             edgecolor="none",
             label=str(period),
@@ -245,7 +246,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_args(parser)
     args = parser.parse_args()
-    configure_matplotlib()
     paths = paths_from_args(args)
     build(paths)
     print(f"Wrote fig01_sequence_composition_by_policy to {paths.figure_dir}")
@@ -254,4 +254,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

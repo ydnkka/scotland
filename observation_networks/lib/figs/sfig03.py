@@ -6,7 +6,6 @@ from pathlib import Path
 import argparse
 import sys
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -14,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (
     Paths,
     add_common_args,
-    configure_matplotlib,
+    new_figure,
     panel_label,
     paths_from_args,
     read_table,
@@ -27,7 +26,7 @@ def build(paths: Paths) -> None:
     movement = read_table(paths, "simd_population_weighting_movement")
     movement = movement.loc[movement["comparison_method"].eq("equal_datazone")]
 
-    fig, axes = plt.subplots(1, 2, figsize=(8.4, 3.5))
+    fig, axes = new_figure("double", width_in=8.4, height_in=3.5, nrows=1, ncols=2)
     ax = axes[0]
     for method, group in group_summary.groupby("grouping_method_label"):
         group = group.sort_values("simd_group")
@@ -44,12 +43,16 @@ def build(paths: Paths) -> None:
     ax.legend(loc="best")
     panel_label(ax, "A")
 
-    matrix = movement.pivot_table(
-        index="comparison_group",
-        columns="population_weighted_group",
-        values="pct_population",
-        fill_value=0.0,
-    ).sort_index().sort_index(axis=1)
+    matrix = (
+        movement.pivot_table(
+            index="comparison_group",
+            columns="population_weighted_group",
+            values="pct_population",
+            fill_value=0.0,
+        )
+        .sort_index()
+        .sort_index(axis=1)
+    )
     image = axes[1].imshow(matrix.to_numpy(), cmap="Blues", vmin=0)
     axes[1].set_xticks(np.arange(matrix.shape[1]))
     axes[1].set_xticklabels(matrix.columns)
@@ -60,7 +63,7 @@ def build(paths: Paths) -> None:
     for i in range(matrix.shape[0]):
         for j in range(matrix.shape[1]):
             value = matrix.iloc[i, j]
-            if value > 0:
+            if value > 0: # type: ignore
                 axes[1].text(j, i, f"{value:.1f}", ha="center", va="center", fontsize=7)
     fig.colorbar(image, ax=axes[1], label="Population share (%)")
     panel_label(axes[1], "B")
@@ -71,7 +74,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_args(parser)
     args = parser.parse_args()
-    configure_matplotlib()
     paths = paths_from_args(args)
     build(paths)
     print(f"Wrote sfig03_simd_population_weighting to {paths.figure_dir}")
@@ -80,4 +82,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

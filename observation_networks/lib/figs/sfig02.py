@@ -6,7 +6,6 @@ from pathlib import Path
 import argparse
 import sys
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -15,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (
     Paths,
     add_common_args,
-    configure_matplotlib,
+    new_figure,
     panel_label,
     paths_from_args,
     read_table,
@@ -52,7 +51,14 @@ def build(paths: Paths) -> None:
         rows.append(row)
     summary = pd.DataFrame(rows).sort_values("window_idx")
 
-    fig, axes = plt.subplots(3, 1, figsize=(8.2, 7.0), sharex=True)
+    fig, axes = new_figure(
+        "double",
+        width_in=8.2,
+        height_in=7.0,
+        nrows=3,
+        ncols=1,
+        sharex=True,
+    )
     axes[0].plot(summary["window_idx"], summary["n_nodes"], label="Nodes")
     axes[0].plot(summary["window_idx"], summary["n_edges_used"], label="Edges")
     axes[0].set_yscale("log")
@@ -80,7 +86,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_args(parser)
     args = parser.parse_args()
-    configure_matplotlib()
     paths = paths_from_args(args)
     build(paths)
     print(f"Wrote sfig02_compatibility_topology to {paths.figure_dir}")
@@ -89,4 +94,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

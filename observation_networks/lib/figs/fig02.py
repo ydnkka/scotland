@@ -6,7 +6,6 @@ from pathlib import Path
 import argparse
 import sys
 
-import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter
 import numpy as np
 import pandas as pd
@@ -17,8 +16,8 @@ from common import (
     Paths,
     add_common_args,
     add_policy_bands,
-    configure_matplotlib,
     date_axis,
+    new_figure,
     panel_label,
     paths_from_args,
     read_table,
@@ -43,7 +42,7 @@ def build(paths: Paths) -> None:
     sizes = sizes[sizes > 0].sort_values().to_numpy()
     ccdf_y = 1.0 - np.arange(len(sizes)) / len(sizes)
 
-    fig, axes = plt.subplots(2, 2, figsize=(8.4, 6.7))
+    fig, axes = new_figure("double", width_in=8.4, height_in=6.7, nrows=2, ncols=2)
     ax = axes[0, 0]
     ax.plot(sizes, ccdf_y, color="#1f4e79", lw=1.5)
     ax.set_xscale("log")
@@ -108,9 +107,9 @@ def build(paths: Paths) -> None:
     fig.colorbar(hb, ax=ax, label="Clusters")
     ticks = [0, 1, 2, 3]
     ax.set_xticks(ticks)
-    ax.set_xticklabels([f"{10 ** tick:g}" for tick in ticks])
+    ax.set_xticklabels([f"{10**tick:g}" for tick in ticks])
     ax.set_yticks(ticks)
-    ax.set_yticklabels([f"{10 ** tick:g}" for tick in ticks])
+    ax.set_yticklabels([f"{10**tick:g}" for tick in ticks])
     ax.set_xlabel("Cluster size")
     ax.set_ylabel("Observed Data Zones")
     panel_label(ax, "D")
@@ -121,7 +120,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_args(parser)
     args = parser.parse_args()
-    configure_matplotlib()
     paths = paths_from_args(args)
     build(paths)
     print(f"Wrote fig02_cluster_landscape to {paths.figure_dir}")
@@ -130,4 +128,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
