@@ -271,17 +271,17 @@ config.yaml
 
 ## Dependencies
 
-| Package                    | Use                                                                        |
-| -------------------------- | -------------------------------------------------------------------------- |
-| `pandas`, `numpy`          | Data manipulation throughout                                               |
-| `geopandas`                | Datazone shapefile reading and centroid computation (`01`)                 |
-| `pyarrow` / `fastparquet`  | Parquet I/O                                                                |
-| `pyyaml`                   | Config parsing                                                             |
-| `igraph` (`python-igraph`) | Graph construction and Leiden clustering (`cluster_pairwise.py`)            |
+| Package                    | Use                                                                                       |
+| -------------------------- | ----------------------------------------------------------------------------------------- |
+| `pandas`, `numpy`          | Data manipulation throughout                                                              |
+| `geopandas`                | Datazone shapefile reading and centroid computation (`01`)                                |
+| `pyarrow` / `fastparquet`  | Parquet I/O                                                                               |
+| `pyyaml`                   | Config parsing                                                                            |
+| `igraph` (`python-igraph`) | Graph construction and Leiden clustering (`cluster_pairwise.py`)                          |
 | `epilink`                  | Epidemiological compatibility scoring (`epilink_wrapper`, `03_build_pairwise_dataset.py`) |
-| `samtools`                 | Per-group FASTA extraction from compressed multi-sequence file (`02` / Step 3) |
-| `tn93`                     | Pairwise TN93 distance computation (`02` / Step 3)                          |
-| `GNU parallel`             | Parallel execution of TN93 and clustering steps                            |
+| `samtools`                 | Per-group FASTA extraction from compressed multi-sequence file (`02` / Step 3)            |
+| `tn93`                     | Pairwise TN93 distance computation (`02` / Step 3)                                        |
+| `GNU parallel`             | Parallel execution of TN93 and clustering steps                                           |
 
 ---
 
