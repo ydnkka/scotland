@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 import argparse
 import sys
-import textwrap
 from typing import Callable
 
 import numpy as np
@@ -35,14 +34,14 @@ TABLE_NAMES = {
     "policy_denominators": "tab_ch4_policy_denominators",
     "cluster_period_summary": "tab_ch4_cluster_period_summary",
     "assortativity_summary": "tab_ch4_assortativity_summary",
-    "simd_population_weighting": "simd_population_weighting_appendix_table",
+    "simd_population_weighting": "tab_ch4_simd_population_weighting",
 }
 TABLE_LABELS = {
     "cohort_objects": "tab:ch4_cohort_objects",
     "policy_denominators": "tab:ch4_policy_denominators",
     "cluster_period_summary": "tab:ch4_cluster_period_summary",
     "assortativity_summary": "tab:ch4_assortativity_summary",
-    "simd_population_weighting": "tab:simd_population_weighting_validation",
+    "simd_population_weighting": "tab:ch4_simd_population_weighting",
 }
 
 
@@ -62,6 +61,12 @@ def fmt_percent(value: float | int | str | None) -> str:
     if value is None or (isinstance(value, float) and np.isnan(value)):
         return ""
     return f"{100 * float(value):.1f}%"
+
+
+def fmt_percent_points(value: float | int | str | None) -> str:
+    if value is None or (isinstance(value, float) and np.isnan(value)):
+        return ""
+    return f"{float(value):.1f}%"
 
 
 def fmt_float(value: float | int | str | None, digits: int = 2) -> str:
@@ -98,6 +103,69 @@ def latex_escape(value: object) -> str:
     return "".join(replacements.get(char, char) for char in text)
 
 
+def latex_column_spec(column_spec: str | None, n_columns: int) -> str:
+    spec = (column_spec or ("l" * n_columns)).strip()
+    if spec.startswith("@{"):
+        return spec
+    return f"@{{}}{spec}@{{}}"
+
+
+def render_latex_table(
+    *,
+    caption: str,
+    label: str,
+    columns: list[str],
+    rows: list[list[object]],
+    column_spec: str | None = None,
+    small: bool = True,
+    addlinespace_after: set[int] | None = None,
+    tabcolsep: str = "4pt",
+    arraystretch: str = "1.12",
+) -> str:
+    column_spec = latex_column_spec(column_spec, len(columns))
+    addlinespace_after = addlinespace_after or set()
+
+    header = " & ".join(f"\\textbf{{{latex_escape(col)}}}" for col in columns)
+    body_lines = []
+    for row_idx, row in enumerate(rows):
+        if len(row) != len(columns):
+            raise ValueError(
+                f"Table row {row_idx} has {len(row)} cells; expected {len(columns)}."
+            )
+        body_lines.append(
+            "    " + " & ".join(latex_escape(cell) for cell in row) + r" \\"
+        )
+        if row_idx in addlinespace_after and row_idx < len(rows) - 1:
+            body_lines.append(r"    \addlinespace[0.35em]")
+
+    lines = [
+        r"\begin{table}[htbp]",
+        r"\centering",
+        f"\\caption[{latex_escape(caption)}]{{{latex_escape(caption)}}}\\label{{{label}}}",
+        r"\begingroup",
+    ]
+    if small:
+        lines.append(r"\small")
+    lines.extend(
+        [
+            f"\\setlength{{\\tabcolsep}}{{{tabcolsep}}}",
+            f"\\renewcommand{{\\arraystretch}}{{{arraystretch}}}",
+            r"\begin{adjustbox}{max width=\textwidth,center}",
+            f"\\begin{{tabular}}{{{column_spec}}}",
+            r"\toprule",
+            f"{header} \\\\",
+            r"\midrule",
+            *body_lines,
+            r"\bottomrule",
+            r"\end{tabular}",
+            r"\end{adjustbox}",
+            r"\endgroup",
+            r"\end{table}",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def write_latex_table(
     paths: Paths,
     name: str,
@@ -108,32 +176,18 @@ def write_latex_table(
     rows: list[list[object]],
     column_spec: str | None = None,
     small: bool = True,
+    addlinespace_after: set[int] | None = None,
 ) -> None:
     paths.figure_dir.mkdir(parents=True, exist_ok=True)
-    column_spec = column_spec or ("l" * len(columns))
-    size = "\\small\n" if small else ""
-    header = " & ".join(f"\\textbf{{{latex_escape(col)}}}" for col in columns)
-    body = "\n".join(
-        "    " + " & ".join(latex_escape(cell) for cell in row) + r" \\"
-        for row in rows
+    content = render_latex_table(
+        caption=caption,
+        label=label,
+        columns=columns,
+        rows=rows,
+        column_spec=column_spec,
+        small=small,
+        addlinespace_after=addlinespace_after,
     )
-    content = textwrap.dedent(
-        rf"""
-        \begin{{table}}[htbp]
-        \centering
-        {size}\caption[{latex_escape(caption)}]{{\textbf{{{latex_escape(caption)}}}}}\label{{{label}}}
-        \begin{{adjustbox}}{{max width=\textwidth}}
-        \begin{{tabular}}{{{column_spec}}}
-        \toprule
-        {header} \\
-        \midrule
-        {body}
-        \bottomrule
-        \end{{tabular}}
-        \end{{adjustbox}}
-        \end{{table}}
-        """
-    ).strip()
     (paths.figure_dir / f"{name}.tex").write_text(content + "\n")
 
 
@@ -152,45 +206,49 @@ def simd_appendix_table_tex(
 
     methods = ["equal_datazone", "population_weighted"]
     display = group_summary.loc[group_summary["grouping_method"].isin(methods)].copy()
+    method_order = {method: idx for idx, method in enumerate(methods)}
+    display["_method_sort"] = display["grouping_method"].map(method_order)
+    display = display.sort_values(["_method_sort", "simd_group"])
     display["rank_range"] = (
-        display["first_simd_rank"].astype(int).astype(str)
+        display["first_simd_rank"].map(fmt_int)
         + "--"
-        + display["last_simd_rank"].astype(int).astype(str)
+        + display["last_simd_rank"].map(fmt_int)
     )
 
-    lines = [
-        "\\begin{table}[htbp]",
-        "\\centering",
-        f"\\caption{{{caption}}}",
-        f"\\label{{{label}}}",
-        "\\begin{tabular}{llrrrr}",
-        "\\toprule",
-        "Grouping & SIMD group & Data Zones & Population & Population (\\%) & SIMD rank range \\\\",
-        "\\midrule",
-    ]
-    for row in display.itertuples(index=False):
-        lines.append(
-            " & ".join(
+    rows = []
+    addlinespace_after: set[int] = set()
+    method_groups = list(display.groupby("_method_sort", sort=False))
+    for method_idx, (_, group) in enumerate(method_groups):
+        group = group.sort_values("simd_group")
+        for row_idx, row in enumerate(group.itertuples(index=False)):
+            rows.append(
                 [
-                    str(row.grouping_method_label),
+                    str(row.grouping_method_label) if row_idx == 0 else "",
                     str(int(row.simd_group)),
-                    f"{int(row.n_datazones):,}",
-                    f"{int(row.total_population):,}",
-                    f"{float(row.pct_population):.1f}",
+                    fmt_int(row.n_datazones),
+                    fmt_int(row.total_population),
+                    fmt_percent_points(row.pct_population),
                     str(row.rank_range),
                 ]
             )
-            + " \\\\"
-        )
-    lines.extend(
-        [
-            "\\bottomrule",
-            "\\end{tabular}",
-            "\\end{table}",
-            "",
-        ]
+        if method_idx < len(method_groups) - 1 and rows:
+            addlinespace_after.add(len(rows) - 1)
+
+    return render_latex_table(
+        caption=caption,
+        label=label,
+        columns=[
+            "Grouping",
+            "SIMD group",
+            "Data zones",
+            "Population",
+            "Population share",
+            "SIMD rank range",
+        ],
+        rows=rows,
+        column_spec="lrrrrl",
+        addlinespace_after=addlinespace_after,
     )
-    return "\n".join(lines)
 
 
 def write_simd_appendix_table(
@@ -486,7 +544,10 @@ def write_assortativity_summary_table(paths: Paths) -> None:
     trans = transition_attribute_summary(paths)
     summary = pd.concat([comp, trans], ignore_index=True, sort=False)
     rows = []
-    for graph_label, df in summary.groupby("graph", sort=False):
+    addlinespace_after: set[int] = set()
+    graph_groups = list(summary.groupby("graph", sort=False))
+    for graph_idx, (graph_label, df) in enumerate(graph_groups):
+        graph_row_start = len(rows)
         for attribute in ATTRIBUTE_ORDER:
             group = df.loc[df["attribute_label"].eq(attribute)]
             if group.empty:
@@ -494,10 +555,12 @@ def write_assortativity_summary_table(paths: Paths) -> None:
             row = group.iloc[0]
             rows.append(
                 [
-                    graph_label,
+                    graph_label if len(rows) == graph_row_start else "",
                     attribute,
                     fmt_int(row["n_windows"]),
-                    fmt_int(row["n_networks"]) if not pd.isna(row["n_networks"]) else "",
+                    fmt_int(row["n_networks"])
+                    if not pd.isna(row["n_networks"])
+                    else "",
                     fmt_float(row["weighted_mean"], 4),
                     fmt_ci(row["ci_low"], row["ci_high"], 4),
                     f"{fmt_float(row['window_median'], 3)} "
@@ -505,6 +568,8 @@ def write_assortativity_summary_table(paths: Paths) -> None:
                     f"{fmt_float(row['window_q90'], 3)})",
                 ]
             )
+        if graph_idx < len(graph_groups) - 1 and len(rows) > graph_row_start:
+            addlinespace_after.add(len(rows) - 1)
     write_latex_table(
         paths,
         TABLE_NAMES["assortativity_summary"],
@@ -521,6 +586,7 @@ def write_assortativity_summary_table(paths: Paths) -> None:
         ],
         rows=rows,
         column_spec="llrrrll",
+        addlinespace_after=addlinespace_after,
     )
 
 
