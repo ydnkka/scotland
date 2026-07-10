@@ -51,9 +51,8 @@ The Chapter 4 analysis uses:
 - `compatibility_mixing_matrix`: weighted categorical mixing matrices for the
   within-window, within-lineage compatibility network.
 - `compatibility_assortativity`: scalar assortativity summaries derived from
-  those matrices. When `build_mixing.py` is run with `--n-permutations`,
-  this table also includes empirical permutation p-values and null-distribution
-  summary columns.
+  those matrices, with deterministic node-block jackknife uncertainty columns
+  by default.
 - `compatibility_degree_assortativity`: topology diagnostics for each
   compatibility window-lineage network, including degree assortativity,
   edge-weighted degree assortativity, and weighted strength assortativity.
@@ -71,6 +70,10 @@ chunks under:
 Existing same-stem intermediate chunks are skipped unless `--force` is passed.
 After worker completion, the selected intermediate chunks are concatenated into
 the final `compatibility_*` tables under `observation_networks/results/tables`.
+Pairwise files at or above `--giant-threshold` (`50,000,000` sparse edges by
+default, with unknown costs treated as giant) are skipped by default. Pass
+`--include-giants` to run the giant-file phase and include those chunks in the
+final compatibility tables.
 
 `build_simd_validation.py` writes:
 
@@ -105,28 +108,34 @@ For undirected compatibility networks, each edge is represented in both
 directions before computing the matrix. For the temporal transition graph, edge
 orientation is retained.
 
-When `build_mixing.py` is run with `--n-permutations B`, the compatibility
-assortativity table also includes an empirical permutation test for each
-window-lineage-attribute group. The test holds the observed compatibility edge list,
-edge weights, and category counts fixed, then randomly permutes vertex labels
-across the vertices used by that window-lineage network before recomputing
-assortativity. This tests whether the observed edge-weighted same-category
-mixing is stronger than would be expected from the same weighted network
-topology and the same marginal label distribution. The reported p-value is
-two-sided:
+Compatibility assortativity uncertainty is estimated with a deterministic
+node-block jackknife. For each physical `(window_id, pango_lineage)` pairwise
+file, vertices used by the retained compatibility edges are assigned to up to
+`--jackknife-blocks` balanced hash blocks (`50` by default). For each attribute,
+the observed edge-weighted mixing matrix is kept fixed as the point estimate,
+then each block is left out by subtracting all edge mass touching vertices in
+that block. Assortativity is recomputed from each leave-one-block-out matrix.
+
+The standard error is:
 
 ```text
-p = (count(|r_permuted| >= |r_observed|) + 1) / (B + 1)
+SE = sqrt((K - 1) / K * sum_k (r_k - mean(r_k))^2)
 ```
 
-Permutation output columns are added only when `B > 0`: `n_permutations`,
-`permutation_p_value`, `null_assortativity_mean`, and
-`null_assortativity_std`. Missing attribute labels are dropped from the
-edge-level calculation by default; passing `--missing-label` keeps them as an
-explicit category. The base `--permutation-seed` is made stable per
-window-lineage group and attribute, so reruns with the same inputs, seed, and
-permutation count are deterministic while parallel file execution can complete
-in any order.
+where `K` is the number of finite leave-block-out estimates. Approximate
+interval columns use `r_observed +/- 1.96 * SE`. This estimates uncertainty in
+the observed sequence-level compatibility-network assortativity; it is not a
+random-label significance test and does not test against a topology-preserving
+null. This is intentional: pairwise edges share sequences, so edge-level
+resampling is not a good default for the largest files.
+
+The compatibility assortativity table includes `uncertainty_method`,
+`jackknife_blocks_used`, `jackknife_replicates`,
+`jackknife_assortativity_mean`, `assortativity_se`,
+`assortativity_ci_low`, and `assortativity_ci_high`. Missing attribute labels
+are dropped from the edge-level calculation by default; passing
+`--missing-label` keeps them as an explicit category. Pass
+`--jackknife-blocks 0` to skip uncertainty columns for development runs.
 
 Degree and strength assortativity are separate topology diagnostics. They
 summarise whether highly connected or high-strength sequences connect to

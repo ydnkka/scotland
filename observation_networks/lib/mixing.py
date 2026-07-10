@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 from typing import Iterable, Sequence, Any
 
 import numpy as np
@@ -120,23 +119,6 @@ def _dense_mixing_for_categories(
     return matrix
 
 
-def _stable_permutation_seed(
-    base_seed: int | None,
-    *,
-    group_values: dict[str, Any],
-    attribute_name: str,
-) -> int | None:
-    if base_seed is None:
-        return None
-    parts = [str(base_seed), attribute_name]
-    parts.extend(f"{key}={value}" for key, value in sorted(group_values.items()))
-    digest = hashlib.blake2b(
-        "|".join(parts).encode("utf-8"),
-        digest_size=8,
-    ).digest()
-    return int.from_bytes(digest, byteorder="little", signed=False) % (2**32)
-
-
 def _edge_arrays_from_edge_table(
     edges: pd.DataFrame,
     *,
@@ -227,7 +209,7 @@ def _weighted_pearson_correlation(
     return float(covariance / denominator)
 
 
-def weighted_nominal_assortativity_permutation(
+def weighted_nominal_assortativity(
     labels: pd.Series[Any] | Sequence[Any],
     source_vertices: Sequence[int] | np.ndarray,
     target_vertices: Sequence[int] | np.ndarray,
@@ -235,18 +217,13 @@ def weighted_nominal_assortativity_permutation(
     *,
     symmetric: bool = True,
     missing_label: str | None = None,
-    n_permutations: int = 0,
-    seed: int | None = None,
 ) -> dict[str, Any]:
-    """Compute weighted nominal assortativity and optional permutation p-value.
+    """Compute weighted nominal assortativity from compact edge arrays.
 
     The inputs are compact NumPy-style edge arrays: each edge references source
     and target vertex indices, and ``labels`` gives one categorical label per
-    vertex. This avoids repeated pandas joins/groupbys during permutation tests.
+    vertex. This avoids repeated pandas joins/groupbys during mixing summaries.
     """
-    if n_permutations < 0:
-        raise ValueError("n_permutations must be non-negative")
-
     labels = pd.Series(labels, dtype="object")
     source_vertices = np.asarray(source_vertices, dtype=int)
     target_vertices = np.asarray(target_vertices, dtype=int)
@@ -326,30 +303,6 @@ def weighted_nominal_assortativity_permutation(
     components = _assortativity_components_from_dense(mixing_matrix)
     r_obs = components["assortativity"]
 
-    null_distribution = np.array([], dtype=float)
-    p_value = np.nan
-    if n_permutations > 0 and not np.isnan(r_obs):
-        rng = np.random.default_rng(seed)
-        null_distribution = np.zeros(n_permutations, dtype=float)
-        shuffled_indices = category_indices.copy()
-        for i in range(n_permutations):
-            rng.shuffle(shuffled_indices)
-            permuted_matrix = _dense_mixing_for_categories(
-                shuffled_indices,
-                source_vertices,
-                target_vertices,
-                edge_weights,
-                n_categories=n_categories,
-                symmetric=symmetric,
-            )
-            null_distribution[i] = _assortativity_components_from_dense(
-                permuted_matrix
-            )["assortativity"]
-        p_value = (np.sum(np.abs(null_distribution) >= abs(r_obs)) + 1) / (
-            n_permutations + 1
-        )
-
-    finite_null = null_distribution[np.isfinite(null_distribution)]
     total_weight = mixing_matrix.sum()
     normalized_mixing = (
         mixing_matrix / total_weight if total_weight > 0 else mixing_matrix
@@ -357,16 +310,6 @@ def weighted_nominal_assortativity_permutation(
     return {
         "observed_r": r_obs,
         "assortativity": r_obs,
-        "p_value": p_value,
-        "permutation_p_value": p_value,
-        "n_permutations": int(n_permutations),
-        "null_distribution": null_distribution,
-        "null_assortativity_mean": float(finite_null.mean())
-        if finite_null.size
-        else np.nan,
-        "null_assortativity_std": float(finite_null.std(ddof=1))
-        if finite_null.size > 1
-        else np.nan,
         "mixing_matrix": normalized_mixing,
         "mixing_matrix_raw_weights": mixing_matrix,
         "mixing_matrix_contributions": contribution_matrix.astype(int),
@@ -408,9 +351,9 @@ def _dense_result_to_long_matrix(
                     "target_category": str(target_category),
                     "edge_weight": edge_weight,
                     "edge_contributions": edge_contributions,
-                    "edge_weight_proportion": edge_weight / total
-                    if total > 0
-                    else np.nan,
+                    "edge_weight_proportion": (
+                        edge_weight / total if total > 0 else np.nan
+                    ),
                 }
             )
     return pd.DataFrame(rows, columns=columns)
@@ -460,11 +403,9 @@ def degree_strength_assortativity_from_edge_arrays(
         + np.bincount(target_vertices, minlength=n_vertices)
     ).astype(float)
 
-    strength = (
-        np.bincount(source_vertices, weights=edge_weights, minlength=n_vertices)
-        + np.bincount(target_vertices, weights=edge_weights, minlength=n_vertices)
-    )
-
+    strength = np.bincount(
+        source_vertices, weights=edge_weights, minlength=n_vertices
+    ) + np.bincount(target_vertices, weights=edge_weights, minlength=n_vertices)
 
     source_degree = degree[source_vertices]
     target_degree = degree[target_vertices]
@@ -560,10 +501,8 @@ def _build_mixing_for_edge_table_numpy(
     group_cols: Sequence[str] | None,
     symmetric: bool,
     missing_label: str | None,
-    n_permutations: int,
-    seed: int | None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Build mixing outputs using pandas preparation and NumPy permutations."""
+    """Build mixing outputs using pandas preparation and NumPy arrays."""
     matrix_parts: list[pd.DataFrame] = []
     summary_rows: list[dict[str, Any]] = []
     attributes = tuple(attributes)
@@ -590,26 +529,19 @@ def _build_mixing_for_edge_table_numpy(
             if spec.column not in attr_lookup.columns:
                 continue
 
-            permutation_seed = _stable_permutation_seed(
-                seed,
-                group_values=group_values,
-                attribute_name=spec.name,
-            )
             labels = _labels_for_vertices(
                 edge_arrays["vertex_names"],
                 attr_lookup,
                 attribute=spec,
                 missing_label=missing_label,
             )
-            result = weighted_nominal_assortativity_permutation(
+            result = weighted_nominal_assortativity(
                 labels,
                 edge_arrays["source_vertices"],
                 edge_arrays["target_vertices"],
                 edge_arrays["edge_weights"],
                 symmetric=symmetric,
                 missing_label=missing_label,
-                n_permutations=n_permutations,
-                seed=permutation_seed,
             )
 
             matrix = _dense_result_to_long_matrix(result, attribute=spec)
@@ -637,15 +569,6 @@ def _build_mixing_for_edge_table_numpy(
                     "expected_same_category_weight"
                 ],
             }
-            if n_permutations > 0:
-                summary.update(
-                    {
-                        "n_permutations": result["n_permutations"],
-                        "permutation_p_value": result["permutation_p_value"],
-                        "null_assortativity_mean": result["null_assortativity_mean"],
-                        "null_assortativity_std": result["null_assortativity_std"],
-                    }
-                )
             summary_rows.append(summary)
 
     matrix_table = (
@@ -669,12 +592,8 @@ def build_mixing_for_edge_table(
     group_cols: Sequence[str] | None = ("window_id",),
     symmetric: bool = True,
     missing_label: str | None = None,
-    n_permutations: int = 0,
-    seed: int | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Build mixing matrices and assortativity summaries for an edge table."""
-    if n_permutations < 0:
-        raise ValueError("n_permutations must be non-negative")
     return _build_mixing_for_edge_table_numpy(
         edges,
         nodes,
@@ -686,8 +605,6 @@ def build_mixing_for_edge_table(
         group_cols=group_cols,
         symmetric=symmetric,
         missing_label=missing_label,
-        n_permutations=n_permutations,
-        seed=seed,
     )
 
 

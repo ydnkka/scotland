@@ -42,13 +42,13 @@ Run from the Scotland repository root.
 Run the whole Chapter 4 build:
 
 ```bash
-bash observation_networks/run_all.sh --workers 5
+bash observation_networks/run_all.sh --workers 4
 ```
 
 Using the project conda environment:
 
 ```bash
-bash observation_networks/run_all.sh --conda-env PhD --workers 5
+bash observation_networks/run_all.sh --conda-env PhD --workers 4
 ```
 
 ```bash
@@ -65,27 +65,35 @@ This processes every pairwise lineage file inside the requested windows. Use
 `--max-windows N` to keep all lineages from only the first `N` selected windows
 for development runs.
 
-Add empirical permutation p-values for assortativity:
+Use a smaller node-block jackknife for quick uncertainty checks:
 
 ```bash
-python -m observation_networks.build_mixing --windows W080 --n-permutations 1000 --missing-label Unknown
+python -m observation_networks.build_mixing --windows W080 --jackknife-blocks 10
 ```
 
 Build compatibility-network mixing for all retained windows:
 
 ```bash
-python -m observation_networks.build_mixing --all-windows --workers 5
+python -m observation_networks.build_mixing --all-windows --workers 4
+```
+
+By default this skips giant pairwise files, defined by `--giant-threshold`
+(`50,000,000` sparse edges by default). For the full run including those files:
+
+```bash
+python -m observation_networks.build_mixing --all-windows --workers 4 --include-giants --giant-workers 1
 ```
 
 Each worker handles one `data/processed/pairwise_distances_dataset/*.parquet`
 file. Per-file intermediate parquet outputs are written under
 `observation_networks/results/intermediate/`, and the final concatenated
 compatibility-network mixing, assortativity, and degree/strength assortativity
-tables are written under `observation_networks/results/tables/`. At `INFO`,
-progress is logged every 100 completed pairwise files by default; pass
-`--progress-every N` to `build_mixing.py` or `--mixing-progress-every N` to
-`run_all.sh` to tune this. Per-file progress is available with
-`--log-level DEBUG`.
+tables are written under `observation_networks/results/tables/`. The
+assortativity table includes deterministic node-block jackknife uncertainty by
+default; pass `--jackknife-blocks 0` to skip it. At `INFO`, progress is logged
+every 100 completed pairwise files by default; pass `--progress-every N` to
+`build_mixing.py` or `--mixing-progress-every N` to `run_all.sh` to tune this.
+Per-file progress is available with `--log-level DEBUG`.
 
 Build the SIMD population-weighting validation tables:
 

@@ -16,10 +16,11 @@ Options:
   --max-windows N              Development cap for build_tables main windows.
   --max-transition-windows N   Development cap for build_tables transition windows.
   --max-mixing-windows N       Development cap for build_mixing windows.
-  --mixing-permutations N      Permutations for compatibility assortativity p-values.
-  --mixing-permutation-seed N  Base seed for compatibility permutation p-values.
+  --mixing-jackknife-blocks N  Requested node blocks for assortativity uncertainty.
+  --mixing-jackknife-seed N    Seed for deterministic jackknife block assignment.
   --mixing-missing-label LABEL Missing node-attribute label passed to build_mixing.
   --mixing-progress-every N    Log build_mixing progress every N pairwise files.
+  --include-mixing-giants      Process giant build_mixing pairwise files.
   --skip-simd                  Skip SIMD population-weighting validation.
   --skip-tables                Skip core observation/transition tables.
   --skip-mixing                Skip compatibility-network mixing.
@@ -29,8 +30,8 @@ Options:
   -h, --help                   Show this help.
 
 Examples:
-  bash observation_networks/run_all.sh --workers 5
-  bash observation_networks/run_all.sh --conda-env PhD --workers 5
+  bash observation_networks/run_all.sh --workers 4
+  bash observation_networks/run_all.sh --conda-env PhD --workers 4
   bash observation_networks/run_all.sh --max-windows 2 --max-transition-windows 3 --max-mixing-windows 1
 EOF
 }
@@ -46,10 +47,11 @@ python_bin="${PYTHON:-python}"
 max_windows=""
 max_transition_windows=""
 max_mixing_windows=""
-mixing_permutations=""
-mixing_permutation_seed=""
+mixing_jackknife_blocks=""
+mixing_jackknife_seed=""
 mixing_missing_label=""
 mixing_progress_every=""
+include_mixing_giants=0
 skip_simd=0
 skip_tables=0
 skip_mixing=0
@@ -87,12 +89,12 @@ while [[ $# -gt 0 ]]; do
       max_mixing_windows="${2:?--max-mixing-windows requires a value}"
       shift 2
       ;;
-    --mixing-permutations)
-      mixing_permutations="${2:?--mixing-permutations requires a value}"
+    --mixing-jackknife-blocks)
+      mixing_jackknife_blocks="${2:?--mixing-jackknife-blocks requires a value}"
       shift 2
       ;;
-    --mixing-permutation-seed)
-      mixing_permutation_seed="${2:?--mixing-permutation-seed requires a value}"
+    --mixing-jackknife-seed)
+      mixing_jackknife_seed="${2:?--mixing-jackknife-seed requires a value}"
       shift 2
       ;;
     --mixing-missing-label)
@@ -102,6 +104,10 @@ while [[ $# -gt 0 ]]; do
     --mixing-progress-every)
       mixing_progress_every="${2:?--mixing-progress-every requires a value}"
       shift 2
+      ;;
+    --include-mixing-giants)
+      include_mixing_giants=1
+      shift
       ;;
     --skip-simd)
       skip_simd=1
@@ -187,17 +193,20 @@ if [[ "${skip_mixing}" -eq 0 ]]; then
   if [[ -n "${max_mixing_windows}" ]]; then
     mixing_args+=(--max-windows "${max_mixing_windows}")
   fi
-  if [[ -n "${mixing_permutations}" ]]; then
-    mixing_args+=(--n-permutations "${mixing_permutations}")
+  if [[ -n "${mixing_jackknife_blocks}" ]]; then
+    mixing_args+=(--jackknife-blocks "${mixing_jackknife_blocks}")
   fi
-  if [[ -n "${mixing_permutation_seed}" ]]; then
-    mixing_args+=(--permutation-seed "${mixing_permutation_seed}")
+  if [[ -n "${mixing_jackknife_seed}" ]]; then
+    mixing_args+=(--jackknife-seed "${mixing_jackknife_seed}")
   fi
   if [[ -n "${mixing_missing_label}" ]]; then
     mixing_args+=(--missing-label "${mixing_missing_label}")
   fi
   if [[ -n "${mixing_progress_every}" ]]; then
     mixing_args+=(--progress-every "${mixing_progress_every}")
+  fi
+  if [[ "${include_mixing_giants}" -eq 1 ]]; then
+    mixing_args+=(--include-giants)
   fi
   run_cmd "${python_cmd[@]}" -m observation_networks.build_mixing "${mixing_args[@]}"
 fi
