@@ -39,20 +39,20 @@ ignored by git and recreated by the build commands when needed.
 
 Run from the Scotland repository root.
 
-Run the whole Chapter 4 build:
-
-```bash
-bash observation_networks/run_all.sh --workers 4
-```
-
-Using the project conda environment:
-
-```bash
-bash observation_networks/run_all.sh --conda-env PhD --workers 4
-```
+Run the core Chapter 4 tables:
 
 ```bash
 python -m observation_networks.build_tables
+```
+
+Run the full observation-network build by executing the table, mixing, SIMD
+validation, and figure builders in sequence:
+
+```bash
+python -m observation_networks.build_tables
+python -m observation_networks.build_mixing --all-windows --workers 4
+python -m observation_networks.build_simd_validation
+python -m observation_networks.make_figures --skip-missing
 ```
 
 Build compatibility-network mixing for a small development window set:
@@ -65,10 +65,10 @@ This processes every pairwise lineage file inside the requested windows. Use
 `--max-windows N` to keep all lineages from only the first `N` selected windows
 for development runs.
 
-Use a smaller node-block jackknife for quick uncertainty checks:
+Cap adaptive large-file jackknife blocks for quick uncertainty checks:
 
 ```bash
-python -m observation_networks.build_mixing --windows W080 --jackknife-blocks 10
+python -m observation_networks.build_mixing --windows W080 --jackknife-blocks 100
 ```
 
 Build compatibility-network mixing for all retained windows:
@@ -89,11 +89,13 @@ file. Per-file intermediate parquet outputs are written under
 `observation_networks/results/intermediate/`, and the final concatenated
 compatibility-network mixing, assortativity, and degree/strength assortativity
 tables are written under `observation_networks/results/tables/`. The
-assortativity table includes deterministic node-block jackknife uncertainty by
-default; pass `--jackknife-blocks 0` to skip it. At `INFO`, progress is logged
-every 100 completed pairwise files by default; pass `--progress-every N` to
-`build_mixing.py` or `--mixing-progress-every N` to `run_all.sh` to tune this.
-Per-file progress is available with `--log-level DEBUG`.
+assortativity table includes deterministic jackknife uncertainty by default:
+attributes with up to 1,000 contributing vertices use leave-one-node jackknife,
+and larger attributes use adaptive node blocks capped by `--jackknife-blocks`.
+Pass `--jackknife-blocks 0` to skip uncertainty columns. At `INFO`, progress is
+logged every 100 completed pairwise files by default; pass `--progress-every N`
+to `build_mixing.py` to tune this. Per-file progress is available with
+`--log-level DEBUG`.
 
 Build the SIMD population-weighting validation tables:
 

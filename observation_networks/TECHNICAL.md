@@ -109,12 +109,20 @@ directions before computing the matrix. For the temporal transition graph, edge
 orientation is retained.
 
 Compatibility assortativity uncertainty is estimated with a deterministic
-node-block jackknife. For each physical `(window_id, pango_lineage)` pairwise
-file, vertices used by the retained compatibility edges are assigned to up to
-`--jackknife-blocks` balanced hash blocks (`50` by default). For each attribute,
-the observed edge-weighted mixing matrix is kept fixed as the point estimate,
-then each block is left out by subtracting all edge mass touching vertices in
-that block. Assortativity is recomputed from each leave-one-block-out matrix.
+node jackknife. For each attribute within each physical `(window_id,
+pango_lineage)` pairwise file, missing labels are handled first and the
+contributing labelled vertices are counted. Attributes with up to 1,000
+contributing vertices use the standard leave-one-node jackknife. Larger
+attributes use balanced hash blocks with an adaptive block count:
+
+```text
+K = min(--jackknife-blocks, max(50, ceil(sqrt(n_vertices)), ceil(n_vertices / 1000)))
+```
+
+with `--jackknife-blocks` defaulting to `1,000`. The observed edge-weighted
+mixing matrix is kept fixed as the point estimate, then each node or block is
+left out by subtracting all edge mass touching vertices in that unit.
+Assortativity is recomputed from each leave-one-unit-out matrix.
 
 The standard error is:
 
@@ -122,15 +130,17 @@ The standard error is:
 SE = sqrt((K - 1) / K * sum_k (r_k - mean(r_k))^2)
 ```
 
-where `K` is the number of finite leave-block-out estimates. Approximate
-interval columns use `r_observed +/- 1.96 * SE`. This estimates uncertainty in
-the observed sequence-level compatibility-network assortativity; it is not a
-random-label significance test and does not test against a topology-preserving
-null. This is intentional: pairwise edges share sequences, so edge-level
-resampling is not a good default for the largest files.
+where `K` is the number of finite leave-unit-out estimates. At least five finite
+replicates are required before an SE or interval is reported; otherwise the
+uncertainty columns are retained but set to `NaN`. Approximate interval columns
+use `r_observed +/- 1.96 * SE`. This estimates uncertainty in the observed
+sequence-level compatibility-network assortativity; it is not a random-label
+significance test and does not test against a topology-preserving null. This is
+intentional: pairwise edges share sequences, so edge-level resampling is not a
+good default for the largest files.
 
 The compatibility assortativity table includes `uncertainty_method`,
-`jackknife_blocks_used`, `jackknife_replicates`,
+`jackknife_vertices_used`, `jackknife_blocks_used`, `jackknife_replicates`,
 `jackknife_assortativity_mean`, `assortativity_se`,
 `assortativity_ci_low`, and `assortativity_ci_high`. Missing attribute labels
 are dropped from the edge-level calculation by default; passing

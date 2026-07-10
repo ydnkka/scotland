@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import math
 import os
 import tempfile
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -67,6 +68,10 @@ PAIRWISE_COLUMNS = [
     "id2",
     "epilink_compatibility",
 ]
+JACKKNIFE_LEAVE_ONE_NODE_LIMIT = 1_000
+JACKKNIFE_MIN_BLOCKS = 50
+JACKKNIFE_TARGET_BLOCK_SIZE = 1_000
+JACKKNIFE_MIN_FINITE_REPLICATES = 5
 
 
 @dataclass(frozen=True)
@@ -264,7 +269,15 @@ def _edge_arrays_for_jackknife(
 def _jackknife_block_count(n_vertices: int, requested_blocks: int) -> int:
     if requested_blocks <= 0 or n_vertices < 2:
         return 0
-    return min(requested_blocks, max(5, n_vertices // 2), n_vertices)
+    if n_vertices <= JACKKNIFE_LEAVE_ONE_NODE_LIMIT:
+        return n_vertices
+
+    adaptive_blocks = max(
+        JACKKNIFE_MIN_BLOCKS,
+        math.ceil(math.sqrt(n_vertices)),
+        math.ceil(n_vertices / JACKKNIFE_TARGET_BLOCK_SIZE),
+    )
+    return min(requested_blocks, adaptive_blocks, n_vertices)
 
 
 def _assign_jackknife_blocks(
@@ -356,11 +369,13 @@ def _jackknife_uncertainty_for_attribute(
     source_vertices: np.ndarray,
     target_vertices: np.ndarray,
     edge_weights: np.ndarray,
-    vertex_blocks: np.ndarray,
+    vertex_names: pd.Index,
     *,
     missing_label: str | None,
+    requested_blocks: int,
+    seed: int,
 ) -> dict[str, float | int | str]:
-    if vertex_blocks.size == 0:
+    if requested_blocks <= 0:
         return _empty_jackknife_uncertainty(0)
 
     if missing_label is not None:
@@ -374,7 +389,7 @@ def _jackknife_uncertainty_for_attribute(
         & (edge_weights > 0)
     )
     if not edge_mask.any():
-        return _empty_jackknife_uncertainty(int(vertex_blocks.max()) + 1)
+        return _empty_jackknife_uncertainty(0)
 
     source_vertices = source_vertices[edge_mask]
     target_vertices = target_vertices[edge_mask]
@@ -385,6 +400,15 @@ def _jackknife_uncertainty_for_attribute(
     remap[used_vertices] = np.arange(used_vertices.size)
     source_vertices = remap[source_vertices]
     target_vertices = remap[target_vertices]
+
+    used_vertex_names = pd.Index(vertex_names.take(used_vertices))
+    vertex_blocks = _assign_jackknife_blocks(
+        used_vertex_names,
+        requested_blocks=requested_blocks,
+        seed=seed,
+    )
+    if vertex_blocks.size == 0:
+        return _empty_jackknife_uncertainty(0, n_vertices=used_vertices.size)
 
     used_labels = labels.iloc[used_vertices].astype(str).to_numpy()
     unique_labels = np.array(sorted(pd.unique(used_labels).tolist()), dtype=object)
@@ -397,13 +421,9 @@ def _jackknife_uncertainty_for_attribute(
 
     source_categories = category_indices[source_vertices]
     target_categories = category_indices[target_vertices]
-    block_values = vertex_blocks[used_vertices]
-    unique_blocks = np.array(sorted(np.unique(block_values).tolist()), dtype=int)
-    block_remap = np.full(int(vertex_blocks.max()) + 1, -1, dtype=int)
-    block_remap[unique_blocks] = np.arange(unique_blocks.size)
-    source_blocks = block_remap[block_values[source_vertices]]
-    target_blocks = block_remap[block_values[target_vertices]]
-    n_blocks = unique_blocks.size
+    source_blocks = vertex_blocks[source_vertices]
+    target_blocks = vertex_blocks[target_vertices]
+    n_blocks = int(vertex_blocks.max()) + 1
 
     estimates = _jackknife_estimates_for_categories(
         source_categories,
@@ -415,8 +435,12 @@ def _jackknife_uncertainty_for_attribute(
         n_blocks=n_blocks,
     )
     finite = estimates[np.isfinite(estimates)]
-    if finite.size <= 1:
-        return _empty_jackknife_uncertainty(n_blocks)
+    if finite.size < JACKKNIFE_MIN_FINITE_REPLICATES:
+        return _empty_jackknife_uncertainty(
+            n_blocks,
+            n_vertices=used_vertices.size,
+            replicates=finite.size,
+        )
 
     estimate_mean = float(finite.mean())
     se = float(
@@ -425,7 +449,11 @@ def _jackknife_uncertainty_for_attribute(
         )
     )
     return {
-        "uncertainty_method": "node_block_jackknife",
+        "uncertainty_method": _jackknife_uncertainty_method(
+            n_blocks,
+            n_vertices=used_vertices.size,
+        ),
+        "jackknife_vertices_used": int(used_vertices.size),
         "jackknife_blocks_used": int(n_blocks),
         "jackknife_replicates": int(finite.size),
         "jackknife_assortativity_mean": estimate_mean,
@@ -435,11 +463,26 @@ def _jackknife_uncertainty_for_attribute(
     }
 
 
-def _empty_jackknife_uncertainty(n_blocks: int) -> dict[str, float | int | str]:
+def _jackknife_uncertainty_method(n_blocks: int, *, n_vertices: int) -> str:
+    if n_vertices >= 2 and n_blocks == n_vertices:
+        return "leave_one_node_jackknife"
+    return "node_block_jackknife"
+
+
+def _empty_jackknife_uncertainty(
+    n_blocks: int,
+    *,
+    n_vertices: int = 0,
+    replicates: int = 0,
+) -> dict[str, float | int | str]:
     return {
-        "uncertainty_method": "node_block_jackknife",
+        "uncertainty_method": _jackknife_uncertainty_method(
+            n_blocks,
+            n_vertices=n_vertices,
+        ),
+        "jackknife_vertices_used": int(n_vertices),
         "jackknife_blocks_used": int(n_blocks),
-        "jackknife_replicates": 0,
+        "jackknife_replicates": int(replicates),
         "jackknife_assortativity_mean": np.nan,
         "assortativity_se": np.nan,
         "assortativity_ci_low": np.nan,
@@ -477,11 +520,6 @@ def _add_jackknife_uncertainty(
     source_vertices = cast(np.ndarray, edge_arrays["source_vertices"])
     target_vertices = cast(np.ndarray, edge_arrays["target_vertices"])
     edge_weights = cast(np.ndarray, edge_arrays["edge_weights"])
-    vertex_blocks = _assign_jackknife_blocks(
-        vertex_names,
-        requested_blocks=requested_blocks,
-        seed=seed,
-    )
 
     lookup = node_attribute_lookup(
         nodes,
@@ -503,8 +541,10 @@ def _add_jackknife_uncertainty(
             source_vertices,
             target_vertices,
             edge_weights,
-            vertex_blocks,
+            vertex_names,
             missing_label=missing_label,
+            requested_blocks=requested_blocks,
+            seed=seed,
         )
         uncertainty_rows.append({"attribute": spec.name, **uncertainty})
 
@@ -515,11 +555,11 @@ def _add_jackknife_uncertainty(
     finite_se = out["assortativity_se"].notna()
     out.loc[finite_se, "assortativity_ci_low"] = (
         out.loc[finite_se, "assortativity"]
-        - 1.96 * out.loc[finite_se, "assortativity_se"]
+        - out.loc[finite_se, "assortativity_se"] * 1.96
     )
     out.loc[finite_se, "assortativity_ci_high"] = (
         out.loc[finite_se, "assortativity"]
-        + 1.96 * out.loc[finite_se, "assortativity_se"]
+        + out.loc[finite_se, "assortativity_se"] * 1.96
     )
     return out
 
@@ -836,18 +876,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--jackknife-blocks",
         type=int,
-        default=50,
+        default=1_000,
         help=(
-            "Requested deterministic node blocks for block-jackknife "
-            "assortativity uncertainty. The effective count is capped by the "
-            "number of vertices. Use 0 to skip uncertainty columns. Default: 50."
+            "Maximum deterministic node blocks for assortativity uncertainty. "
+            "Attributes with up to 1,000 contributing vertices use standard "
+            "leave-one-node jackknife; larger attributes use adaptive balanced "
+            "blocks capped by this value. Use 0 to skip uncertainty columns. "
+            "Default: 1,000."
         ),
     )
     parser.add_argument(
         "--jackknife-seed",
         type=int,
         default=42,
-        help="Seed mixed into deterministic node-block assignment. Default: 42.",
+        help="Seed mixed into deterministic jackknife assignment. Default: 42.",
     )
     parser.add_argument(
         "--workers",
@@ -937,12 +979,19 @@ def main() -> int:
         raise SystemExit("--progress-every must be at least 1.")
     if args.jackknife_blocks < 0:
         raise SystemExit("--jackknife-blocks must be non-negative.")
+    if 0 < args.jackknife_blocks < JACKKNIFE_MIN_FINITE_REPLICATES:
+        raise SystemExit(
+            "--jackknife-blocks must be 0 or at least "
+            f"{JACKKNIFE_MIN_FINITE_REPLICATES}."
+        )
     pairwise_dir = args.pairwise_dir
     if not pairwise_dir.exists():
         raise SystemExit(f"Pairwise dataset directory not found: {pairwise_dir}")
     if args.jackknife_blocks > 0:
         LOGGER.info(
-            "Computing node-block jackknife uncertainty with up to %s blocks",
+            "Computing jackknife uncertainty with leave-one-node up to %s "
+            "vertices and adaptive blocks capped at %s",
+            f"{JACKKNIFE_LEAVE_ONE_NODE_LIMIT:,}",
             f"{args.jackknife_blocks:,}",
         )
 
