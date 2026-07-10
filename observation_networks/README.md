@@ -25,7 +25,7 @@ detector. It should not create or consume candidate labels.
 - `lib/figures.py`: orchestration layer for the thesis figure scripts in
   `lib/figs/`.
 - `lib/figs/`: thesis figure and LaTeX table builders using `utils.style`.
-- `build_tables.py`: builds the standard Chapter 4 tables.
+- `build_cluster_tables.py`: builds the standard Chapter 4 tables.
 - `build_mixing.py`: builds compatibility-network mixing matrices from sparse
   pairwise EpiLink edges, processing one window-lineage pairwise parquet file
   per worker and concatenating the intermediate chunks.
@@ -45,14 +45,14 @@ Run from the Scotland repository root.
 Run the core Chapter 4 tables:
 
 ```bash
-python -m observation_networks.build_tables
+python -m observation_networks.build_cluster_tables
 ```
 
 Run the full observation-network build by executing the table, mixing, SIMD
 validation, and figure builders in sequence:
 
 ```bash
-python -m observation_networks.build_tables
+python -m observation_networks.build_cluster_tables
 python -m observation_networks.build_mixing --all-windows --workers 4
 python -m observation_networks.build_simd_validation
 python -m observation_networks.make_figures --skip-missing

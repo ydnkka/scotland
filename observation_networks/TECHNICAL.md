@@ -20,7 +20,7 @@ The Chapter 4 analysis uses:
 
 ## Outputs
 
-`build_tables.py` writes:
+`build_cluster_tables.py` writes:
 
 - `cohort_summary`: high-level observed-record counts.
 - `window_coverage`: one row per rolling window with sequenced counts, positive

@@ -2,7 +2,7 @@
 
 Run from the Scotland repository root:
 
-    python -m observation_networks.build_tables
+    python -m observation_networks.build_cluster_tables
 """
 
 from __future__ import annotations
