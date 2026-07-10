@@ -21,6 +21,8 @@ from .lib.cohort import (
     build_cohort_summary,
     build_denominator_contrasts,
     build_sequence_composition,
+    build_vaccination_context_by_policy,
+    build_vaccination_window_context,
     build_window_coverage,
 )
 from .lib.config import TRANSITION_WINDOW_STRIDE
@@ -91,6 +93,14 @@ def main() -> int:
         "sequence_composition_by_policy": (
             build_sequence_composition(df, group_cols=("policy_period",)),
             ("parquet", "csv"),
+        ),
+        "vaccination_context_by_policy": (
+            build_vaccination_context_by_policy(df),
+            ("csv", "parquet"),
+        ),
+        "vaccination_window_context": (
+            build_vaccination_window_context(df),
+            ("csv", "parquet"),
         ),
         "cluster_table": (cluster_table, ("parquet",)),
         "cluster_window_summary": (

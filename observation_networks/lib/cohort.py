@@ -22,6 +22,30 @@ if str(PROJECT_ROOT) not in sys.path:
 from utils import attach_period  # noqa: E402
 
 
+VACCINATION_DOSE_GROUPS = (
+    "Unvaccinated",
+    "One dose",
+    "Two doses",
+    "Booster/3+ doses",
+    "Vaccinated dose unknown",
+)
+POLICY_PERIOD_ORDER = (
+    "P2",
+    "P3",
+    "T1",
+    "F5",
+    "L2",
+    "SL",
+    "L3",
+    "L21",
+    "L0",
+    "NN",
+    "OM",
+    "FE",
+    "PR",
+)
+
+
 def sequence_level_frame(df: pd.DataFrame) -> pd.DataFrame:
     """Return one row per sequence from sequence-window input."""
     if "sequence_id" not in df.columns:
@@ -205,6 +229,154 @@ def build_sequence_composition(
         )
 
     return pd.concat(rows, ignore_index=True, sort=False)
+
+
+def _vaccination_context_frame(df: pd.DataFrame) -> pd.DataFrame:
+    required = {
+        "sequence_id",
+        "is_vaccinated",
+        "vacc_dose_number",
+        "vacc_booster",
+        "days_since_vaccination",
+    }
+    missing = required - set(df.columns)
+    if missing:
+        raise KeyError(f"Missing vaccination context columns: {sorted(missing)}")
+
+    out = df.copy()
+    out["_vaccinated"] = pd.to_numeric(out["is_vaccinated"], errors="coerce").eq(1)
+    out["_booster"] = pd.to_numeric(out["vacc_booster"], errors="coerce").eq(1)
+    out["_dose_number"] = pd.to_numeric(out["vacc_dose_number"], errors="coerce")
+    out["_days_since_vaccination"] = pd.to_numeric(
+        out["days_since_vaccination"], errors="coerce"
+    )
+
+    out["_dose_group"] = np.select(
+        [
+            ~out["_vaccinated"],
+            out["_vaccinated"] & (out["_booster"] | out["_dose_number"].ge(3)),
+            out["_vaccinated"] & out["_dose_number"].eq(2),
+            out["_vaccinated"] & out["_dose_number"].eq(1),
+        ],
+        [
+            "Unvaccinated",
+            "Booster/3+ doses",
+            "Two doses",
+            "One dose",
+        ],
+        default="Vaccinated dose unknown",
+    )
+    return out
+
+
+def _vaccination_summary_rows(
+    df: pd.DataFrame,
+    group_cols: Sequence[str],
+) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    for keys, group in df.groupby(list(group_cols), dropna=False, sort=False):
+        if not isinstance(keys, tuple):
+            keys = (keys,)
+        n_sequences = int(group["sequence_id"].nunique())
+        vaccinated = group["_vaccinated"]
+        booster = group["_booster"]
+        dose = group["_dose_number"]
+        days = group["_days_since_vaccination"]
+        valid_days = group.loc[vaccinated & days.ge(0), "_days_since_vaccination"]
+        valid_dose = group.loc[vaccinated & dose.gt(0), "_dose_number"]
+        dose_counts = group["_dose_group"].value_counts()
+
+        row: dict[str, Any] = dict(zip(group_cols, keys, strict=True))
+        row.update(
+            {
+                "n_sequences": n_sequences,
+                "n_vaccinated": int(vaccinated.sum()),
+                "n_unvaccinated": int(dose_counts.get("Unvaccinated", 0)),
+                "n_one_dose": int(dose_counts.get("One dose", 0)),
+                "n_two_doses": int(dose_counts.get("Two doses", 0)),
+                "n_booster_or_three_plus": int(
+                    dose_counts.get("Booster/3+ doses", 0)
+                ),
+                "n_vaccinated_dose_unknown": int(
+                    dose_counts.get("Vaccinated dose unknown", 0)
+                ),
+                "n_booster": int(booster.sum()),
+                "n_days_since_vaccination": int(valid_days.notna().sum()),
+                "median_dose_number_vaccinated": valid_dose.median(),
+                "median_days_since_vaccination": valid_days.median(),
+                "q25_days_since_vaccination": valid_days.quantile(0.25),
+                "q75_days_since_vaccination": valid_days.quantile(0.75),
+            }
+        )
+        rows.append(row)
+
+    out = pd.DataFrame(rows)
+    for count_col in (
+        "n_vaccinated",
+        "n_unvaccinated",
+        "n_one_dose",
+        "n_two_doses",
+        "n_booster_or_three_plus",
+        "n_vaccinated_dose_unknown",
+        "n_booster",
+    ):
+        prop_col = count_col.removeprefix("n_")
+        out[f"prop_{prop_col}"] = out[count_col] / out["n_sequences"].replace(0, np.nan)
+
+    out["prop_booster_among_vaccinated"] = out["n_booster"] / out[
+        "n_vaccinated"
+    ].replace(0, np.nan)
+    return out
+
+
+def build_vaccination_context_by_policy(df: pd.DataFrame) -> pd.DataFrame:
+    """Summarise sequence-level vaccination context by policy period."""
+    seq = sequence_level_frame(df)
+    if "policy_period" not in seq.columns:
+        if "collection_date" not in seq.columns:
+            raise KeyError("'policy_period' or 'collection_date' is required")
+        seq = attach_period(seq, "collection_date")
+
+    work = _vaccination_context_frame(seq)
+    out = _vaccination_summary_rows(work, ("policy_period",))
+    policy_order = {period: idx for idx, period in enumerate(POLICY_PERIOD_ORDER)}
+    out["_policy_sort"] = out["policy_period"].astype(str).map(policy_order).fillna(999)
+    return out.sort_values(["_policy_sort", "policy_period"]).drop(
+        columns="_policy_sort"
+    )
+
+
+def build_vaccination_window_context(df: pd.DataFrame) -> pd.DataFrame:
+    """Summarise rolling-window vaccination context with one row per window."""
+    required = {
+        "window_id",
+        "window_idx",
+        "wn_start_date",
+        "wn_mid_date",
+        "wn_end_date",
+        "sequence_id",
+    }
+    missing = required - set(df.columns)
+    if missing:
+        raise KeyError(f"Missing vaccination window columns: {sorted(missing)}")
+
+    work = df.drop_duplicates(["window_id", "sequence_id"]).copy()
+    for col in ("wn_start_date", "wn_mid_date", "wn_end_date"):
+        work[col] = pd.to_datetime(work[col], errors="coerce")
+    if "policy_period" not in work.columns:
+        work = attach_period(work, "wn_mid_date")
+
+    work = _vaccination_context_frame(work)
+    group_cols = (
+        "window_id",
+        "window_idx",
+        "wn_start_date",
+        "wn_mid_date",
+        "wn_end_date",
+        "policy_period",
+    )
+    out = _vaccination_summary_rows(work, group_cols)
+    return out.sort_values("window_idx").reset_index(drop=True)
 
 
 def build_denominator_contrasts(window_coverage: pd.DataFrame) -> pd.DataFrame:

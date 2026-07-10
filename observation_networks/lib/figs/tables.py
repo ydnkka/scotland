@@ -32,6 +32,7 @@ SIMD_GROUP_LABELS = {
 TABLE_NAMES = {
     "cohort_objects": "tab_ch4_cohort_objects",
     "policy_denominators": "tab_ch4_policy_denominators",
+    "vaccination_context": "tab_ch4_vaccination_context",
     "cluster_period_summary": "tab_ch4_cluster_period_summary",
     "assortativity_summary": "tab_ch4_assortativity_summary",
     "simd_population_weighting": "tab_ch4_simd_population_weighting",
@@ -39,6 +40,7 @@ TABLE_NAMES = {
 TABLE_LABELS = {
     "cohort_objects": "tab:ch4_cohort_objects",
     "policy_denominators": "tab:ch4_policy_denominators",
+    "vaccination_context": "tab:ch4_vaccination_context",
     "cluster_period_summary": "tab:ch4_cluster_period_summary",
     "assortativity_summary": "tab:ch4_assortativity_summary",
     "simd_population_weighting": "tab:ch4_simd_population_weighting",
@@ -84,6 +86,20 @@ def fmt_ci(low: float | int | None, high: float | int | None, digits: int = 2) -
     ):
         return "not estimated"
     return f"{fmt_float(low, digits)}--{fmt_float(high, digits)}"
+
+
+def fmt_iqr(
+    median: float | int | None,
+    q25: float | int | None,
+    q75: float | int | None,
+    digits: int = 0,
+) -> str:
+    if median is None or (isinstance(median, float) and np.isnan(median)):
+        return ""
+    return (
+        f"{fmt_float(median, digits)} "
+        f"({fmt_float(q25, digits)}--{fmt_float(q75, digits)})"
+    )
 
 
 def latex_escape(value: object) -> str:
@@ -504,6 +520,44 @@ def write_policy_denominator_table(paths: Paths) -> None:
     )
 
 
+def write_vaccination_context_table(paths: Paths) -> None:
+    vaccination = read_table(paths, "vaccination_context_by_policy")
+    vaccination = sort_by_policy(vaccination)
+    rows = []
+    for row in vaccination.itertuples(index=False):
+        rows.append(
+            [
+                row.policy_period,
+                fmt_int(row.n_sequences),
+                fmt_percent(row.prop_vaccinated),
+                fmt_percent(row.prop_booster),
+                fmt_float(row.median_dose_number_vaccinated, 1),
+                fmt_iqr(
+                    row.median_days_since_vaccination,
+                    row.q25_days_since_vaccination,
+                    row.q75_days_since_vaccination,
+                    0,
+                ),
+            ]
+        )
+    write_latex_table(
+        paths,
+        TABLE_NAMES["vaccination_context"],
+        caption="Vaccination context of sequenced records by policy period",
+        label=TABLE_LABELS["vaccination_context"],
+        columns=[
+            "Period",
+            "Sequences",
+            "Vaccinated",
+            "Booster recorded",
+            "Median dose",
+            "Days since vaccination",
+        ],
+        rows=rows,
+        column_spec="lrrrrl",
+    )
+
+
 def write_cluster_period_table(paths: Paths) -> None:
     clusters = read_table(paths, "cluster_period_summary")
     clusters = sort_by_policy(clusters)
@@ -593,6 +647,7 @@ def write_assortativity_summary_table(paths: Paths) -> None:
 TABLE_WRITERS: tuple[tuple[str, Callable[[Paths], object]], ...] = (
     (TABLE_NAMES["cohort_objects"], write_cohort_table),
     (TABLE_NAMES["policy_denominators"], write_policy_denominator_table),
+    (TABLE_NAMES["vaccination_context"], write_vaccination_context_table),
     (TABLE_NAMES["cluster_period_summary"], write_cluster_period_table),
     (TABLE_NAMES["assortativity_summary"], write_assortativity_summary_table),
     (TABLE_NAMES["simd_population_weighting"], write_simd_population_weighting_table),
