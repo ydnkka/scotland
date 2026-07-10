@@ -16,6 +16,7 @@ from .config import (
     PROJECT_ROOT,
     QC_FILTER,
     RESULTS_DIR,
+    SPARSIFICATION_THRESHOLD,
     TABLES_DIR,
 )
 
@@ -67,7 +68,7 @@ def load_pairwise_compatibility_edges(
     windows: str | int | Iterable[str | int] | None = None,
     clades: str | Iterable[str] | None = None,
     pango_lineages: str | Iterable[str] | None = None,
-    compatibility_threshold: float | None = 0.0001,
+    compatibility_threshold: float | None = SPARSIFICATION_THRESHOLD,
     columns: Sequence[str] | None = None,
 ) -> pd.DataFrame:
     """Load sparse pairwise compatibility edges for network mixing summaries."""

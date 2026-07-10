@@ -907,7 +907,7 @@ def load_pairwise_edges(
     windows: str | int | Iterable[str | int] | None = None,
     clades: str | Iterable[str] | None = None,
     pango_lineages: str | Iterable[str] | None = None,
-    compatibility_threshold: float | None = 0.0001,
+    compatibility_threshold: float | None = 0.001,
     score_column: str = "epilink_compatibility",
     pairwise_dataset: str | Path | None = None,
     clade_resolution: float | None = PRIMARY_RESOLUTION,

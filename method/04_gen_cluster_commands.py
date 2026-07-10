@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Generate the parallel command file for running 03_process_group.py on all tn93 groups.
+Generate the parallel command file for running cluster_pairwise.py.
 
-Pairs each <stem>.csv in tn93_results_dir with its <stem>.ids in group_fasta_dir and
-emits one python3 command per group into a command file for parallel_run.sh.
+Pairs each <stem>.parquet in pairwise_distances_dataset with the expected
+<stem>.ids file in group_fasta_dir and emits one python3 command per group into
+a command file for parallel_run.sh.
 
 Usage:
     python3 method/04_gen_cluster_commands.py
@@ -46,11 +47,15 @@ def main() -> int:
     pipe = cfg["pipeline"]
     proc = {k: args.root / v for k, v in cfg["data"]["processed"].items()}
 
-    tn93_results_dir: Path = proc["tn93_results_dir"]
+    pairwise_dir: Path = proc.get(
+        "pairwise_distances_dataset",
+        args.root / "data/processed/pairwise_distances_dataset",
+    )
     group_fasta_dir: Path = proc["group_fasta_dir"]
     cluster_long_dir: Path = proc["cluster_long_dir"]
-    metadata: Path = proc["metadata"]
-    script = args.root / "method" / "03_process_group.py"
+    script = args.root / "method" / "cluster_pairwise.py"
+    if not pairwise_dir.exists():
+        raise SystemExit(f"Pairwise dataset directory not found: {pairwise_dir}")
 
     inc_re = re.compile(args.include) if args.include else None
     exc_re = re.compile(args.exclude) if args.exclude else None
@@ -58,40 +63,44 @@ def main() -> int:
     resolutions = ",".join(str(r) for r in pipe["leiden_resolutions"])
 
     lines: list[str] = [f"mkdir -p {shlex.quote(str(cluster_long_dir))}"]
-    n, missing = 0, 0
+    n, missing_ids = 0, 0
 
-    for csv in sorted(tn93_results_dir.glob("*.csv")):
-        stem = csv.stem
+    for pairwise_file in sorted(pairwise_dir.glob("*.parquet")):
+        stem = pairwise_file.stem
         if inc_re and not inc_re.search(stem):
             continue
         if exc_re and exc_re.search(stem):
             continue
         ids_path = group_fasta_dir / f"{stem}.ids"
-        if not ids_path.exists():
-            print(f"# WARNING: missing .ids for {stem}", file=sys.stderr)
-            missing += 1
-            continue
         cmd = (
             f"python3 {shlex.quote(str(script))}"
-            f" --tn93-csv {shlex.quote(str(csv))}"
+            f" --pairwise-file {shlex.quote(str(pairwise_file))}"
             f" --seq-ids {shlex.quote(str(ids_path))}"
-            f" --metadata {shlex.quote(str(metadata))}"
             f" --out-long-dir {shlex.quote(str(cluster_long_dir))}"
-            f" --alignment-length {pipe['alignment_length']}"
             f" --resolutions {shlex.quote(resolutions)}"
             f" --seed {pipe['seed']}"
             f" --sparsification {pipe['sparsification']}"
         )
+        if not ids_path.exists():
+            missing_ids += 1
         lines.append(cmd)
         n += 1
+
+    if n == 0:
+        raise SystemExit("No pairwise parquet files matched the requested filters.")
 
     cmd_file: Path = proc["cluster_commands_file"]
     cmd_file.parent.mkdir(parents=True, exist_ok=True)
     cmd_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     print(f"Wrote {n} commands to {cmd_file}", file=sys.stderr)
-    if missing:
-        print(f"Skipped {missing} groups with missing .ids files", file=sys.stderr)
+    if missing_ids:
+        print(
+            f"{missing_ids} expected .ids files were not found while generating; "
+            "commands still include --seq-ids and cluster_pairwise.py will infer "
+            "nodes from pairwise endpoints only if the file is also missing at run time",
+            file=sys.stderr,
+        )
     return 0
 
 

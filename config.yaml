@@ -5,7 +5,7 @@ pipeline:
   alignment_length: 29903
   leiden_resolutions: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
   seed: 42
-  sparsification: 0.0001
+  sparsification: 0.001
 
 tn93:
   threshold: 0.001
@@ -32,6 +32,8 @@ data:
     group_fasta_dir: data/processed/group_fastas
     tn93_results_dir: data/processed/group_fastas/tn93_results
     tn93_commands_file: data/processed/group_fastas/tn93_commands.txt
+    pairwise_distances_dataset: data/processed/pairwise_distances_dataset
+    sparsified_edge_manifest: data/processed/sparsified_edge_counts_by_window_lineage.parquet
     cluster_long_dir: data/processed/cluster_assignments_long
     cluster_commands_file: data/processed/cluster_commands.txt
     analysis_dataset: data/processed/scotland_clustering_analysis_dataset.parquet

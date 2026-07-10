@@ -398,7 +398,7 @@ def main() -> int:
 
     # Guard: build_singletons below adds assignments only for groups of size == 1,
     # which are skipped by 02_gen_tn93_commands.py when min_group_size >= 2.
-    # If min_group_size < 2, single-sequence groups also pass through 03_process_group.py
+    # If min_group_size < 2, single-sequence groups also pass through cluster_pairwise.py
     # (as fallback isolates), creating duplicate rows in the final dataset.
     min_group_size = pipe.get("min_group_size", 2)
     if min_group_size < 2:

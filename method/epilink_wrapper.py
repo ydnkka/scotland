@@ -35,7 +35,7 @@ NATURAL_HISTORY: dict[str, Any] = {
     "testing_delay_scale": 1.0,
     # Standard SARS-CoV-2 clock rate (~1e-3 substitutions/site/year).
     # Must match the alignment_length used to convert TN93 proportional distances
-    # to SNP counts in 03_process_group.py (default 29903 nt).
+    # to SNP counts in 03_build_pairwise_dataset.py (default 29903 nt).
     "substitution_rate": 1e-3,
     "relaxation": 0.33,
     "genome_length": 29903,  # keep in sync with pipeline.alignment_length in config.yaml

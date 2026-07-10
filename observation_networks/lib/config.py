@@ -14,6 +14,7 @@ FIGURES_DIR = RESULTS_DIR / "figures"
 INTERMEDIATE_DIR = RESULTS_DIR / "intermediate"
 
 ANALYSIS_RESOLUTION = 0.3
+SPARSIFICATION_THRESHOLD = 0.001
 QC_FILTER = "good"
 TRANSITION_WINDOW_STRIDE = 2
 DISCLOSURE_MIN_CELL = 5
@@ -85,4 +86,3 @@ CHAPTER4_COLUMNS: tuple[str, ...] = (
     "dz_cum_prop_sequenced",
     "dz_cum_incidence_per_capita",
 )
-

@@ -1,0 +1,447 @@
+"""Build Chapter 4 observation-network LaTeX table fragments."""
+
+from __future__ import annotations
+
+from pathlib import Path
+import argparse
+import sys
+import textwrap
+
+import numpy as np
+import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from common import (
+    ATTRIBUTE_ORDER,
+    Paths,
+    add_common_args,
+    paths_from_args,
+    read_table,
+    sort_by_policy,
+    window_idx_from_id,
+)
+
+
+def fmt_int(value: float | int | str | None) -> str:
+    if value is None or (isinstance(value, float) and np.isnan(value)):
+        return ""
+    try:
+        value_float = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if value_float.is_integer():
+        return f"{int(value_float):,}"
+    return f"{value_float:,.1f}"
+
+
+def fmt_percent(value: float | int | str | None) -> str:
+    if value is None or (isinstance(value, float) and np.isnan(value)):
+        return ""
+    return f"{100 * float(value):.1f}%"
+
+
+def fmt_float(value: float | int | str | None, digits: int = 2) -> str:
+    if value is None or (isinstance(value, float) and np.isnan(value)):
+        return ""
+    return f"{float(value):.{digits}f}"
+
+
+def fmt_ci(low: float | int | None, high: float | int | None, digits: int = 2) -> str:
+    if (
+        low is None
+        or high is None
+        or (isinstance(low, float) and np.isnan(low))
+        or (isinstance(high, float) and np.isnan(high))
+    ):
+        return "not estimated"
+    return f"{fmt_float(low, digits)}--{fmt_float(high, digits)}"
+
+
+def latex_escape(value: object) -> str:
+    text = str(value)
+    replacements = {
+        "\\": r"\textbackslash{}",
+        "&": r"\&",
+        "%": r"\%",
+        "$": r"\$",
+        "#": r"\#",
+        "_": r"\_",
+        "{": r"\{",
+        "}": r"\}",
+        "~": r"\textasciitilde{}",
+        "^": r"\textasciicircum{}",
+    }
+    return "".join(replacements.get(char, char) for char in text)
+
+
+def write_latex_table(
+    paths: Paths,
+    name: str,
+    *,
+    caption: str,
+    label: str,
+    columns: list[str],
+    rows: list[list[object]],
+    column_spec: str | None = None,
+    small: bool = True,
+) -> None:
+    paths.latex_table_dir.mkdir(parents=True, exist_ok=True)
+    column_spec = column_spec or ("l" * len(columns))
+    size = "\\small\n" if small else ""
+    header = " & ".join(f"\\textbf{{{latex_escape(col)}}}" for col in columns)
+    body = "\n".join(
+        "    " + " & ".join(latex_escape(cell) for cell in row) + r" \\"
+        for row in rows
+    )
+    content = textwrap.dedent(
+        rf"""
+        \begin{{table}}[htbp]
+        \centering
+        {size}\caption[{latex_escape(caption)}]{{\textbf{{{latex_escape(caption)}}}}}\label{{{label}}}
+        \begin{{adjustbox}}{{max width=\textwidth}}
+        \begin{{tabular}}{{{column_spec}}}
+        \toprule
+        {header} \\
+        \midrule
+        {body}
+        \bottomrule
+        \end{{tabular}}
+        \end{{adjustbox}}
+        \end{{table}}
+        """
+    ).strip()
+    (paths.latex_table_dir / f"{name}.tex").write_text(content + "\n")
+
+
+def weighted_mean(values: pd.Series, weights: pd.Series) -> float:
+    mask = values.notna() & weights.notna() & weights.gt(0)
+    if not mask.any():
+        return np.nan
+    return float(np.average(values.loc[mask], weights=weights.loc[mask]))
+
+
+def weighted_mean_ci_from_se(
+    values: pd.Series,
+    weights: pd.Series,
+    standard_errors: pd.Series,
+) -> dict[str, float]:
+    mask = values.notna() & weights.notna() & weights.gt(0)
+    if not mask.any():
+        return {
+            "weighted_mean": np.nan,
+            "combined_se": np.nan,
+            "ci_low": np.nan,
+            "ci_high": np.nan,
+            "ci_weight_share": np.nan,
+        }
+
+    values = values.loc[mask].astype(float)
+    weights = weights.loc[mask].astype(float)
+    weighted_mean_value = float(np.average(values, weights=weights))
+
+    se_mask = standard_errors.loc[mask].notna()
+    if not se_mask.any():
+        return {
+            "weighted_mean": weighted_mean_value,
+            "combined_se": np.nan,
+            "ci_low": np.nan,
+            "ci_high": np.nan,
+            "ci_weight_share": np.nan,
+        }
+
+    ci_weights = weights.loc[se_mask]
+    ci_standard_errors = standard_errors.loc[mask].loc[se_mask].astype(float)
+    normalized = ci_weights / weights.sum()
+    combined_se = float(np.sqrt(np.sum((normalized * ci_standard_errors) ** 2)))
+    return {
+        "weighted_mean": weighted_mean_value,
+        "combined_se": combined_se,
+        "ci_low": weighted_mean_value - 1.96 * combined_se,
+        "ci_high": weighted_mean_value + 1.96 * combined_se,
+        "ci_weight_share": float(ci_weights.sum() / weights.sum()),
+    }
+
+
+def compatibility_assortativity_filtered(paths: Paths) -> pd.DataFrame:
+    assort = read_table(paths, "compatibility_assortativity")
+    assort["window_idx"] = window_idx_from_id(assort["window_id"])
+    return assort.loc[
+        assort["assortativity"].notna()
+        & assort["edge_weight_total"].gt(0)
+        & assort["n_categories"].gt(1)
+        & assort["n_edge_contributions_used"].ge(20)
+    ].copy()
+
+
+def compatibility_window_assortativity(paths: Paths) -> pd.DataFrame:
+    work = compatibility_assortativity_filtered(paths)
+    rows = []
+    for (window_idx, attribute, label), group in work.groupby(
+        ["window_idx", "attribute", "attribute_label"], dropna=False
+    ):
+        ci = weighted_mean_ci_from_se(
+            group["assortativity"],
+            group["edge_weight_total"],
+            group["assortativity_se"],
+        )
+        rows.append(
+            {
+                "window_idx": window_idx,
+                "attribute": attribute,
+                "attribute_label": label,
+                "assortativity": ci["weighted_mean"],
+                "assortativity_se": ci["combined_se"],
+                "assortativity_ci_low": ci["ci_low"],
+                "assortativity_ci_high": ci["ci_high"],
+                "ci_weight_share": ci["ci_weight_share"],
+                "edge_weight_total": group["edge_weight_total"].sum(),
+                "eligible_networks": group["pairwise_stem"].nunique()
+                if "pairwise_stem" in group.columns
+                else len(group),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def compatibility_attribute_summary(paths: Paths) -> pd.DataFrame:
+    work = compatibility_assortativity_filtered(paths)
+    window_summary = compatibility_window_assortativity(paths)
+    rows = []
+    for (attribute, label), group in work.groupby(
+        ["attribute", "attribute_label"], dropna=False
+    ):
+        ci = weighted_mean_ci_from_se(
+            group["assortativity"],
+            group["edge_weight_total"],
+            group["assortativity_se"],
+        )
+        window_group = window_summary.loc[window_summary["attribute"].eq(attribute)]
+        rows.append(
+            {
+                "graph": "Compatibility",
+                "attribute": attribute,
+                "attribute_label": label,
+                "n_windows": window_group["window_idx"].nunique(),
+                "n_networks": group["pairwise_stem"].nunique()
+                if "pairwise_stem" in group.columns
+                else len(group),
+                "weighted_mean": ci["weighted_mean"],
+                "combined_se": ci["combined_se"],
+                "ci_low": ci["ci_low"],
+                "ci_high": ci["ci_high"],
+                "ci_weight_share": ci["ci_weight_share"],
+                "window_median": window_group["assortativity"].median(),
+                "window_q10": window_group["assortativity"].quantile(0.10),
+                "window_q90": window_group["assortativity"].quantile(0.90),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def transition_window_assortativity(paths: Paths) -> pd.DataFrame:
+    assort = read_table(paths, "transition_assortativity")
+    assort["window_idx"] = window_idx_from_id(assort["source_window_id"])
+    return assort.loc[
+        assort["assortativity"].notna()
+        & assort["edge_weight_total"].gt(0)
+        & assort["n_categories"].gt(1)
+    ].copy()
+
+
+def transition_attribute_summary(paths: Paths) -> pd.DataFrame:
+    work = transition_window_assortativity(paths)
+    rows = []
+    for (attribute, label), group in work.groupby(
+        ["attribute", "attribute_label"], dropna=False
+    ):
+        rows.append(
+            {
+                "graph": "Transition",
+                "attribute": attribute,
+                "attribute_label": label,
+                "n_windows": group["window_idx"].nunique(),
+                "n_networks": np.nan,
+                "weighted_mean": weighted_mean(
+                    group["assortativity"], group["edge_weight_total"]
+                ),
+                "combined_se": np.nan,
+                "ci_low": np.nan,
+                "ci_high": np.nan,
+                "ci_weight_share": np.nan,
+                "window_median": group["assortativity"].median(),
+                "window_q10": group["assortativity"].quantile(0.10),
+                "window_q90": group["assortativity"].quantile(0.90),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def write_cohort_table(paths: Paths) -> None:
+    cohort = read_table(paths, "cohort_summary")
+    graph = read_table(paths, "transition_graph_summary")
+    cohort_map = cohort.set_index("metric")["value"].to_dict()
+    graph_map = graph.set_index("metric")["value"].to_dict()
+    rows = [
+        ["Unique sequences", fmt_int(cohort_map.get("unique_sequences"))],
+        ["Unique patients", fmt_int(cohort_map.get("unique_patients"))],
+        [
+            "Collection dates",
+            f"{cohort_map.get('first_collection_date')} to "
+            f"{cohort_map.get('last_collection_date')}",
+        ],
+        ["Rolling windows", fmt_int(cohort_map.get("windows"))],
+        ["Window-level clusters", fmt_int(cohort_map.get("clusters"))],
+        ["Nextclade clades", fmt_int(cohort_map.get("clades"))],
+        ["Pango lineages", fmt_int(cohort_map.get("pango_lineages"))],
+        ["Transition graph nodes", fmt_int(graph_map.get("nodes"))],
+        ["Transition graph edges", fmt_int(graph_map.get("edges"))],
+        ["Weak components", fmt_int(graph_map.get("weak_components"))],
+        ["Isolated nodes", fmt_int(graph_map.get("isolated_nodes"))],
+        ["Branching nodes", fmt_int(graph_map.get("branching_nodes"))],
+        ["Merging nodes", fmt_int(graph_map.get("merging_nodes"))],
+    ]
+    write_latex_table(
+        paths,
+        "tab_ch4_cohort_objects",
+        caption="Chapter 4 analysis cohort and graph object counts",
+        label="tab:ch4_cohort_objects",
+        columns=["Quantity", "Value"],
+        rows=rows,
+        column_spec="lr",
+    )
+
+
+def write_policy_denominator_table(paths: Paths) -> None:
+    denominators = read_table(paths, "window_denominator_contrasts")
+    denominators = sort_by_policy(denominators)
+    rows = []
+    for row in denominators.itertuples(index=False):
+        rows.append(
+            [
+                row.policy_period,
+                fmt_int(row.n_windows),
+                fmt_int(row.median_window_sequences),
+                fmt_int(row.median_window_positive_tests),
+                fmt_percent(row.median_window_prop_sequenced),
+                f"{fmt_percent(row.min_window_prop_sequenced)}--"
+                f"{fmt_percent(row.max_window_prop_sequenced)}",
+            ]
+        )
+    write_latex_table(
+        paths,
+        "tab_ch4_policy_denominators",
+        caption="Rolling-window observation denominators by policy period",
+        label="tab:ch4_policy_denominators",
+        columns=[
+            "Period",
+            "Windows",
+            "Median sequences",
+            "Median positives",
+            "Median sequenced",
+            "Coverage range",
+        ],
+        rows=rows,
+        column_spec="lrrrrr",
+    )
+
+
+def write_cluster_period_table(paths: Paths) -> None:
+    clusters = read_table(paths, "cluster_period_summary")
+    clusters = sort_by_policy(clusters)
+    rows = []
+    for row in clusters.itertuples(index=False):
+        rows.append(
+            [
+                row.policy_period,
+                fmt_int(row.n_clusters),
+                fmt_float(row.median_cluster_size, 1),
+                fmt_float(row.p90_cluster_size, 1),
+                fmt_int(row.max_cluster_size),
+                fmt_float(row.median_duration_days, 1),
+                fmt_float(row.median_datazones, 1),
+            ]
+        )
+    write_latex_table(
+        paths,
+        "tab_ch4_cluster_period_summary",
+        caption="Window-level EpiLink cluster summaries by policy period",
+        label="tab:ch4_cluster_period_summary",
+        columns=[
+            "Period",
+            "Clusters",
+            "Median size",
+            "P90 size",
+            "Max size",
+            "Median duration",
+            "Median Data Zones",
+        ],
+        rows=rows,
+        column_spec="lrrrrrr",
+    )
+
+
+def write_assortativity_summary_table(paths: Paths) -> None:
+    comp = compatibility_attribute_summary(paths)
+    trans = transition_attribute_summary(paths)
+    summary = pd.concat([comp, trans], ignore_index=True, sort=False)
+    rows = []
+    for graph_label, df in summary.groupby("graph", sort=False):
+        for attribute in ATTRIBUTE_ORDER:
+            group = df.loc[df["attribute_label"].eq(attribute)]
+            if group.empty:
+                continue
+            row = group.iloc[0]
+            rows.append(
+                [
+                    graph_label,
+                    attribute,
+                    fmt_int(row["n_windows"]),
+                    fmt_int(row["n_networks"]) if not pd.isna(row["n_networks"]) else "",
+                    fmt_float(row["weighted_mean"], 4),
+                    fmt_ci(row["ci_low"], row["ci_high"], 4),
+                    f"{fmt_float(row['window_median'], 3)} "
+                    f"({fmt_float(row['window_q10'], 3)}--"
+                    f"{fmt_float(row['window_q90'], 3)})",
+                ]
+            )
+    write_latex_table(
+        paths,
+        "tab_ch4_assortativity_summary",
+        caption="Weighted assortativity summaries with compatibility confidence intervals",
+        label="tab:ch4_assortativity_summary",
+        columns=[
+            "Graph",
+            "Attribute",
+            "Windows",
+            "Networks",
+            "Weighted mean r",
+            "95% CI",
+            "Window median (10--90%)",
+        ],
+        rows=rows,
+        column_spec="llrrrll",
+    )
+
+
+def write_tables(paths: Paths) -> None:
+    paths.latex_table_dir.mkdir(parents=True, exist_ok=True)
+    write_cohort_table(paths)
+    write_policy_denominator_table(paths)
+    write_cluster_period_table(paths)
+    write_assortativity_summary_table(paths)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_common_args(parser)
+    args = parser.parse_args()
+    paths = paths_from_args(args)
+    write_tables(paths)
+    print(f"Wrote Chapter 4 LaTeX tables to {paths.latex_table_dir}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+

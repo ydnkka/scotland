@@ -33,6 +33,7 @@ from .lib.config import (
     DEFAULT_MIXING_ATTRIBUTES,
     INTERMEDIATE_DIR,
     PROJECT_ROOT,
+    SPARSIFICATION_THRESHOLD,
 )
 from .lib.io import (
     ensure_results_dirs,
@@ -856,7 +857,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--compatibility-threshold",
         type=float,
-        default=0.0001,
+        default=SPARSIFICATION_THRESHOLD,
         help="Retain pairwise edges with epilink_compatibility above this threshold.",
     )
     parser.add_argument(
