@@ -18,11 +18,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (
     Paths,
     add_common_args,
-    new_blank_figure,
     panel_label,
     paths_from_args,
     read_table,
-    save_figure,
+    styled_new_figure,
+    styled_save_figure,
 )
 
 
@@ -146,12 +146,13 @@ def build(paths: Paths) -> None:
     matrices = [aggregate_row_matrix(compatibility, attr)[0] for attr, *_ in panels]
     vmax = max(np.nanquantile(matrix.to_numpy(), 0.98) for matrix in matrices)
 
-    fig = new_blank_figure(
+    fig, placeholder_ax = styled_new_figure(
         "double",
         width_in=9.4,
         height_in=8.2,
         constrained_layout=True,
     )
+    placeholder_ax.remove()
     grid = fig.add_gridspec(3, 3, width_ratios=[1.0, 1.65, 0.045])
     colorbar_axis = fig.add_subplot(grid[:, 2])
     for attr, title, label, grid_position, label_size in panels:
@@ -169,7 +170,7 @@ def build(paths: Paths) -> None:
     cbar.set_label("Row share of weighted edge mass")
     fig.supxlabel("Linked endpoint category")
     fig.supylabel("Reference endpoint category")
-    save_figure(fig, paths, "fig04_mixing_matrices", tight=False)
+    styled_save_figure(fig, paths, "fig_ch4_mixing_matrices", tight=False)
 
 
 def main() -> int:
@@ -178,7 +179,7 @@ def main() -> int:
     args = parser.parse_args()
     paths = paths_from_args(args)
     build(paths)
-    print(f"Wrote fig04_mixing_matrices to {paths.figure_dir}")
+    print(f"Wrote fig_ch4_mixing_matrices to {paths.figure_dir}")
     return 0
 
 

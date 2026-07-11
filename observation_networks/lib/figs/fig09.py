@@ -13,11 +13,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (
     Paths,
     add_common_args,
-    new_figure,
     panel_label,
     paths_from_args,
     read_table,
-    save_figure,
+    styled_new_figure,
+    styled_save_figure,
 )
 
 
@@ -26,7 +26,9 @@ def build(paths: Paths) -> None:
     movement = read_table(paths, "simd_population_weighting_movement")
     movement = movement.loc[movement["comparison_method"].eq("equal_datazone")]
 
-    fig, axes = new_figure("double", width_in=8.4, height_in=3.5, nrows=1, ncols=2)
+    fig, axes = styled_new_figure(
+        "double", width_in=8.4, height_in=3.5, nrows=1, ncols=2
+    )
     ax = axes[0]
     for method, group in group_summary.groupby("grouping_method_label"):
         group = group.sort_values("simd_group")
@@ -67,7 +69,7 @@ def build(paths: Paths) -> None:
                 axes[1].text(j, i, f"{value:.1f}", ha="center", va="center", fontsize=7)
     fig.colorbar(image, ax=axes[1], label="Population share (%)")
     panel_label(axes[1], "B")
-    save_figure(fig, paths, "sfig03_simd_population_weighting", tight=False)
+    styled_save_figure(fig, paths, "fig_ch4_simd_population_weighting", tight=False)
 
 
 def main() -> int:
@@ -76,7 +78,7 @@ def main() -> int:
     args = parser.parse_args()
     paths = paths_from_args(args)
     build(paths)
-    print(f"Wrote sfig03_simd_population_weighting to {paths.figure_dir}")
+    print(f"Wrote fig_ch4_simd_population_weighting to {paths.figure_dir}")
     return 0
 
 

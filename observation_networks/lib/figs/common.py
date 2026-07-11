@@ -20,8 +20,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils import new_figure as styled_new_figure  # noqa: E402
-from utils import save_figure as styled_save_figure  # noqa: E402
+from utils import new_figure as styled_new_figure  # noqa: E402, F401
+from utils import save_figure as _styled_save_figure  # noqa: E402
 from utils import add_panel_labels as styled_add_panel_labels  # noqa: E402
 
 DEFAULT_TABLE_DIR = PROJECT_ROOT / "observation_networks/results/tables"
@@ -83,16 +83,6 @@ class Paths:
     figure_dir: Path = FIGURE_DIR
 
 
-def new_figure(*args: Any, **kwargs: Any) -> tuple[Figure, Any]:
-    return styled_new_figure(*args, **kwargs)
-
-
-def new_blank_figure(*args: Any, **kwargs: Any) -> Figure:
-    fig, ax = styled_new_figure(*args, **kwargs)
-    ax.remove()
-    return fig
-
-
 def add_panel_labels(*args: Any, **kwargs: Any) -> None:
     styled_add_panel_labels(*args, **kwargs)
 
@@ -107,7 +97,7 @@ def read_table(paths: Paths, name: str) -> pd.DataFrame:
     raise FileNotFoundError(f"Missing table: {name}")
 
 
-def save_figure(
+def styled_save_figure(
     fig: Figure,
     paths: Paths,
     name: str,
@@ -118,7 +108,7 @@ def save_figure(
     if tight:
         fig.tight_layout()
     width_in, height_in = fig.get_size_inches()
-    return styled_save_figure(
+    return _styled_save_figure(
         fig,
         paths.figure_dir / name,
         width="double",

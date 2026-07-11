@@ -17,11 +17,11 @@ from common import (
     add_common_args,
     add_policy_bands,
     date_axis,
-    new_figure,
     panel_label,
     paths_from_args,
     read_table,
-    save_figure,
+    styled_new_figure,
+    styled_save_figure,
 )
 
 
@@ -42,7 +42,9 @@ def build(paths: Paths) -> None:
     sizes = sizes[sizes > 0].sort_values().to_numpy()
     ccdf_y = 1.0 - np.arange(len(sizes)) / len(sizes)
 
-    fig, axes = new_figure("double", width_in=8.4, height_in=6.7, nrows=2, ncols=2)
+    fig, axes = styled_new_figure(
+        "double", width_in=8.4, height_in=6.7, nrows=2, ncols=2
+    )
     ax = axes[0, 0]
     ax.plot(sizes, ccdf_y, color="#1f4e79", lw=1.5)
     ax.set_xscale("log")
@@ -113,7 +115,7 @@ def build(paths: Paths) -> None:
     ax.set_xlabel("Cluster size")
     ax.set_ylabel("Observed Data Zones")
     panel_label(ax, "D")
-    save_figure(fig, paths, "fig02_cluster_landscape")
+    styled_save_figure(fig, paths, "fig_ch4_cluster_landscape")
 
 
 def main() -> int:
@@ -122,7 +124,7 @@ def main() -> int:
     args = parser.parse_args()
     paths = paths_from_args(args)
     build(paths)
-    print(f"Wrote fig02_cluster_landscape to {paths.figure_dir}")
+    print(f"Wrote fig_ch4_cluster_landscape to {paths.figure_dir}")
     return 0
 
 

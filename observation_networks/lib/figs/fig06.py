@@ -20,16 +20,16 @@ from common import (
     add_common_args,
     add_policy_bands,
     date_axis,
-    new_blank_figure,
     panel_label,
     paths_from_args,
     read_table,
-    save_figure,
+    styled_new_figure,
+    styled_save_figure,
     sort_by_policy,
 )
 
 
-FIGURE_NAME = "fig06_vaccination_context"
+FIGURE_NAME = "fig_ch4_vaccination_context"
 MIN_DAYS_SERIES_COUNT = 20
 
 DOSE_GROUPS = (
@@ -190,12 +190,13 @@ def build(paths: Paths) -> None:
             window[col] = pd.to_datetime(window[col], errors="coerce")
     window = window.sort_values("window_idx")
 
-    fig = new_blank_figure(
+    fig, placeholder_ax = styled_new_figure(
         "double",
         width_in=8.8,
         height_in=7.3,
     )
-    grid = fig.add_gridspec(2, 2, hspace=0.54, wspace=0.30)
+    placeholder_ax.remove()
+    grid = fig.add_gridspec(2, 2, hspace=0.42, wspace=0.24)
     axes = [
         fig.add_subplot(grid[0, 0]),
         fig.add_subplot(grid[0, 1]),
@@ -222,7 +223,7 @@ def build(paths: Paths) -> None:
         frameon=False,
     )
     fig.subplots_adjust(left=0.08, right=0.985, top=0.94, bottom=0.15)
-    save_figure(fig, paths, FIGURE_NAME, tight=False)
+    styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
 
 
 def main() -> int:

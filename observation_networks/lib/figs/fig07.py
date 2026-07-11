@@ -16,10 +16,10 @@ from common import (  # noqa: E402
     Paths,
     add_common_args,
     add_panel_labels,
-    new_figure,
     paths_from_args,
     read_table,
-    save_figure,
+    styled_new_figure,
+    styled_save_figure,
 )
 
 from observation_networks.lib.config import (  # noqa: E402
@@ -28,7 +28,7 @@ from observation_networks.lib.config import (  # noqa: E402
 )
 
 BASELINE_THRESHOLD = SPARSIFICATION_THRESHOLD
-FIGURE_NAME = "sfig01_parameter_sensitivity"
+FIGURE_NAME = "fig_ch4_parameter_sensitivity"
 LEIDEN_SUMMARY_TABLE = "leiden_resolution_sensitivity_summary"
 SPARSIFICATION_SUMMARY_TABLE = "sparsification_threshold_sensitivity_summary"
 SPARSIFICATION_DETAIL_TABLE = "sparsification_threshold_sensitivity"
@@ -312,7 +312,7 @@ def plot_parameter_sensitivity_grid(
     sparsification = sparsification_summary.sort_values("threshold").copy()
     detail = sparsification_detail.sort_values(["threshold", "pairwise_stem"]).copy()
 
-    fig, axes = new_figure(
+    fig, axes = styled_new_figure(
         "double",
         height_in=7.0,
         nrows=3,
@@ -360,7 +360,7 @@ def plot_parameter_sensitivity_grid(
         ax.tick_params(axis="both", which="major", length=3)
 
     add_panel_labels(axes.flat, x=-0.12, y=1.08, size="medium")
-    return save_figure(fig, paths, FIGURE_NAME, tight=False)
+    return styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
 
 
 def build(paths: Paths) -> dict[str, Path]:

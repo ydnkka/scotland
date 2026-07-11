@@ -15,10 +15,10 @@ from common import (
     ATTRIBUTE_ORDER,
     Paths,
     add_common_args,
-    new_figure,
     paths_from_args,
     read_table,
-    save_figure,
+    styled_new_figure,
+    styled_save_figure,
     window_idx_from_id,
 )
 
@@ -146,7 +146,7 @@ def build(paths: Paths) -> None:
         summary["ci_high"] - summary["weighted_mean"],
     ]
 
-    fig, ax = new_figure("double", width_in=7.6, height_in=4.2)
+    fig, ax = styled_new_figure("double", width_in=7.6, height_in=4.2)
     ax.errorbar(
         summary["weighted_mean"],
         y_positions,
@@ -167,7 +167,7 @@ def build(paths: Paths) -> None:
     x_max = float(summary["ci_high"].max())
     padding = max((x_max - x_min) * 0.08, 0.001)
     ax.set_xlim(x_min - padding, x_max + padding)
-    save_figure(fig, paths, "sfig05_assortativity_confidence_intervals")
+    styled_save_figure(fig, paths, "fig_ch4_assortativity_confidence_intervals")
 
 
 def main() -> int:
@@ -176,7 +176,7 @@ def main() -> int:
     args = parser.parse_args()
     paths = paths_from_args(args)
     build(paths)
-    print(f"Wrote sfig05_assortativity_confidence_intervals to {paths.figure_dir}")
+    print(f"Wrote fig_ch4_assortativity_confidence_intervals to {paths.figure_dir}")
     return 0
 
 

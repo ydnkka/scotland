@@ -18,11 +18,11 @@ from common import (
     add_common_args,
     add_policy_bands,
     date_axis,
-    new_blank_figure,
     panel_label,
     paths_from_args,
     read_table,
-    save_figure,
+    styled_new_figure,
+    styled_save_figure,
 )
 
 
@@ -213,12 +213,13 @@ def build(paths: Paths) -> None:
     ]
     role_pivot = role_pivot[[col for col in preferred_roles if col in role_pivot]]
 
-    fig = new_blank_figure(
+    fig, placeholder_ax = styled_new_figure(
         "double",
         width_in=8.2,
         height_in=8.4,
         constrained_layout=True,
     )
+    placeholder_ax.remove()
     grid = fig.add_gridspec(3, 2, height_ratios=[1.35, 1.0, 1.0])
 
     ax = fig.add_subplot(grid[0, :])
@@ -293,7 +294,7 @@ def build(paths: Paths) -> None:
     )
     date_axis(ax)
     panel_label(ax, "E")
-    save_figure(fig, paths, "fig05_transition_graph_baseline", tight=False)
+    styled_save_figure(fig, paths, "fig_ch4_transition_graph_baseline", tight=False)
 
 
 def main() -> int:
@@ -302,7 +303,7 @@ def main() -> int:
     args = parser.parse_args()
     paths = paths_from_args(args)
     build(paths)
-    print(f"Wrote fig05_transition_graph_baseline to {paths.figure_dir}")
+    print(f"Wrote fig_ch4_transition_graph_baseline to {paths.figure_dir}")
     return 0
 
 

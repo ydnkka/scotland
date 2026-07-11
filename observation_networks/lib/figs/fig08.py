@@ -14,11 +14,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (
     Paths,
     add_common_args,
-    new_figure,
     panel_label,
     paths_from_args,
     read_table,
-    save_figure,
+    styled_new_figure,
+    styled_save_figure,
     window_idx_from_id,
 )
 
@@ -51,7 +51,7 @@ def build(paths: Paths) -> None:
         rows.append(row)
     summary = pd.DataFrame(rows).sort_values("window_idx")
 
-    fig, axes = new_figure(
+    fig, axes = styled_new_figure(
         "double",
         width_in=8.2,
         height_in=7.0,
@@ -79,7 +79,7 @@ def build(paths: Paths) -> None:
     axes[2].set_ylabel("Assortativity")
     axes[2].legend(loc="upper right")
     panel_label(axes[2], "C")
-    save_figure(fig, paths, "sfig02_compatibility_topology")
+    styled_save_figure(fig, paths, "fig_ch4_compatibility_topology")
 
 
 def main() -> int:
@@ -88,7 +88,7 @@ def main() -> int:
     args = parser.parse_args()
     paths = paths_from_args(args)
     build(paths)
-    print(f"Wrote sfig02_compatibility_topology to {paths.figure_dir}")
+    print(f"Wrote fig_ch4_compatibility_topology to {paths.figure_dir}")
     return 0
 
 

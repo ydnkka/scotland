@@ -20,10 +20,10 @@ from .figs import (
     fig04,
     fig05,
     fig06,
-    sfig01,
-    sfig02,
-    sfig03,
-    sfig05,
+    fig07,
+    fig08,
+    fig09,
+    fig10,
     tables,
 )
 from .figs.common import Paths
@@ -42,16 +42,16 @@ class ArtifactBuilder:
 
 
 FIGURE_BUILDERS: tuple[ArtifactBuilder, ...] = (
-    ArtifactBuilder("fig01_sequence_composition_by_policy", fig01.build),
-    ArtifactBuilder("fig02_cluster_landscape", fig02.build),
-    ArtifactBuilder("fig03_assortativity_baseline", fig03.build),
-    ArtifactBuilder("fig04_mixing_matrices", fig04.build),
-    ArtifactBuilder("fig05_transition_graph_baseline", fig05.build),
+    ArtifactBuilder("fig_ch4_sequence_composition_by_policy", fig01.build),
+    ArtifactBuilder("fig_ch4_cluster_landscape", fig02.build),
+    ArtifactBuilder("fig_ch4_assortativity_baseline", fig03.build),
+    ArtifactBuilder("fig_ch4_mixing_matrices", fig04.build),
+    ArtifactBuilder("fig_ch4_transition_graph_baseline", fig05.build),
     ArtifactBuilder(fig06.FIGURE_NAME, fig06.build),
-    ArtifactBuilder(sfig01.FIGURE_NAME, sfig01.build),
-    ArtifactBuilder("sfig02_compatibility_topology", sfig02.build),
-    ArtifactBuilder("sfig03_simd_population_weighting", sfig03.build),
-    ArtifactBuilder("sfig05_assortativity_confidence_intervals", sfig05.build),
+    ArtifactBuilder(fig07.FIGURE_NAME, fig07.build),
+    ArtifactBuilder("fig_ch4_compatibility_topology", fig08.build),
+    ArtifactBuilder("fig_ch4_simd_population_weighting", fig09.build),
+    ArtifactBuilder("fig_ch4_assortativity_confidence_intervals", fig10.build),
 )
 
 TABLE_BUILDERS: tuple[ArtifactBuilder, ...] = tuple(

@@ -29,6 +29,9 @@ detector. It should not create or consume candidate labels.
 - `build_mixing.py`: builds compatibility-network mixing matrices from sparse
   pairwise EpiLink edges, processing one window-lineage pairwise parquet file
   per worker and concatenating the intermediate chunks.
+- `build_cluster_pairwise_distance_summary.py`: summarises pairwise SNP and
+  temporal distances among sequences from selected non-singleton clusters
+  within each window-lineage pairwise file.
 - `build_simd_validation.py`: builds compact population-weighted SIMD validation
   tables for the appendix.
 - `make_figures.py`: rebuilds figures and LaTeX table fragments from saved
@@ -67,6 +70,14 @@ python -m observation_networks.build_mixing --windows W080 W081
 This processes every pairwise lineage file inside the requested windows. Use
 `--max-windows N` to keep all lineages from only the first `N` selected windows
 for development runs.
+
+Summarise pairwise SNP and temporal distances for non-singleton cluster
+sequences in a small development window set:
+
+```bash
+python -m observation_networks.build_cluster_pairwise_distance_summary \
+  --windows W080 W081 --max-clusters-per-window-lineage 25
+```
 
 Cap adaptive large-file jackknife blocks for quick uncertainty checks:
 

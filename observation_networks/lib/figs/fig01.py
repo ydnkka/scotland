@@ -22,12 +22,12 @@ from common import (
     POLICY_COLORS,
     Paths,
     add_common_args,
-    new_blank_figure,
     ordered_policy_values,
     panel_label,
     paths_from_args,
     read_table,
-    save_figure,
+    styled_new_figure,
+    styled_save_figure,
 )
 
 
@@ -150,7 +150,8 @@ def build(paths: Paths) -> None:
     health_right = health_board.iloc[health_split:]
     health_x_max = float(health_board.sum(axis=1).max()) * 1.12
 
-    fig = new_blank_figure("double", width_in=8.8, height_in=8.6)
+    fig, placeholder_ax = styled_new_figure("double", width_in=8.8, height_in=8.6)
+    placeholder_ax.remove()
     grid = fig.add_gridspec(
         3,
         2,
@@ -239,7 +240,9 @@ def build(paths: Paths) -> None:
         handlelength=1.5,
     )
     fig.subplots_adjust(left=0.16, right=0.98, top=0.96, bottom=0.15)
-    save_figure(fig, paths, "fig01_sequence_composition_by_policy", tight=False)
+    styled_save_figure(
+        fig, paths, "fig_ch4_sequence_composition_by_policy", tight=False
+    )
 
 
 def main() -> int:
@@ -248,7 +251,7 @@ def main() -> int:
     args = parser.parse_args()
     paths = paths_from_args(args)
     build(paths)
-    print(f"Wrote fig01_sequence_composition_by_policy to {paths.figure_dir}")
+    print(f"Wrote fig_ch4_sequence_composition_by_policy to {paths.figure_dir}")
     return 0
 
 

@@ -18,11 +18,11 @@ from common import (
     ATTRIBUTE_ORDER,
     Paths,
     add_common_args,
-    new_blank_figure,
     panel_label,
     paths_from_args,
     read_table,
-    save_figure,
+    styled_new_figure,
+    styled_save_figure,
     window_idx_from_id,
 )
 
@@ -136,12 +136,13 @@ def build(paths: Paths) -> None:
     comp_pivot = ordered_attribute_pivot(comp)
     trans_pivot = ordered_attribute_pivot(trans)
 
-    fig = new_blank_figure(
+    fig, placeholder_ax = styled_new_figure(
         "double",
         width_in=8.7,
         height_in=5.8,
         constrained_layout=True,
     )
+    placeholder_ax.remove()
     grid = fig.add_gridspec(
         2,
         2,
@@ -166,7 +167,7 @@ def build(paths: Paths) -> None:
     panel_label(axes[1], "B")
     cbar = fig.colorbar(image, cax=colorbar_axis)
     cbar.set_label("Assortativity")
-    save_figure(fig, paths, "fig03_assortativity_baseline", tight=False)
+    styled_save_figure(fig, paths, "fig_ch4_assortativity_baseline", tight=False)
 
 
 def main() -> int:
@@ -175,7 +176,7 @@ def main() -> int:
     args = parser.parse_args()
     paths = paths_from_args(args)
     build(paths)
-    print(f"Wrote fig03_assortativity_baseline to {paths.figure_dir}")
+    print(f"Wrote fig_ch4_assortativity_baseline to {paths.figure_dir}")
     return 0
 
 
