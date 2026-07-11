@@ -1,0 +1,1 @@
+"""SSE detection figure builders."""

@@ -16,13 +16,14 @@ from typing import Iterable, Literal, Sequence, Any
 import numpy as np
 import pandas as pd
 
-from .concurrent_io import atomic_write_csv, atomic_write_parquet, exclusive_file_lock
-from .entropy import (
+from ..sse.config import PROJECT_ROOT, RESULTS_DIR
+from ..concurrent_io import atomic_write_csv, atomic_write_parquet, exclusive_file_lock
+from ..sse.entropy import (
     DEFAULT_MIXING_FEATURES,
     OBSERVED_MIXING_FEATURES_X10,
     add_observed_mixing_entropy_scales,
 )
-from .io import HIGH_PRIORITY_CANDIDATE_TIERS, SseOutputs
+from ..sse.io import HIGH_PRIORITY_CANDIDATE_TIERS, SseOutputs
 
 
 RANDOM_SEED = 123
@@ -34,14 +35,12 @@ EXCLUDE_NULL_FEATURES = frozenset(
     {
         "datazone_entropy_z",
         "local_authority_entropy_z",
-        "vaccination_entropy_z",
     }
 )
 EXCLUDE_OBSERVED_FEATURES = frozenset(
     {
         "datazone_entropy_obs_x10",
         "local_authority_entropy_obs_x10",
-        "vaccination_entropy_obs_x10",
     }
 )
 
@@ -105,6 +104,49 @@ EPIDEMIC_CONTEXT_ADJUSTERS = [
 
 Domain = Literal["mixing", "composition"]
 RegressionFamily = Literal["logistic", "linear"]
+
+
+def required_regression_cluster_columns(
+    score_outcomes: Sequence[str] = SCORE_OUTCOMES,
+    cluster_id_col: str = CLUSTER_ID_COL,
+) -> tuple[str, ...]:
+    """Return cluster-table columns required by saved regression specifications."""
+    observed_entropy_sources = [
+        feature.removesuffix("_x10") for feature in OBSERVED_MIXING_FEATURES
+    ]
+    return tuple(
+        _unique_preserve_order(
+            [
+                cluster_id_col,
+                "candidate_tier",
+                "cluster_size",
+                *score_outcomes,
+                *GROUP_VARS,
+                *NULL_MIXING_FEATURES,
+                *observed_entropy_sources,
+                *STANDARDISE_SPECS.values(),
+            ]
+        )
+    )
+
+
+def validate_regression_cluster_columns(
+    cluster_table: pd.DataFrame,
+    *,
+    score_outcomes: Sequence[str] = SCORE_OUTCOMES,
+    cluster_id_col: str = CLUSTER_ID_COL,
+) -> None:
+    """Raise if an SSE cluster table cannot support the regression workflow."""
+    required = required_regression_cluster_columns(
+        score_outcomes=score_outcomes,
+        cluster_id_col=cluster_id_col,
+    )
+    missing = [col for col in required if col not in cluster_table.columns]
+    if missing:
+        raise ValueError(
+            "SSE cluster table is missing regression-required columns: "
+            + ", ".join(missing)
+        )
 
 
 @dataclass(frozen=True)
@@ -259,9 +301,14 @@ def prepare_regression_data(
     cluster_id_col: str = CLUSTER_ID_COL,
 ) -> RegressionDataBundle:
     """Load and align eligible node and sequence-level regression rows."""
+    validate_regression_cluster_columns(
+        sse_outputs.cluster_table,
+        score_outcomes=score_outcomes,
+        cluster_id_col=cluster_id_col,
+    )
     cluster_data = add_standardised_adjusters(sse_outputs.cluster_table.copy())
     if sequence_data is None:
-        from .sse_detection import load_sequence_data as _load_sequence_data
+        from ..sse.detection import load_sequence_data as _load_sequence_data
 
         sequence_data = _load_sequence_data()
     sequence_data = add_standardised_adjusters(sequence_data)
@@ -759,7 +806,8 @@ def default_result_dir(project_root: Path | str, *, family: RegressionFamily) ->
         if family == "logistic"
         else "bayesian_socio_geo_demo_linear_regression"
     )
-    return Path(project_root) / "sse_detection" / "results" / name
+    relative_results = RESULTS_DIR.relative_to(PROJECT_ROOT)
+    return Path(project_root) / relative_results / name
 
 
 def model_output_dir(

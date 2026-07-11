@@ -47,15 +47,15 @@ It covers:
 
 The regression workflow is split into three layers:
 
-1. `sse_detection/lib/regression_prep.py`
+1. `sse_detection/lib/model/prep.py`
 
    Prepares eligible node and sequence frames, defines predictor sets, builds formulas, and creates deterministic output paths.
 
-2. `sse_detection/lib/bayesian_models.py`
+2. `sse_detection/lib/model/bayesian.py`
 
    Fits Bambi/PyMC models, builds posterior summaries, computes diagnostics, and writes standard result files.
 
-3. `sse_detection/lib/regression_runner.py`, `mixing_models.py`, and `composition_models.py`
+3. `sse_detection/lib/model/runner.py`, `model/mixing.py`, and `model/composition.py`
 
    Provide repeatable command-line orchestration for running one model version or all model versions, with per-model logs.
 
@@ -67,6 +67,20 @@ The regression workflow starts from:
 sse_detection/results/sse_outputs/cluster_table.parquet
 sse_detection/results/sse_outputs/edge_table.parquet
 ```
+
+The detector also writes descriptive transition tables under the same
+directory:
+
+```text
+transition_node_table.parquet
+transition_graph_summary.{csv,parquet}
+transition_window_summary.{csv,parquet}
+transition_component_summary.{csv,parquet}
+```
+
+Those transition summary tables are not regression inputs. The Bayesian
+workflow depends on the regression-facing columns in `cluster_table.parquet`
+and the graph edge table above.
 
 These are loaded with:
 
@@ -147,7 +161,7 @@ These group intercepts adjust for broad policy-period and variant/clade structur
 
 ## 6. Predictor Groups
 
-The definitive predictor definitions live in `sse_detection/lib/regression_prep.py`.
+The definitive predictor definitions live in `sse_detection/lib/model/prep.py`.
 
 Key groups:
 
@@ -209,29 +223,29 @@ print(model_spec_table("composition"))
 List available model selectors:
 
 ```bash
-python -m sse_detection.lib.mixing_models --list-models
-python -m sse_detection.lib.composition_models --list-models
+python -m sse_detection.lib.model.mixing --list-models
+python -m sse_detection.lib.model.composition --list-models
 ```
 
 Dry-run a selection without fitting Bambi/PyMC:
 
 ```bash
-python -m sse_detection.lib.mixing_models --dry-run --family logistic --model-set null_primary
-python -m sse_detection.lib.composition_models --dry-run --family linear --outcome burden_score --model-set expanded
+python -m sse_detection.lib.model.mixing --dry-run --family logistic --model-set null_primary
+python -m sse_detection.lib.model.composition --dry-run --family linear --outcome burden_score --model-set expanded
 ```
 
 Fit one model version:
 
 ```bash
-python -m sse_detection.lib.mixing_models --family logistic --model-set observed_expanded
-python -m sse_detection.lib.composition_models --family linear --outcome burst_score --model-set primary
+python -m sse_detection.lib.model.mixing --family logistic --model-set observed_expanded
+python -m sse_detection.lib.model.composition --family linear --outcome burst_score --model-set primary
 ```
 
 Fit all models for one domain:
 
 ```bash
-python -m sse_detection.lib.mixing_models
-python -m sse_detection.lib.composition_models
+python -m sse_detection.lib.model.mixing
+python -m sse_detection.lib.model.composition
 ```
 
 Common options:
@@ -524,7 +538,7 @@ Before reporting a model:
 
 To add or change models:
 
-1. Edit predictor constants and `default_model_specs(...)` in `sse_detection/lib/regression_prep.py`.
+1. Edit predictor constants and `default_model_specs(...)` in `sse_detection/lib/model/prep.py`.
 2. Run a dry run with `--dry-run` and inspect the selected model grid.
 3. Rebuild prepared model grids and inspect complete-case rows.
 4. Fit the selected model script with `--skip-existing` when adding new models to an existing output directory.
@@ -540,7 +554,7 @@ Parallel runs:
 
 Keep responsibilities separated:
 
-- `regression_prep.py`: data frames, predictor definitions, formulas, output paths.
-- `bayesian_models.py`: fitting, posterior summaries, diagnostics, result writing.
-- `regression_runner.py`: command-line orchestration, selection, logging, manifests.
-- `mixing_models.py` and `composition_models.py`: thin domain-specific entrypoints.
+- `model/prep.py`: data frames, predictor definitions, formulas, output paths.
+- `model/bayesian.py`: fitting, posterior summaries, diagnostics, result writing.
+- `model/runner.py`: command-line orchestration, selection, logging, manifests.
+- `model/mixing.py` and `model/composition.py`: thin domain-specific entrypoints.

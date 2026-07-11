@@ -1,8 +1,8 @@
 """CLI orchestration for Bayesian socio-geodemographic regression models.
 
-The preparation and formula-building logic lives in ``regression_prep.py``.
+The preparation and formula-building logic lives in ``model/prep.py``.
 This module adds the repeatable fitting layer used by the domain-specific
-``mixing_models.py`` and ``composition_models.py`` scripts.
+``model/mixing.py`` and ``model/composition.py`` scripts.
 """
 
 from __future__ import annotations
@@ -20,20 +20,21 @@ from typing import Iterator, Sequence, TextIO
 
 import pandas as pd
 
-from .bayesian_models import (
+from ..sse.config import BAYESIAN_OUTPUT_DIR, PROJECT_ROOT, SSE_OUTPUT_DIR
+from .bayesian import (
     BayesianFitConfig,
     fit_prepared_model,
     print_diagnostic_report,
     save_prepared_model_result,
 )
-from .concurrent_io import (
+from ..concurrent_io import (
     LockAlreadyHeldError,
     atomic_write_csv,
     exclusive_create_lock,
     exclusive_file_lock,
 )
-from .io import load_sse_outputs
-from .regression_prep import (
+from ..sse.io import load_sse_outputs
+from .prep import (
     SCORE_OUTCOMES,
     Domain,
     PreparedModelFrame,
@@ -48,10 +49,6 @@ from .regression_prep import (
 )
 
 
-DEFAULT_SSE_OUTPUT_RELATIVE_DIR = Path("sse_detection") / "results" / "sse_outputs"
-DEFAULT_RESULT_RELATIVE_DIR = (
-    Path("sse_detection") / "results" / "bayesian_outputs"
-)
 ALL_FAMILIES: tuple[RegressionFamily, ...] = ("logistic", "linear")
 ALL_OUTCOMES = ("candidate", *SCORE_OUTCOMES)
 
@@ -98,7 +95,8 @@ def find_project_root(start: Path | str | None = None) -> Path:
 
 def default_regression_result_dir(project_root: Path | str) -> Path:
     """Return the combined regression result directory used by the scripts."""
-    return Path(project_root) / DEFAULT_RESULT_RELATIVE_DIR
+    relative = BAYESIAN_OUTPUT_DIR.relative_to(PROJECT_ROOT)
+    return Path(project_root) / relative
 
 
 def available_model_sets(domain: Domain) -> tuple[str, ...]:
@@ -692,7 +690,7 @@ def main_for_domain(domain: Domain, argv: Sequence[str] | None = None) -> int:
     sse_output_dir = _resolve_path(
         args.sse_output_dir,
         base=project_root,
-        default=project_root / DEFAULT_SSE_OUTPUT_RELATIVE_DIR,
+        default=project_root / SSE_OUTPUT_DIR.relative_to(PROJECT_ROOT),
     )
     model_sets = _parse_multi_arg(args.model_sets)
     outcomes = _parse_multi_arg(args.outcome)

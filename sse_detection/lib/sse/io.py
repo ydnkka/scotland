@@ -1,4 +1,4 @@
-"""Loaders for the parquet outputs produced by ``sse_detection.ipynb``."""
+"""Loaders for the parquet outputs produced by the SSE detector pipeline."""
 
 from __future__ import annotations
 
@@ -30,11 +30,6 @@ class SseOutputs:
     cluster_table: pd.DataFrame
     edge_table: pd.DataFrame
     output_dir: Path
-
-    @property
-    def node_stats(self) -> pd.DataFrame:
-        """Compatibility alias for association code written against node stats."""
-        return self.cluster_table
 
     @property
     def candidates(self) -> pd.DataFrame:
@@ -99,11 +94,6 @@ def load_sse_outputs(
             "last_collection_date",
         ],
     )
-    if (
-        "who_voc" in cluster_table.columns
-        and "who_voc_plot" not in cluster_table.columns
-    ):
-        cluster_table["who_voc_plot"] = cluster_table["who_voc"].fillna("None")
 
     return SseOutputs(
         cluster_table=cluster_table,

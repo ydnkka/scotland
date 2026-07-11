@@ -20,8 +20,6 @@ detector. It should not create or consume candidate labels.
 - `lib/mixing.py`: weighted categorical mixing matrices and assortativity
   coefficients.
 - `lib/simd.py`: SIMD population-weighting validation tables for the appendix.
-- `lib/transition_graph.py`: alternate-window temporal cluster-transition graph
-  construction and baseline summaries.
 - `lib/figures.py`: orchestration layer for the thesis figure scripts in
   `lib/figs/`.
 - `lib/figs/`: thesis figure and LaTeX table builders using `utils.style`.
@@ -125,7 +123,7 @@ python -m observation_networks.make_figures --skip-missing
 
 ## Relationship To Chapter 5
 
-Chapter 4 describes the observed sequenced record, window-level clusters,
-compatibility-network mixing, and the transition-graph baseline. Chapter 5 may
-reuse the graph-ready transition inputs, but candidate assignment and
-superspreading-compatible scoring remain outside this directory.
+Chapter 4 describes the observed sequenced record, window-level clusters, and
+compatibility-network mixing/assortativity. The alternate-window temporal
+cluster-transition graph, candidate assignment, and superspreading-compatible
+scoring are owned by `sse_detection`.

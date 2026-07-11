@@ -223,19 +223,6 @@ def plot_mixing_primary_expanded_forest(
     return ForestPlotResult(fig, np.asarray(axes), rows, tuple(missing))
 
 
-def plot_logistic_mixing_primary_expanded_forest(
-    model_config: Any | str | Path,
-    **kwargs: Any,
-) -> ForestPlotResult:
-    """Backward-compatible wrapper for logistic mixing forests."""
-    return plot_mixing_primary_expanded_forest(
-        model_config,
-        family="logistic",
-        outcome=kwargs.pop("outcome", "candidate"),
-        **kwargs,
-    )
-
-
 def plot_composition_primary_expanded_forest(
     model_config: Any | str | Path,
     *,

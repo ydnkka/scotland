@@ -3,10 +3,10 @@
 Examples
 --------
 Run all mixing models:
-    python -m sse_detection.lib.mixing_models
+    python -m sse_detection.lib.model.mixing
 
 Run one model version:
-    python -m sse_detection.lib.mixing_models --family logistic --model-set null_primary
+    python -m sse_detection.lib.model.mixing --family logistic --model-set null_primary
 """
 
 from __future__ import annotations
@@ -16,10 +16,10 @@ import sys
 
 
 if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-    from sse_detection.lib.regression_runner import main_for_domain
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+    from sse_detection.lib.model.runner import main_for_domain
 else:
-    from .regression_runner import main_for_domain
+    from .runner import main_for_domain
 
 
 def main() -> int:

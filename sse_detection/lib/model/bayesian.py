@@ -11,12 +11,12 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from .concurrent_io import (
+from ..concurrent_io import (
     atomic_write_csv,
     atomic_write_netcdf,
     exclusive_file_lock,
 )
-from .regression_prep import GROUP_VARS, PreparedModelFrame, PreparedRegressionRun
+from .prep import GROUP_VARS, PreparedModelFrame, PreparedRegressionRun
 
 
 RANDOM_SEED = 123
@@ -65,7 +65,7 @@ class BayesianModelResult:
         return self.outcome_mean if self.family == "logistic" else None
 
     def as_dict(self) -> dict[str, object]:
-        """Return a notebook-compatible dictionary."""
+        """Return a dictionary representation of the fitted model result."""
         out: dict[str, object] = {
             "family": self.family,
             "formula": self.formula,

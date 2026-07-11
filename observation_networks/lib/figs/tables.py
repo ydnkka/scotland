@@ -413,49 +413,9 @@ def compatibility_attribute_summary(paths: Paths) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def transition_window_assortativity(paths: Paths) -> pd.DataFrame:
-    assort = read_table(paths, "transition_assortativity")
-    assort["window_idx"] = window_idx_from_id(assort["source_window_id"])
-    return assort.loc[
-        assort["assortativity"].notna()
-        & assort["edge_weight_total"].gt(0)
-        & assort["n_categories"].gt(1)
-    ].copy()
-
-
-def transition_attribute_summary(paths: Paths) -> pd.DataFrame:
-    work = transition_window_assortativity(paths)
-    rows = []
-    for (attribute, label), group in work.groupby(
-        ["attribute", "attribute_label"], dropna=False
-    ):
-        rows.append(
-            {
-                "graph": "Transition",
-                "attribute": attribute,
-                "attribute_label": label,
-                "n_windows": group["window_idx"].nunique(),
-                "n_networks": np.nan,
-                "weighted_mean": weighted_mean(
-                    group["assortativity"], group["edge_weight_total"]
-                ),
-                "combined_se": np.nan,
-                "ci_low": np.nan,
-                "ci_high": np.nan,
-                "ci_weight_share": np.nan,
-                "window_median": group["assortativity"].median(),
-                "window_q10": group["assortativity"].quantile(0.10),
-                "window_q90": group["assortativity"].quantile(0.90),
-            }
-        )
-    return pd.DataFrame(rows)
-
-
 def write_cohort_table(paths: Paths) -> None:
     cohort = read_table(paths, "cohort_summary")
-    graph = read_table(paths, "transition_graph_summary")
     cohort_map = cohort.set_index("metric")["value"].to_dict()
-    graph_map = graph.set_index("metric")["value"].to_dict()
     rows = [
         ["Unique sequences", fmt_int(cohort_map.get("unique_sequences"))],
         ["Unique patients", fmt_int(cohort_map.get("unique_patients"))],
@@ -468,17 +428,11 @@ def write_cohort_table(paths: Paths) -> None:
         ["Window-level clusters", fmt_int(cohort_map.get("clusters"))],
         ["Nextclade clades", fmt_int(cohort_map.get("clades"))],
         ["Pango lineages", fmt_int(cohort_map.get("pango_lineages"))],
-        ["Transition graph nodes", fmt_int(graph_map.get("nodes"))],
-        ["Transition graph edges", fmt_int(graph_map.get("edges"))],
-        ["Weak components", fmt_int(graph_map.get("weak_components"))],
-        ["Isolated nodes", fmt_int(graph_map.get("isolated_nodes"))],
-        ["Branching nodes", fmt_int(graph_map.get("branching_nodes"))],
-        ["Merging nodes", fmt_int(graph_map.get("merging_nodes"))],
     ]
     write_latex_table(
         paths,
         TABLE_NAMES["cohort_objects"],
-        caption="Chapter 4 analysis cohort and graph object counts",
+        caption="Chapter 4 analysis cohort and window-cluster object counts",
         label=TABLE_LABELS["cohort_objects"],
         columns=["Quantity", "Value"],
         rows=rows,
@@ -594,9 +548,7 @@ def write_cluster_period_table(paths: Paths) -> None:
 
 
 def write_assortativity_summary_table(paths: Paths) -> None:
-    comp = compatibility_attribute_summary(paths)
-    trans = transition_attribute_summary(paths)
-    summary = pd.concat([comp, trans], ignore_index=True, sort=False)
+    summary = compatibility_attribute_summary(paths)
     rows = []
     addlinespace_after: set[int] = set()
     graph_groups = list(summary.groupby("graph", sort=False))

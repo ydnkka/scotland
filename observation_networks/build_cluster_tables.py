@@ -25,10 +25,7 @@ from .lib.cohort import (
     build_vaccination_window_context,
     build_window_coverage,
 )
-from .lib.config import TRANSITION_WINDOW_STRIDE
 from .lib.io import ensure_results_dirs, load_chapter4_sequence_data, write_table
-from .lib.mixing import build_transition_mixing
-from .lib.transition_graph import build_transition_outputs
 
 
 LOGGER = logging.getLogger(__name__)
@@ -39,7 +36,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--skip-transition",
         action="store_true",
-        help="Skip alternate-window transition-graph table construction.",
+        help=(
+            "Deprecated no-op. Transition graph tables are now built by "
+            "sse_detection.lib.sse.detection."
+        ),
     )
     parser.add_argument(
         "--max-windows",
@@ -51,13 +51,19 @@ def parse_args() -> argparse.Namespace:
         "--max-transition-windows",
         type=int,
         default=None,
-        help="Development cap on alternate-window transition input after loading.",
+        help=(
+            "Deprecated no-op. Transition graph tables are now built by "
+            "sse_detection.lib.sse.detection."
+        ),
     )
     parser.add_argument(
         "--transition-window-stride",
         type=int,
-        default=TRANSITION_WINDOW_STRIDE,
-        help="Window stride for the transition graph input. Default: 2.",
+        default=2,
+        help=(
+            "Deprecated no-op. Transition graph tables are now built by "
+            "sse_detection.lib.sse.detection."
+        ),
     )
     parser.add_argument(
         "--log-level",
@@ -121,47 +127,10 @@ def main() -> int:
         LOGGER.info("Writing %s (%s rows)", name, f"{len(table):,}")
         write_table(table, name, formats=formats)
 
-    if args.skip_transition:
-        return 0
-
     LOGGER.info(
-        "Loading alternate-window data for transition graph (stride=%s)",
-        args.transition_window_stride,
+        "Transition graph tables are built by "
+        "python -m sse_detection.lib.sse.detection"
     )
-    transition_df = load_chapter4_sequence_data(
-        window_stride=args.transition_window_stride,
-    )
-    if args.max_transition_windows is not None:
-        keep = sorted(transition_df["window_idx"].dropna().unique())[
-            : args.max_transition_windows
-        ]
-        transition_df = transition_df.loc[transition_df["window_idx"].isin(keep)].copy()
-    LOGGER.info("Building transition graph baseline tables")
-    transition = build_transition_outputs(transition_df)
-    transition_matrix, transition_assortativity = build_transition_mixing(
-        transition.edge_table,
-        transition.node_table,
-    )
-
-    transition_jobs = {
-        "transition_edge_table": (transition.edge_table, ("parquet",)),
-        "transition_node_table": (transition.node_table, ("parquet",)),
-        "transition_graph_summary": (transition.graph_summary, ("csv", "parquet")),
-        "transition_window_summary": (transition.window_summary, ("csv", "parquet")),
-        "transition_component_summary": (
-            transition.component_summary,
-            ("csv", "parquet"),
-        ),
-        "transition_mixing_matrix": (transition_matrix, ("parquet",)),
-        "transition_assortativity": (
-            transition_assortativity,
-            ("csv", "parquet"),
-        ),
-    }
-    for name, (table, formats) in transition_jobs.items():
-        LOGGER.info("Writing %s (%s rows)", name, f"{len(table):,}")
-        write_table(table, name, formats=formats)
-
     return 0
 
 

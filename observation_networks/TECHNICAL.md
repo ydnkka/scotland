@@ -14,9 +14,7 @@ The Chapter 4 analysis uses:
 - population-weighted SIMD groupings from `utils.load_analysis_columns`;
 - all rolling windows for observation, coverage, cluster, and compatibility
   network summaries, with compatibility summaries partitioned by Pango lineage
-  within each window;
-- alternate retained windows, stride `2`, for the temporal transition graph so
-  that its input matches Chapter 5.
+  within each window.
 
 ## Outputs
 
@@ -34,17 +32,9 @@ The Chapter 4 analysis uses:
   summaries by window.
 - `cluster_period_summary`: cluster summaries by policy period.
 - `cluster_attribute_composition`: modal cluster-attribute composition.
-- `transition_edge_table`: directed adjacent-window cluster-transition edges.
-- `transition_node_table`: cluster nodes with in/out degree, strength,
-  component, role, and downstream burden summaries.
-- `transition_graph_summary`: scalar baseline graph summaries.
-- `transition_window_summary`: transition graph node and outgoing-edge summaries
-  by retained window.
-- `transition_component_summary`: weak-component summaries.
-- `transition_mixing_matrix`: directed cluster-level mixing matrices for the
-  transition graph.
-- `transition_assortativity`: scalar assortativity summaries derived from the
-  transition mixing matrices.
+
+Temporal cluster-transition tables are built by `sse_detection`, where they
+share the same node and edge tables used by the Chapter 5 detector.
 
 `build_mixing.py` writes:
 
@@ -96,7 +86,7 @@ rendered from `simd_population_weighting_group_summary` by
 
 Mixing is the full categorical edge-pairing pattern. For an attribute such as
 age band, health board, or SIMD quintile, the mixing matrix records weighted
-edge mass from each source category to each target category.
+edge mass between observed categories in the compatibility network.
 
 Assortativity is a one-number summary of that matrix:
 
@@ -106,8 +96,7 @@ r = (observed same-category edge mass - expected same-category edge mass)
 ```
 
 For undirected compatibility networks, each edge is represented in both
-directions before computing the matrix. For the temporal transition graph, edge
-orientation is retained.
+directions before computing the matrix.
 
 Compatibility assortativity uncertainty is estimated with a deterministic
 node jackknife. For each attribute within each physical `(window_id,

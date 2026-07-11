@@ -9,14 +9,10 @@ empirical_tail_p_values
     Empirical lower/upper/two-sided tail probabilities.
 cluster_socio_demo_entropy
     Cluster category-entropy vs. within-window multinomial null.
-cluster_age_conditional_binary_entropy
-    Cluster binary-label entropy vs. window-by-age conditional null.
 onward_edge_entropy
     Per-source entropy of outgoing edge weights.
 observed_mixing_entropy_scales
     Cluster-level scaled observed-entropy columns for mixing models.
-vaccination_mixing_features
-    Cluster-level age-conditional vaccination-mixing entropy features.
 attach_cluster_stats
     Thin left-merge helper to broadcast cluster stats onto row-level data.
 
@@ -37,7 +33,6 @@ DEFAULT_MIXING_FEATURES = [
     "local_authority_entropy_z",
     "urban_rural_entropy_z",
     "health_board_entropy_z",
-    "vaccination_entropy_z",
 ]
 
 OBSERVED_MIXING_FEATURES = [
@@ -48,7 +43,6 @@ OBSERVED_MIXING_FEATURES = [
     "local_authority_entropy_obs",
     "urban_rural_entropy_obs",
     "health_board_entropy_obs",
-    "vaccination_entropy_obs",
 ]
 OBSERVED_MIXING_FEATURES_X10 = [f"{feature}_x10" for feature in OBSERVED_MIXING_FEATURES]
 
@@ -59,7 +53,6 @@ MIXING_TERTILE_ORDER = [
     "as_expected",
     "more_mixed",
 ]
-VACCINATION_MIXING_TERTILE_ORDER = MIXING_TERTILE_ORDER
 
 
 # --------------------------------------------------------------------------- #
@@ -402,195 +395,6 @@ def cluster_socio_demo_entropy(
     )
 
 
-def cluster_age_conditional_binary_entropy(
-    df: pd.DataFrame,
-    cluster_col: str,
-    binary_col: str,
-    window_col: str,
-    age_col: str,
-    *,
-    n_random: int = 1000,
-    base: float = 2,
-    random_state: int = 42,
-    prefix: str = "cluster",
-) -> pd.DataFrame:
-    """Cluster entropy against a window-by-age conditional null.
-
-    Accepts sequence-level data. The null preserves each cluster's observed
-    ``window_col`` x ``age_col`` composition and redraws binary-positive
-    counts from the pooled stratum positive probability.
-
-    Returns
-    -------
-    pd.DataFrame
-        One row per cluster: ``[cluster_col]`` plus ``{prefix}_n``,
-        ``{prefix}_prop_positive``, ``{prefix}_entropy_obs``,
-        ``{prefix}_entropy_null_mean``, ``{prefix}_entropy_null_sd``,
-        ``{prefix}_entropy_z``, and the empirical tail probabilities
-        ``{prefix}_entropy_lower_p``, ``{prefix}_entropy_upper_p``,
-        ``{prefix}_entropy_two_sided_p``.
-    """
-    required_cols = [cluster_col, binary_col, window_col, age_col]
-    missing = [col for col in required_cols if col not in df.columns]
-    if missing:
-        raise ValueError(f"Missing columns in dataframe: {missing}")
-    if n_random < 2:
-        raise ValueError("n_random must be >= 2 to estimate null SD.")
-    _check_base(base)
-
-    stat_cols = [
-        f"{prefix}_n",
-        f"{prefix}_prop_positive",
-        f"{prefix}_entropy_obs",
-        f"{prefix}_entropy_null_mean",
-        f"{prefix}_entropy_null_sd",
-        f"{prefix}_entropy_z",
-        f"{prefix}_entropy_lower_p",
-        f"{prefix}_entropy_upper_p",
-        f"{prefix}_entropy_two_sided_p",
-    ]
-
-    binary = pd.to_numeric(df[binary_col], errors="coerce")
-    valid = df[cluster_col].notna() & binary.notna()
-    work = df.loc[valid, [cluster_col, window_col, age_col]].copy()
-    work["_positive"] = binary.loc[valid].gt(0).astype(int).to_numpy()
-
-    if work.empty:
-        return pd.DataFrame(columns=[cluster_col, *stat_cols])
-
-    stratum_prob = (
-        work.groupby([window_col, age_col], dropna=False, observed=True)["_positive"]
-        .mean()
-        .rename("_stratum_positive_prob")
-        .reset_index()
-    )
-    work = work.merge(stratum_prob, on=[window_col, age_col], how="left")
-
-    cluster_totals = (
-        work.groupby(cluster_col, dropna=False, observed=True)
-        .agg(
-            **{
-                f"{prefix}_n": ("_positive", "size"),
-                "_observed_positive": ("_positive", "sum"),
-            }
-        )
-        .reset_index()
-    )
-    counts = np.column_stack(
-        [
-            cluster_totals["_observed_positive"].to_numpy(dtype=float),
-            (
-                cluster_totals[f"{prefix}_n"] - cluster_totals["_observed_positive"]
-            ).to_numpy(dtype=float),
-        ]
-    )
-    cluster_totals[f"{prefix}_prop_positive"] = (
-        cluster_totals["_observed_positive"] / cluster_totals[f"{prefix}_n"]
-    )
-    cluster_totals[f"{prefix}_entropy_obs"] = _shannon_entropy(counts, base=base)
-
-    rng = np.random.default_rng(random_state)
-    n_rows = len(cluster_totals)
-    null_mean = np.full(n_rows, np.nan)
-    null_sd = np.full(n_rows, np.nan)
-    lower_p = np.full(n_rows, np.nan)
-    upper_p = np.full(n_rows, np.nan)
-    two_sided_p = np.full(n_rows, np.nan)
-    cluster_row = {c: i for i, c in enumerate(cluster_totals[cluster_col].tolist())}
-
-    cluster_strata = (
-        work.groupby([cluster_col, window_col, age_col], dropna=False, observed=True)
-        .agg(n=("_positive", "size"), p=("_stratum_positive_prob", "first"))
-        .reset_index()
-    )
-
-    for cluster, block in cluster_strata.groupby(cluster_col, dropna=False, sort=False):
-        row_idx = cluster_row[cluster]
-        n_by_stratum = block["n"].to_numpy(dtype=int)
-        p_by_stratum = block["p"].to_numpy(dtype=float)
-        total = int(n_by_stratum.sum())
-        if total <= 0:
-            continue
-
-        sampled_positive = rng.binomial(
-            n=n_by_stratum, p=p_by_stratum, size=(n_random, len(n_by_stratum))
-        ).sum(axis=1)
-        sampled_counts = np.column_stack([sampled_positive, total - sampled_positive])
-        null_H = _shannon_entropy(sampled_counts, base=base)
-        null_mean[row_idx] = null_H.mean()
-        null_sd[row_idx] = null_H.std(ddof=1)
-        observed = np.asarray(cluster_totals.loc[row_idx, f"{prefix}_entropy_obs"])
-        tails = _empirical_tail_p_values(observed, null_H)
-        lower_p[row_idx] = tails["lower_p"]
-        upper_p[row_idx] = tails["upper_p"]
-        two_sided_p[row_idx] = tails["two_sided_p"]
-
-    cluster_totals[f"{prefix}_entropy_null_mean"] = null_mean
-    cluster_totals[f"{prefix}_entropy_null_sd"] = null_sd
-    cluster_totals[f"{prefix}_entropy_z"] = _zscore(
-        cluster_totals[f"{prefix}_entropy_obs"].to_numpy(dtype=float),
-        null_mean,
-        null_sd,
-    )
-    cluster_totals[f"{prefix}_entropy_lower_p"] = lower_p
-    cluster_totals[f"{prefix}_entropy_upper_p"] = upper_p
-    cluster_totals[f"{prefix}_entropy_two_sided_p"] = two_sided_p
-
-    return cluster_totals.loc[:, [cluster_col, *stat_cols]]
-
-
-def vaccination_mixing_features(
-    df: pd.DataFrame,
-    *,
-    cluster_col: str = "cluster_id",
-    vaccination_col: str = "is_vaccinated",
-    window_col: str = "window_idx",
-    age_col: str = "age_band",
-    n_random: int = 1000,
-    random_state: int = 42,
-) -> pd.DataFrame:
-    """Cluster-level age-conditional vaccination-mixing entropy features.
-
-    Accepts sequence-level data and returns one row per cluster: ``[cluster_col]``
-    plus the vaccination entropy stats (``vaccination_entropy_obs``,
-    ``vaccination_entropy_z``, etc.) and an ordered ``vaccination_entropy_z_tertile``.
-    """
-    required = {cluster_col, vaccination_col, window_col, age_col}
-    missing = sorted(required - set(df.columns))
-    if missing:
-        raise KeyError(f"Missing vaccination mixing columns: {missing}")
-
-    seq = df.copy()
-    seq["_vaccination_positive"] = (
-        pd.to_numeric(seq[vaccination_col], errors="coerce").fillna(0).gt(0).astype(int)
-    )
-    seq[age_col] = seq[age_col].astype("string").fillna("Missing")
-
-    stats = cluster_age_conditional_binary_entropy(
-        seq,
-        cluster_col=cluster_col,
-        binary_col="_vaccination_positive",
-        window_col=window_col,
-        age_col=age_col,
-        n_random=n_random,
-        random_state=random_state,
-        prefix="vaccination",
-    )
-    feature_cols = [
-        "vaccination_n",
-        "vaccination_prop_positive",
-        "vaccination_entropy_obs",
-        "vaccination_entropy_null_mean",
-        "vaccination_entropy_null_sd",
-        "vaccination_entropy_z",
-    ]
-    out = stats.loc[:, [cluster_col, *feature_cols]].drop_duplicates(cluster_col)
-    out["vaccination_entropy_z_tertile"] = _ordered_tertile(
-        out["vaccination_entropy_z"], categories=MIXING_TERTILE_ORDER
-    )
-    return out
-
-
 # --------------------------------------------------------------------------- #
 # Onward edge entropy (edge-level input -> source-level output)
 # --------------------------------------------------------------------------- #
@@ -731,64 +535,7 @@ def add_observed_mixing_entropy_scales(
     return out
 
 
-def add_vaccination_mixing_features(
-    node_data: pd.DataFrame,
-    sequence_data: pd.DataFrame,
-    *,
-    cluster_col: str = "cluster_id",
-    vaccination_col: str = "is_vaccinated",
-    window_col: str = "window_idx",
-    age_col: str = "age_band",
-    n_random: int = 1000,
-    random_state: int = 42,
-) -> pd.DataFrame:
-    """Attach age-conditional vaccination-mixing features to node rows."""
-    required_node = {cluster_col}
-    missing_node = sorted(required_node - set(node_data.columns))
-    if missing_node:
-        raise KeyError(f"Missing vaccination node columns: {missing_node}")
-
-    required_seq = {cluster_col, vaccination_col, window_col, age_col}
-    missing_seq = sorted(required_seq - set(sequence_data.columns))
-    if missing_seq:
-        raise KeyError(f"Missing vaccination mixing columns: {missing_seq}")
-
-    seq = sequence_data.copy()
-    seq["_vaccination_mix_positive"] = (
-        pd.to_numeric(seq[vaccination_col], errors="coerce")
-        .fillna(0)
-        .gt(0)
-        .astype(int)
-    )
-    seq[age_col] = seq[age_col].astype("string").fillna("Missing")
-
-    stats = cluster_age_conditional_binary_entropy(
-        seq,
-        cluster_col=cluster_col,
-        binary_col="_vaccination_mix_positive",
-        window_col=window_col,
-        age_col=age_col,
-        n_random=n_random,
-        random_state=random_state,
-        prefix="vaccination_mix",
-    )
-    feature_cols = [
-        "vaccination_mix_n",
-        "vaccination_mix_prop_positive",
-        "vaccination_mix_entropy_obs",
-        "vaccination_mix_entropy_null_mean",
-        "vaccination_mix_entropy_null_sd",
-        "vaccination_mix_entropy_z",
-    ]
-    stats = stats.loc[:, [cluster_col, *feature_cols]].drop_duplicates(cluster_col)
-    stats["vaccination_mix_tertile"] = _ordered_tertile(
-        stats["vaccination_mix_entropy_z"],
-        categories=VACCINATION_MIXING_TERTILE_ORDER,
-    )
-    return node_data.merge(stats, on=cluster_col, how="left")
-
-
-def _ordered_tertile(values: pd.Series, *, categories: list[str]) -> pd.Categorical:
+def _ordered_tertile(values: pd.Series, *, categories: list[object]) -> pd.Categorical:
     """Rank-based ordered tertiles for a numeric series."""
     out = pd.Series(pd.NA, index=values.index, dtype="object")
     present = values.notna()
@@ -803,7 +550,7 @@ def add_mixing_tertiles(
     cluster_stats: pd.DataFrame,
     *,
     features: list[str] | None = None,
-    categories: list[str] | None = None,
+    categories: list[object] | None = None,
     suffix: str = "_tertile",
 ) -> pd.DataFrame:
     """Add rank-based ordered tertile columns for every present mixing feature.

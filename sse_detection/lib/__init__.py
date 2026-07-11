@@ -1,21 +1,19 @@
 """Public helpers for the SSE detection workflow."""
 
-from .entropy import (
+from .sse.entropy import (
     MIXING_TERTILE_FEATURES,
     MIXING_TERTILE_ORDER,
     DEFAULT_MIXING_FEATURES,
     OBSERVED_MIXING_FEATURES_X10,
     add_observed_mixing_entropy_scales,
     add_mixing_tertiles,
-    cluster_age_conditional_binary_entropy,
     cluster_socio_demo_entropy,
     observed_mixing_entropy_scales,
     onward_edge_entropy,
-    vaccination_mixing_features,
 )
-from .io import HIGH_PRIORITY_CANDIDATE_TIERS, SseOutputs, load_sse_outputs
+from .sse.io import HIGH_PRIORITY_CANDIDATE_TIERS, SseOutputs, load_sse_outputs
 
-from .regression_prep import (
+from .model.prep import (
     CLUSTER_ID_COL,
     COMPOSITION_FEATURES,
     COMPOSITION_SPECS,
@@ -42,13 +40,15 @@ from .regression_prep import (
     model_output_files,
     prepare_regression_data,
     prepare_regression_run,
+    required_regression_cluster_columns,
     sample_binary_outcome_data,
     sample_rows_preserving_categories,
     treatment_term,
+    validate_regression_cluster_columns,
     write_fit_frames,
     write_prepared_run_tables,
 )
-from .bayesian_models import (
+from .model.bayesian import (
     BayesianFitConfig,
     BayesianModelResult,
     available_posterior_vars,
@@ -72,7 +72,7 @@ from .bayesian_models import (
     summarise_bambi_idata,
     write_summary_table,
 )
-from .regression_runner import (
+from .model.runner import (
     RegressionCliConfig,
     available_model_sets,
     build_domain_arg_parser,
@@ -95,12 +95,21 @@ from .regression_runner import (
     write_saved_model_manifest,
 )
 
-from .sse_detection import load_sequence_data
+from .sse.cluster_features import (
+    build_cluster_attributes,
+    build_cluster_stats,
+    build_cluster_table,
+)
+from .sse.scoring import (
+    add_composite_null_scores,
+    add_sse_node_metrics,
+    choose_permutation_strata,
+)
+from .sse.detection import load_sequence_data
 
 from .forest import (
     ForestPlotResult,
     plot_composition_primary_expanded_forest,
-    plot_logistic_mixing_primary_expanded_forest,
     plot_logistic_composition_primary_expanded_forest,
     plot_mixing_primary_expanded_forest,
 )
@@ -115,13 +124,17 @@ __all__ = [
     "OBSERVED_MIXING_FEATURES_X10",
     "SseOutputs",
     "add_mixing_tertiles",
-    "cluster_age_conditional_binary_entropy",
     "cluster_socio_demo_entropy",
     "load_sse_outputs",
     "observed_mixing_entropy_scales",
     "onward_edge_entropy",
-    "vaccination_mixing_features",
     "load_sequence_data",
+    "add_composite_null_scores",
+    "add_sse_node_metrics",
+    "build_cluster_attributes",
+    "build_cluster_stats",
+    "build_cluster_table",
+    "choose_permutation_strata",
     "CLUSTER_ID_COL",
     "COMPOSITION_FEATURES",
     "COMPOSITION_SPECS",
@@ -148,9 +161,11 @@ __all__ = [
     "model_output_files",
     "prepare_regression_data",
     "prepare_regression_run",
+    "required_regression_cluster_columns",
     "sample_binary_outcome_data",
     "sample_rows_preserving_categories",
     "treatment_term",
+    "validate_regression_cluster_columns",
     "write_fit_frames",
     "write_prepared_run_tables",
     "BayesianFitConfig",
@@ -196,7 +211,6 @@ __all__ = [
     "write_model_log_header",
     "write_saved_model_manifest",
     "plot_composition_primary_expanded_forest",
-    "plot_logistic_mixing_primary_expanded_forest",
     "plot_logistic_composition_primary_expanded_forest",
     "plot_mixing_primary_expanded_forest",
     "ForestPlotResult",

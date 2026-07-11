@@ -1,0 +1,2 @@
+"""SSE detector pipeline modules."""
+
