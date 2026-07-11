@@ -23,6 +23,9 @@ from common import (
 )
 
 
+FIGURE_NAME = "fig_ch4_compatibility_topology"
+
+
 def weighted_mean(values: pd.Series, weights: pd.Series) -> float:
     mask = values.notna() & weights.notna() & weights.gt(0)
     if not mask.any():
@@ -52,8 +55,7 @@ def build(paths: Paths) -> None:
     summary = pd.DataFrame(rows).sort_values("window_idx")
 
     fig, axes = styled_new_figure(
-        "double",
-        width_in=8.2,
+        width="double",
         height_in=7.0,
         nrows=3,
         ncols=1,
@@ -79,7 +81,7 @@ def build(paths: Paths) -> None:
     axes[2].set_ylabel("Assortativity")
     axes[2].legend(loc="upper right")
     panel_label(axes[2], "C")
-    styled_save_figure(fig, paths, "fig_ch4_compatibility_topology")
+    styled_save_figure(fig, paths, FIGURE_NAME)
 
 
 def main() -> int:
@@ -88,7 +90,7 @@ def main() -> int:
     args = parser.parse_args()
     paths = paths_from_args(args)
     build(paths)
-    print(f"Wrote fig_ch4_compatibility_topology to {paths.figure_dir}")
+    print(f"Wrote {FIGURE_NAME} to {paths.figure_dir}")
     return 0
 
 

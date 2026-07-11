@@ -24,6 +24,7 @@ from .figs import (
     fig08,
     fig09,
     fig10,
+    fig11,
     tables,
 )
 from .figs.common import Paths
@@ -42,16 +43,17 @@ class ArtifactBuilder:
 
 
 FIGURE_BUILDERS: tuple[ArtifactBuilder, ...] = (
-    ArtifactBuilder("fig_ch4_sequence_composition_by_policy", fig01.build),
-    ArtifactBuilder("fig_ch4_cluster_landscape", fig02.build),
-    ArtifactBuilder("fig_ch4_assortativity_baseline", fig03.build),
-    ArtifactBuilder("fig_ch4_mixing_matrices", fig04.build),
-    ArtifactBuilder("fig_ch4_transition_graph_baseline", fig05.build),
+    ArtifactBuilder(fig01.FIGURE_NAME, fig01.build),
+    ArtifactBuilder(fig02.FIGURE_NAME, fig02.build),
+    ArtifactBuilder(fig03.FIGURE_NAME, fig03.build),
+    ArtifactBuilder(fig04.FIGURE_NAME, fig04.build),
+    ArtifactBuilder(fig05.FIGURE_NAME, fig05.build),
     ArtifactBuilder(fig06.FIGURE_NAME, fig06.build),
     ArtifactBuilder(fig07.FIGURE_NAME, fig07.build),
-    ArtifactBuilder("fig_ch4_compatibility_topology", fig08.build),
-    ArtifactBuilder("fig_ch4_simd_population_weighting", fig09.build),
-    ArtifactBuilder("fig_ch4_assortativity_confidence_intervals", fig10.build),
+    ArtifactBuilder(fig08.FIGURE_NAME, fig08.build),
+    ArtifactBuilder(fig09.FIGURE_NAME, fig09.build),
+    ArtifactBuilder(fig10.FIGURE_NAME, fig10.build),
+    ArtifactBuilder(fig11.FIGURE_NAME, fig11.build),
 )
 
 TABLE_BUILDERS: tuple[ArtifactBuilder, ...] = tuple(

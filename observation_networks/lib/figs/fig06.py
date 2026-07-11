@@ -147,7 +147,7 @@ def _plot_days_since_vaccination(ax: Axes, window: pd.DataFrame) -> None:
     )
     ax.plot(x[line_mask], median[line_mask], color="#b85c00", lw=1.35)
     ax.xaxis_date()
-    ax.set_title("Time since vaccination among vaccinated sequences")
+    ax.set_title("Time since vaccination")  # among vaccinated sequences
     ax.set_ylabel("Days")
     date_axis(ax)
     panel_label(ax, "C")
@@ -191,8 +191,7 @@ def build(paths: Paths) -> None:
     window = window.sort_values("window_idx")
 
     fig, placeholder_ax = styled_new_figure(
-        "double",
-        width_in=8.8,
+        width="double",
         height_in=7.3,
     )
     placeholder_ax.remove()

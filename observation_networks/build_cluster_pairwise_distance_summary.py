@@ -52,7 +52,25 @@ PAIRWISE_COLUMNS = [
     "id2",
     "snp_distance",
     "temporal_distance",
-    "epilink_compatibility",
+]
+OUTPUT_COLUMNS = [
+    "window_idx",
+    "window_id",
+    "pango_lineage",
+    "pairwise_stem",
+    "status",
+    "n_selected_clusters",
+    "n_selected_sequences",
+    "n_selected_possible_pairs",
+    "n_pairwise_rows",
+    "snp_distance_median",
+    "snp_distance_q25",
+    "snp_distance_q75",
+    "snp_distance_iqr",
+    "temporal_distance_median",
+    "temporal_distance_q25",
+    "temporal_distance_q75",
+    "temporal_distance_iqr",
 ]
 GROUP_COLUMNS = ["window_id", "window_idx", "pango_lineage"]
 CLUSTER_COLUMNS = [*GROUP_COLUMNS, "cluster_id"]
@@ -206,7 +224,7 @@ def _group_selection_table(
     *,
     min_cluster_size: int,
     max_groups: int | None,
-) -> tuple[pd.DataFrame, dict[tuple[str, str], set[str]]]:
+) -> tuple[pd.DataFrame, dict[tuple[str, str], dict[str, str]]]:
     eligible_counts = (
         _cluster_counts(sequence_rows)
         .loc[lambda x: x["n_cluster_sequences"].ge(min_cluster_size)]
@@ -231,6 +249,30 @@ def _group_selection_table(
         )
         .reset_index()
     )
+    selected_possible_pairs = (
+        selected_sequences.groupby(CLUSTER_COLUMNS, dropna=False)["sequence_id"]
+        .nunique()
+        .rename("n_cluster_sequences")
+        .reset_index()
+    )
+    selected_possible_pairs["n_cluster_possible_pairs"] = (
+        selected_possible_pairs["n_cluster_sequences"]
+        * (selected_possible_pairs["n_cluster_sequences"] - 1)
+        // 2
+    )
+    selected_possible_pairs = (
+        selected_possible_pairs.groupby(GROUP_COLUMNS, dropna=False)[
+            "n_cluster_possible_pairs"
+        ]
+        .sum()
+        .rename("n_selected_possible_pairs")
+        .reset_index()
+    )
+    selected_counts = selected_counts.merge(
+        selected_possible_pairs,
+        on=GROUP_COLUMNS,
+        how="left",
+    )
     groups = eligible_counts.merge(
         selected_counts,
         on=GROUP_COLUMNS,
@@ -246,21 +288,26 @@ def _group_selection_table(
             how="inner",
         )
 
-    sequence_sets = {
-        (str(window_id), str(pango_lineage)): set(group["sequence_id"].astype(str))
+    cluster_by_sequence = {
+        (str(window_id), str(pango_lineage)): dict(
+            zip(
+                group["sequence_id"].astype(str),
+                group["cluster_id"].astype(str),
+                strict=True,
+            )
+        )
         for (window_id, pango_lineage), group in selected_sequences.groupby(
             ["window_id", "pango_lineage"],
             sort=False,
         )
     }
-    return groups.reset_index(drop=True), sequence_sets
+    return groups.reset_index(drop=True), cluster_by_sequence
 
 
 def _distance_summary(values: pd.Series, prefix: str) -> dict[str, float | int]:
     numeric = pd.to_numeric(values, errors="coerce").dropna()
     if numeric.empty:
         return {
-            f"n_{prefix}_distance_nonmissing": 0,
             f"{prefix}_distance_median": np.nan,
             f"{prefix}_distance_q25": np.nan,
             f"{prefix}_distance_q75": np.nan,
@@ -270,7 +317,6 @@ def _distance_summary(values: pd.Series, prefix: str) -> dict[str, float | int]:
     q25 = float(numeric.quantile(0.25))
     q75 = float(numeric.quantile(0.75))
     return {
-        f"n_{prefix}_distance_nonmissing": int(numeric.size),
         f"{prefix}_distance_median": float(numeric.median()),
         f"{prefix}_distance_q25": q25,
         f"{prefix}_distance_q75": q75,
@@ -293,35 +339,20 @@ def _to_int(value: Any) -> int:
 def _summarise_one_group(
     row: dict[Any, Any],
     *,
-    selected_sequence_ids: set[str],
+    selected_cluster_by_sequence: dict[str, str],
     pairwise_path: Path | None,
-    resolution: float,
-    min_cluster_size: int,
-    max_clusters_per_window_lineage: int | None,
-    selection: str,
 ) -> dict[str, Any]:
-    n_eligible_clusters = _to_int(row["n_eligible_clusters"])
-    n_eligible_sequences = _to_int(row["n_eligible_sequences"])
     n_selected_clusters = _to_int(row["n_selected_clusters"])
     n_selected_sequences = _to_int(row["n_selected_sequences"])
+    n_selected_possible_pairs = _to_int(row["n_selected_possible_pairs"])
     base = {
         "window_idx": row["window_idx"],
         "window_id": row["window_id"],
         "pango_lineage": row["pango_lineage"],
-        "resolution": resolution,
-        "min_cluster_size": min_cluster_size,
-        "cluster_selection": selection,
-        "max_clusters_per_window_lineage": max_clusters_per_window_lineage,
-        "n_eligible_clusters": n_eligible_clusters,
-        "n_eligible_sequences": n_eligible_sequences,
         "n_selected_clusters": n_selected_clusters,
         "n_selected_sequences": n_selected_sequences,
-        "n_selected_possible_pairs": int(
-            n_selected_sequences * (n_selected_sequences - 1) // 2
-        ),
+        "n_selected_possible_pairs": n_selected_possible_pairs,
         "pairwise_stem": np.nan,
-        "n_pairwise_file_sequences": np.nan,
-        "n_pairwise_file_rows": 0,
         "n_pairwise_rows": 0,
     }
 
@@ -340,8 +371,6 @@ def _summarise_one_group(
         pairwise_dataset=pairwise_path,
     )
     base["pairwise_stem"] = metadata.pairwise_stem
-    base["n_pairwise_file_sequences"] = metadata.nunique_sequences
-    base["n_pairwise_file_rows"] = int(len(edges))
 
     if edges.empty:
         return {
@@ -351,9 +380,14 @@ def _summarise_one_group(
             "status": "empty_pairwise_file",
         }
 
-    id1_selected = edges["id1"].astype(str).isin(selected_sequence_ids)
-    id2_selected = edges["id2"].astype(str).isin(selected_sequence_ids)
-    selected_edges = edges.loc[id1_selected & id2_selected]
+    id1 = edges["id1"].astype(str)
+    id2 = edges["id2"].astype(str)
+    id1_cluster = id1.map(selected_cluster_by_sequence)
+    id2_cluster = id2.map(selected_cluster_by_sequence)
+    same_cluster = (
+        id1_cluster.notna() & id2_cluster.notna() & id1_cluster.eq(id2_cluster)
+    )
+    selected_edges = edges.loc[same_cluster]
     base["n_pairwise_rows"] = int(len(selected_edges))
 
     if selected_edges.empty:
@@ -412,7 +446,7 @@ def build_cluster_pairwise_distance_summary(
         max_clusters_per_window_lineage=max_clusters_per_window_lineage,
         selection=cluster_selection,
     )
-    groups, sequence_sets = _group_selection_table(
+    groups, cluster_by_sequence = _group_selection_table(
         sequence_rows,
         selected_clusters,
         min_cluster_size=min_cluster_size,
@@ -438,16 +472,13 @@ def build_cluster_pairwise_distance_summary(
         rows.append(
             _summarise_one_group(
                 group_row,
-                selected_sequence_ids=sequence_sets[key],
+                selected_cluster_by_sequence=cluster_by_sequence[key],
                 pairwise_path=pairwise_lookup.get(key),
-                resolution=resolution,
-                min_cluster_size=min_cluster_size,
-                max_clusters_per_window_lineage=max_clusters_per_window_lineage,
-                selection=cluster_selection,
             )
         )
 
-    return pd.DataFrame(rows).sort_values(
+    out = pd.DataFrame(rows)
+    return out[OUTPUT_COLUMNS].sort_values(
         ["window_idx", "window_id", "pango_lineage"],
         kind="mergesort",
     ).reset_index(drop=True)

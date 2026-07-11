@@ -25,6 +25,9 @@ from common import (
 )
 
 
+FIGURE_NAME = "fig_ch4_cluster_landscape"
+
+
 def build(paths: Paths) -> None:
     window_coverage = read_table(paths, "window_coverage")
     cluster_window = read_table(paths, "cluster_window_summary")
@@ -43,7 +46,7 @@ def build(paths: Paths) -> None:
     ccdf_y = 1.0 - np.arange(len(sizes)) / len(sizes)
 
     fig, axes = styled_new_figure(
-        "double", width_in=8.4, height_in=6.7, nrows=2, ncols=2
+        width="double", height_in=6.7, nrows=2, ncols=2
     )
     ax = axes[0, 0]
     ax.plot(sizes, ccdf_y, color="#1f4e79", lw=1.5)
@@ -115,7 +118,7 @@ def build(paths: Paths) -> None:
     ax.set_xlabel("Cluster size")
     ax.set_ylabel("Observed Data Zones")
     panel_label(ax, "D")
-    styled_save_figure(fig, paths, "fig_ch4_cluster_landscape")
+    styled_save_figure(fig, paths, FIGURE_NAME)
 
 
 def main() -> int:
@@ -124,7 +127,7 @@ def main() -> int:
     args = parser.parse_args()
     paths = paths_from_args(args)
     build(paths)
-    print(f"Wrote fig_ch4_cluster_landscape to {paths.figure_dir}")
+    print(f"Wrote {FIGURE_NAME} to {paths.figure_dir}")
     return 0
 
 

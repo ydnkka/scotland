@@ -21,13 +21,16 @@ from common import (
 )
 
 
+FIGURE_NAME = "fig_ch4_simd_population_weighting"
+
+
 def build(paths: Paths) -> None:
     group_summary = read_table(paths, "simd_population_weighting_group_summary")
     movement = read_table(paths, "simd_population_weighting_movement")
     movement = movement.loc[movement["comparison_method"].eq("equal_datazone")]
 
     fig, axes = styled_new_figure(
-        "double", width_in=8.4, height_in=3.5, nrows=1, ncols=2
+        width="double", height_in=3.5, nrows=1, ncols=2
     )
     ax = axes[0]
     for method, group in group_summary.groupby("grouping_method_label"):
@@ -69,7 +72,7 @@ def build(paths: Paths) -> None:
                 axes[1].text(j, i, f"{value:.1f}", ha="center", va="center", fontsize=7)
     fig.colorbar(image, ax=axes[1], label="Population share (%)")
     panel_label(axes[1], "B")
-    styled_save_figure(fig, paths, "fig_ch4_simd_population_weighting", tight=False)
+    styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
 
 
 def main() -> int:
@@ -78,7 +81,7 @@ def main() -> int:
     args = parser.parse_args()
     paths = paths_from_args(args)
     build(paths)
-    print(f"Wrote fig_ch4_simd_population_weighting to {paths.figure_dir}")
+    print(f"Wrote {FIGURE_NAME} to {paths.figure_dir}")
     return 0
 
 

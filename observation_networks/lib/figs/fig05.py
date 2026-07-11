@@ -26,6 +26,9 @@ from common import (
 )
 
 
+FIGURE_NAME = "fig_ch4_transition_graph_baseline"
+
+
 CLUSTER_ROLE_GROUPS = {
     "isolated": "Isolated",
     "single_outgoing_source": "Source",
@@ -214,8 +217,7 @@ def build(paths: Paths) -> None:
     role_pivot = role_pivot[[col for col in preferred_roles if col in role_pivot]]
 
     fig, placeholder_ax = styled_new_figure(
-        "double",
-        width_in=8.2,
+        width="double",
         height_in=8.4,
         constrained_layout=True,
     )
@@ -294,7 +296,7 @@ def build(paths: Paths) -> None:
     )
     date_axis(ax)
     panel_label(ax, "E")
-    styled_save_figure(fig, paths, "fig_ch4_transition_graph_baseline", tight=False)
+    styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
 
 
 def main() -> int:
@@ -303,7 +305,7 @@ def main() -> int:
     args = parser.parse_args()
     paths = paths_from_args(args)
     build(paths)
-    print(f"Wrote fig_ch4_transition_graph_baseline to {paths.figure_dir}")
+    print(f"Wrote {FIGURE_NAME} to {paths.figure_dir}")
     return 0
 
 

@@ -26,6 +26,9 @@ from common import (
 )
 
 
+FIGURE_NAME = "fig_ch4_mixing_matrices"
+
+
 def display_matrix_category(attribute: str, value: Any) -> str:
     if attribute == "simd_quintile":
         try:
@@ -147,8 +150,7 @@ def build(paths: Paths) -> None:
     vmax = max(np.nanquantile(matrix.to_numpy(), 0.98) for matrix in matrices)
 
     fig, placeholder_ax = styled_new_figure(
-        "double",
-        width_in=9.4,
+        width="double",
         height_in=8.2,
         constrained_layout=True,
     )
@@ -170,7 +172,7 @@ def build(paths: Paths) -> None:
     cbar.set_label("Row share of weighted edge mass")
     fig.supxlabel("Linked endpoint category")
     fig.supylabel("Reference endpoint category")
-    styled_save_figure(fig, paths, "fig_ch4_mixing_matrices", tight=False)
+    styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
 
 
 def main() -> int:
@@ -179,7 +181,7 @@ def main() -> int:
     args = parser.parse_args()
     paths = paths_from_args(args)
     build(paths)
-    print(f"Wrote fig_ch4_mixing_matrices to {paths.figure_dir}")
+    print(f"Wrote {FIGURE_NAME} to {paths.figure_dir}")
     return 0
 
 

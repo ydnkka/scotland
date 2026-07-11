@@ -313,7 +313,7 @@ def plot_parameter_sensitivity_grid(
     detail = sparsification_detail.sort_values(["threshold", "pairwise_stem"]).copy()
 
     fig, axes = styled_new_figure(
-        "double",
+        width="double",
         height_in=7.0,
         nrows=3,
         ncols=2,
