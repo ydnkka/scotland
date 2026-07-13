@@ -36,7 +36,7 @@ def build_cluster_stats(
     age_stats = cluster_socio_demo_entropy(
         df,
         "cluster_id",
-        "age_band",
+        "age_group",
         "window_idx",
         prefix="age",
         n_random=n_entropy_draws,

@@ -63,10 +63,10 @@ COMPOSITION_SPECS = (
         "label": "Sex",
     },
     {
-        "name": "age_band",
-        "column": "age_band",
-        "reference": "20-24",
-        "label": "Age band",
+        "name": "age_group",
+        "column": "age_group",
+        "reference": "25-64",
+        "label": "Age group",
     },
     {
         "name": "simd_quintile",

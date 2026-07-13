@@ -105,14 +105,21 @@ from .sse.scoring import (
     add_sse_node_metrics,
     choose_permutation_strata,
 )
-from .sse.detection import load_sequence_data
-
 from .forest import (
     ForestPlotResult,
     plot_composition_primary_expanded_forest,
     plot_logistic_composition_primary_expanded_forest,
     plot_mixing_primary_expanded_forest,
 )
+
+
+def __getattr__(name: str):
+    """Load pipeline entry-point helpers without pre-importing executable modules."""
+    if name == "load_sequence_data":
+        from .sse.detection import load_sequence_data
+
+        return load_sequence_data
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 __all__ = [

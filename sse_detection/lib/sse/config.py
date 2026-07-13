@@ -5,7 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+# config.py lives at <project>/sse_detection/lib/sse/config.py.
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 PACKAGE_DIR = PROJECT_ROOT / "sse_detection"
 RESULTS_DIR = PACKAGE_DIR / "results"
 SSE_OUTPUT_DIR = RESULTS_DIR / "sse_outputs"
@@ -31,7 +32,7 @@ ANALYSIS_COLUMNS: tuple[str, ...] = (
     "cluster_size",
     "cluster_n_datazones",
     "cluster_duration_days",
-    "age_band",
+    "age_group",
     "sex",
     "is_female",
     "who_voc",

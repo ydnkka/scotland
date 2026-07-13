@@ -50,7 +50,7 @@ DEFAULT_MIXING_FEATURE_ORDER: tuple[str, ...] = (
 
 COMPOSITION_VARIABLE_LABELS: dict[str, str] = {
     "sex": "Sex",
-    "age_band": "Age band",
+    "age_group": "Age group",
     "dz_simd_quintile": "SIMD",
     "urban_rural_class": "Urban/rural",
     "dz_urban_rural_class": "Urban/rural",
@@ -60,7 +60,7 @@ COMPOSITION_VARIABLE_LABELS: dict[str, str] = {
 
 COMPOSITION_REFERENCE_LABELS: dict[str, str] = {
     "sex": "Male",
-    "age_band": "20-24",
+    "age_group": "25-64",
     "dz_simd_quintile": "1",
     "urban_rural_class": "Large Urban Areas",
     "dz_urban_rural_class": "Large Urban Areas",
@@ -70,7 +70,7 @@ COMPOSITION_REFERENCE_LABELS: dict[str, str] = {
 
 DEFAULT_COMPOSITION_VARIABLE_ORDER: tuple[str, ...] = (
     "sex",
-    "age_band",
+    "age_group",
     "dz_simd_quintile",
     "dz_urban_rural_class",
     "dz_health_board",
@@ -80,7 +80,7 @@ COMPOSITION_PANEL_GROUPS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     (
         "sociodemographic",
         "Sociodemographic",
-        ("sex", "age_band", "dz_simd_quintile"),
+        ("sex", "age_group", "dz_simd_quintile"),
     ),
     (
         "geographic",
@@ -547,7 +547,7 @@ def _collect_mixing_forest_rows(
     out["feature"] = pd.Categorical(
         out["feature"], categories=list(feature_order), ordered=True
     )
-    out["model_kind"] = _model_kind_categorical(out["model_kind"])
+    out["model_kind"] = _model_kind_categorical(out["model_kind"].tolist())
     out["scale"] = pd.Categorical(out["scale"], categories=["observed", "null"])
     return out.sort_values(["scale", "feature", "model_kind"]), missing
 
@@ -601,7 +601,7 @@ def _collect_composition_forest_rows(
     ).drop(columns=["_variable_order", "_level_sort"])
     out["contrast_id"] = out["variable"] + "=" + out["level"].astype(str)
     out["row_id"] = out["contrast_id"]
-    out["model_kind"] = _model_kind_categorical(out["model_kind"])
+    out["model_kind"] = _model_kind_categorical(out["model_kind"].tolist())
     return out, missing
 
 
@@ -678,10 +678,10 @@ def parse_categorical_parameter(parameter: str) -> dict[str, str | None]:
 
     Supported examples include::
 
-        C(age_band, Treatment(reference='20-24'))[30-34]
+        C(age_group, Treatment(reference='25-64'))[15-24]
         C(dz_simd_quintile, Treatment(reference=1))[2]
-        age_band[30-34]
-        age_band[T.30-34]
+        age_group[15-24]
+        age_group[T.15-24]
 
     Unparseable parameters return ``None`` fields so callers can filter them.
     """
@@ -905,7 +905,7 @@ def _y_lookup(row_order: Sequence[str]) -> dict[str, int]:
     return {row: i for i, row in enumerate(reversed(row_order))}
 
 
-def _model_kind_categorical(values: pd.Series) -> pd.Categorical:
+def _model_kind_categorical(values: list[object]) -> pd.Categorical:
     return pd.Categorical(values, categories=["primary", "expanded"], ordered=True)
 
 

@@ -56,6 +56,13 @@ Regenerate detector figures from saved SSE output tables:
 python -m sse_detection.make_figures --skip-missing
 ```
 
+Build cluster-level socio-demographic composition tables for downstream SSE
+characterisation:
+
+```bash
+python -m sse_detection.build_composition_tables
+```
+
 See `TECHNICAL.md` for Bayesian dry-run examples, model selectors, fitting
 commands, options, diagnostics, and interpretation guidance.
 

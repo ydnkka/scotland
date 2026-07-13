@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-from .figs import fig01
+from .figs import fig01, fig02, fig03
 from .figs.common import DEFAULT_TABLE_DIR, FIGURE_DIR, Paths
 
 
@@ -25,6 +25,8 @@ class ArtifactBuilder:
 
 FIGURE_BUILDERS: tuple[ArtifactBuilder, ...] = (
     ArtifactBuilder(fig01.FIGURE_NAME, fig01.build),
+    ArtifactBuilder(fig02.FIGURE_NAME, fig02.build),
+    ArtifactBuilder(fig03.FIGURE_NAME, fig03.build),
 )
 
 

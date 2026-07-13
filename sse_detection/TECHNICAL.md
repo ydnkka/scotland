@@ -183,7 +183,7 @@ Composition features currently include:
 
 ```text
 sex
-age_band
+age_group
 dz_simd_quintile
 dz_urban_rural_class
 dz_health_board
