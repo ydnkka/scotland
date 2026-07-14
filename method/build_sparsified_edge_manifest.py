@@ -4,7 +4,7 @@ Run from the Scotland repository root:
 
     python3 method/build_sparsified_edge_manifest.py
 
-The output is used by ``observation_networks.build_mixing`` to schedule large
+The output is used by ``chapter_analyses.genomic_networks.build_mixing`` to schedule large
 pairwise scans by the number of edges retained after sparsification.
 """
 

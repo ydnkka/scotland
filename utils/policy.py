@@ -1,10 +1,12 @@
 """Policy-period definitions and helpers for Scottish COVID-19 restrictions.
 
 The exported period table assigns ordered restriction phases to calendar dates
-and exposes compact labels/stringency scores for plotting and modelling.
+and exposes compact labels plus OxCGRT policy indices for plotting and modelling.
 """
 
 from __future__ import annotations
+
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -15,32 +17,25 @@ __all__ = [
     "POLICY_PERIODS",
     "PERIOD_LABELS",
     "PERIOD_STRINGENCY",
+    "PERIOD_CONTAINMENT",
+    "OXCGRT_STRINGENCY_PATH",
+    "OXCGRT_CONTAINMENT_PATH",
+    "load_oxcgrt_stringency",
+    "load_oxcgrt_containment",
+    "derive_period_stringency",
+    "derive_period_containment",
     "assign_period",
     "attach_period",
 ]
 
-#  Mean stringency index values for each policy period, derived from the
-#  OxCGRT Stringency Index (<https://github.com/OxCGRT/covid-policy-dataset/>),
-#  File: `timeseries_indices/OxCGRT_timeseries_StringencyIndex_v1.csv`
-
-stringency_index = {
-    "E0": np.float64(23.911739130434785),
-    "L1": np.float64(79.63000000000008),
-    "P1": np.float64(75.13238095238096),
-    "P2": np.float64(76.45619047619047),
-    "P3": np.float64(67.64571428571442),
-    "T1": np.float64(64.80999999999996),
-    "F5": np.float64(70.88968750000001),
-    "L2": np.float64(85.53586206896566),
-    "SL": np.float64(69.90375000000003),
-    "L3": np.float64(58.330000000000005),
-    "L21": np.float64(56.13063492063501),
-    "L0": np.float64(52.77999999999999),
-    "NN": np.float64(31.637857142857182),
-    "OM": np.float64(34.83857142857142),
-    "FE": np.float64(19.786666666666626),
-    "PR": np.float64(8.184418604651126),
-}
+OXCGRT_STRINGENCY_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "data/raw/oxcgrt/OxCGRT_timeseries_StringencyIndex_v1.csv"
+)
+OXCGRT_CONTAINMENT_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "data/raw/oxcgrt/OxCGRT_timeseries_ContainmentHealthIndex_v1.csv"
+)
 
 
 POLICY_PERIODS: pd.DataFrame = pd.DataFrame(
@@ -125,7 +120,128 @@ POLICY_PERIODS: pd.DataFrame = pd.DataFrame(
 )
 
 PERIOD_ORDER: list[str] = POLICY_PERIODS["period_code"].tolist()
-POLICY_PERIODS["policy_stringency"] = POLICY_PERIODS["period_code"].map(stringency_index)
+
+
+def _load_oxcgrt_index(
+    path: Path | str,
+    *,
+    value_col: str,
+    index_label: str,
+    region_name: str = "Scotland",
+) -> pd.DataFrame:
+    """Load one daily OxCGRT index for a region from a wide timeseries table."""
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"OxCGRT {index_label} table not found: {path}")
+
+    table = pd.read_csv(path)
+    if "RegionName" not in table.columns:
+        raise KeyError(f"OxCGRT {index_label} table needs 'RegionName'.")
+    selected = table.loc[table["RegionName"].eq(region_name)]
+    if len(selected) != 1:
+        raise ValueError(
+            f"Expected one OxCGRT row for {region_name!r}; found {len(selected)}."
+        )
+
+    parsed_dates = pd.to_datetime(table.columns, format="%d%b%Y", errors="coerce")
+    date_mask = parsed_dates.notna()
+    date_columns = table.columns[date_mask]
+    values = pd.to_numeric(selected.iloc[0][date_columns], errors="coerce")
+    return pd.DataFrame(
+        {
+            "date": parsed_dates[date_mask],
+            value_col: values.to_numpy(dtype=float),
+        }
+    ).sort_values("date", ignore_index=True)
+
+
+def load_oxcgrt_stringency(
+    path: Path | str = OXCGRT_STRINGENCY_PATH,
+    *,
+    region_name: str = "Scotland",
+) -> pd.DataFrame:
+    """Load the daily OxCGRT Stringency Index for one region."""
+    return _load_oxcgrt_index(
+        path,
+        value_col="stringency_index",
+        index_label="Stringency Index",
+        region_name=region_name,
+    )
+
+
+def load_oxcgrt_containment(
+    path: Path | str = OXCGRT_CONTAINMENT_PATH,
+    *,
+    region_name: str = "Scotland",
+) -> pd.DataFrame:
+    """Load the daily OxCGRT Containment and Health Index for one region."""
+    return _load_oxcgrt_index(
+        path,
+        value_col="containment_index",
+        index_label="Containment and Health Index",
+        region_name=region_name,
+    )
+
+
+def _derive_period_index(
+    policy_periods: pd.DataFrame,
+    daily_index: pd.DataFrame,
+    *,
+    value_col: str,
+) -> pd.Series:
+    """Return an inclusive daily-index mean for each policy-period interval."""
+    required_period = {"period_code", "start_date", "end_date"}
+    missing_period = sorted(required_period - set(policy_periods.columns))
+    if missing_period:
+        raise KeyError(f"Missing policy-period columns: {missing_period}")
+    required_daily = {"date", value_col}
+    missing_daily = sorted(required_daily - set(daily_index.columns))
+    if missing_daily:
+        raise KeyError(f"Missing daily index columns: {missing_daily}")
+
+    dates = pd.to_datetime(daily_index["date"], errors="coerce").dt.normalize()
+    values = pd.to_numeric(daily_index[value_col], errors="coerce")
+    means = {
+        str(row.period_code): float(
+            values.loc[dates.between(row.start_date, row.end_date, inclusive="both")].mean()
+        )
+        for row in policy_periods.itertuples(index=False)
+    }
+    return policy_periods["period_code"].astype(str).map(means).astype(float)
+
+
+def derive_period_stringency(
+    policy_periods: pd.DataFrame,
+    daily_stringency: pd.DataFrame,
+) -> pd.Series:
+    """Return mean daily stringency for each inclusive policy-period interval."""
+    return _derive_period_index(
+        policy_periods,
+        daily_stringency,
+        value_col="stringency_index",
+    )
+
+
+def derive_period_containment(
+    policy_periods: pd.DataFrame,
+    daily_containment: pd.DataFrame,
+) -> pd.Series:
+    """Return mean daily containment for each inclusive policy-period interval."""
+    return _derive_period_index(
+        policy_periods,
+        daily_containment,
+        value_col="containment_index",
+    )
+
+
+POLICY_PERIODS["policy_stringency"] = derive_period_stringency(
+    POLICY_PERIODS,
+    load_oxcgrt_stringency(),
+)
+POLICY_PERIODS["policy_containment"] = derive_period_containment(
+    POLICY_PERIODS,
+    load_oxcgrt_containment(),
+)
 
 POLICY_PERIODS["period_code"] = pd.Categorical(
     POLICY_PERIODS["period_code"],
@@ -140,10 +256,16 @@ PERIOD_LABELS: dict[str, str] = dict(
     )
 )
 
-PERIOD_STRINGENCY: dict[str, int] = dict(
+PERIOD_STRINGENCY: dict[str, float] = dict(
     zip(
         POLICY_PERIODS["period_code"].astype(str),
         POLICY_PERIODS["policy_stringency"],
+    )
+)
+PERIOD_CONTAINMENT: dict[str, float] = dict(
+    zip(
+        POLICY_PERIODS["period_code"].astype(str),
+        POLICY_PERIODS["policy_containment"],
     )
 )
 
@@ -178,7 +300,7 @@ def assign_period(dates: pd.Series) -> pd.Series:
 
 
 def attach_period(df: pd.DataFrame, date_col: str) -> pd.DataFrame:
-    """Attach policy period code, label, and stringency using the given date column.
+    """Attach policy period code, label, and OxCGRT indices using a date column.
 
     Parameters
     ----------
@@ -191,8 +313,8 @@ def attach_period(df: pd.DataFrame, date_col: str) -> pd.DataFrame:
     Returns
     -------
     pandas.DataFrame
-        A copy of ``df`` with three new columns:
-        ``policy_period``, ``policy_period_label``, and ``policy_stringency``.
+        A copy of ``df`` with ``policy_period``, ``policy_period_label``,
+        ``policy_stringency``, and ``policy_containment``.
     """
     result = df.copy()
     result["policy_period"] = assign_period(result[date_col])
@@ -202,12 +324,14 @@ def attach_period(df: pd.DataFrame, date_col: str) -> pd.DataFrame:
             "period_code",
             "period_label",
             "policy_stringency",
+            "policy_containment",
         ]
     ].rename(
         columns={
             "period_code": "policy_period",
             "period_label": "policy_period_label",
             "policy_stringency": "policy_stringency",
+            "policy_containment": "policy_containment",
         }
     )
 
