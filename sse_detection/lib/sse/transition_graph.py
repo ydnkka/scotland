@@ -244,6 +244,68 @@ def add_downstream_burden(
     return out
 
 
+def build_upstream_novelty_metrics(
+    sequence_df: pd.DataFrame,
+    edge_table: pd.DataFrame,
+) -> pd.DataFrame:
+    """Measure source-cluster accumulation not observed in any direct parent.
+
+    Parent memberships are unioned before comparison, so a sequence shared
+    with multiple parents is counted once. Metrics are returned only for nodes
+    with an observed incoming transition; parentless nodes are not treated as
+    completely novel.
+    """
+    stat_cols = [
+        "upstream_novelty_eligible",
+        "unique_upstream_sequences",
+        "unique_local_new_sequences",
+        "unique_local_new_sequences_ratio",
+    ]
+    required_edge_cols = {"source", "target"}
+    missing_edge_cols = sorted(required_edge_cols - set(edge_table.columns))
+    if missing_edge_cols:
+        raise ValueError(f"Missing edge columns: {missing_edge_cols}")
+
+    required_sequence_cols = {"cluster_id", "sequence_id"}
+    missing_sequence_cols = sorted(required_sequence_cols - set(sequence_df.columns))
+    if missing_sequence_cols:
+        raise ValueError(f"Missing sequence columns: {missing_sequence_cols}")
+
+    if edge_table.empty:
+        return pd.DataFrame(columns=["cluster_id", *stat_cols])
+
+    membership = sequence_df[["cluster_id", "sequence_id"]].dropna().drop_duplicates()
+    cluster_sequences = (
+        membership.groupby("cluster_id", sort=False)["sequence_id"]
+        .agg(lambda values: frozenset(values))
+        .to_dict()
+    )
+
+    rows = []
+    for target, edges in edge_table.groupby("target", sort=False, dropna=False):
+        target_sequences = cluster_sequences.get(target, frozenset())
+        upstream_sequences: set = set()
+        for parent in edges["source"].dropna().unique():
+            upstream_sequences.update(cluster_sequences.get(parent, frozenset()))
+
+        inherited = target_sequences.intersection(upstream_sequences)
+        local_new = target_sequences.difference(upstream_sequences)
+        cluster_size = len(target_sequences)
+        rows.append(
+            {
+                "cluster_id": target,
+                "upstream_novelty_eligible": True,
+                "unique_upstream_sequences": len(inherited),
+                "unique_local_new_sequences": len(local_new),
+                "unique_local_new_sequences_ratio": (
+                    len(local_new) / cluster_size if cluster_size else np.nan
+                ),
+            }
+        )
+
+    return pd.DataFrame(rows, columns=["cluster_id", *stat_cols])
+
+
 def build_new_downstream_metrics(
     sequence_df: pd.DataFrame,
     edge_table: pd.DataFrame,
@@ -256,6 +318,14 @@ def build_new_downstream_metrics(
     child clusters that are not already present in the source cluster. The
     supported version applies the same calculation after excluding weak edges
     with fewer than ``min_shared_sequences`` shared sequences.
+
+    ``source_attributable_new_downstream_burden`` apportions each child's new
+    sequences among its direct parents in proportion to their incoming edge
+    weights. It is therefore fractional when a child has multiple parents.
+
+    ``cumulative_unique_new_sequences`` counts unique sequences absent from the
+    source but present in any graph-reachable descendant in a later window.
+    A sequence appearing in several descendants is counted only once.
     """
     if min_shared_sequences < 1:
         raise ValueError("min_shared_sequences must be at least 1.")
@@ -263,6 +333,8 @@ def build_new_downstream_metrics(
     stat_cols = [
         "new_downstream_burden",
         "supported_new_downstream_burden",
+        "source_attributable_new_downstream_burden",
+        "cumulative_unique_new_sequences",
         "new_downstream_children",
         "supported_new_downstream_children",
         "mean_successor_new_sequences",
@@ -288,11 +360,35 @@ def build_new_downstream_metrics(
         .to_dict()
     )
 
+    incoming_strength = edge_table.groupby("target", dropna=False)[
+        "n_shared_sequences"
+    ].sum()
+
+    graph = nx.from_pandas_edgelist(
+        edge_table,
+        source="source",
+        target="target",
+        create_using=nx.DiGraph,
+    )
+    if not nx.is_directed_acyclic_graph(graph):
+        raise ValueError(
+            "Cumulative downstream burden requires an acyclic transition graph."
+        )
+
+    descendant_sequences: dict[object, frozenset] = {}
+    for node in reversed(list(nx.topological_sort(graph))):
+        sequences: set = set()
+        for child in graph.successors(node):
+            sequences.update(cluster_sequences.get(child, frozenset()))
+            sequences.update(descendant_sequences.get(child, frozenset()))
+        descendant_sequences[node] = frozenset(sequences)
+
     rows = []
     for source, edges in edge_table.groupby("source", sort=False, dropna=False):
         source_sequences = cluster_sequences.get(source, frozenset())
         new_sequences: set = set()
         supported_new_sequences: set = set()
+        source_attributable_burden = 0.0
         child_new_counts: list[int] = []
         new_child_count = 0
         supported_new_child_count = 0
@@ -302,6 +398,11 @@ def build_new_downstream_metrics(
             child_new_sequences = target_sequences.difference(source_sequences)
             child_new_count = len(child_new_sequences)
             child_new_counts.append(child_new_count)
+
+            target_in_strength = float(incoming_strength.get(edge.target, 0.0))
+            if target_in_strength > 0:
+                ratio = float(edge.n_shared_sequences) / target_in_strength # type: ignore
+                source_attributable_burden += child_new_count * ratio
 
             if child_new_count > 0:
                 new_child_count += 1
@@ -317,6 +418,14 @@ def build_new_downstream_metrics(
                 "cluster_id": source,
                 "new_downstream_burden": len(new_sequences),
                 "supported_new_downstream_burden": len(supported_new_sequences),
+                "source_attributable_new_downstream_burden": (
+                    source_attributable_burden
+                ),
+                "cumulative_unique_new_sequences": len(
+                    descendant_sequences.get(source, frozenset()).difference(
+                        source_sequences
+                    )
+                ),
                 "new_downstream_children": new_child_count,
                 "supported_new_downstream_children": supported_new_child_count,
                 "mean_successor_new_sequences": (
@@ -328,6 +437,30 @@ def build_new_downstream_metrics(
     return pd.DataFrame(rows, columns=["cluster_id", *stat_cols])
 
 
+def add_upstream_novelty_metrics(
+    node_table: pd.DataFrame,
+    sequence_df: pd.DataFrame,
+    edge_table: pd.DataFrame,
+) -> pd.DataFrame:
+    """Attach deduplicated upstream-novelty metrics to a node table."""
+    metric_cols = [
+        "upstream_novelty_eligible",
+        "unique_upstream_sequences",
+        "unique_local_new_sequences",
+        "unique_local_new_sequences_ratio",
+    ]
+    novelty = build_upstream_novelty_metrics(sequence_df, edge_table)
+    out = node_table.drop(columns=metric_cols, errors="ignore").merge(
+        novelty,
+        on="cluster_id",
+        how="left",
+    )
+    out["upstream_novelty_eligible"] = (
+        out["upstream_novelty_eligible"].fillna(False).astype(bool)
+    )
+    return out
+
+
 def add_new_downstream_metrics(
     node_table: pd.DataFrame,
     sequence_df: pd.DataFrame,
@@ -336,15 +469,30 @@ def add_new_downstream_metrics(
     min_shared_sequences: int = 2,
 ) -> pd.DataFrame:
     """Attach overlap-adjusted downstream burden metrics to a node table."""
+    metric_cols = [
+        "new_downstream_burden",
+        "supported_new_downstream_burden",
+        "source_attributable_new_downstream_burden",
+        "cumulative_unique_new_sequences",
+        "new_downstream_children",
+        "supported_new_downstream_children",
+        "mean_successor_new_sequences",
+    ]
     new_downstream = build_new_downstream_metrics(
         sequence_df,
         edge_table,
         min_shared_sequences=min_shared_sequences,
     )
-    out = node_table.merge(new_downstream, on="cluster_id", how="left")
+    out = node_table.drop(columns=metric_cols, errors="ignore").merge(
+        new_downstream,
+        on="cluster_id",
+        how="left",
+    )
     fill_zero_cols = [
         "new_downstream_burden",
         "supported_new_downstream_burden",
+        "source_attributable_new_downstream_burden",
+        "cumulative_unique_new_sequences",
         "new_downstream_children",
         "supported_new_downstream_children",
     ]

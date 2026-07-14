@@ -245,6 +245,12 @@ def add_sse_node_metrics(
         "in_strength": 0,
         "out_strength": 0,
         "downstream_cluster_burden": 0,
+        "new_downstream_burden": 0,
+        "supported_new_downstream_burden": 0,
+        "source_attributable_new_downstream_burden": 0,
+        "cumulative_unique_new_sequences": 0,
+        "upstream_novelty_eligible": False,
+        "unique_local_new_sequences_ratio": np.nan,
     }
     for col, default in basic_edge_default_cols.items():
         if col not in out.columns:
@@ -301,13 +307,20 @@ def add_sse_node_metrics(
         tested["supported_new_downstream_burden"],
         tested["cluster_size"],
     )
+    tested["log_source_attributable_new_downstream_burden_ratio"] = log1p_ratio(
+        tested["source_attributable_new_downstream_burden"],
+        tested["cluster_size"],
+    )
+    tested["log_cumulative_unique_new_sequences_ratio"] = log1p_ratio(
+        tested["cumulative_unique_new_sequences"],
+        tested["cluster_size"],
+    )
 
     rank_cols = [
         "sampling_adjusted_excess_size",
-        "log_cluster_size",
-        "log_excess_over_upstream",
-        "log_new_downstream_burden_ratio",
-        "log_supported_new_downstream_burden_ratio",
+        "unique_local_new_sequences_ratio",
+        "log_source_attributable_new_downstream_burden_ratio",
+        "log_cumulative_unique_new_sequences_ratio",
     ]
     for col in rank_cols:
         if col not in tested.columns:
@@ -317,15 +330,17 @@ def add_sse_node_metrics(
         ].rank(pct=True, method="average")
 
     burst_components = [
-        "log_cluster_size",
         "sampling_adjusted_excess_size",
-        "log_excess_over_upstream",
+        "unique_local_new_sequences_ratio",
     ]
     burden_components = [
-        "log_new_downstream_burden_ratio",
-        "log_supported_new_downstream_burden_ratio",
+        "log_source_attributable_new_downstream_burden_ratio",
+        "log_cumulative_unique_new_sequences_ratio",
     ]
     axis_strata_cols = [c for c in ["window_idx", "clade"] if c in tested.columns]
+    # Keep component availability in every adaptive stratum so parentless
+    # one-component profiles are never permuted against two-component profiles.
+    burst_strata_cols = ["upstream_novelty_eligible", *axis_strata_cols]
 
     burst_pct = [f"{c}_pct_window" for c in burst_components]
     tested["burst_score"], tested["burst_score_n"] = mean_with_count(tested, burst_pct)
@@ -334,7 +349,7 @@ def add_sse_node_metrics(
         score_col="burst_score",
         raw_component_cols=burst_components,
         rank_within="window_idx",
-        strata_cols=axis_strata_cols,
+        strata_cols=burst_strata_cols,
         min_stratum_n=min_stratum_n,
         n_permutations=n_permutations,
         random_state=random_state,
@@ -342,10 +357,10 @@ def add_sse_node_metrics(
     )
 
     burden_present = [c for c in burden_components if c in tested.columns]
-    burden_nonzero = pd.Series(False, index=tested.index)
-    for c in burden_present:
-        burden_nonzero = burden_nonzero | (tested[c].fillna(0) > 0)
-    tested["burden_eligible"] = burden_nonzero
+    tested["burden_eligible"] = (
+        tested["source_attributable_new_downstream_burden"].fillna(0).gt(0)
+        | tested["cumulative_unique_new_sequences"].fillna(0).gt(0)
+    )
 
     burden_idx = tested.index[tested["burden_eligible"]]
     for col in (

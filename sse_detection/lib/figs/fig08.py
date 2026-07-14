@@ -17,7 +17,7 @@ from .common import (
 from ..sse.config import MIN_CLUSTER_SIZE
 from ..sse.io import write_table
 
-FILE_NAME = "fig_ch5_selection_funnel"
+FILE_NAME = "ch5_selection_funnel"
 
 
 def build_selection_funnel(nodes: pd.DataFrame) -> pd.DataFrame:
@@ -63,14 +63,22 @@ def build(paths: Paths) -> dict[str, object]:
     ax.set_xscale("log")
     ax.set_yticks(y, table["stage"])
     ax.set_xlabel("Clusters (log scale)")
-    ax.set_title("Detector eligibility and candidate-selection flow")
+    # ax.set_title("Detector eligibility and candidate-selection flow")
     for bar, value in zip(bars, table["n"]):
-        ax.text(
-            max(value, 0.8) * 1.12,
-            bar.get_y() + bar.get_height() / 2,
-            f"{int(value):,}",
-            va="center",
-        )
+        if value > 0:
+            ax.text(
+                max(value, 0.8) * 1.12,
+                bar.get_y() + bar.get_height() / 2,
+                f"{int(value):,}",
+                va="center",
+            )
+        else:
+            ax.text(
+                35,
+                bar.get_y() + bar.get_height() / 2,
+                f"{int(value):,}",
+                va="center",
+            )
     outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}", tight=False)
     return {"figure": fig, "outputs": outputs}
 

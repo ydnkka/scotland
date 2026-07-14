@@ -252,7 +252,6 @@ def build(
             rotation=90,
             ha="center",
             va="center",
-            fontweight="bold",
             color="#333333",
             clip_on=False,
         )

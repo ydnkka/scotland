@@ -14,6 +14,7 @@ from .transition_graph import (
     add_downstream_burden,
     add_edge_flow_metrics,
     add_new_downstream_metrics,
+    add_upstream_novelty_metrics,
 )
 
 
@@ -187,6 +188,11 @@ def build_cluster_table(
     cluster_table = cluster_att.merge(cluster_stats, on="cluster_id", how="left")
     cluster_table = add_edge_flow_metrics(cluster_table, edge_table)
     cluster_table = add_downstream_burden(cluster_table, edge_table)
+    cluster_table = add_upstream_novelty_metrics(
+        cluster_table,
+        sequence_df,
+        edge_table,
+    )
     return add_new_downstream_metrics(
         cluster_table,
         sequence_df,

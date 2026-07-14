@@ -135,7 +135,7 @@ def build(
             ax.grid(axis="x", color="#E6E6E6", lw=0.6)
             ax.tick_params(axis="y", length=0)
             if col_idx == 0:
-                ax.set_ylabel(outcome_label, fontweight="bold")
+                ax.set_ylabel(outcome_label)
             else:
                 ax.tick_params(labelleft=False)
             panel_label(ax, chr(ord("A") + row_idx * 2 + col_idx))
