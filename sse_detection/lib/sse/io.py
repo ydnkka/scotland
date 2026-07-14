@@ -100,3 +100,10 @@ def load_sse_outputs(
         edge_table=edge_table,
         output_dir=output_dir,
     )
+
+
+def write_table(table: pd.DataFrame, output_dir: Path, name: str) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    table.to_csv(output_dir / f"{name}.csv", index=False)
+    table.to_parquet(output_dir / f"{name}.parquet", index=False)
+    

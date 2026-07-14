@@ -14,12 +14,13 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 import pandas as pd
+import numpy as np
 
 from ..sse.config import (
     BAYESIAN_OUTPUT_DIR,
     FIGURE_DIR,
     PROJECT_ROOT,
-    RESULTS_DIR,
+    TABLE_DIR,
     SSE_OUTPUT_DIR,
 )
 
@@ -32,7 +33,15 @@ from utils import save_figure as _styled_save_figure  # noqa: E402
 
 
 DEFAULT_TABLE_DIR = SSE_OUTPUT_DIR
-DEFAULT_RESULT_TABLE_DIR = RESULTS_DIR / "tables"
+DEFAULT_RESULT_TABLE_DIR = TABLE_DIR
+
+HIGH_PRIORITY = frozenset(
+    {
+        "high_priority_both_axes",
+        "high_priority_burst",
+        "high_priority_burden",
+    }
+)
 
 POLICY_ORDER = [
     "P2",
@@ -87,13 +96,15 @@ def add_panel_labels(*args: Any, **kwargs: Any) -> None:
 
 
 def read_table(paths: Paths, name: str) -> pd.DataFrame:
-    parquet_path = paths.table_dir / f"{name}.parquet"
-    csv_path = paths.table_dir / f"{name}.csv"
-    if parquet_path.exists():
-        return pd.read_parquet(parquet_path)
-    if csv_path.exists():
-        return pd.read_csv(csv_path)
-    raise FileNotFoundError(f"Missing table: {name}")
+    searched = []
+    for directory in dict.fromkeys((paths.table_dir, paths.result_table_dir)):
+        for suffix, reader in (("parquet", pd.read_parquet), ("csv", pd.read_csv)):
+            path = directory / f"{name}.{suffix}"
+            searched.append(path)
+            if path.exists():
+                return reader(path)
+    locations = ", ".join(str(path) for path in searched)
+    raise FileNotFoundError(f"Missing table {name!r}; searched: {locations}")
 
 
 def latex_table_path(paths: Paths, name: str) -> Path:
@@ -197,3 +208,20 @@ def paths_from_args(args: argparse.Namespace) -> Paths:
         bayesian_result_dir=args.bayesian_result_dir,
         result_table_dir=args.result_table_dir,
     )
+
+def wilson(k: pd.Series, n: pd.Series) -> tuple[pd.Series, pd.Series]:
+    """Calculate the 95% Wilson score interval for binomial proportions.
+
+    Args:
+        k: Series of success counts.
+        n: Series of total trials.
+
+    Returns:
+        A tuple of (lower_bound, upper_bound) as pandas Series, clipped to [0, 1].
+    """
+    z = 1.959963984540054
+    p = k / n
+    denom = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / denom
+    half = z * np.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
+    return (centre - half).clip(lower=0), (centre + half).clip(upper=1)

@@ -80,13 +80,14 @@ def build(paths: Paths, *, n_bins: int = 20) -> dict[str, object]:
     if missing:
         raise KeyError(f"cluster_table is missing required columns: {missing}")
 
-    fig, placeholder_ax = styled_new_figure(
+    fig, axes = styled_new_figure(
+        nrows=2,
+        ncols=2,
         width="double",
         height_in=6.0,
+        sharex=True,
         constrained_layout=True,
     )
-    placeholder_ax.remove()
-    axes = fig.subplots(2, 2, sharex="col")
 
     for row, dimension in enumerate(DIMENSIONS):
         score_col, p_col = _dimension_columns(dimension)

@@ -404,9 +404,7 @@ def add_sse_node_metrics(
     burden_eligible = tested["burden_eligible"].fillna(False)
     burst_sig = tested["burst_score_upper_p"].le(0.05) & enough_sequences
     burden_sig = (
-        tested["burden_score_upper_p"].le(0.05)
-        & enough_sequences
-        & burden_eligible
+        tested["burden_score_upper_p"].le(0.05) & enough_sequences & burden_eligible
     )
     any_sig = burst_sig | burden_sig
 
@@ -422,9 +420,7 @@ def add_sse_node_metrics(
 
     burst_possible = tested["burst_score_upper_p"].le(0.10)
     burden_possible = tested["burden_score_upper_p"].le(0.10) & burden_eligible
-    any_possible = (
-        (burst_possible | burden_possible) & enough_sequences & ~any_sig
-    )
+    any_possible = (burst_possible | burden_possible) & enough_sequences & ~any_sig
 
     uncalibrated = (
         (
