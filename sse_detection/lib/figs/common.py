@@ -15,7 +15,13 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 import pandas as pd
 
-from ..sse.config import FIGURE_DIR, PROJECT_ROOT, SSE_OUTPUT_DIR
+from ..sse.config import (
+    BAYESIAN_OUTPUT_DIR,
+    FIGURE_DIR,
+    PROJECT_ROOT,
+    RESULTS_DIR,
+    SSE_OUTPUT_DIR,
+)
 
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -26,6 +32,7 @@ from utils import save_figure as _styled_save_figure  # noqa: E402
 
 
 DEFAULT_TABLE_DIR = SSE_OUTPUT_DIR
+DEFAULT_RESULT_TABLE_DIR = RESULTS_DIR / "tables"
 
 POLICY_ORDER = [
     "P2",
@@ -71,6 +78,8 @@ POLICY_COLORS = {
 class Paths:
     table_dir: Path = DEFAULT_TABLE_DIR
     figure_dir: Path = FIGURE_DIR
+    bayesian_result_dir: Path = BAYESIAN_OUTPUT_DIR
+    result_table_dir: Path = DEFAULT_RESULT_TABLE_DIR
 
 
 def add_panel_labels(*args: Any, **kwargs: Any) -> None:
@@ -85,6 +94,12 @@ def read_table(paths: Paths, name: str) -> pd.DataFrame:
     if csv_path.exists():
         return pd.read_csv(csv_path)
     raise FileNotFoundError(f"Missing table: {name}")
+
+
+def latex_table_path(paths: Paths, name: str) -> Path:
+    """Return a LaTeX table-fragment path under the figure directory."""
+    paths.figure_dir.mkdir(parents=True, exist_ok=True)
+    return paths.figure_dir / f"{name}.tex"
 
 
 def styled_save_figure(
@@ -162,7 +177,24 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
         default=FIGURE_DIR,
         help="Directory for generated SSE figures.",
     )
+    parser.add_argument(
+        "--bayesian-result-dir",
+        type=Path,
+        default=BAYESIAN_OUTPUT_DIR,
+        help="Directory containing fitted Bayesian model outputs.",
+    )
+    parser.add_argument(
+        "--result-table-dir",
+        type=Path,
+        default=DEFAULT_RESULT_TABLE_DIR,
+        help="Directory for generated result tables.",
+    )
 
 
 def paths_from_args(args: argparse.Namespace) -> Paths:
-    return Paths(table_dir=args.table_dir, figure_dir=args.figure_dir)
+    return Paths(
+        table_dir=args.table_dir,
+        figure_dir=args.figure_dir,
+        bayesian_result_dir=args.bayesian_result_dir,
+        result_table_dir=args.result_table_dir,
+    )

@@ -105,7 +105,7 @@ from .sse.scoring import (
     add_sse_node_metrics,
     choose_permutation_strata,
 )
-from .forest import (
+from .figs.forest import (
     ForestPlotResult,
     plot_composition_primary_expanded_forest,
     plot_logistic_composition_primary_expanded_forest,

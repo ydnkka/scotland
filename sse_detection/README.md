@@ -50,10 +50,16 @@ Build the detector outputs:
 python -m sse_detection.lib.sse.detection
 ```
 
-Regenerate detector figures from saved SSE output tables:
+Regenerate detector figures and Bayesian result tables from saved outputs:
 
 ```bash
 python -m sse_detection.make_figures --skip-missing
+```
+
+The Bayesian mixing-model tables can also be regenerated independently:
+
+```bash
+python -m sse_detection.make_tables
 ```
 
 Build cluster-level socio-demographic composition tables for downstream SSE

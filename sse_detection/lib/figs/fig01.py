@@ -127,7 +127,6 @@ def draw_role_cell(
         label,
         ha="center",
         va="center",
-        fontsize=7.1,
         color="#222222",
     )
 
@@ -156,9 +155,9 @@ def draw_graph_role_schematic(ax: Axes) -> None:
         )
 
     for col, text in enumerate(["No outgoing", "One outgoing", "Multiple outgoing"]):
-        ax.text(col + 0.5, 3.10, text, ha="center", va="bottom", fontsize=8.0)
+        ax.text(col + 0.5, 3.10, text, ha="center", va="bottom")
     for row, text in enumerate(["No incoming", "One incoming", "Multiple incoming"]):
-        ax.text(-0.08, 2.45 - row, text, ha="right", va="center", fontsize=8.0)
+        ax.text(-0.08, 2.45 - row, text, ha="right", va="center")
 
     ax.set_xlim(-0.42, 3.02)
     ax.set_ylim(-0.03, 3.25)
@@ -221,11 +220,11 @@ def build(paths: Paths) -> None:
 
     fig, placeholder_ax = styled_new_figure(
         width="double",
-        height_in=8.4,
+        height_in=8,
         constrained_layout=True,
     )
     placeholder_ax.remove()
-    grid = fig.add_gridspec(3, 2, height_ratios=[1.35, 1.0, 1.0])
+    grid = fig.add_gridspec(3, 2, height_ratios=[1.35, 1.0, 1.0], hspace=0.075)
 
     ax = fig.add_subplot(grid[0, :])
     draw_graph_role_schematic(ax)

@@ -819,7 +819,7 @@ def _add_model_legend(
         handles=handles,
         loc="lower center",
         ncol=2,
-        bbox_to_anchor=(0.5, -0.08),
+        bbox_to_anchor=(0.5, -0.05),
         frameon=False,
     )
 

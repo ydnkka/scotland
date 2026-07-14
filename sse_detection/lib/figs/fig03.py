@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 
 from ..model.prep import COMPOSITION_SPECS
-from ..sse.config import RESULTS_DIR
 from .common import (
     Paths,
     add_common_args,
@@ -22,7 +21,6 @@ from .common import (
 
 
 FIGURE_NAME = "fig_ch5_sse_composition_descriptive"
-DEFAULT_COMPOSITION_DIR = RESULTS_DIR / "tables"
 POINT_COLOR = "#2F6690"
 CI_COLOR = "#2F6690"
 BOOTSTRAP_SEED = 42
@@ -159,30 +157,32 @@ def _draw_estimates(ax, estimates: list[Estimate], y: np.ndarray) -> None:
 def build(
     paths: Paths,
     *,
-    composition_dir: Path = DEFAULT_COMPOSITION_DIR,
     n_bootstrap: int = 1000,
     random_state: int = BOOTSTRAP_SEED,
 ) -> dict[str, object]:
     """Create the three-panel descriptive composition figure."""
     if n_bootstrap < 1:
         raise ValueError("n_bootstrap must be at least 1")
-    tables = _load_tables(composition_dir)
+    tables = _load_tables(paths.result_table_dir)
 
     row_labels: list[str] = []
     differences: list[Estimate] = []
     burst_associations: list[Estimate] = []
     burden_associations: list[Estimate] = []
-    group_boundaries: list[float|int] = []
+    group_boundaries: list[float | int] = []
+    group_ranges: list[tuple[str, int, int]] = []
     sample_sizes: dict[str, int] | None = None
 
     for table_idx, (variable_label, table, level_columns) in enumerate(tables):
+        group_start = len(row_labels)
         diff, burst, burden, sizes = _bootstrap_estimates(
             table,
             level_columns,
             n_bootstrap=n_bootstrap,
             random_state=random_state + table_idx,
         )
-        row_labels.extend(f"{variable_label}: {level}" for level in level_columns)
+        row_labels.extend(str(level) for level in level_columns)
+        group_ranges.append((variable_label, group_start, len(row_labels)))
         differences.extend(diff)
         burst_associations.extend(burst)
         burden_associations.extend(burden)
@@ -225,7 +225,7 @@ def build(
     ):
         _draw_estimates(ax, estimates, y)
         ax.axvline(0, color="#555555", linestyle="--", linewidth=0.8, zorder=1)
-        ax.set_title(f"{title}\n{subtitle}", fontsize=9.5)
+        ax.set_title(f"{title}\n{subtitle}")
         ax.set_xlabel(xlabel)
         ax.set_ylim(-1, len(row_labels))
         ax.grid(axis="x", color="#E5E5E5", linewidth=0.6, zorder=0)
@@ -239,8 +239,23 @@ def build(
         panel_label(ax, "ABC"[index])
 
     axes[0].set_yticks(y)
-    axes[0].set_yticklabels(row_labels, fontsize=7.5)
+    axes[0].set_yticklabels(row_labels)
     axes[0].tick_params(axis="y", length=0)
+    for variable_label, start, stop in group_ranges:
+        top = len(row_labels) - 1 - start
+        bottom = len(row_labels) - stop
+        axes[0].text(
+            -0.82,
+            (top + bottom) / 2,
+            variable_label,
+            transform=axes[0].get_yaxis_transform(),
+            rotation=90,
+            ha="center",
+            va="center",
+            fontweight="bold",
+            color="#333333",
+            clip_on=False,
+        )
     outputs = styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
     return {"figure": fig, "outputs": outputs}
 
@@ -248,16 +263,12 @@ def build(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_args(parser)
-    parser.add_argument(
-        "--composition-dir", type=Path, default=DEFAULT_COMPOSITION_DIR
-    )
     parser.add_argument("--n-bootstrap", type=int, default=1000)
     parser.add_argument("--random-state", type=int, default=BOOTSTRAP_SEED)
     args = parser.parse_args()
     paths = paths_from_args(args)
     build(
         paths,
-        composition_dir=args.composition_dir,
         n_bootstrap=args.n_bootstrap,
         random_state=args.random_state,
     )
