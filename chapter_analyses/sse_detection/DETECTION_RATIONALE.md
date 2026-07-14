@@ -4,7 +4,7 @@
 
 We detect candidate superspreading events (SSEs) from a cluster-transition network in which nodes are clusters of genetically similar, temporally proximate SARS-CoV-2 sequences, and directed edges link clusters in adjacent overlapping epidemic windows that share sequences. An edge therefore encodes sequence co-membership across window-specific clustering solutions; it is a marker of lineage continuity, not a directly observed transmission event. Candidate detection is built on network topology and cluster-size behaviour, and is deliberately blind to socio-demographic information, which is reserved for the separate task of characterising detected candidates.
 
-Detection now rests on two calibrated graph-derived axes: **local burst** and **onward burden**. These axes are calibrated against permutation null expectations and are scored only where the corresponding quantity is meaningfully defined. Onward-spread shape, including dispersal across successors, is retained as a characterisation feature rather than a candidate-defining axis.
+Detection rests on two calibrated graph-derived axes: **local burst** and **onward burden**. These axes are calibrated against permutation null expectations and are scored only where the corresponding quantity is meaningfully defined. Onward-spread shape, including dispersal across successors, is retained as a characterisation feature rather than a candidate-defining axis.
 
 ## Why Detection Is Separated From Characterisation
 
