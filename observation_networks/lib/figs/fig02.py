@@ -46,7 +46,11 @@ def build(paths: Paths) -> None:
     ccdf_y = 1.0 - np.arange(len(sizes)) / len(sizes)
 
     fig, axes = styled_new_figure(
-        width="double", height_in=6.7, nrows=2, ncols=2
+        width="double",
+        height_in=6.7,
+        nrows=2,
+        ncols=2,
+        constrained_layout=True,
     )
     ax = axes[0, 0]
     ax.plot(sizes, ccdf_y, color="#1f4e79", lw=1.5)

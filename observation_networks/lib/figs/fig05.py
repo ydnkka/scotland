@@ -193,6 +193,7 @@ def build(paths: Paths) -> None:
         height_in=7.2,
         nrows=3,
         ncols=1,
+        constrained_layout=True,
     )
     _plot_window_distance(
         axes[0],
@@ -213,7 +214,6 @@ def build(paths: Paths) -> None:
         panel="B",
     )
     _plot_distance_hexbin(axes[2], summary, fig)
-    fig.subplots_adjust(left=0.11, right=0.96, top=0.95, bottom=0.09, hspace=0.52)
     styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
 
 

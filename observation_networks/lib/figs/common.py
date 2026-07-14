@@ -105,7 +105,7 @@ def styled_save_figure(
     tight: bool = True,
 ) -> dict[str, Path]:
     paths.figure_dir.mkdir(parents=True, exist_ok=True)
-    if tight:
+    if tight and fig.get_layout_engine() is None:
         fig.tight_layout()
     width_in, height_in = fig.get_size_inches()
     return _styled_save_figure(
@@ -125,7 +125,6 @@ def panel_label(ax: Axes, label: str) -> None:
         1.08,
         label,
         transform=ax.transAxes,
-        fontsize=12,
         fontweight="bold",
         va="top",
         ha="left",

@@ -293,6 +293,7 @@ def plot_compatibility_assortativity_grid(
         ncols=2,
         sharex=True,
         sharey=True,
+        constrained_layout=True,
     )
     axes_array = np.asarray(axes).reshape(3, 2)
     y_limits = _shared_y_limits(summary)
@@ -313,5 +314,4 @@ def plot_compatibility_assortativity_grid(
         if idx < 4:
             ax.tick_params(labelbottom=False)
 
-    fig.subplots_adjust(left=0.08, right=0.985, top=0.94, bottom=0.09, hspace=0.38)
     styled_save_figure(fig, paths, figure_name, tight=False)

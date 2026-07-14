@@ -108,7 +108,6 @@ def plot_policy_stacked_bars(
     panel: str | None = None,
     wrap_width: int = 18,
     x_max: float | None = None,
-    label_size: float = 8.0,
 ) -> None:
     y_positions = np.arange(len(shares.index))
     left = np.zeros(len(shares.index), dtype=float)
@@ -127,7 +126,7 @@ def plot_policy_stacked_bars(
 
     ax.set_title(title)
     ax.set_yticks(y_positions)
-    ax.set_yticklabels(wrap_labels(shares.index, wrap_width), fontsize=label_size)
+    ax.set_yticklabels(wrap_labels(shares.index, wrap_width))
     ax.invert_yaxis()
     ax.xaxis.set_major_formatter(PercentFormatter(1.0))
     ax.grid(axis="x", color="#d9d9d9", lw=0.5, alpha=0.8)
@@ -153,14 +152,14 @@ def build(paths: Paths) -> None:
     health_right = health_board.iloc[health_split:]
     health_x_max = float(health_board.sum(axis=1).max()) * 1.12
 
-    fig, placeholder_ax = styled_new_figure(width="double", height_in=8.6)
+    fig, placeholder_ax = styled_new_figure(
+        width="double", height_in=8.6, constrained_layout=True
+    )
     placeholder_ax.remove()
     grid = fig.add_gridspec(
         3,
         2,
         height_ratios=[0.85, 1.15, 1.75],
-        hspace=0.62,
-        wspace=0.45,
     )
     axes = {
         "sex": fig.add_subplot(grid[0, 0]),
@@ -172,7 +171,7 @@ def build(paths: Paths) -> None:
     }
 
     plot_policy_stacked_bars(
-        axes["sex"], sex, title="Sex", panel="A", wrap_width=14, label_size=8.0
+        axes["sex"], sex, title="Sex", panel="A", wrap_width=14
     )
     plot_policy_stacked_bars(
         axes["age_group"],
@@ -180,7 +179,6 @@ def build(paths: Paths) -> None:
         title="Age group",
         panel="B",
         wrap_width=14,
-        label_size=8.0,
     )
     plot_policy_stacked_bars(
         axes["simd"],
@@ -188,7 +186,6 @@ def build(paths: Paths) -> None:
         title="SIMD quintile",
         panel="C",
         wrap_width=14,
-        label_size=8.0,
     )
     plot_policy_stacked_bars(
         axes["urban_rural"],
@@ -196,7 +193,6 @@ def build(paths: Paths) -> None:
         title="Urban/rural class",
         panel="D",
         wrap_width=18,
-        label_size=7.8,
     )
     plot_policy_stacked_bars(
         axes["health_left"],
@@ -205,7 +201,6 @@ def build(paths: Paths) -> None:
         panel="E",
         wrap_width=21,
         x_max=health_x_max,
-        label_size=7.2,
     )
     plot_policy_stacked_bars(
         axes["health_right"],
@@ -213,7 +208,6 @@ def build(paths: Paths) -> None:
         title="Health board (continued)",
         wrap_width=21,
         x_max=health_x_max,
-        label_size=7.2,
     )
 
     policy_columns = ordered_policy_values(sequence["policy_period"])
@@ -235,14 +229,12 @@ def build(paths: Paths) -> None:
     ]
     fig.legend(
         handles=handles,
-        loc="lower center",
+        loc="outside lower center",
         ncol=legend_ncol,
-        bbox_to_anchor=(0.5, 0.01),
         title="Policy period",
         columnspacing=1.2,
         handlelength=1.5,
     )
-    fig.subplots_adjust(left=0.16, right=0.98, top=0.96, bottom=0.15)
     styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
 
 

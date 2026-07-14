@@ -224,7 +224,7 @@ def build(paths: Paths) -> None:
         constrained_layout=True,
     )
     placeholder_ax.remove()
-    grid = fig.add_gridspec(3, 2, height_ratios=[1.35, 1.0, 1.0], hspace=0.075)
+    grid = fig.add_gridspec(3, 2, height_ratios=[1.35, 1.0, 1.0])
 
     ax = fig.add_subplot(grid[0, :])
     draw_graph_role_schematic(ax)

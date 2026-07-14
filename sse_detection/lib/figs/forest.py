@@ -287,7 +287,6 @@ def plot_composition_primary_expanded_forest(
         layout="constrained",
         context=context,
         font_scale=font_scale,
-        gridspec_kw={"wspace": 0.18},
     )
     axes = np.atleast_1d(axes)
 
@@ -453,7 +452,6 @@ def _add_composition_group_guides(
             ha="center",
             va="center",
             color="#555555",
-            fontsize="small",
             linespacing=0.9,
             clip_on=False,
         )

@@ -60,6 +60,7 @@ def build(paths: Paths) -> None:
         nrows=3,
         ncols=1,
         sharex=True,
+        constrained_layout=True,
     )
     axes[0].plot(summary["window_idx"], summary["n_nodes"], label="Nodes")
     axes[0].plot(summary["window_idx"], summary["n_edges_used"], label="Edges")

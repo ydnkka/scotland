@@ -117,7 +117,7 @@ def build(paths: Paths, *, n_bins: int = 20) -> dict[str, object]:
         calibration_ax.set_ylabel(f"{label}\nNumber of nodes")
         calibration_ax.tick_params(axis="x", labelbottom=True)
         if row == 0:
-            calibration_ax.legend(loc="upper center", frameon=False, fontsize=8)
+            calibration_ax.legend(loc="upper center", frameon=False)
 
         distribution_ax = axes[row, 1]
         score_arrays = [

@@ -124,7 +124,6 @@ def draw_matrix_heatmap(
     *,
     title: str,
     vmax: float | None = None,
-    label_size: float = 7.0,
 ) -> AxesImage:
     values = matrix.to_numpy(dtype=float)
     vmax = vmax or np.nanquantile(values, 0.98)
@@ -132,8 +131,8 @@ def draw_matrix_heatmap(
     ax.set_title(title)
     ax.set_xticks(np.arange(matrix.shape[1]))
     ax.set_yticks(np.arange(matrix.shape[0]))
-    ax.set_xticklabels(matrix.columns, rotation=90, fontsize=label_size)
-    ax.set_yticklabels(matrix.index, fontsize=label_size)
+    ax.set_xticklabels(matrix.columns, rotation=90)
+    ax.set_yticklabels(matrix.index)
     return image
 
 
@@ -141,10 +140,10 @@ def build(paths: Paths) -> None:
     compatibility = read_table(paths, "compatibility_mixing_matrix")
 
     panels = [
-        ("age_group", "Age group", "A", (0, 0), 7.0),
-        ("simd_quintile", "SIMD quintile", "B", (1, 0), 7.0),
-        ("urban_rural", "Urban/rural class", "C", (2, 0), 6.7),
-        ("health_board", "Health board", "D", (slice(None), 1), 6.0),
+        ("age_group", "Age group", "A", (0, 0)),
+        ("simd_quintile", "SIMD quintile", "B", (1, 0)),
+        ("urban_rural", "Urban/rural class", "C", (2, 0)),
+        ("health_board", "Health board", "D", (slice(None), 1)),
     ]
     matrices = [aggregate_row_matrix(compatibility, attr)[0] for attr, *_ in panels]
     vmax = max(np.nanquantile(matrix.to_numpy(), 0.98) for matrix in matrices)
@@ -157,7 +156,7 @@ def build(paths: Paths) -> None:
     placeholder_ax.remove()
     grid = fig.add_gridspec(3, 3, width_ratios=[1.0, 1.65, 0.045])
     colorbar_axis = fig.add_subplot(grid[:, 2])
-    for attr, title, label, grid_position, label_size in panels:
+    for attr, title, label, grid_position in panels:
         ax = fig.add_subplot(grid[grid_position])
         matrix, _ = aggregate_row_matrix(compatibility, attr)
         image = draw_matrix_heatmap(
@@ -165,7 +164,6 @@ def build(paths: Paths) -> None:
             matrix,
             title=title,
             vmax=vmax,
-            label_size=label_size,
         )
         panel_label(ax, label)
     cbar = fig.colorbar(image, cax=colorbar_axis)

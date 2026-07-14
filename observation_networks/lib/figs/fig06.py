@@ -173,8 +173,13 @@ def _plot_policy_composition(ax: Axes, policy: pd.DataFrame) -> None:
         left += np.nan_to_num(values, nan=0.0)
     ax.set_title("Dose composition by policy period")
     ax.set_ylabel("Share of sequences")
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=0)
+    sequence_tick_mask = np.array(
+        [label not in {"E0", "L1", "P1"} for label in labels], dtype=bool
+    )
+    ax.set_xticks(x[sequence_tick_mask])
+    ax.set_xticklabels(
+        [label for label, show in zip(labels, sequence_tick_mask) if show], rotation=0
+    )
     ax.set_ylim(0, 1)
     ax.yaxis.set_major_formatter(PercentFormatter(1.0))
     ax.grid(axis="y", color="#d9d9d9", lw=0.5, alpha=0.8)
@@ -193,9 +198,10 @@ def build(paths: Paths) -> None:
     fig, placeholder_ax = styled_new_figure(
         width="double",
         height_in=7.3,
+        constrained_layout=True,
     )
     placeholder_ax.remove()
-    grid = fig.add_gridspec(2, 2, hspace=0.42, wspace=0.24)
+    grid = fig.add_gridspec(2, 2)
     axes = [
         fig.add_subplot(grid[0, 0]),
         fig.add_subplot(grid[0, 1]),
@@ -214,14 +220,12 @@ def build(paths: Paths) -> None:
     ]
     fig.legend(
         handles=dose_handles,
-        loc="lower center",
+        loc="outside lower center",
         ncol=len(dose_handles),
-        bbox_to_anchor=(0.5, 0.02),
         columnspacing=1.1,
         handlelength=1.5,
         frameon=False,
     )
-    fig.subplots_adjust(left=0.08, right=0.985, top=0.94, bottom=0.15)
     styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
 
 

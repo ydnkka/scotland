@@ -130,7 +130,6 @@ def build(
                 transform=ax.transAxes,
                 ha="right",
                 va="top",
-                # fontsize=8,
                 color="#444444",
             )
             ax.grid(axis="x", color="#E6E6E6", lw=0.6)

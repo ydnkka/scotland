@@ -30,7 +30,11 @@ def build(paths: Paths) -> None:
     movement = movement.loc[movement["comparison_method"].eq("equal_datazone")]
 
     fig, axes = styled_new_figure(
-        width="double", height_in=3.5, nrows=1, ncols=2
+        width="double",
+        height_in=3.5,
+        nrows=1,
+        ncols=2,
+        constrained_layout=True,
     )
     ax = axes[0]
     for method, group in group_summary.groupby("grouping_method_label"):
@@ -69,7 +73,7 @@ def build(paths: Paths) -> None:
         for j in range(matrix.shape[1]):
             value = matrix.iloc[i, j]
             if value > 0: # type: ignore
-                axes[1].text(j, i, f"{value:.1f}", ha="center", va="center", fontsize=7)
+                axes[1].text(j, i, f"{value:.1f}", ha="center", va="center")
     fig.colorbar(image, ax=axes[1], label="Population share (%)")
     panel_label(axes[1], "B")
     styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
