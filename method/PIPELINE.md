@@ -88,6 +88,10 @@ Central configuration for the entire pipeline. Contains three top-level sections
 
 **Windowing:** 3-week sliding windows with 1-week stride (configurable). Groups with fewer than `min_group_size` sequences are skipped.
 
+![Sliding three-week windows with a one-week step](../assets/sliding_3week_windows.svg)
+
+Windows are half-open (`start <= collection_date < end`). Because the step is shorter than the window width, a sequence can occur in up to three windows. Within each window, sequences are partitioned by Pango lineage before pairwise-distance calculation and clustering.
+
 **Naming convention:** `W{window_idx}_{lineage_slug}_{n_seqs}` — e.g. `W042_BA.2_317`.
 
 ---
@@ -131,7 +135,22 @@ Used twice: once for TN93 distance computation (Step 3) and once for cluster inf
 - `TARGET = ("ad(0)", "ca(0,0)")`: ancestor–descendant and common-ancestor at depth 0
 - 10,000 Monte-Carlo samples
 
+![Scenario-specific EpiLink distance compatibility scoring](../assets/observed_vs_null_distance.svg)
+
+Temporal and genetic distances are scored separately against the simulated distribution for each configured scenario. The empirical percentile `q` is converted to marginal compatibility as `c(q) = 1 - 2|q - 0.5|`; temporal and genetic compatibilities are multiplied within a scenario, then the configured scenario scores are summed.
+
 The EpiLink instance is constructed once per process (module-level singleton) so the MC lookup tables are built only on first call.
+
+#### Regenerating the method schematics
+
+Both builders write an SVG and a 2× PNG by default. Run them from the repository root in the `PhD` Conda environment:
+
+```bash
+conda run -n PhD python assets/build_sliding_3week_windows.py
+conda run -n PhD python assets/build_observed_vs_null_distance.py
+```
+
+Use `--output`, `--png-output`, or `--png-scale` to override the output paths or raster resolution.
 
 ---
 
