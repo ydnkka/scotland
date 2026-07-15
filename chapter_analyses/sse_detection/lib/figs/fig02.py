@@ -63,6 +63,14 @@ def _legend_handles() -> list[Line2D]:
     return [
         Line2D([], [], color=CANDIDATE_COLOR, lw=5, alpha=0.65, label="Candidate"),
         Line2D([], [], color=BACKGROUND_COLOR, lw=2, label="Background"),
+        Line2D(
+            [],
+            [],
+            color="black",
+            lw=0.8,
+            linestyle="--",
+            label="Uniform expectation",
+        ),
     ]
 
 
@@ -190,15 +198,11 @@ def build(paths: Paths, *, n_bins: int = 20) -> dict[str, object]:
             color="black",
             linestyle="--",
             linewidth=0.8,
-            label="All tested nodes: uniform expectation",
         )
         if row == 0:
             calibration_ax.set_title("Null-model calibration")
         calibration_ax.set_ylabel(f"{label}\nNumber of nodes")
         calibration_ax.tick_params(axis="x", labelbottom=True)
-        if row == 0:
-            calibration_ax.legend(loc="upper center", frameon=False)
-
         distribution_ax = axes[row, 1]
         score_arrays = [
             background[score_col].dropna().to_numpy(),
@@ -232,7 +236,7 @@ def build(paths: Paths, *, n_bins: int = 20) -> dict[str, object]:
         distribution_ax.tick_params(axis="x", labelbottom=True)
 
     axes[1, 0].set_xlabel(
-        "Randomized null-model $p$-value (probability of a score this high)"
+        "Randomized null-model $p$-value\n(probability of a score this high)"
     )
     axes[1, 1].set_xlabel("Detection score")
 
@@ -241,7 +245,8 @@ def build(paths: Paths, *, n_bins: int = 20) -> dict[str, object]:
     fig.legend(
         handles=_legend_handles(),
         loc="outside lower center",
-        ncol=2,
+        bbox_to_anchor=(0.5, -0.075),
+        ncol=3,
         frameon=False,
     )
     outputs = styled_save_figure(fig, paths, FIGURE_NAME, tight=False)

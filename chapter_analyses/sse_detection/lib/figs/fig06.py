@@ -117,7 +117,7 @@ def build(paths: Paths) -> dict[str, object]:
 
     ax.set_xlabel("Local-burst null-standardised score")
     ax.set_ylabel("Onward-burden null-standardised score")
-    ax.legend(loc="upper left")
+    ax.legend(loc="center left")
     
     outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}", tight=False)
     return {"figure": fig, "outputs": outputs}
