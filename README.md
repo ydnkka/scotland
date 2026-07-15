@@ -44,7 +44,7 @@ Run commands from the repository root. Install the Python dependencies, plus the
 python -m pip install -r requirements.txt
 ```
 
-Bayesian fitting also needs Bambi, PyMC, and ArviZ; these are not listed in `requirements.txt`.
+`requirements.txt` includes the Bayesian fitting stack and CairoSVG used by the method-schematic builders.
 
 ## Method pipeline
 
