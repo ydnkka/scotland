@@ -23,9 +23,11 @@ from common import (
     styled_new_figure,
     styled_save_figure,
 )
+from chapter_analyses.genomic_networks.lib.io import write_table
 
 
 FIGURE_NAME = "fig_ch4_cluster_pairwise_distances"
+OVERALL_SUMMARY_NAME = "cluster_pairwise_distance_overall_summary"
 
 MIN_PAIRWISE_ROWS = 10
 SNP_COLOR = "#35618f"
@@ -80,6 +82,46 @@ def _window_weighted_quantiles(summary: pd.DataFrame, value_col: str) -> pd.Data
                 ),
                 "n_window_lineages": group["pango_lineage"].nunique(),
                 "n_pairwise_rows": _numeric(group["n_pairwise_rows"]).sum(),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _overall_distance_summary(summary: pd.DataFrame) -> pd.DataFrame:
+    """Summarise typical group-level distances with and without pair weights."""
+    weights = _numeric(summary["n_pairwise_rows"])
+    common = {
+        "n_window_lineage_summaries": len(summary),
+        "n_windows": summary["window_idx"].nunique(),
+        "n_pairwise_rows": int(weights.sum()),
+    }
+    rows = []
+    for distance_metric, value_col, unit in (
+        ("snp_distance", "snp_distance_median", "SNPs"),
+        ("collection_date_distance", "temporal_distance_median", "days"),
+    ):
+        values = _numeric(summary[value_col]).replace([np.inf, -np.inf], np.nan)
+        valid_values = values.dropna()
+        rows.append(
+            {
+                "distance_metric": distance_metric,
+                "unit": unit,
+                "weighting": "unweighted",
+                "q25": float(valid_values.quantile(0.25)),
+                "median": float(valid_values.median()),
+                "q75": float(valid_values.quantile(0.75)),
+                **common,
+            }
+        )
+        rows.append(
+            {
+                "distance_metric": distance_metric,
+                "unit": unit,
+                "weighting": "pair_count_weighted",
+                "q25": _weighted_quantile(values, weights, 0.25),
+                "median": _weighted_quantile(values, weights, 0.50),
+                "q75": _weighted_quantile(values, weights, 0.75),
+                **common,
             }
         )
     return pd.DataFrame(rows)
@@ -181,8 +223,14 @@ def _plot_distance_hexbin(ax: Axes, summary: pd.DataFrame, fig) -> None:
     panel_label(ax, "C")
 
 
-def build(paths: Paths) -> None:
+def build(paths: Paths) -> pd.DataFrame:
     summary, window = _prepare_inputs(paths)
+    overall_summary = _overall_distance_summary(summary)
+    write_table(
+        overall_summary,
+        OVERALL_SUMMARY_NAME,
+        table_dir=paths.table_dir,
+    )
     snp_window = _window_weighted_quantiles(summary, "snp_distance_median")
     temporal_window = _window_weighted_quantiles(
         summary, "temporal_distance_median"
@@ -215,6 +263,7 @@ def build(paths: Paths) -> None:
     )
     _plot_distance_hexbin(axes[2], summary, fig)
     styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
+    return overall_summary
 
 
 def main() -> int:
@@ -224,6 +273,7 @@ def main() -> int:
     paths = paths_from_args(args)
     build(paths)
     print(f"Wrote {FIGURE_NAME} to {paths.figure_dir}")
+    print(f"Wrote {OVERALL_SUMMARY_NAME} to {paths.table_dir}")
     return 0
 
 

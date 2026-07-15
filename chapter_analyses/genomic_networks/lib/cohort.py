@@ -89,7 +89,22 @@ def build_cohort_summary(df: pd.DataFrame) -> pd.DataFrame:
     if "window_id" in df.columns:
         rows.append(_metric_row("windows", df["window_id"].nunique()))
     if "cluster_id" in df.columns:
-        rows.append(_metric_row("clusters", df["cluster_id"].nunique()))
+        cluster_columns = ["cluster_id"]
+        if "cluster_size" in df.columns:
+            cluster_columns.append("cluster_size")
+        clusters = df[cluster_columns].drop_duplicates("cluster_id")
+        rows.append(_metric_row("clusters", clusters["cluster_id"].nunique()))
+        if "cluster_size" in clusters.columns:
+            cluster_size = pd.to_numeric(clusters["cluster_size"], errors="coerce")
+            rows.extend(
+                [
+                    _metric_row("singleton_clusters", cluster_size.eq(1).sum()),
+                    _metric_row(
+                        "non_singleton_clusters",
+                        cluster_size.gt(1).sum(),
+                    ),
+                ]
+            )
     if "clade" in seq.columns:
         rows.append(_metric_row("clades", seq["clade"].nunique()))
     if "pango_lineage" in seq.columns:

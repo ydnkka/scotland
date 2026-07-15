@@ -10,6 +10,7 @@ import sys
 import textwrap
 
 
+from matplotlib.cm import ScalarMappable
 from matplotlib.patches import Patch
 from matplotlib.axes import Axes
 from matplotlib.ticker import PercentFormatter
@@ -20,6 +21,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from common import (
     POLICY_COLORS,
+    POLICY_LABELS,
+    POLICY_STRINGENCY_CMAP,
+    POLICY_STRINGENCY_NORM,
     Paths,
     add_common_args,
     ordered_policy_values,
@@ -210,20 +214,20 @@ def build(paths: Paths) -> None:
         x_max=health_x_max,
     )
 
-    policy_columns = ordered_policy_values(sequence["policy_period"])
-    legend_ncol = 7
-    legend_top = policy_columns[:legend_ncol]
-    legend_bottom = policy_columns[legend_ncol:]
-    legend_columns = []
-    for idx, top_period in enumerate(legend_top):
-        legend_columns.append(top_period)
-        if idx < len(legend_bottom):
-            legend_columns.append(legend_bottom[idx])
+    policy_columns = ordered_policy_values(
+        sequence.loc[sequence["n_sequences"].fillna(0).gt(0), "policy_period"]
+    )
+    legend_ncol = 4
+    legend_columns = [
+        period
+        for column in range(legend_ncol)
+        for period in policy_columns[column::legend_ncol]
+    ]
     handles = [
         Patch(
             facecolor=POLICY_COLORS.get(str(period), "#999999"),
             edgecolor="none",
-            label=str(period),
+            label=f"{POLICY_LABELS.get(str(period), str(period))} ({period})",
         )
         for period in legend_columns
     ]
@@ -234,7 +238,24 @@ def build(paths: Paths) -> None:
         title="Policy period",
         columnspacing=1.2,
         handlelength=1.5,
+        labelspacing=0.35,
+        frameon=False,
     )
+    stringency_mappable = ScalarMappable(
+        norm=POLICY_STRINGENCY_NORM,
+        cmap=POLICY_STRINGENCY_CMAP,
+    )
+    stringency_colorbar = fig.colorbar(
+        stringency_mappable,
+        ax=list(axes.values()),
+        orientation="horizontal",
+        location="bottom",
+        ticks=[0, 25, 50, 75, 100],
+        shrink=0.42,
+        aspect=45,
+        pad=0.035,
+    )
+    stringency_colorbar.set_label("Mean policy stringency index")
     styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
 
 

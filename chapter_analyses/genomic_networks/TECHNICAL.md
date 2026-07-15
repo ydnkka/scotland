@@ -26,7 +26,7 @@ The command loads data once and writes:
 
 | Table | Unit and content |
 | --- | --- |
-| `cohort_summary` | Overall sequence-window, sequence, patient, date, window, cluster, clade, and lineage counts |
+| `cohort_summary` | Overall sequence-window, sequence, patient, date, window, total/singleton/non-singleton cluster, clade, and lineage counts |
 | `window_coverage` | Window dates, sequences, positive-test denominator, sequencing proportion, policy, and sequences per positive test |
 | `window_denominator_contrasts` | Policy-period medians/ranges of window denominators and coverage |
 | `clade_window_counts` | Clade counts by window |
@@ -34,9 +34,9 @@ The command loads data once and writes:
 | `vaccination_context_by_policy` | Unique-sequence vaccination categories by policy period |
 | `vaccination_window_context` | Within-window deduplicated vaccination categories |
 | `cluster_table` | One row per window-specific cluster with size, spread, duration, lineage/policy, and modal attributes |
-| `cluster_window_summary` | Cluster size, duration, spread, and rate summaries by window |
-| `cluster_period_summary` | Corresponding summaries by policy period |
-| `cluster_attribute_composition` | Modal cluster attributes by policy period with small-cell flags |
+| `cluster_window_summary` | Total, singleton, and non-singleton cluster counts plus size, duration, spread, and rate summaries by window; duration and explicitly labelled non-singleton characteristics exclude singletons |
+| `cluster_period_summary` | Total, singleton, and non-singleton counts by policy period, with size, duration, and spread restricted to non-singleton clusters |
+| `cluster_attribute_composition` | Modal cluster attributes by policy period, split into total, singleton, and non-singleton counts and proportions with corresponding small-cell flags |
 
 All are CSV and parquet except `clade_window_counts` and `cluster_table`, which are parquet only.
 

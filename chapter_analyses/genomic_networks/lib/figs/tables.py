@@ -416,7 +416,15 @@ def write_cohort_table(paths: Paths) -> None:
             f"{cohort_map.get('last_collection_date')}",
         ],
         ["Rolling windows", fmt_int(cohort_map.get("windows"))],
-        ["Window-level clusters", fmt_int(cohort_map.get("clusters"))],
+        ["Window-level clusters (all)", fmt_int(cohort_map.get("clusters"))],
+        [
+            "Window-level singleton clusters",
+            fmt_int(cohort_map.get("singleton_clusters")),
+        ],
+        [
+            "Window-level non-singleton clusters",
+            fmt_int(cohort_map.get("non_singleton_clusters")),
+        ],
         ["Nextclade clades", fmt_int(cohort_map.get("clades"))],
         ["Pango lineages", fmt_int(cohort_map.get("pango_lineages"))],
     ]
@@ -512,29 +520,36 @@ def write_cluster_period_table(paths: Paths) -> None:
             [
                 row.policy_period,
                 fmt_int(row.n_clusters),
-                fmt_float(row.median_cluster_size, 1),
-                fmt_float(row.p90_cluster_size, 1),
-                fmt_int(row.max_cluster_size),
-                fmt_float(row.median_duration_days, 1),
-                fmt_float(row.median_datazones, 1),
+                fmt_int(row.n_singleton_clusters),
+                fmt_int(row.n_non_singleton_clusters),
+                fmt_float(row.median_non_singleton_cluster_size, 1),
+                fmt_float(row.p90_non_singleton_cluster_size, 1),
+                fmt_int(row.max_non_singleton_cluster_size),
+                fmt_float(row.median_non_singleton_duration_days, 1),
+                fmt_float(row.median_non_singleton_datazones, 1),
             ]
         )
     write_latex_table(
         paths,
         TABLE_NAMES["cluster_period_summary"],
-        caption="Window-level EpiLink cluster summaries by policy period",
+        caption=(
+            "EpiLink cluster counts by policy period; size, duration, and "
+            "Data Zone summaries are restricted to non-singleton clusters"
+        ),
         label=TABLE_NAMES["cluster_period_summary"],
         columns=[
             "Period",
-            "Clusters",
+            "All clusters",
+            "Singletons",
+            "Non-singletons",
             "Median size",
             "P90 size",
             "Max size",
-            "Median duration",
+            "Median duration (days)",
             "Median Data Zones",
         ],
         rows=rows,
-        column_spec="lrrrrrr",
+        column_spec="lrrrrrrrr",
     )
 
 

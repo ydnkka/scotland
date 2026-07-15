@@ -21,27 +21,15 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from utils import new_figure as styled_new_figure  # noqa: E402, F401
+from utils import PERIOD_LABELS as POLICY_LABELS  # noqa: E402, F401
+from utils import PERIOD_ORDER  # noqa: E402
 from utils import save_figure as _styled_save_figure  # noqa: E402
 from utils import add_panel_labels as styled_add_panel_labels  # noqa: E402
 
 DEFAULT_TABLE_DIR = PROJECT_ROOT / "chapter_analyses/genomic_networks/results/tables"
 FIGURE_DIR = PROJECT_ROOT / "chapter_analyses/genomic_networks/results/figures"
 
-POLICY_ORDER = [
-    "P2",
-    "P3",
-    "T1",
-    "F5",
-    "L2",
-    "SL",
-    "L3",
-    "L21",
-    "L0",
-    "NN",
-    "OM",
-    "FE",
-    "PR",
-]
+POLICY_ORDER = list(PERIOD_ORDER)
 
 ATTRIBUTE_ORDER = [
     "Sex",
@@ -70,7 +58,7 @@ POLICY_STRINGENCY = {
     "PR": 8.184418604651126,
 }
 POLICY_STRINGENCY_CMAP = plt.get_cmap("RdYlGn_r")
-POLICY_STRINGENCY_NORM = Normalize(vmin=1, vmax=100)
+POLICY_STRINGENCY_NORM = Normalize(vmin=0, vmax=100)
 POLICY_COLORS = {
     period: POLICY_STRINGENCY_CMAP(POLICY_STRINGENCY_NORM(stringency))
     for period, stringency in POLICY_STRINGENCY.items()

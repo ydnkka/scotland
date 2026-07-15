@@ -56,7 +56,7 @@ def build(paths: Paths) -> None:
     ax.plot(sizes, ccdf_y, color="#1f4e79", lw=1.5)
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("Cluster size")
+    ax.set_xlabel("Cluster size (all clusters)")
     ax.set_ylabel("Pr(cluster size >= x)")
     panel_label(ax, "A")
 
@@ -64,27 +64,27 @@ def build(paths: Paths) -> None:
     add_policy_bands(ax, window_coverage)
     ax.plot(
         cluster_window["wn_mid_date"],
-        cluster_window["median_cluster_size"],
+        cluster_window["median_non_singleton_cluster_size"],
         label="Median",
         color="#1f4e79",
         lw=1.2,
     )
     ax.plot(
         cluster_window["wn_mid_date"],
-        cluster_window["p90_cluster_size"],
+        cluster_window["p90_non_singleton_cluster_size"],
         label="90th percentile",
         color="#d95f02",
         lw=1.2,
     )
     ax.plot(
         cluster_window["wn_mid_date"],
-        cluster_window["max_cluster_size"],
+        cluster_window["max_non_singleton_cluster_size"],
         label="Maximum",
         color="#1b9e77",
         lw=1.1,
     )
     ax.set_yscale("log")
-    ax.set_ylabel("Cluster size")
+    ax.set_ylabel("Non-singleton cluster size")
     ax.legend(loc="upper left")
     date_axis(ax)
     panel_label(ax, "B")
@@ -108,7 +108,7 @@ def build(paths: Paths) -> None:
     spread = cluster_table[["cluster_size", "cluster_n_datazones"]].copy()
     spread = spread.replace([np.inf, -np.inf], np.nan).dropna()
     spread = spread.loc[
-        spread["cluster_size"].gt(0) & spread["cluster_n_datazones"].gt(0)
+        spread["cluster_size"].gt(1) & spread["cluster_n_datazones"].gt(0)
     ]
     x = np.log10(spread["cluster_size"].to_numpy())
     y = np.log10(spread["cluster_n_datazones"].to_numpy())
@@ -119,7 +119,7 @@ def build(paths: Paths) -> None:
     ax.set_xticklabels([f"{10**tick:g}" for tick in ticks])
     ax.set_yticks(ticks)
     ax.set_yticklabels([f"{10**tick:g}" for tick in ticks])
-    ax.set_xlabel("Cluster size")
+    ax.set_xlabel("Non-singleton cluster size")
     ax.set_ylabel("Observed Data Zones")
     panel_label(ax, "D")
     styled_save_figure(fig, paths, FIGURE_NAME)
