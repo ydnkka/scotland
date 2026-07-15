@@ -32,6 +32,7 @@ For methodological interpretation and limitations, see `DETECTION_RATIONALE.md`.
 - [14. Downstream workflow](#14-downstream-workflow)
 - [15. Verification and sensitivity checks](#15-verification-and-sensitivity-checks)
 - [16. Interpretation limits](#16-interpretation-limits)
+- [17. References for permutation calibration](#17-references-for-permutation-calibration)
 
 <!-- /TOC -->
 
@@ -226,17 +227,30 @@ For each axis, the detector permutes intact multivariate component profiles. Pro
 
 Permutation labels are adaptive: more detailed contextual strata are retained only where they contain at least 20 observations. Burst strata begin with `upstream_novelty_eligible`, ensuring parentless one-component profiles are not permuted against two-component profiles, followed by window and clade context. Burden is calibrated among burden-eligible nodes, with clade used where the adaptive size criterion permits.
 
-For observed score `s_i` and `B` valid null scores, the smoothed one-sided upper-tail probability is:
+For observed score `s_i` and `B` valid null scores, the detector stores the
+conservative smoothed one-sided upper-tail probability:
 
 ```text
-p_i = (1 + number(null score >= s_i)) / (1 + B)
+p_i_conservative = (1 + number(null score >= s_i)) / (1 + B)
 ```
+
+Because the percentile-based composite scores are discrete, counting every tie in the upper tail produces conservative point masses, especially at `p = 1` for local burst. Candidate tiering therefore uses a seeded randomized tie-adjusted probability, following the established randomized-p-value construction for discrete tests (Habiger and Peña, 2011):
+
+```text
+p_i_randomized =
+    (1 + number(null score > s_i) + U_i * number(null score = s_i)) / (1 + B)
+
+U_i ~ Uniform(0, 1), generated reproducibly from DETECTION_RANDOM_SEED
+```
+
+The node table retains both `*_upper_p_conservative` and `*_upper_p_randomized`; `*_upper_p` records the operational randomized value. This preserves the conservative result for audit and sensitivity analyses. The leading-one correction follows the Monte Carlo permutation principle that an estimated permutation p-value should not be zero (Phipson and Smyth, 2010).
 
 The associated null mean, null standard deviation, and null z-score are also written. The test asks whether a score is unusually high; low scores naturally produce p-values near one.
 
 ## 11. Candidate tiers
 
-Candidate assignment is demographic-blind and uses axis-specific p-values:
+Candidate assignment is demographic-blind and uses the operational,
+tie-randomized axis-specific p-values:
 
 | Tier                            | Rule                                                          |
 | ------------------------------- | ------------------------------------------------------------- |
@@ -275,6 +289,8 @@ The detector writes to `chapter_analyses/sse_detection/results/sse_outputs/`:
 | `transition_graph_summary.{csv,parquet}`     | Whole-graph summary                                                   |
 | `transition_window_summary.{csv,parquet}`    | Window-level transition summary                                       |
 | `transition_component_summary.{csv,parquet}` | Weak-component summary                                                |
+
+Figure regeneration additionally writes `results/tables/tab_ch5_null_calibration_summary.{csv,parquet}`. For each axis and p-value definition it records the tested and significant counts, exact-one count, Kolmogorov--Smirnov distance from Uniform(0,1), mean and maximum absolute 20-bin deviations, and conservative/randomized candidate-set overlap.
 
 The cluster table is the authoritative detector output. Important column families include:
 
@@ -324,3 +340,16 @@ Before reporting results:
 - Missing descendants do not establish containment.
 - Cumulative measures depend on available follow-up.
 - Candidate status prioritises clusters for review; it does not verify an SSE.
+
+## 17. References for permutation calibration
+
+- Habiger, J. D. and Peña, E. A. (2011). Randomised p-values and
+  nonparametric procedures in multiple testing. *Journal of Nonparametric
+  Statistics*, 23(3), 583--604.
+  <https://doi.org/10.1080/10485252.2010.482154>
+- Hemerik, J. and Goeman, J. (2018). Exact testing with random permutations.
+  *TEST*, 27, 811--825. <https://doi.org/10.1007/s11749-017-0571-1>
+- Phipson, B. and Smyth, G. K. (2010). Permutation p-values should never be
+  zero: calculating exact p-values when permutations are randomly drawn.
+  *Statistical Applications in Genetics and Molecular Biology*, 9(1), Article
+  39. <https://doi.org/10.2202/1544-6115.1585>

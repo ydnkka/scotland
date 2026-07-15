@@ -41,8 +41,16 @@ def mean_with_count(
 def empirical_upper_tail_p(
     obs: np.ndarray,
     null_scores: np.ndarray,
+    *,
+    tie_method: str = "conservative",
+    random_state: int | np.random.Generator | None = None,
 ) -> np.ndarray:
-    """Compute smoothed upper-tail empirical p-values from null scores."""
+    """Compute smoothed upper-tail empirical p-values from null scores.
+
+    ``conservative`` counts every null tie in the upper tail. ``randomized``
+    distributes ties reproducibly across their attainable p-value interval;
+    this is useful when discrete composite scores otherwise accumulate at 1.
+    """
     obs = np.asarray(obs, dtype=float)
     null_scores = np.asarray(null_scores, dtype=float)
 
@@ -52,11 +60,23 @@ def empirical_upper_tail_p(
         raise ValueError("obs must be a 1D array with shape (n,).")
     if null_scores.shape[0] != obs.shape[0]:
         raise ValueError("obs and null_scores must have the same number of rows.")
+    if tie_method not in {"conservative", "randomized"}:
+        raise ValueError("tie_method must be 'conservative' or 'randomized'.")
 
     valid_null = ~np.isnan(null_scores)
     n_valid = valid_null.sum(axis=1)
-    ge = np.sum((null_scores >= obs[:, None]) & valid_null, axis=1)
-    p = (1 + ge) / (1 + n_valid)
+    greater = np.sum((null_scores > obs[:, None]) & valid_null, axis=1)
+    ties = np.sum((null_scores == obs[:, None]) & valid_null, axis=1)
+    if tie_method == "conservative":
+        upper_count = greater + ties
+    else:
+        rng = (
+            random_state
+            if isinstance(random_state, np.random.Generator)
+            else np.random.default_rng(random_state)
+        )
+        upper_count = greater + rng.random(obs.shape[0]) * ties
+    p = (1 + upper_count) / (1 + n_valid)
     p[np.isnan(obs) | (n_valid == 0)] = np.nan
     return p
 
@@ -118,12 +138,15 @@ def add_composite_null_scores(
     n_permutations: int = 500,
     random_state: int = 42,
     null_mode: str = "profile",
+    p_value_mode: str = "conservative",
 ) -> pd.DataFrame:
     """Add permutation-based null statistics for a composite node score."""
     if n_permutations < 2:
         raise ValueError("n_permutations must be at least 2.")
     if null_mode not in {"profile", "independent"}:
         raise ValueError("null_mode must be either 'profile' or 'independent'.")
+    if p_value_mode not in {"conservative", "randomized"}:
+        raise ValueError("p_value_mode must be 'conservative' or 'randomized'.")
 
     required_cols = [score_col, rank_within]
     missing_required = [col for col in required_cols if col not in df.columns]
@@ -135,6 +158,8 @@ def add_composite_null_scores(
         f"{score_col}_null_mean",
         f"{score_col}_null_sd",
         f"{score_col}_null_z",
+        f"{score_col}_upper_p_conservative",
+        f"{score_col}_upper_p_randomized",
         f"{score_col}_upper_p",
     ]
 
@@ -213,7 +238,18 @@ def add_composite_null_scores(
     out[f"{score_col}_null_mean"] = null_mean
     out[f"{score_col}_null_sd"] = null_sd
     out[f"{score_col}_null_z"] = null_z
-    out[f"{score_col}_upper_p"] = empirical_upper_tail_p(obs, null_scores)
+    conservative_p = empirical_upper_tail_p(obs, null_scores)
+    randomized_p = empirical_upper_tail_p(
+        obs,
+        null_scores,
+        tie_method="randomized",
+        random_state=random_state + 1_000_003,
+    )
+    out[f"{score_col}_upper_p_conservative"] = conservative_p
+    out[f"{score_col}_upper_p_randomized"] = randomized_p
+    out[f"{score_col}_upper_p"] = (
+        conservative_p if p_value_mode == "conservative" else randomized_p
+    )
     return out
 
 
@@ -225,10 +261,18 @@ def add_sse_node_metrics(
     random_state: int = DETECTION_RANDOM_SEED,
     min_cluster_size: int = MIN_CLUSTER_SIZE,
     null_mode: str = "profile",
+    p_value_mode: str = "randomized",
 ) -> pd.DataFrame:
-    """Add calibrated SSE candidate scores and candidate tiers to cluster nodes."""
+    """Add calibrated SSE candidate scores and candidate tiers to cluster nodes.
+
+    Randomized tie handling is the operational default because the composite
+    scores are discrete. Conservative p-values are retained alongside it for
+    audit and sensitivity analysis.
+    """
     if null_mode not in {"profile", "independent"}:
         raise ValueError("null_mode must be either 'profile' or 'independent'.")
+    if p_value_mode not in {"conservative", "randomized"}:
+        raise ValueError("p_value_mode must be 'conservative' or 'randomized'.")
 
     required_cols = ["cluster_size", "window_idx"]
     missing_required = [col for col in required_cols if col not in df.columns]
@@ -354,6 +398,7 @@ def add_sse_node_metrics(
         n_permutations=n_permutations,
         random_state=random_state,
         null_mode=null_mode,
+        p_value_mode=p_value_mode,
     )
 
     burden_present = [c for c in burden_components if c in tested.columns]
@@ -369,6 +414,8 @@ def add_sse_node_metrics(
         "burden_score_null_mean",
         "burden_score_null_sd",
         "burden_score_null_z",
+        "burden_score_upper_p_conservative",
+        "burden_score_upper_p_randomized",
         "burden_score_upper_p",
     ):
         tested[col] = np.nan
@@ -396,6 +443,7 @@ def add_sse_node_metrics(
             n_permutations=n_permutations,
             random_state=random_state,
             null_mode=null_mode,
+            p_value_mode=p_value_mode,
         )
         for col in (
             "burden_score",
@@ -403,6 +451,8 @@ def add_sse_node_metrics(
             "burden_score_null_mean",
             "burden_score_null_sd",
             "burden_score_null_z",
+            "burden_score_upper_p_conservative",
+            "burden_score_upper_p_randomized",
             "burden_score_upper_p",
         ):
             tested.loc[burden_idx, col] = burden_sub[col]

@@ -5,7 +5,6 @@ import argparse
 import numpy as np
 import pandas as pd
 from .common import (
-    HIGH_PRIORITY,
     Paths,
     add_common_args,
     panel_label,
@@ -21,7 +20,6 @@ FILE_NAME = "ch5_stratified_calibration"
 
 def build_stratified_calibration(nodes: pd.DataFrame) -> pd.DataFrame:
     tested = nodes.loc[nodes["sse_tested"].fillna(False)].copy()
-    tested = tested.loc[~tested["candidate_tier"].isin(HIGH_PRIORITY)]
     tested["size_stratum"] = pd.cut(
         tested["cluster_size"],
         [5, 7, 11, 24, np.inf],
@@ -99,7 +97,7 @@ def build(paths: Paths) -> dict[str, object]:
             )
             panel_label(ax, chr(ord("A") + row * 2 + col))
 
-    fig.supxlabel("Null-model p-value")
+    fig.supxlabel("Randomized null-model p-value")
     fig.supylabel("Empirical cumulative proportion")
     outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}", tight=False)
     return {"figure": fig, "outputs": outputs}

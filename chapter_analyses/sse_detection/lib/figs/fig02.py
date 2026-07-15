@@ -17,9 +17,12 @@ from .common import (
     styled_new_figure,
     styled_save_figure,
 )
+from ..sse.config import DETECTION_RANDOM_SEED
+from ..sse.io import write_table
 
 
 FIGURE_NAME = "fig_ch5_sse_score_null_calibration"
+SUMMARY_NAME = "tab_ch5_null_calibration_summary"
 
 CANDIDATE_COLOR = "#C44E52"
 BACKGROUND_COLOR = "#B0B0B0"
@@ -32,11 +35,6 @@ DIMENSION_CANDIDATE_TIERS = {
     "burst": ("high_priority_burst", "high_priority_both_axes"),
     "burden": ("high_priority_burden", "high_priority_both_axes"),
 }
-HIGH_PRIORITY_TIERS = (
-    "high_priority_both_axes",
-    "high_priority_burst",
-    "high_priority_burden",
-)
 INELIGIBLE_TIER = "size_ineligible"
 
 
@@ -48,18 +46,16 @@ def _frames(
     table: pd.DataFrame,
     dimension: str,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Return eligible background and axis-specific candidate nodes."""
+    """Split all nodes tested on an axis by axis-specific significance."""
     _, p_col = _dimension_columns(dimension)
     eligible = table["candidate_tier"].ne(INELIGIBLE_TIER)
     has_p = table[p_col].notna()
-    background = table.loc[
-        eligible & has_p & ~table["candidate_tier"].isin(HIGH_PRIORITY_TIERS)
-    ]
-    candidates = table.loc[
-        eligible
-        & has_p
-        & table["candidate_tier"].isin(DIMENSION_CANDIDATE_TIERS[dimension])
-    ]
+    tested = eligible & has_p
+    axis_candidate = table["candidate_tier"].isin(
+        DIMENSION_CANDIDATE_TIERS[dimension]
+    )
+    background = table.loc[tested & ~axis_candidate]
+    candidates = table.loc[tested & axis_candidate]
     return background, candidates
 
 
@@ -68,6 +64,76 @@ def _legend_handles() -> list[Line2D]:
         Line2D([], [], color=CANDIDATE_COLOR, lw=5, alpha=0.65, label="Candidate"),
         Line2D([], [], color=BACKGROUND_COLOR, lw=2, label="Background"),
     ]
+
+
+def _uniform_ks_statistic(values: np.ndarray) -> float:
+    """Return the one-sample Kolmogorov--Smirnov distance from U(0, 1)."""
+    ordered = np.sort(np.asarray(values, dtype=float))
+    n = ordered.size
+    if n == 0:
+        return np.nan
+    upper = np.arange(1, n + 1, dtype=float) / n
+    lower = np.arange(n, dtype=float) / n
+    return float(max(np.max(upper - ordered), np.max(ordered - lower)))
+
+
+def build_calibration_summary(
+    table: pd.DataFrame,
+    *,
+    n_bins: int = 20,
+    alpha: float = 0.05,
+) -> pd.DataFrame:
+    """Summarise conservative and randomized calibration for both axes."""
+    rows: list[dict[str, object]] = []
+    for axis in DIMENSIONS:
+        base_col = f"{axis}_score_upper_p"
+        tested = table["candidate_tier"].ne(INELIGIBLE_TIER)
+        definitions = {
+            "conservative": f"{base_col}_conservative",
+            "randomized": f"{base_col}_randomized",
+        }
+        significant_sets: dict[str, set[object]] = {}
+        for definition, p_col in definitions.items():
+            values = table.loc[tested & table[p_col].notna(), p_col].to_numpy(float)
+            counts = np.histogram(values, bins=n_bins, range=(0, 1))[0]
+            expected = values.size / n_bins
+            significant = tested & table[p_col].le(alpha)
+            significant_sets[definition] = set(table.index[significant])
+            rows.append(
+                {
+                    "axis": axis,
+                    "p_value_definition": definition,
+                    "n_tested": values.size,
+                    "n_significant": int(significant.sum()),
+                    "significant_rate": float(significant.sum() / values.size),
+                    "n_equal_one": int(np.sum(values == 1)),
+                    "ks_distance_uniform": _uniform_ks_statistic(values),
+                    "mean_absolute_bin_deviation": float(
+                        np.mean(np.abs(counts - expected))
+                    ),
+                    "max_absolute_bin_deviation": float(
+                        np.max(np.abs(counts - expected))
+                    ),
+                    "expected_per_bin": expected,
+                    "n_bins": n_bins,
+                    "alpha": alpha,
+                    "random_seed": (
+                        DETECTION_RANDOM_SEED if definition == "randomized" else np.nan
+                    ),
+                }
+            )
+
+        conservative = significant_sets["conservative"]
+        randomized = significant_sets["randomized"]
+        union = conservative | randomized
+        for row in rows[-2:]:
+            row["significant_overlap_n"] = len(conservative & randomized)
+            row["randomized_added_n"] = len(randomized - conservative)
+            row["randomized_removed_n"] = len(conservative - randomized)
+            row["significant_jaccard"] = (
+                len(conservative & randomized) / len(union) if union else 1.0
+            )
+    return pd.DataFrame(rows)
 
 
 def build(paths: Paths, *, n_bins: int = 20) -> dict[str, object]:
@@ -79,6 +145,19 @@ def build(paths: Paths, *, n_bins: int = 20) -> dict[str, object]:
     missing = sorted(required.difference(table.columns))
     if missing:
         raise KeyError(f"cluster_table is missing required columns: {missing}")
+
+    summary_required = {
+        f"{axis}_score_upper_p_{definition}"
+        for axis in DIMENSIONS
+        for definition in ("conservative", "randomized")
+    }
+    missing_summary = sorted(summary_required.difference(table.columns))
+    if missing_summary:
+        raise KeyError(
+            f"cluster_table is missing calibration columns: {missing_summary}"
+        )
+    summary = build_calibration_summary(table, n_bins=n_bins)
+    write_table(summary, paths.result_table_dir, SUMMARY_NAME)
 
     fig, axes = styled_new_figure(
         nrows=2,
@@ -107,11 +186,11 @@ def build(paths: Paths, *, n_bins: int = 20) -> dict[str, object]:
             linewidth=0.4,
         )
         calibration_ax.axhline(
-            len(p_background) / n_bins,
+            (len(p_background) + len(p_candidates)) / n_bins,
             color="black",
             linestyle="--",
             linewidth=0.8,
-            label="Background uniform expectation",
+            label="All tested nodes: uniform expectation",
         )
         if row == 0:
             calibration_ax.set_title("Null-model calibration")
@@ -153,7 +232,7 @@ def build(paths: Paths, *, n_bins: int = 20) -> dict[str, object]:
         distribution_ax.tick_params(axis="x", labelbottom=True)
 
     axes[1, 0].set_xlabel(
-        "Null-model $p$-value (probability of a score this high)"
+        "Randomized null-model $p$-value (probability of a score this high)"
     )
     axes[1, 1].set_xlabel("Detection score")
 
@@ -166,7 +245,7 @@ def build(paths: Paths, *, n_bins: int = 20) -> dict[str, object]:
         frameon=False,
     )
     outputs = styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
-    return {"figure": fig, "outputs": outputs}
+    return {"figure": fig, "outputs": outputs, "summary": summary}
 
 
 def main() -> int:
