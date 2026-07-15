@@ -48,7 +48,7 @@ Bayesian fitting also needs Bambi, PyMC, and ArviZ; these are not listed in `req
 
 ## Method pipeline
 
-The configured defaults are 3-week windows stepped weekly, groups of at least 2 sequences, a 29,903-base alignment, Leiden resolutions 0.1–0.8, seed 42, and compatibility sparsification at 0.001. Chapter 4 separately fixes its primary Leiden resolution at 0.3.
+The configured defaults are 3-week windows stepped weekly, groups of at least 2 sequences, a 29,903-base alignment, Leiden resolutions 0.1-0.8, seed 42, and compatibility sparsification at 0.001. Chapter 4 separately fixes its primary Leiden resolution at 0.3.
 
 Run the method stages in order:
 
