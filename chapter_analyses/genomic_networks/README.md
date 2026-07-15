@@ -1,42 +1,12 @@
 # Genomic Surveillance and Compatibility Networks
 
-Code and technical outputs for thesis Chapter 4:
+Chapter 4 code for cohort description, window-specific clusters, EpiLink compatibility networks, mixing, topology, and sensitivity analysis. Candidate labels and temporal transitions belong to [`../sse_detection`](../sse_detection/README.md).
 
-> Observation and Network Structure in Scottish SARS-CoV-2 Genomic Surveillance
+See [TECHNICAL.md](TECHNICAL.md) for algorithms and table definitions.
 
-This directory owns the descriptive observation and compatibility-network analysis between the EpiLink pipeline and the Chapter 5 superspreading-compatible signal detector. It must not create or consume candidate labels.
+## Build order
 
-## Documentation map
-
-- Use this README for the directory map, execution order, common commands, and output locations.
-- Use `TECHNICAL.md` for the analysis boundary, data contract, algorithms, uncertainty methods, table schemas, sensitivity analyses, and interpretation limits.
-- Use `../sse_detection/README.md` for the temporal cluster-transition graph and Chapter 5 candidate detector.
-
-## Structure
-
-- `lib/config.py`: Chapter 4 paths, analysis constants, disclosure threshold, and categorical attribute specifications.
-- `lib/io.py`: standard loaders, result-directory creation, and CSV/parquet table I/O.
-- `lib/cohort.py`: cohort, rolling-window coverage, denominator, composition, and vaccination-context summaries.
-- `lib/clusters.py`: window-specific EpiLink cluster tables and cluster composition summaries.
-- `lib/mixing.py`: weighted categorical mixing, nominal assortativity, node-jackknife uncertainty, and degree/strength assortativity.
-- `lib/simd.py`: population-weighted SIMD grouping validation.
-- `lib/figures.py` and `lib/figs/`: figure and LaTeX-table orchestration from saved result tables.
-- `build_cluster_tables.py`: builds the core cohort, coverage, vaccination, cluster, and composition tables.
-- `build_mixing.py`: scans per-window/per-lineage sparse pairwise files and builds compatibility mixing and assortativity outputs.
-- `build_cluster_pairwise_distance_summary.py`: summarises SNP and temporal distances among sequences in selected non-singleton clusters.
-- `build_sensitivity_tables.py`: builds Leiden-resolution and compatibility-sparsification sensitivity tables.
-- `build_simd_validation.py`: builds population-weighted SIMD validation tables.
-- `make_figures.py`: regenerates all available Chapter 4 figures and LaTeX table fragments from saved tables.
-
-Generated outputs are written under `chapter_analyses/genomic_networks/results/`.
-
-## Environment and working directory
-
-Run commands from the Scotland repository root using the project environment that provides pandas, PyArrow, NumPy, scikit-learn, plotting libraries, and the repository utilities.
-
-## Recommended execution order
-
-Build the complete Chapter 4 analysis in this order:
+Run from the repository root:
 
 ```bash
 python -m chapter_analyses.genomic_networks.build_cluster_tables
@@ -47,113 +17,42 @@ python -m chapter_analyses.genomic_networks.build_simd_validation
 python -m chapter_analyses.genomic_networks.make_figures --skip-missing
 ```
 
-The mixing command can be run without `--include-giants` when memory-heavy pairwise files should be skipped. Figures should be regenerated only after their required tables have been refreshed.
+Build `data/processed/sparsified_edge_counts_by_window_lineage.parquet` first with `python3 method/build_sparsified_edge_manifest.py` for edge-aware mixing scheduling.
 
-## Core tables
+## Commands
 
-Build cohort, coverage, denominator, vaccination, cluster, and composition tables:
+`build_cluster_tables` writes the core cohort, coverage, composition, vaccination, and cluster tables. `--max-windows N` is a development cap. Its transition flags are deprecated no-ops.
 
-```bash
-python -m chapter_analyses.genomic_networks.build_cluster_tables
-```
-
-Use `--max-windows N` for a development subset. The transition-related flags retained by this command are deprecated no-ops because Chapter 5 owns transition construction.
-
-## Compatibility mixing and assortativity
-
-Inspect the edge-count-aware schedule without processing files:
+`build_mixing` requires either `--all-windows` or `--windows ...`. Useful invocations:
 
 ```bash
+# Inspect scheduling only
 python -m chapter_analyses.genomic_networks.build_mixing --all-windows --dry-run
-```
 
-Run a small development selection:
-
-```bash
+# Small selection
 python -m chapter_analyses.genomic_networks.build_mixing --windows W080 W081 --workers 2
-```
 
-Run all selected non-giant files:
-
-```bash
+# All non-giant files; giant files are skipped by default
 python -m chapter_analyses.genomic_networks.build_mixing --all-windows --workers 4
 ```
 
-Run the full build, including giant files in a conservative separate worker pool:
+Files with at least 50,000,000 sparse edges, and files with unknown cost, are giant by default. Use `--include-giants` to process them in the separate `--giant-workers` pool. Same-stem intermediate chunks are reused unless `--force` is supplied; do not reuse them after changing attributes, threshold, missing-value handling, or jackknife settings.
 
-```bash
-python -m chapter_analyses.genomic_networks.build_mixing --all-windows --workers 4 --include-giants --giant-workers 1
-```
+`build_cluster_pairwise_distance_summary` also requires `--all-windows` or `--windows`. It supports lineage, cluster-size, selection, resolution, QC, output, and development filters.
 
-Each worker processes one physical `data/processed/pairwise_distances_dataset/*.parquet` file and writes same-stem intermediate chunks under `results/intermediate/`. Existing chunks are reused unless `--force` is supplied. Files with at least 50,000,000 sparse edges are classified as giant by default; unknown costs are also treated as giant.
+`build_sensitivity_tables` builds Leiden and sparsification sensitivity families. Select one with `--only leiden` or `--only sparsification`. Row/file caps and partial row-group scans are for development and can change or approximate the estimand.
 
-Useful options include `--attributes`, `--compatibility-threshold`, `--max-windows`, `--missing-label`, `--jackknife-blocks`, `--jackknife-seed`, `--giant-threshold`, `--edge-manifest`, `--progress-every`, and `--log-level`. Use `--jackknife-blocks 0` only for development runs where uncertainty columns are not required.
+`build_simd_validation` defaults to quintiles; `--n-groups` accepts 5, 10, or 20.
 
-## Pairwise distance summary
+`make_figures` reads saved tables. Without `--skip-missing`, a missing required table fails the run.
 
-Build the complete non-singleton-cluster SNP and temporal-distance summary:
+## Layout
 
-```bash
-python -m chapter_analyses.genomic_networks.build_cluster_pairwise_distance_summary --all-windows
-```
+- `lib/`: configuration, I/O, cohort, cluster, mixing, SIMD, figure, and table logic.
+- `build_*.py`: table-building entry points.
+- `make_figures.py`: saved-table figure and LaTeX orchestration.
+- `results/tables/`: final tables.
+- `results/intermediate/`: per-pairwise-file mixing, assortativity, and topology chunks.
+- `results/figures/`: figures and `.tex` fragments.
 
-Run a capped development selection:
-
-```bash
-python -m chapter_analyses.genomic_networks.build_cluster_pairwise_distance_summary --windows W080 W081 --max-clusters-per-window-lineage 25
-```
-
-The command supports window and lineage filters, cluster-size and selection controls, resolution/QC overrides, custom output names and directories, and a dry run.
-
-## Sensitivity tables
-
-Build both Leiden-resolution and sparsification-threshold sensitivity families:
-
-```bash
-python -m chapter_analyses.genomic_networks.build_sensitivity_tables
-```
-
-Build one family only:
-
-```bash
-python -m chapter_analyses.genomic_networks.build_sensitivity_tables --only leiden
-python -m chapter_analyses.genomic_networks.build_sensitivity_tables --only sparsification
-```
-
-For a quick approximate scan:
-
-```bash
-python -m chapter_analyses.genomic_networks.build_sensitivity_tables --max-windows 3 --max-files 10 --max-row-groups-per-file 2
-```
-
-## SIMD validation
-
-Build population-weighted SIMD validation tables using quintiles:
-
-```bash
-python -m chapter_analyses.genomic_networks.build_simd_validation
-```
-
-The `--n-groups` option also supports 10 and 20 groups.
-
-## Figures and LaTeX tables
-
-Regenerate figures and LaTeX fragments from available saved tables:
-
-```bash
-python -m chapter_analyses.genomic_networks.make_figures --skip-missing
-```
-
-Without `--skip-missing`, the command fails when a required input table is absent.
-
-## Output layout
-
-- `results/tables/`: final CSV/parquet analysis tables.
-- `results/intermediate/mixing_matrix/`: per-file compatibility mixing chunks.
-- `results/intermediate/comp_assortativity/`: per-file categorical assortativity chunks.
-- `results/intermediate/deg_assortativity/`: per-file topology-assortativity chunks.
-- `results/figures/`: PNG/PDF figures and `.tex` table fragments.
-
-## Relationship to Chapter 5
-
-Chapter 4 describes the observed sequenced record, coverage, window-specific clusters, compatibility-network mixing, assortativity, topology, vaccination context, and parameter sensitivity. `chapter_analyses.sse_detection` owns alternate-window cluster transitions, upstream novelty, burst and onward-burden scoring, null calibration, candidate tiers, and Bayesian candidate characterisation.
+Compatibility edges are EpiLink-weighted plausible links, not observed transmission. Rolling-window clusters are not persistent outbreak entities.

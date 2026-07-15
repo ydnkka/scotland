@@ -1,23 +1,11 @@
 # Thesis Chapter Analyses
 
-This namespace contains the sequential surveillance, genomic-network, and superspreading-compatible signal analyses used by the thesis.
+Importable analysis packages built from `data/processed/scotland_clustering_analysis_dataset.parquet` and, where required, the pairwise compatibility parquets.
 
-## Packages
+| Package | Scope | Main entry point |
+| --- | --- | --- |
+| [`surveillance`](surveillance/README.md) | Policy timeline, sequence counts, lineage replacement, and sequencing coverage | `python -m chapter_analyses.surveillance.policy_sequences_over_time` |
+| [`genomic_networks`](genomic_networks/README.md) | Chapter 4 cohort, clusters, compatibility mixing/topology, and sensitivity analyses | `python -m chapter_analyses.genomic_networks.build_cluster_tables` |
+| [`sse_detection`](sse_detection/README.md) | Chapter 5 transition graph, candidate detector, composition, and Bayesian characterisation | `python -m chapter_analyses.sse_detection.lib.sse.detection` |
 
-- `surveillance/`: descriptive sequence surveillance, Scottish policy periods, OxCGRT index validation, lineage replacement, and sequencing coverage.
-- `genomic_networks/`: observed cohort, window-specific EpiLink clusters, compatibility-network mixing and assortativity, topology, and sensitivity analyses.
-- `sse_detection/`: temporal cluster-transition graph, burst and onward-burden candidate detection, figures, composition tables, and Bayesian characterisation.
-
-Each package contains its own README, technical reference, results directory, and module entry points.
-
-## Main entry points
-
-```bash
-python -m chapter_analyses.surveillance.policy_sequences_over_time
-python -m chapter_analyses.surveillance.policy_index_comparison
-python -m chapter_analyses.genomic_networks.build_cluster_tables
-python -m chapter_analyses.genomic_networks.build_mixing --all-windows --workers 4
-python -m chapter_analyses.sse_detection.lib.sse.detection
-```
-
-Run all commands from the Scotland repository root in the project environment.
+Run modules from the repository root. Each package writes generated artifacts to its own `results/` directory.
