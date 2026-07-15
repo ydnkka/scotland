@@ -195,13 +195,15 @@ def build(
 
     assert sample_sizes is not None
     y = np.arange(len(row_labels))[::-1]
-    fig, placeholder_ax = styled_new_figure(
+    fig, axes = styled_new_figure(
         width="double",
         height_in=max(8.0, 0.25 * len(row_labels) + 1.5),
+        nrows=1,
+        ncols=3,
         constrained_layout=True,
+        sharey=True,
+        gridspec_kw={"width_ratios": [1.15, 1, 1]},
     )
-    placeholder_ax.remove()
-    axes = fig.subplots(1, 3, sharey=True, gridspec_kw={"width_ratios": [1.15, 1, 1]})
 
     panel_data = (differences, burst_associations, burden_associations)
     titles = (

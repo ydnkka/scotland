@@ -37,14 +37,6 @@ TABLE_NAMES = {
     "assortativity_summary": "tab_ch4_assortativity_summary",
     "simd_population_weighting": "tab_ch4_simd_population_weighting",
 }
-TABLE_LABELS = {
-    "cohort_objects": "tab:ch4_cohort_objects",
-    "policy_denominators": "tab:ch4_policy_denominators",
-    "vaccination_context": "tab:ch4_vaccination_context",
-    "cluster_period_summary": "tab:ch4_cluster_period_summary",
-    "assortativity_summary": "tab:ch4_assortativity_summary",
-    "simd_population_weighting": "tab:ch4_simd_population_weighting",
-}
 
 
 def fmt_int(value: float | int | str | None) -> str:
@@ -212,7 +204,7 @@ def simd_appendix_table_tex(
     *,
     n_groups: int = 5,
     caption: str | None = None,
-    label: str = TABLE_LABELS["simd_population_weighting"],
+    label: str = TABLE_NAMES["simd_population_weighting"],
 ) -> str:
     """Render a compact LaTeX table for the SIMD validation appendix."""
     group_name = SIMD_GROUP_LABELS.get(n_groups, f"{n_groups}-group")
@@ -393,7 +385,6 @@ def compatibility_attribute_summary(paths: Paths) -> pd.DataFrame:
         window_group = window_summary.loc[window_summary["attribute"].eq(attribute)]
         rows.append(
             {
-                "graph": "Compatibility",
                 "attribute": attribute,
                 "attribute_label": label,
                 "n_windows": window_group["window_idx"].nunique(),
@@ -433,7 +424,7 @@ def write_cohort_table(paths: Paths) -> None:
         paths,
         TABLE_NAMES["cohort_objects"],
         caption="Chapter 4 analysis cohort and window-cluster object counts",
-        label=TABLE_LABELS["cohort_objects"],
+        label=TABLE_NAMES["cohort_objects"],
         columns=["Quantity", "Value"],
         rows=rows,
         column_spec="lr",
@@ -460,7 +451,7 @@ def write_policy_denominator_table(paths: Paths) -> None:
         paths,
         TABLE_NAMES["policy_denominators"],
         caption="Rolling-window observation denominators by policy period",
-        label=TABLE_LABELS["policy_denominators"],
+        label=TABLE_NAMES["policy_denominators"],
         columns=[
             "Period",
             "Windows",
@@ -498,7 +489,7 @@ def write_vaccination_context_table(paths: Paths) -> None:
         paths,
         TABLE_NAMES["vaccination_context"],
         caption="Vaccination context of sequenced records by policy period",
-        label=TABLE_LABELS["vaccination_context"],
+        label=TABLE_NAMES["vaccination_context"],
         columns=[
             "Period",
             "Sequences",
@@ -532,7 +523,7 @@ def write_cluster_period_table(paths: Paths) -> None:
         paths,
         TABLE_NAMES["cluster_period_summary"],
         caption="Window-level EpiLink cluster summaries by policy period",
-        label=TABLE_LABELS["cluster_period_summary"],
+        label=TABLE_NAMES["cluster_period_summary"],
         columns=[
             "Period",
             "Clusters",
@@ -550,39 +541,31 @@ def write_cluster_period_table(paths: Paths) -> None:
 def write_assortativity_summary_table(paths: Paths) -> None:
     summary = compatibility_attribute_summary(paths)
     rows = []
-    addlinespace_after: set[int] = set()
-    graph_groups = list(summary.groupby("graph", sort=False))
-    for graph_idx, (graph_label, df) in enumerate(graph_groups):
-        graph_row_start = len(rows)
-        for attribute in ATTRIBUTE_ORDER:
-            group = df.loc[df["attribute_label"].eq(attribute)]
-            if group.empty:
-                continue
-            row = group.iloc[0]
-            rows.append(
-                [
-                    graph_label if len(rows) == graph_row_start else "",
-                    attribute,
-                    fmt_int(row["n_windows"]),
-                    fmt_int(row["n_networks"])
-                    if not pd.isna(row["n_networks"])
-                    else "",
-                    fmt_float(row["weighted_mean"], 4),
-                    fmt_ci(row["ci_low"], row["ci_high"], 4),
-                    f"{fmt_float(row['window_median'], 3)} "
-                    f"({fmt_float(row['window_q10'], 3)}--"
-                    f"{fmt_float(row['window_q90'], 3)})",
-                ]
-            )
-        if graph_idx < len(graph_groups) - 1 and len(rows) > graph_row_start:
-            addlinespace_after.add(len(rows) - 1)
+    for attribute in ATTRIBUTE_ORDER:
+        group = summary.loc[summary["attribute_label"].eq(attribute)]
+        if group.empty:
+            continue
+        row = group.iloc[0]
+        rows.append(
+            [
+                attribute,
+                fmt_int(row["n_windows"]),
+                fmt_int(row["n_networks"])
+                if not pd.isna(row["n_networks"])
+                else "",
+                fmt_float(row["weighted_mean"], 4),
+                fmt_ci(row["ci_low"], row["ci_high"], 4),
+                f"{fmt_float(row['window_median'], 3)} "
+                f"({fmt_float(row['window_q10'], 3)}--"
+                f"{fmt_float(row['window_q90'], 3)})",
+            ]
+        )
     write_latex_table(
         paths,
         TABLE_NAMES["assortativity_summary"],
         caption="Weighted assortativity summaries with compatibility confidence intervals",
-        label=TABLE_LABELS["assortativity_summary"],
+        label=TABLE_NAMES["assortativity_summary"],
         columns=[
-            "Graph",
             "Attribute",
             "Windows",
             "Networks",
@@ -591,8 +574,7 @@ def write_assortativity_summary_table(paths: Paths) -> None:
             "Window median (10--90%)",
         ],
         rows=rows,
-        column_spec="llrrrll",
-        addlinespace_after=addlinespace_after,
+        column_spec="lrrrll",
     )
 
 

@@ -20,7 +20,13 @@ import sys
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from matplotlib.ticker import FixedLocator, FuncFormatter, NullFormatter
+from matplotlib.ticker import (
+    FixedLocator,
+    FuncFormatter,
+    MaxNLocator,
+    NullFormatter,
+    NullLocator,
+)
 import numpy as np
 import pandas as pd
 
@@ -839,43 +845,16 @@ def _finish_forest_figure(
 def _set_readable_or_ticks(ax: Axes) -> None:
     """Use sparse, readable odds-ratio ticks on a log axis."""
     xmin, xmax = ax.get_xlim()
-    max_ticks = 5
-    if xmax <= 1.35:
-        preferred = np.array([0.67, 0.85, 1.0, 1.1, 1.2])
+    max_ticks = 6
+    if xmin >= 0.75 and xmax <= 1.35:
+        preferred = np.array([0.8, 0.9, 1.0, 1.1, 1.2, 1.3])
+    elif xmin >= 0.75 and xmax <= 2.1:
+        preferred = np.array([0.8, 0.9, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0])
     elif xmax <= 3.2:
-        preferred = np.array([0.67, 0.85, 1.0, 1.5, 2.5])
+        preferred = np.array([0.5, 0.67, 0.8, 1.0, 1.5, 2.0, 2.5, 3.0])
     else:
-        preferred = np.array([0.67, 1.0, 1.5, 2.5, 5.0])
+        preferred = np.array([0.25, 0.5, 0.67, 1.0, 1.5, 2.5, 5.0])
     ticks = preferred[(preferred >= xmin) & (preferred <= xmax)]
-    if len(ticks) >= 2:
-        ax.xaxis.set_major_locator(FixedLocator(list(ticks)))
-        ax.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}"))
-        ax.xaxis.set_minor_formatter(NullFormatter())
-        return
-
-    candidates = np.array(
-        [
-            0.25,
-            0.33,
-            0.5,
-            0.67,
-            0.75,
-            0.85,
-            0.9,
-            1.0,
-            1.1,
-            1.2,
-            1.5,
-            2.0,
-            2.5,
-            3.0,
-            4.0,
-            5.0,
-        ]
-    )
-    ticks = candidates[(candidates >= xmin) & (candidates <= xmax)]
-    if 1.0 >= xmin and 1.0 <= xmax:
-        ticks = np.sort(np.unique(np.append(ticks, 1.0)))
     if len(ticks) > max_ticks:
         if 1.0 in ticks:
             others = ticks[ticks != 1.0]
@@ -887,8 +866,26 @@ def _set_readable_or_ticks(ax: Axes) -> None:
     if len(ticks) < 2:
         return
     ax.xaxis.set_major_locator(FixedLocator(list(ticks)))
-    ax.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}"))
+    ax.xaxis.set_major_formatter(FuncFormatter(_format_or_tick))
+    ax.xaxis.set_minor_locator(NullLocator())
     ax.xaxis.set_minor_formatter(NullFormatter())
+
+
+def _format_or_tick(value: float, _: float) -> str:
+    if np.isclose(value * 10, round(value * 10)):
+        return f"{value:.1f}"
+    return f"{value:.2f}"
+
+
+def _set_readable_coefficient_ticks(ax: Axes) -> None:
+    """Keep coefficient axes legible while retaining a labelled zero."""
+    ax.xaxis.set_major_locator(
+        MaxNLocator(
+            nbins=5,
+            steps=[1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10],
+            min_n_ticks=4,
+        )
+    )
 
 
 def _warn_missing(missing: Sequence[str], domain: str) -> None:

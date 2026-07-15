@@ -1,4 +1,4 @@
-"""Build the combined Bayesian mixing-model forest figure."""
+"""Build the full observed and null-standardised Bayesian mixing forest figure."""
 
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ from .forest import (
     _estimate_columns,
     _finish_forest_figure,
     _set_panel_xlim,
+    _set_readable_coefficient_ticks,
     _set_readable_or_ticks,
     _y_lookup,
 )
@@ -32,7 +33,7 @@ from .common import (
 )
 
 
-FIGURE_NAME = "fig_ch5_bayesian_mixing_forest"
+FIGURE_NAME = "fig_ch5_bayesian_mixing_forest_app"
 OUTCOMES = (
     ("logistic", "candidate", "Candidate status"),
     ("linear", "burst_score", "Burst score"),
@@ -58,10 +59,9 @@ def _sample_size(family: str, outcome: str, scale: str, result_dir: Path) -> int
     return int(rows.iloc[0]["fit_rows"])
 
 
-def build(
+def _collect_rows(
     paths: Paths,
-) -> dict[str, object]:
-    """Create a 3x2 forest plot for all fitted Bayesian mixing outcomes."""
+) -> tuple[dict[tuple[str, str], pd.DataFrame], list[pd.DataFrame], list[str]]:
     collected: dict[tuple[str, str], pd.DataFrame] = {}
     plot_rows: list[pd.DataFrame] = []
     missing: list[str] = []
@@ -80,14 +80,21 @@ def build(
         tagged["outcome"] = outcome
         plot_rows.append(tagged)
         missing.extend(f"{outcome}/{model_set}" for model_set in absent)
+    return collected, plot_rows, missing
 
-    fig, placeholder_ax = styled_new_figure(
+
+def build(paths: Paths) -> dict[str, object]:
+    """Create the 3x2 appendix forest plot for all outcomes and entropy scales."""
+    collected, plot_rows, missing = _collect_rows(paths)
+
+    fig, axes = styled_new_figure(
         width="double",
         height_in=8.0,
+        nrows=3,
+        ncols=2,
         constrained_layout=True,
+        sharey=True,
     )
-    placeholder_ax.remove()
-    axes = fig.subplots(3, 2, sharey=True)
     y_lookup = _y_lookup(DEFAULT_MIXING_FEATURE_ORDER)
     colors = dict(DEFAULT_COLORS)
 
@@ -118,6 +125,7 @@ def build(
                 _set_readable_or_ticks(ax)
                 measure = "Odds ratio"
             else:
+                _set_readable_coefficient_ticks(ax)
                 measure = "Coefficient"
             ax.set_xlabel(f"{measure} {scale_units}")
             if row_idx == 0:
