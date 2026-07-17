@@ -8,7 +8,6 @@ use perceptually uniform ramps where a quantitative variable is mapped.
 Usage
 -----
 >>> from analysis.utils import style
->>> style.set_theme()
 >>> fig, ax = style.new_figure("single")
 """
 

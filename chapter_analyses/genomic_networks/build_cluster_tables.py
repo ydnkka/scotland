@@ -25,7 +25,7 @@ from .lib.cohort import (
     build_vaccination_window_context,
     build_window_coverage,
 )
-from .lib.io import ensure_results_dirs, load_chapter4_sequence_data, write_table
+from .lib.io import ensure_results_dirs, load_sequence_data, write_table
 
 
 LOGGER = logging.getLogger(__name__)
@@ -79,7 +79,7 @@ def main() -> int:
     ensure_results_dirs()
 
     LOGGER.info("Loading Chapter 4 sequence-window data")
-    df = load_chapter4_sequence_data()
+    df = load_sequence_data()
     if args.max_windows is not None:
         keep = sorted(df["window_idx"].dropna().unique())[: args.max_windows]
         df = df.loc[df["window_idx"].isin(keep)].copy()

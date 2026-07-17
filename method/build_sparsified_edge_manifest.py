@@ -25,8 +25,6 @@ import yaml
 
 LOGGER = logging.getLogger(__name__)
 
-DEFAULT_EDGE_MANIFEST = "data/processed/sparsified_edge_counts_by_window_lineage.parquet"
-
 
 def load_config(path: Path) -> dict:
     """Load the YAML pipeline configuration file."""
@@ -88,8 +86,8 @@ def _count_sparse_edges(
         batch_size=batch_size,
     ):
         scores = batch.column(0)
-        retained = pc.greater(scores, threshold) # type: ignore
-        retained_count = pc.sum( # type: ignore
+        retained = pc.greater(scores, threshold)  # type: ignore
+        retained_count = pc.sum(  # type: ignore
             pc.fill_null(retained, False),
         ).as_py()
         sparse_edges += int(retained_count or 0)
@@ -221,13 +219,12 @@ def main() -> int:
     out_path = resolve_path(
         args.root,
         args.out_path,
-        proc.get("sparsified_edge_manifest", DEFAULT_EDGE_MANIFEST),
+        proc.get(
+            "sparsified_edge_manifest",
+            "data/processed/sparsified_edge_counts_by_window_lineage.parquet",
+        ),
     )
-    threshold = (
-        args.threshold
-        if args.threshold is not None
-        else pipe["sparsification"]
-    )
+    threshold = args.threshold if args.threshold is not None else pipe["sparsification"]
 
     if threshold < 0:
         raise SystemExit("--threshold must be non-negative.")

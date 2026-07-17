@@ -3,13 +3,12 @@
 
 Reads:
     --pairwise-file  Parquet from 03_build_pairwise_dataset.py with id1, id2,
-                     and epilink_compatibility columns.
+                        and epilink_compatibility columns.
     --seq-ids        Optional text file with the full group membership. When
-                     present, nodes with no retained pairwise edges are kept as
-                     isolates.
+                        present, nodes with no retained pairwise edges are kept as isolates.
 
 Writes:
-<out-long-dir>/<stem>.parquet  long-format with columns:
+    <out-long-dir>/<stem>.parquet  long-format with columns:
     sequence_id, window_id, resolution, cluster_id
 
 Usage:
@@ -33,9 +32,6 @@ from typing import Any
 import igraph as ig
 import numpy as np
 import pandas as pd
-
-
-DEFAULT_SCORE_COLUMN = "epilink_compatibility"
 
 
 def setup_logging(level: str = "INFO") -> None:
@@ -109,14 +105,13 @@ def set_igraph_seed(seed: int) -> None:
 
 def load_pairwise_table(
     pairwise_file: Path,
-    score_column: str,
     min_weight: float | None = None,
 ) -> pd.DataFrame:
     """Load and normalise pairwise endpoints plus compatibility weights."""
-    required = ["id1", "id2", score_column]
+    required = ["id1", "id2", "epilink_compatibility"]
     read_kwargs: dict[str, Any] = {"columns": required}
     if min_weight is not None:
-        read_kwargs["filters"] = [(score_column, ">", float(min_weight))]
+        read_kwargs["filters"] = [("epilink_compatibility", ">", float(min_weight))]
     try:
         df = pd.read_parquet(pairwise_file, **read_kwargs)
     except Exception as exc:
@@ -124,7 +119,7 @@ def load_pairwise_table(
             f"{pairwise_file} must contain columns: {', '.join(required)}"
         ) from exc
 
-    df = df.rename(columns={score_column: "weight"})
+    df = df.rename(columns={"epilink_compatibility": "weight"})
     df = df.dropna(subset=["id1", "id2", "weight"]).copy()
     df["id1"] = df["id1"].astype(str)
     df["id2"] = df["id2"].astype(str)
@@ -160,7 +155,6 @@ def process_pairwise(
     seq_ids_path: Path | None = None,
     seed: int = 42,
     sparsification: float = 1e-3,
-    score_column: str = DEFAULT_SCORE_COLUMN,
 ) -> Path:
     """Convert one scored pairwise parquet file into Leiden cluster assignments."""
     out_long_dir.mkdir(parents=True, exist_ok=True)
@@ -172,7 +166,6 @@ def process_pairwise(
         group_ids = read_seq_ids(seq_ids_path)
         df = load_pairwise_table(
             pairwise_file,
-            score_column=score_column,
             min_weight=sparsification,
         )
     else:
@@ -183,7 +176,7 @@ def process_pairwise(
                 stem,
                 seq_ids_path,
             )
-        df = load_pairwise_table(pairwise_file, score_column=score_column)
+        df = load_pairwise_table(pairwise_file)
         group_ids = infer_group_ids(df)
         if expected_sequences is not None and len(group_ids) < expected_sequences:
             logging.warning(
@@ -267,12 +260,8 @@ def main() -> int:
     )
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--sparsification", type=float, default=1e-3)
-    ap.add_argument(
-        "--score-column",
-        default=DEFAULT_SCORE_COLUMN,
-        help="Pairwise compatibility score column used as the edge weight.",
-    )
     ap.add_argument("--log-level", default="INFO")
+
     args = ap.parse_args()
 
     setup_logging(args.log_level)
@@ -285,7 +274,6 @@ def main() -> int:
         seq_ids_path=args.seq_ids,
         seed=args.seed,
         sparsification=args.sparsification,
-        score_column=args.score_column,
     )
     return 0
 

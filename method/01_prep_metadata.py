@@ -304,13 +304,13 @@ def prep_policy(
 def prep_testing(csv_path: Path, out_path: Path) -> pd.DataFrame:
     """Aggregate raw test records to daily datazone-level counts by result and test type.
 
-    Output columns per (collection_date, datazone):
-      dz_total_tests          — all tests
-      dz_positive_tests       — POSITIVE results (PCR + LFD)
-      dz_negative_tests       — NEGATIVE results
-      dz_pcr_positive_tests   — PCR-confirmed positives
-      dz_lfd_positive_tests   — LFD-only positives (test_type == ANTIGEN)
-      dz_care_home_tests      — tests linked to a care home facility (care_home_id not null)
+    Output columns per (collection_date, datazone): 
+        dz_total_tests          — all tests
+        dz_positive_tests       — POSITIVE results (PCR + LFD)
+        dz_negative_tests       — NEGATIVE results
+        dz_pcr_positive_tests   — PCR-confirmed positives
+        dz_lfd_positive_tests   — LFD-only positives (test_type == ANTIGEN)
+        dz_care_home_tests      — tests linked to a care home facility (care_home_id not null)
     """
     df = pd.read_csv(
         csv_path, parse_dates=["date_ecoss_specimen"], date_format="%Y%m%d"
@@ -504,12 +504,12 @@ def prep_hb_trends(csv_path: Path, out_path: Path) -> pd.DataFrame:
     is dropped; per-HB rows are retained.
 
     Output columns:
-      date, hb_code,
-      hb_daily_positive, hb_cumulative_positive,
-      hb_hospital_admissions, hb_hospital_occupancy,
-      hb_icu_admissions, hb_icu_occupancy_lt28d, hb_icu_occupancy_ge28d,
-      hb_daily_reinfections, hb_reinfection_rate,
-      hb_total_tests, hb_positive_tests
+        date, hb_code,
+        hb_daily_positive, hb_cumulative_positive,
+        hb_hospital_admissions, hb_hospital_occupancy,
+        hb_icu_admissions, hb_icu_occupancy_lt28d, hb_icu_occupancy_ge28d,
+        hb_daily_reinfections, hb_reinfection_rate,
+        hb_total_tests, hb_positive_tests
     """
     df = pd.read_csv(csv_path, low_memory=False)
     df["Date"] = pd.to_datetime(
@@ -562,9 +562,13 @@ def prep_sequence_metadata(
     geography: gpd.GeoDataFrame,
     policy: pd.DataFrame,
     out_path: Path,
+    required_nextclade_qc: str,
 ) -> pd.DataFrame:
     """Join sequence metadata with Nextclade QC/lineage calls, geography, vaccination
     history, and test-level attributes (test type, reason, S-gene status).
+
+    The Nextclade QC filter is applied immediately after annotations are attached, so
+    the written metadata and every downstream pipeline stage share one QC cohort.
     """
 
     # --- Nextclade annotations ---
@@ -601,6 +605,31 @@ def prep_sequence_metadata(
     meta["who_voc"] = nextclade_aligned["clade_who"].to_numpy()
     meta["pango_lineage"] = nextclade_aligned["Nextclade_pango"].to_numpy()
     meta["nextclade_qc"] = nextclade_aligned["qc.overallStatus"].to_numpy()
+
+    qc_status = str(required_nextclade_qc).strip()
+    if not qc_status:
+        raise ValueError("tn93.nextclade_qc must be a non-empty status.")
+    qc_matches = (
+        meta["nextclade_qc"]
+        .astype("string")
+        .str.strip()
+        .str.casefold()
+        .eq(qc_status.casefold())
+    )
+    n_before_qc = len(meta)
+    meta = meta.loc[qc_matches].copy()
+    logging.info(
+        "Nextclade QC filter (%s): retained %d/%d sequences; dropped %d.",
+        qc_status,
+        len(meta),
+        n_before_qc,
+        n_before_qc - len(meta),
+    )
+    if meta.empty:
+        raise ValueError(
+            f"No sequence metadata rows have Nextclade QC status {qc_status!r}."
+        )
+
     meta["age_midpoint"] = get_age_midpoints(meta["age_band"])
     meta["age_group"] = meta["age_band"].map(AGE_GROUP_MAP)
     unmapped_age_bands = sorted(
@@ -847,11 +876,7 @@ def main() -> int:
         help="Repo root (paths in config.yaml are relative to this)",
     )
     ap.add_argument("--log-level", default="INFO")
-    ap.add_argument(
-        "--policy-only",
-        action="store_true",
-        help="Build only the processed daily Scotland policy table.",
-    )
+    
     args = ap.parse_args()
 
     setup_logging(args.log_level)
@@ -867,8 +892,6 @@ def main() -> int:
         proc["policy"],
         region_name=policy_cfg.get("region_name", "Scotland"),
     )
-    if args.policy_only:
-        return 0
 
     _ = prep_testing(raw["testing_csv"], proc["testing"])
     _ = prep_vaccination(raw["vaccination_csv"], proc["vaccination"])
@@ -876,13 +899,14 @@ def main() -> int:
     geography = prep_geography(raw["geography_shp"], simd, proc["geography"])
     _ = prep_hb_trends(raw["daily_hb_trends_csv"], proc["hb_trends"])
     _ = prep_sequence_metadata(
-        raw["metadata_csv"],
-        raw["nextclade_tsv"],
-        raw["vaccination_csv"],
-        raw["testing_csv"],
-        geography,
-        policy,
-        proc["metadata"],
+        metadata_csv=raw["metadata_csv"],
+        nextclade_tsv=raw["nextclade_tsv"],
+        vaccination_csv=raw["vaccination_csv"],
+        testing_csv=raw["testing_csv"],
+        geography=geography,
+        policy=policy,
+        out_path=proc["metadata"],
+        required_nextclade_qc=cfg["tn93"]["nextclade_qc"],
     )
     return 0
 

@@ -97,6 +97,42 @@ def load_config(path: Path) -> dict:
         return yaml.safe_load(f)
 
 
+def filter_nextclade_qc(
+    metadata: pd.DataFrame,
+    required_status: str,
+) -> pd.DataFrame:
+    """Return only the configured Nextclade QC cohort."""
+    if "nextclade_qc" not in metadata.columns:
+        raise KeyError(
+            "Sequence metadata lacks 'nextclade_qc'. Rebuild it with "
+            "method/01_prep_metadata.py."
+        )
+    qc_status = str(required_status).strip()
+    if not qc_status:
+        raise ValueError("tn93.nextclade_qc must be a non-empty status.")
+    qc_matches = (
+        metadata["nextclade_qc"]
+        .astype("string")
+        .str.strip()
+        .str.casefold()
+        .eq(qc_status.casefold())
+    )
+    n_before_qc = len(metadata)
+    filtered = metadata.loc[qc_matches].copy()
+    logging.info(
+        "Nextclade QC filter (%s): retained %d/%d metadata rows; dropped %d.",
+        qc_status,
+        len(filtered),
+        n_before_qc,
+        n_before_qc - len(filtered),
+    )
+    if filtered.empty:
+        raise ValueError(
+            f"No sequence metadata rows have Nextclade QC status {qc_status!r}."
+        )
+    return filtered
+
+
 def build_windows(
     min_date: pd.Timestamp,
     max_date: pd.Timestamp,
@@ -196,8 +232,8 @@ def build_dz_cumulative_sequencing(
     a unified timeline.  Rows with zero cumulative positive tests yield NaN for the
     proportion.
 
-    Note: cumulative sequences are counted from the *full* metadata (before any SIMD
-    filtering) so that the denominator always reflects total surveillance effort.
+    Note: cumulative sequences are counted from the QC-filtered metadata before any
+    SIMD filtering, so the numerator reflects retained good-quality surveillance data.
     """
     seq_daily = (
         metadata.groupby(["datazone", "collection_date"])["sequence_id"]
@@ -368,6 +404,7 @@ def main() -> int:
     setup_logging(args.log_level)
     cfg = load_config(args.root / args.config)
     pipe = cfg["pipeline"]
+    required_nextclade_qc = cfg["tn93"]["nextclade_qc"]
     proc = {k: args.root / v for k, v in cfg["data"]["processed"].items()}
 
     resolutions = [float(x) for x in pipe["leiden_resolutions"]]
@@ -376,6 +413,7 @@ def main() -> int:
 
     # ── Load all processed parquets ───────────────────────────────────────────
     metadata = pd.read_parquet(proc["metadata"])
+    metadata = filter_nextclade_qc(metadata, required_nextclade_qc)
     metadata["collection_date"] = pd.to_datetime(metadata["collection_date"])
 
     testing = pd.read_parquet(proc["testing"])
@@ -406,12 +444,24 @@ def main() -> int:
         logging.warning(
             "min_group_size=%d: single-sequence lineage groups may appear in both "
             "cluster parquets (via fallback_isolates) and the singletons built here. "
-            "Check for duplicate sequence_id × window_id × resolution rows.",
+            "Check for duplicate sequence_id \u00d7 window_id \u00d7 resolution rows.",
             min_group_size,
         )
 
     # ── Cluster assignments ───────────────────────────────────────────────────
     clustering = load_cluster_parquets(proc["cluster_long_dir"])
+    allowed_sequence_ids = set(metadata["sequence_id"].astype(str))
+    unexpected_cluster_ids = ~clustering["sequence_id"].astype(str).isin(
+        allowed_sequence_ids
+    )
+    if unexpected_cluster_ids.any():
+        n_unexpected = clustering.loc[unexpected_cluster_ids, "sequence_id"].nunique()
+        raise ValueError(
+            f"Cluster assignments contain {n_unexpected} sequence(s) outside the "
+            f"configured Nextclade QC cohort {str(required_nextclade_qc)!r}. "
+            "Remove stale group, pairwise, and cluster outputs, then rebuild from "
+            "method/02_gen_tn93_commands.py."
+        )
     singletons = build_singletons(metadata, windows, resolutions)
     logging.info(
         "Cluster rows: %d + %d singletons = %d total",
@@ -449,7 +499,7 @@ def main() -> int:
         .merge(window_info, on="window_id", how="inner")
         .merge(testing, on=["collection_date", "datazone"], how="left")
         .merge(
-            # Rename vaccination_date → collection_date so the daily vaccination
+            # Rename vaccination_date -> collection_date so the daily vaccination
             # aggregate joins on sample collection date, adding dz_total_vaccinated
             # and the mean/median age/dose columns for that specific day.
             vaccination.rename(columns={"vaccination_date": "collection_date"}),
@@ -523,7 +573,7 @@ def main() -> int:
     ds = ds.merge(roll_pos, on=["collection_date", "datazone"], how="left")
 
     # ── Cluster descriptors ───────────────────────────────────────────────────
-    # Computed now (after all joins have fixed the sequence × resolution rows)
+    # Computed now (after all joins have fixed the sequence x resolution rows)
     # and merged back on cluster_id.
     cluster_desc = build_cluster_descriptors(ds)
     ds = ds.merge(cluster_desc, on="cluster_id", how="left")
@@ -705,13 +755,26 @@ def main() -> int:
             "Dataset is missing expected derived metadata columns after consolidation: "
             f"{missing_required}. Rebuild processed metadata with method/01_prep_metadata.py."
         )
+
+    final_qc_matches = (
+        ds["nextclade_qc"]
+        .astype("string")
+        .str.strip()
+        .str.casefold()
+        .eq(str(required_nextclade_qc).strip().casefold())
+    )
+    if not final_qc_matches.all():
+        raise AssertionError(
+            "Final analysis rows fall outside the configured Nextclade QC cohort."
+        )
     ds = ds[[c for c in column_order if c in ds.columns]].reset_index(drop=True)
 
     out_path: Path = proc["analysis_dataset"]
     out_path.parent.mkdir(parents=True, exist_ok=True)
     ds.to_parquet(out_path, index=False, compression="zstd")
+    
     logging.info(
-        "Analysis dataset: %d rows × %d cols → %s", len(ds), len(ds.columns), out_path
+        "Analysis dataset: %d rows \u00d7 %d cols \u2192 %s", len(ds), len(ds.columns), out_path
     )
     return 0
 

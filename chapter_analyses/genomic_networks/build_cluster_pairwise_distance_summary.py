@@ -28,11 +28,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from .lib.config import (
     ANALYSIS_RESOLUTION,
     PROJECT_ROOT,
-    QC_FILTER,
     TABLES_DIR,
 )
 from .lib.io import ensure_results_dirs, write_table
-from utils import QCStatus, load_analysis_columns, load_pairwise_edges
+from utils import load_analysis_columns, load_pairwise_edges
 
 
 LOGGER = logging.getLogger(__name__)
@@ -134,7 +133,6 @@ def _pairwise_file_lookup(pairwise_dir: Path) -> dict[tuple[str, str], Path]:
 def _load_sequence_rows(
     *,
     resolution: float,
-    qc: QCStatus | None,
     windows: Sequence[str] | None,
     pango_lineages: Sequence[str] | None,
     max_windows: int | None,
@@ -142,7 +140,6 @@ def _load_sequence_rows(
     df = load_analysis_columns(
         SEQUENCE_COLUMNS,
         resolution=resolution,
-        qc=qc,
     )
     df = df.dropna(subset=["window_id", "sequence_id", "cluster_id", "pango_lineage"])
     df["window_id"] = df["window_id"].map(_normalise_window)
@@ -415,7 +412,6 @@ def build_cluster_pairwise_distance_summary(
     max_clusters_per_window_lineage: int | None = None,
     cluster_selection: str = "largest",
     resolution: float = ANALYSIS_RESOLUTION,
-    qc: QCStatus | None = QC_FILTER,
     pairwise_dir: Path = PAIRWISE_DATASET_DIR,
 ) -> pd.DataFrame:
     """Build the window-lineage pairwise distance summary table."""
@@ -433,7 +429,6 @@ def build_cluster_pairwise_distance_summary(
 
     sequence_rows = _load_sequence_rows(
         resolution=resolution,
-        qc=qc,
         windows=windows,
         pango_lineages=pango_lineages,
         max_windows=max_windows,
@@ -544,12 +539,6 @@ def parse_args() -> argparse.Namespace:
         help=f"Leiden resolution filter. Default: {ANALYSIS_RESOLUTION}.",
     )
     parser.add_argument(
-        "--qc",
-        choices=("good", "mediocre", "bad", "none"),
-        default=QC_FILTER,
-        help=f"Nextclade QC filter. Use 'none' to disable. Default: {QC_FILTER}.",
-    )
-    parser.add_argument(
         "--pairwise-dir",
         type=Path,
         default=PAIRWISE_DATASET_DIR,
@@ -598,12 +587,10 @@ def main() -> int:
         raise SystemExit("Use either --windows or --all-windows, not both.")
 
     windows = None if args.all_windows else _normalise_windows(args.windows)
-    qc = None if args.qc == "none" else args.qc
 
     if args.dry_run:
         sequence_rows = _load_sequence_rows(
             resolution=args.resolution,
-            qc=qc,
             windows=windows,
             pango_lineages=args.pango_lineages,
             max_windows=args.max_windows,
@@ -643,7 +630,6 @@ def main() -> int:
         max_clusters_per_window_lineage=args.max_clusters_per_window_lineage,
         cluster_selection=args.cluster_selection,
         resolution=args.resolution,
-        qc=qc,
         pairwise_dir=args.pairwise_dir,
     )
     written = write_table(

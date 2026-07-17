@@ -2,7 +2,7 @@
 # Run a commands file in parallel using GNU parallel.
 #
 # Usage:
-#   ./method/parallel_run.sh -c data/processed/group_fastas/tn93_commands.txt
+#   ./method/parallel_run.sh -c <commands.txt>
 #   ./method/parallel_run.sh -c <commands.txt> -j 16 --progress
 #   ./method/parallel_run.sh -c <commands.txt> --retries 2 --resume-failed
 
@@ -25,6 +25,12 @@ cpu_count() {
   echo 1
 }
 
+# Reusable integer validator.
+require_uint() {
+  # $1 = value, $2 = flag name
+  [[ "$1" =~ ^[0-9]+$ ]] || { echo "Error: $2 must be a non-negative integer (got: '$1')" >&2; exit 2; }
+}
+
 print_usage() {
   cat <<'EOF'
 Usage: scripts/parallel_run.sh -c COMMANDS_FILE [options]
@@ -35,11 +41,12 @@ Required:
 Options:
   -j, --jobs N            Parallel workers (default: CPU count)
       --joblog FILE       GNU parallel joblog path (default: <commands>.joblog.tsv)
-      --retries N         Retry failed jobs N times (default: 0)
+      --retries N         Total attempts per job (GNU parallel semantics: N=total
+                            runs, not extra retries; N<=1 means no retry) (default: 0)
       --timeout SECS      Per-job timeout in seconds
       --progress          Show live progress bar
-      --resume-failed     Re-run only previously failed jobs from joblog
-      --tmpdir DIR        Parallel per-job buffer dir (default: \$TMPDIR, 
+      --resume-failed     Re-run only previously failed jobs from an existing joblog
+      --tmpdir DIR        Parallel per-job buffer dir (default: \$TMPDIR,
                             then /var/tmp, then /tmp, then next to joblog)
       --no-compress       Disable parallel --compress (on by default)
       --dry-run           Print first 5 commands and exit
@@ -69,7 +76,29 @@ done
 command -v parallel >/dev/null 2>&1 || { echo "Error: GNU parallel not on PATH." >&2; exit 2; }
 
 [[ -n "$JOBS" ]]   || JOBS="$(cpu_count)"
-[[ -n "$JOBLOG" ]] || JOBLOG="${COMMANDS_FILE%.*}.joblog.tsv"
+
+# Validate numeric inputs before they reach [[ -gt ]] etc.
+require_uint "$JOBS" "--jobs"
+require_uint "$RETRIES" "--retries"
+[[ -n "$TIMEOUT" ]] && require_uint "$TIMEOUT" "--timeout"
+
+[[ -n "$JOBLOG" ]] || JOBLOG="${COMMANDS_FILE}.joblog.tsv"
+
+if [[ "$RESUME_FAILED" == true && ! -f "$JOBLOG" ]]; then
+  echo "Error: --resume-failed requires an existing joblog: $JOBLOG" >&2
+  exit 2
+fi
+
+if [[ "$NO_COMPRESS" != true ]]; then
+  if ! command -v pigz >/dev/null 2>&1 \
+     && ! command -v gzip >/dev/null 2>&1 \
+     && ! command -v zstd >/dev/null 2>&1 \
+     && ! command -v lz4  >/dev/null 2>&1; then
+    echo "Warning: --compress is on but no compressor (pigz/gzip/zstd/lz4) found;" >&2
+    echo "         disabling compression. Use --no-compress to silence this." >&2
+    NO_COMPRESS=true
+  fi
+fi
 
 resolve_tmpdir() {
   local candidate
@@ -88,6 +117,10 @@ resolve_tmpdir() {
     mkdir -p "$candidate" 2>/dev/null || continue
     if [[ -w "$candidate" ]]; then
       TMPDIR_ARG="$candidate"
+      if [[ "$candidate" == "$(dirname "$JOBLOG")/.parallel-tmp" ]]; then
+        echo "Warning: using tmpdir on the project filesystem ($candidate);" >&2
+        echo "         set \$TMPDIR or --tmpdir to keep buffers off it." >&2
+      fi
       return 0
     fi
   done
@@ -119,5 +152,19 @@ if $DRY_RUN; then
   exit 0
 fi
 
+set +e
 parallel "${PAR_OPTS[@]}" < "$COMMANDS_FILE"
-echo "Done. Joblog: $JOBLOG"
+status=$?
+set -e
+
+if [[ "$status" -eq 0 ]]; then
+  echo "Done. Joblog: $JOBLOG (all jobs succeeded)"
+elif [[ "$status" -ge 1 && "$status" -le 100 ]]; then
+  echo "Done. Joblog: $JOBLOG ($status job(s) failed)" >&2
+elif [[ "$status" -eq 101 ]]; then
+  echo "Done. Joblog: $JOBLOG (more than 100 jobs failed)" >&2
+else
+  echo "Done. Joblog: $JOBLOG (parallel exited with status $status)" >&2
+fi
+
+exit "$status"

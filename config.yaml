@@ -8,12 +8,23 @@ pipeline:
   sparsification: 0.001
 
 tn93:
-  threshold: 0.0005 # This translates to a threshold of roughly 15 mutations across the ~29,903 base pair SARS-CoV-2 genome
-  ambiguous: resolve # If Sequence A has an N (any nucleotide) and Sequence B has an A, resolve treats this as a match. This ensures that a single low-quality sequence with high missing data does not get artificially grouped with every other sequence in your dataset. 
-  overlap: 500 # Only process pairs of sequences that overlap over at least OVERLAP nucleotides
-  fraction: 0.05 #
+  # Maximum reported TN93 distance (substitutions/site); 0.0005 is approximately
+  # 15 substitutions across the 29,903-nt SARS-CoV-2 reference genome.
+  threshold: 0.0005
+  # Resolve ambiguous bases to the state that minimises pairwise distance
+  # (for example, R matches A and N matches any base). The Nextclade QC filter and
+  # fraction setting below guard against ambiguity-rich, low-quality sequences.
+  ambiguous: resolve
+  # Require at least this many overlapping nucleotides for a pairwise comparison.
+  overlap: 500
+  # With `resolve`, minimise distance only when resolvable ambiguities comprise at
+  # most 5% of compared sites; otherwise TN93 averages over the ambiguous states.
+  fraction: 0.05
+  # Suppress TN93 progress output.
   quiet: true
-  nextclade_qc: good #
+  # Retain only this Nextclade qc.overallStatus before windowing and all downstream
+  # distance, clustering, and consolidation steps.
+  nextclade_qc: good
 
 data:
   raw:

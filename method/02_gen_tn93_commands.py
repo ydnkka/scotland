@@ -2,11 +2,13 @@
 """
 Generate per-(window, lineage) group .ids files and a tn93 command file.
 
+Filters metadata to the configured Nextclade QC status before constructing windows.
 For each 3-week window (1-week stride) and each pango_lineage with >= min_group_size
 sequences, emits one compound shell command:
 
     samtools faidx -o <group>.fasta <all_seqs>.fasta.gz -r <group>.ids && \\
-    tn93 -q -t <thr> -a <ambig> -o <group>.csv <group>.fasta
+    tn93 -q -t <thr> -a <ambig> -g <fraction> -l <overlap> \
+        -o <group>.csv <group>.fasta
 
 Usage:
     python3 method/02_gen_tn93_commands.py
@@ -62,9 +64,38 @@ def build_windows(
     return [(s, s + window_size) for s in starts]
 
 
-def load_metadata(path: Path) -> pd.DataFrame:
-    """Load sequence metadata and retain rows usable for windowed grouping."""
+def load_metadata(path: Path, required_nextclade_qc: str) -> pd.DataFrame:
+    """Load metadata and retain the configured QC cohort for windowed grouping."""
     df = pd.read_parquet(path)
+
+    if "nextclade_qc" not in df.columns:
+        raise KeyError(
+            f"Metadata lacks 'nextclade_qc': {path}. "
+            "Rebuild it with method/01_prep_metadata.py."
+        )
+    qc_status = str(required_nextclade_qc).strip()
+    if not qc_status:
+        raise ValueError("tn93.nextclade_qc must be a non-empty status.")
+    qc_matches = (
+        df["nextclade_qc"]
+        .astype("string")
+        .str.strip()
+        .str.casefold()
+        .eq(qc_status.casefold())
+    )
+    n_before_qc = len(df)
+    df = df.loc[qc_matches].copy()
+    logging.info(
+        "Nextclade QC filter (%s): retained %d/%d metadata rows; dropped %d.",
+        qc_status,
+        len(df),
+        n_before_qc,
+        n_before_qc - len(df),
+    )
+    if df.empty:
+        raise ValueError(
+            f"No sequence metadata rows have Nextclade QC status {qc_status!r}."
+        )
 
     if "sequence_id" in df.columns:
         df = df.drop_duplicates(subset=["sequence_id"], keep="first").set_index(
@@ -91,6 +122,8 @@ def write_ids_and_command(
     sequences_file: Path,
     tn93_threshold: float,
     tn93_ambiguous: str,
+    tn93_fraction: float,
+    tn93_overlap: int,
     tn93_quiet: bool,
 ) -> str:
     """Write a group membership file and return the shell command for TN93."""
@@ -122,6 +155,10 @@ def write_ids_and_command(
         str(tn93_threshold),
         "-a",
         tn93_ambiguous,
+        "-g",
+        str(tn93_fraction),
+        "-l",
+        str(tn93_overlap),
         "-o",
         str(csv_path),
         str(fasta_path),
@@ -149,10 +186,28 @@ def main() -> int:
 
     cfg = load_config(args.root / args.config)
     pipe = cfg["pipeline"]
+    tn93_cfg = cfg["tn93"]
     raw = {k: args.root / v for k, v in cfg["data"]["raw"].items()}
     proc = {k: args.root / v for k, v in cfg["data"]["processed"].items()}
 
-    metadata = load_metadata(proc["metadata"])
+    tn93_threshold = float(tn93_cfg["threshold"])
+    tn93_fraction = float(tn93_cfg["fraction"])
+    tn93_overlap_value = tn93_cfg["overlap"]
+    tn93_overlap_number = float(tn93_overlap_value)
+    tn93_ambiguous = str(tn93_cfg["ambiguous"]).strip()
+    if tn93_threshold < 0:
+        raise ValueError("tn93.threshold must be non-negative.")
+    if not 0 <= tn93_fraction <= 1:
+        raise ValueError("tn93.fraction must be between 0 and 1 inclusive.")
+    if isinstance(tn93_overlap_value, bool) or not tn93_overlap_number.is_integer():
+        raise ValueError("tn93.overlap must be a positive integer.")
+    tn93_overlap = int(tn93_overlap_number)
+    if tn93_overlap <= 0:
+        raise ValueError("tn93.overlap must be a positive integer.")
+    if not tn93_ambiguous:
+        raise ValueError("tn93.ambiguous must be a non-empty strategy.")
+
+    metadata = load_metadata(proc["metadata"], tn93_cfg["nextclade_qc"])
 
     window_size = timedelta(weeks=pipe["window_size_weeks"])
     step = timedelta(weeks=pipe["step_weeks"])
@@ -192,9 +247,11 @@ def main() -> int:
                 group_fasta_dir=group_fasta_dir,
                 tn93_results_dir=tn93_results_dir,
                 sequences_file=raw["sequences"],
-                tn93_threshold=cfg["tn93"]["threshold"],
-                tn93_ambiguous=cfg["tn93"]["ambiguous"],
-                tn93_quiet=cfg["tn93"]["quiet"],
+                tn93_threshold=tn93_threshold,
+                tn93_ambiguous=tn93_ambiguous,
+                tn93_fraction=tn93_fraction,
+                tn93_overlap=tn93_overlap,
+                tn93_quiet=bool(tn93_cfg["quiet"]),
             )
             commands.append(cmd)
             n_groups += 1

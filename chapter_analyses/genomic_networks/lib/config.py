@@ -15,7 +15,6 @@ INTERMEDIATE_DIR = RESULTS_DIR / "intermediate"
 
 ANALYSIS_RESOLUTION = 0.3
 SPARSIFICATION_THRESHOLD = 0.001
-QC_FILTER = "good"
 TRANSITION_WINDOW_STRIDE = 2
 DISCLOSURE_MIN_CELL = 5
 
@@ -41,7 +40,7 @@ DEFAULT_MIXING_ATTRIBUTES: tuple[AttributeSpec, ...] = (
 )
 
 
-CHAPTER4_COLUMNS: tuple[str, ...] = (
+ANALYSIS_COLUMNS: tuple[str, ...] = (
     "window_id",
     "window_idx",
     "wn_start_date",

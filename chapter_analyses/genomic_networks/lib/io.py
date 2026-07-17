@@ -10,11 +10,10 @@ import pandas as pd
 
 from .config import (
     ANALYSIS_RESOLUTION,
-    CHAPTER4_COLUMNS,
+    ANALYSIS_COLUMNS,
     FIGURES_DIR,
     INTERMEDIATE_DIR,
     PROJECT_ROOT,
-    QC_FILTER,
     RESULTS_DIR,
     SPARSIFICATION_THRESHOLD,
     TABLES_DIR,
@@ -24,7 +23,7 @@ from .config import (
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils import load_analysis_columns, load_pairwise_edges, QCStatus  # noqa: E402
+from utils import load_analysis_columns, load_pairwise_edges  # noqa: E402
 
 
 def ensure_results_dirs() -> None:
@@ -33,11 +32,10 @@ def ensure_results_dirs() -> None:
         path.mkdir(parents=True, exist_ok=True)
 
 
-def load_chapter4_sequence_data(
+def load_sequence_data(
     columns: Sequence[str] | None = None,
     *,
     resolution: float | None = ANALYSIS_RESOLUTION,
-    qc: QCStatus | Iterable[QCStatus] | None = QC_FILTER,
     window_stride: int | None = None,
     window_offset: int = 0,
     renumber_windows: bool = True,
@@ -51,9 +49,8 @@ def load_chapter4_sequence_data(
     alternate-window graph input used by the Chapter 5 detector.
     """
     return load_analysis_columns(
-        columns or CHAPTER4_COLUMNS,
+        columns or ANALYSIS_COLUMNS,
         resolution=resolution,
-        qc=qc,
         window_stride=window_stride,
         window_offset=window_offset,
         renumber_windows=renumber_windows,

@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Iterable as IterableABC
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Literal
+from typing import Iterable
 
 import geopandas as gpd
 import numpy as np
@@ -19,10 +19,8 @@ import yaml
 
 
 __all__ = [
-    "QCStatus",
     "CLADES",
     "CLADE_PALETTE",
-    "VALID_QC_STATUSES",
     "load_analysis_columns",
     "load_policy_data",
     "load_pairwise_edges",
@@ -32,9 +30,6 @@ __all__ = [
 
 
 PRIMARY_RESOLUTION: float = 0.3
-
-QCStatus = Literal["good", "mediocre", "bad"]
-VALID_QC_STATUSES: set[str] = {"good", "mediocre", "bad"}
 
 SIMD_GROUP_SIZES: dict[str, int] = {
     "quintile": 5,
@@ -177,23 +172,6 @@ def load_policy_data(
     if end_date is not None:
         policy = policy.loc[policy["date"].le(pd.Timestamp(end_date).normalize())]
     return policy.sort_values("date", ignore_index=True)
-
-
-def _normalise_qc(qc: QCStatus | Iterable[QCStatus] | None) -> list[str] | None:
-    """Return QC values as a list, validating accepted statuses."""
-    if qc is None:
-        return None
-
-    qc_values: list[str] = [str(qc)] if isinstance(qc, str) else [str(x) for x in qc]
-
-    invalid = set(qc_values) - VALID_QC_STATUSES
-    if invalid:
-        raise ValueError(
-            f"Invalid QC status value(s): {sorted(invalid)}. "
-            f"Accepted values are: {sorted(VALID_QC_STATUSES)}."
-        )
-
-    return qc_values
 
 
 def _as_list(value: object | Iterable[object] | None) -> list[object] | None:
@@ -483,7 +461,6 @@ def load_analysis_columns(
     columns: Iterable[str] | None = None,
     all_cols: bool = False,
     resolution: float | None = PRIMARY_RESOLUTION,
-    qc: QCStatus | Iterable[QCStatus] | None = "good",
     window_stride: int | None = None,
     window_offset: int = 0,
     renumber_windows: bool = True,
@@ -495,16 +472,12 @@ def load_analysis_columns(
     ----------
     columns:
         Names of columns to read. ``sequence_id``, ``collection_date``, and
-        ``pango_lineage`` are added automatically. ``resolution`` and
-        ``nextclade_qc`` are also added automatically when filtering is used.
+        ``pango_lineage`` are added automatically. ``resolution`` is 
+        also added automatically when filtering is used.
     all_cols:
         If True, ignore ``columns`` and read all columns.
     resolution:
         If provided, rows are restricted to that Leiden resolution.
-    qc:
-        If provided, rows are restricted to these Nextclade QC statuses.
-        Accepted values are ``"good"``, ``"mediocre"``, and ``"bad"``.
-        Pass ``None`` to skip QC filtering.
     window_stride:
         If provided, retain sorted unique ``window_idx`` values by positional
         stride using ``windows[window_offset::window_stride]``. For example,
@@ -566,14 +539,8 @@ def load_analysis_columns(
     Returns
     -------
     pandas.DataFrame
-
-    Raises
-    ------
-    ValueError
-        If any value in ``qc`` is not one of the accepted QC statuses.
     """
     paths = Paths.from_config()
-    qc_values = _normalise_qc(qc)
 
     need = {"sequence_id", "collection_date", "pango_lineage"}
     requested = set(columns or [])
@@ -594,9 +561,6 @@ def load_analysis_columns(
     if resolution is not None:
         need.add("resolution")
 
-    if qc_values is not None:
-        need.add("nextclade_qc")
-
     output_columns = set(need) | computed_simd_cols
     if computed_simd_cols:
         need.add("datazone")
@@ -607,9 +571,6 @@ def load_analysis_columns(
 
     if resolution is not None:
         df = df.loc[df["resolution"] == resolution]
-
-    if qc_values is not None:
-        df = df.loc[df["nextclade_qc"].isin(qc_values)]
 
     if window_stride is not None:
         df = _apply_window_stride(
@@ -651,7 +612,6 @@ def pango_lineages_for_clades(
     *,
     windows: str | int | Iterable[str | int] | None = None,
     resolution: float | None = PRIMARY_RESOLUTION,
-    qc: QCStatus | Iterable[QCStatus] | None = "good",
     paths: Paths | None = None,
 ) -> list[str]:
     """Resolve Nextclade clade labels to Pango lineages in the analysis dataset.
@@ -668,9 +628,6 @@ def pango_lineages_for_clades(
     resolution:
         Leiden resolution filter applied to the analysis dataset before
         resolving lineages. Pass ``None`` to skip this filter.
-    qc:
-        Nextclade QC filter applied before resolving lineages. Pass ``None`` to
-        skip this filter.
     paths:
         Optional resolved path bundle. Mostly useful for tests.
 
@@ -685,22 +642,18 @@ def pango_lineages_for_clades(
         raise ValueError("clades must contain at least one value")
 
     window_ids = _normalise_window_ids(windows)
-    qc_values = _normalise_qc(qc)
 
     need = {"clade", "pango_lineage"}
     if window_ids is not None:
         need.add("window_id")
     if resolution is not None:
         need.add("resolution")
-    if qc_values is not None:
-        need.add("nextclade_qc")
 
     df = pd.read_parquet(paths.analysis_dataset, columns=list(need))
 
     if resolution is not None:
         df = df.loc[df["resolution"] == resolution]
-    if qc_values is not None:
-        df = df.loc[df["nextclade_qc"].isin(qc_values)]
+
     if window_ids is not None:
         df = df.loc[df["window_id"].isin(window_ids)]
 
@@ -726,7 +679,6 @@ def _resolve_pairwise_lineages(
     pango_lineages: str | Iterable[str] | None,
     windows: list[str] | None,
     resolution: float | None,
-    qc: QCStatus | Iterable[QCStatus] | None,
     paths: Paths,
 ) -> list[str] | None:
     """Resolve direct and clade-derived Pango lineage filters."""
@@ -741,7 +693,6 @@ def _resolve_pairwise_lineages(
             clades,
             windows=windows,
             resolution=resolution,
-            qc=qc,
             paths=paths,
         )
 
@@ -822,7 +773,6 @@ def load_pairwise_edges(
     score_column: str = "epilink_compatibility",
     pairwise_dataset: str | Path | None = None,
     clade_resolution: float | None = PRIMARY_RESOLUTION,
-    clade_qc: QCStatus | Iterable[QCStatus] | None = "good",
 ) -> pd.DataFrame:
     """Load pairwise EpiLink edges using PyArrow pushdown filters.
 
@@ -850,7 +800,7 @@ def load_pairwise_edges(
         Pairwise compatibility score column used for sparsification.
     pairwise_dataset:
         Optional override for the pairwise parquet dataset path.
-    clade_resolution, clade_qc:
+    clade_resolution:
         Filters applied to the analysis dataset when resolving ``clades`` to
         Pango lineages. They do not filter the pairwise rows directly.
 
@@ -887,7 +837,6 @@ def load_pairwise_edges(
         pango_lineages=pango_lineages,
         windows=window_ids,
         resolution=clade_resolution,
-        qc=clade_qc,
         paths=paths,
     )
 

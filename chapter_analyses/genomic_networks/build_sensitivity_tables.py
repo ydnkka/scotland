@@ -24,7 +24,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 from sklearn.metrics import adjusted_mutual_info_score, adjusted_rand_score
 
-from .lib.config import PROJECT_ROOT, QC_FILTER, SPARSIFICATION_THRESHOLD, TABLES_DIR
+from .lib.config import PROJECT_ROOT, SPARSIFICATION_THRESHOLD, TABLES_DIR
 from .lib.io import ensure_results_dirs, write_table
 
 
@@ -132,11 +132,6 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=list(DEFAULT_SPARSIFICATION_THRESHOLDS),
         help="Sparsification thresholds to evaluate. Baseline is added if absent.",
-    )
-    parser.add_argument(
-        "--qc",
-        default=QC_FILTER,
-        help="Nextclade QC value(s), comma-separated. Use 'all' to skip QC filtering.",
     )
     parser.add_argument(
         "--windows",

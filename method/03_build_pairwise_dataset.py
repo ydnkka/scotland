@@ -74,8 +74,6 @@ def process_pairwise_dataset(
     metadata_path: Path,
     output_dataset_dir: Path,
     alignment_length: int,
-    include: str | None = None,
-    exclude: str | None = None,
     force: bool = False,
 ):
     """Converts a directory of TN93 CSVs into a Parquet dataset of pairwise edges."""
@@ -88,15 +86,8 @@ def process_pairwise_dataset(
 
     logging.info("Loading metadata dates...")
     date_map = load_metadata_dates(metadata_path)
+    csv_files = sorted(input_dir.glob("*.csv"))
 
-    inc_re = re.compile(include) if include else None
-    exc_re = re.compile(exclude) if exclude else None
-    csv_files = [
-        path
-        for path in sorted(input_dir.glob("*.csv"))
-        if (inc_re is None or inc_re.search(path.stem))
-        and (exc_re is None or not exc_re.search(path.stem))
-    ]
     logging.info(f"Found {len(csv_files)} CSV files to process.")
     if not csv_files:
         raise ValueError("No TN93 CSV files matched the requested filters.")
@@ -210,8 +201,6 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Override pipeline.alignment_length from config.",
     )
-    ap.add_argument("--include", type=str, default=None, help="Regex to filter group names.")
-    ap.add_argument("--exclude", type=str, default=None, help="Regex to exclude group names.")
     ap.add_argument("--force", action="store_true", help="Rebuild existing output parquets.")
     ap.add_argument("--log-level", default="INFO")
     return ap.parse_args()
@@ -259,8 +248,6 @@ def main() -> int:
             metadata_path,
             output_dataset_dir,
             alignment_length=alignment_length,
-            include=args.include,
-            exclude=args.exclude,
             force=args.force,
         )
     except Exception as exc:

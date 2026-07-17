@@ -30,8 +30,9 @@ raw sequence and linked metadata
 
 Detailed documentation:
 
-- [Method pipeline](method/PIPELINE.md)
-- [Chapter analyses](chapter_analyses/README.md)
+- [Clustering pipeline](method/PIPELINE.md)
+- [Pipeline output](data/processed/DATASET_DESCRIPTION.md)
+- [Output analyses](chapter_analyses/README.md)
 - [Surveillance](chapter_analyses/surveillance/README.md) ([technical reference](chapter_analyses/surveillance/TECHNICAL.md))
 - [Genomic networks](chapter_analyses/genomic_networks/README.md) ([technical reference](chapter_analyses/genomic_networks/TECHNICAL.md))
 - [SSE detection](chapter_analyses/sse_detection/README.md) ([technical reference](chapter_analyses/sse_detection/TECHNICAL.md), [rationale](chapter_analyses/sse_detection/DETECTION_RATIONALE.md), [Bayesian models](chapter_analyses/sse_detection/BAYESIAN_MODELS.md))
@@ -46,7 +47,7 @@ python -m pip install -r requirements.txt
 
 `requirements.txt` includes the Bayesian fitting stack and CairoSVG used by the method-schematic builders.
 
-## Method pipeline
+## Clustering pipeline
 
 The configured defaults are 3-week windows stepped weekly, groups of at least 2 sequences, a 29,903-base alignment, Leiden resolutions 0.1-0.8, seed 42, and compatibility sparsification at 0.001. Chapter 4 separately fixes its primary Leiden resolution at 0.3.
 

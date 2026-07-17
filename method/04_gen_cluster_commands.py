@@ -14,7 +14,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import re
 import shlex
 import sys
 from pathlib import Path
@@ -35,12 +34,7 @@ def main() -> int:
     )
     ap.add_argument("--config", type=Path, default=Path("config.yaml"))
     ap.add_argument("--root", type=Path, default=Path("."))
-    ap.add_argument(
-        "--include", type=str, default=None, help="Regex to filter group names"
-    )
-    ap.add_argument(
-        "--exclude", type=str, default=None, help="Regex to exclude group names"
-    )
+
     args = ap.parse_args()
 
     cfg = load_config(args.root / args.config)
@@ -57,21 +51,13 @@ def main() -> int:
     if not pairwise_dir.exists():
         raise SystemExit(f"Pairwise dataset directory not found: {pairwise_dir}")
 
-    inc_re = re.compile(args.include) if args.include else None
-    exc_re = re.compile(args.exclude) if args.exclude else None
-
     resolutions = ",".join(str(r) for r in pipe["leiden_resolutions"])
 
     lines: list[str] = [f"mkdir -p {shlex.quote(str(cluster_long_dir))}"]
     n, missing_ids = 0, 0
 
     for pairwise_file in sorted(pairwise_dir.glob("*.parquet")):
-        stem = pairwise_file.stem
-        if inc_re and not inc_re.search(stem):
-            continue
-        if exc_re and exc_re.search(stem):
-            continue
-        ids_path = group_fasta_dir / f"{stem}.ids"
+        ids_path = group_fasta_dir / f"{pairwise_file.stem}.ids"
         cmd = (
             f"python3 {shlex.quote(str(script))}"
             f" --pairwise-file {shlex.quote(str(pairwise_file))}"
