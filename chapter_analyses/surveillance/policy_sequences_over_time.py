@@ -16,26 +16,25 @@ from matplotlib.ticker import PercentFormatter
 from pathlib import Path
 import sys
 
-from .lib.config import (
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
+from chapter_analyses.surveillance.lib.config import (  # noqa: E402
     DAILY_SMOOTH_WINDOW,
     FIGURE_NAME,
     FIGURES_DIR,
-    PROJECT_ROOT,
     SEQUENCE_WINDOW_STRIDE,
     TABLES_DIR,
 )
-from .lib.io import write_table
-
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+from chapter_analyses.surveillance.lib.io import write_table  # noqa: E402
 
 from utils import (  # noqa: E402
-    POLICY_PERIODS,
     CLADES,
     CLADE_PALETTE,
-    attach_period,
     set_theme,
     load_analysis_columns,
+    load_policy_data,
     add_panel_labels,
     new_figure,
     save_figure,
@@ -47,6 +46,45 @@ POLICY_STRINGENCY_NORM = colors.Normalize(
     vmax=100,
 )
 LOGGER = logging.getLogger(__name__)
+
+
+POLICY_DAILY = load_policy_data()
+POLICY_PERIODS = (
+    POLICY_DAILY[
+        [
+            "period_code",
+            "period_label",
+            "period_start_date",
+            "period_end_date",
+            "period_order",
+            "policy_era",
+        ]
+    ]
+    .drop_duplicates()
+    .merge(
+        POLICY_DAILY.groupby("period_code", sort=False, observed=True)[
+            ["stringency_index", "containment_index"]
+        ]
+        .mean()
+        .rename(
+            columns={
+                "stringency_index": "policy_stringency",
+                "containment_index": "policy_containment",
+            }
+        )
+        .reset_index(),
+        on="period_code",
+        how="left",
+        validate="one_to_one",
+    )
+    .rename(
+        columns={
+            "period_start_date": "start_date",
+            "period_end_date": "end_date",
+        }
+    )
+    .sort_values("period_order", ignore_index=True)
+)
 
 
 def build_daily_sequence_counts(
@@ -88,17 +126,22 @@ def build_daily_sequence_counts(
 
 
 def attach_policy_timeline(df_full: pd.DataFrame) -> pd.DataFrame:
-    """Attach policy metadata for each daily date."""
-    period_lookup = (
-        POLICY_PERIODS[["period_code"]]
-        .reset_index()
-        .rename(columns={"index": "policy_level", "period_code": "policy_period"})
+    """Join policy metadata directly from the processed daily calendar."""
+    lookup = POLICY_DAILY.rename(
+        columns={
+            "date": "collection_date",
+            "period_code": "policy_period",
+            "period_label": "policy_period_label",
+            "period_start_date": "policy_period_start_date",
+            "period_end_date": "policy_period_end_date",
+            "period_order": "policy_level",
+        }
     )
-
-    return attach_period(df_full, "collection_date").merge(
-        period_lookup,
-        on="policy_period",
+    return df_full.merge(
+        lookup,
+        on="collection_date",
         how="left",
+        validate="one_to_one",
     )
 
 
@@ -402,9 +445,7 @@ def plot_lineage_frequency_and_overtakes(
         .fillna(0)
         .sort_index()
     )
-    clade_order = [
-        clade for clade in CLADE_PALETTE if clade in clade_freq.columns
-    ]
+    clade_order = [clade for clade in CLADE_PALETTE if clade in clade_freq.columns]
 
     clade_freq = clade_freq.reindex(columns=clade_order)
 
@@ -574,9 +615,7 @@ def main() -> int:
         window_stride=args.window_stride,
         qc=None,
     )
-    sequences["variant"] = (
-        sequences["clade"].map(CLADES).fillna("Other")
-    )
+    sequences["variant"] = sequences["clade"].map(CLADES).fillna("Other")
 
     timeline = attach_policy_timeline(
         build_daily_sequence_counts(sequences, smooth_window=args.smooth_window)
@@ -612,12 +651,10 @@ def main() -> int:
         _,
         legend_handles,
         legend_labels,
-    ) = (
-        plot_lineage_frequency_and_overtakes(
-            sequences,
-            ax=ax_bottom,
-            clade_col="variant",
-        )
+    ) = plot_lineage_frequency_and_overtakes(
+        sequences,
+        ax=ax_bottom,
+        clade_col="variant",
     )
 
     fig.legend(

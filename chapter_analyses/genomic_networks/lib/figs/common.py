@@ -21,15 +21,33 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from utils import new_figure as styled_new_figure  # noqa: E402, F401
-from utils import PERIOD_LABELS as POLICY_LABELS  # noqa: E402, F401
-from utils import PERIOD_ORDER  # noqa: E402
+from utils import load_policy_data  # noqa: E402
 from utils import save_figure as _styled_save_figure  # noqa: E402
 from utils import add_panel_labels as styled_add_panel_labels  # noqa: E402
 
 DEFAULT_TABLE_DIR = PROJECT_ROOT / "chapter_analyses/genomic_networks/results/tables"
 FIGURE_DIR = PROJECT_ROOT / "chapter_analyses/genomic_networks/results/figures"
 
-POLICY_ORDER = list(PERIOD_ORDER)
+_POLICY_DAILY = load_policy_data()
+_POLICY_DESCRIPTORS = (
+    _POLICY_DAILY[
+        ["period_code", "period_label", "period_order"]
+    ]
+    .drop_duplicates()
+    .sort_values("period_order")
+)
+POLICY_ORDER = _POLICY_DESCRIPTORS["period_code"].astype(str).tolist()
+POLICY_LABELS = dict(
+    zip(
+        _POLICY_DESCRIPTORS["period_code"].astype(str),
+        _POLICY_DESCRIPTORS["period_label"].astype(str),
+    )
+)
+POLICY_STRINGENCY = (
+    _POLICY_DAILY.groupby("period_code", sort=False, observed=True)["stringency_index"]
+    .mean()
+    .to_dict()
+)
 
 ATTRIBUTE_ORDER = [
     "Sex",
@@ -41,22 +59,6 @@ ATTRIBUTE_ORDER = [
     "Local authority",
 ]
 
-# Match the policy strip in chapter_analyses/surveillance/policy_sequences_over_time.py.
-POLICY_STRINGENCY = {
-    "P2": 76.45619047619047,
-    "P3": 67.64571428571442,
-    "T1": 64.80999999999996,
-    "F5": 70.88968750000001,
-    "L2": 85.53586206896566,
-    "SL": 69.90375000000003,
-    "L3": 58.330000000000005,
-    "L21": 56.13063492063501,
-    "L0": 52.77999999999999,
-    "NN": 31.637857142857182,
-    "OM": 34.83857142857142,
-    "FE": 19.786666666666626,
-    "PR": 8.184418604651126,
-}
 POLICY_STRINGENCY_CMAP = plt.get_cmap("RdYlGn_r")
 POLICY_STRINGENCY_NORM = Normalize(vmin=0, vmax=100)
 POLICY_COLORS = {

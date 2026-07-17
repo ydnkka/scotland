@@ -38,7 +38,6 @@ def load_chapter4_sequence_data(
     *,
     resolution: float | None = ANALYSIS_RESOLUTION,
     qc: QCStatus | Iterable[QCStatus] | None = QC_FILTER,
-    add_policy: bool = True,
     window_stride: int | None = None,
     window_offset: int = 0,
     renumber_windows: bool = True,
@@ -47,15 +46,14 @@ def load_chapter4_sequence_data(
     """Load sequence-window rows for Chapter 4.
 
     The defaults match the intended main analysis: good-QC genomes at Leiden
-    resolution 0.3, with population-weighted SIMD groups and policy-period
-    labels attached. Passing ``window_stride=2`` gives the alternate-window
-    graph input used by the Chapter 5 detector.
+    resolution 0.3 with population-weighted SIMD groups. Policy fields are
+    persisted in the analysis dataset. Passing ``window_stride=2`` gives the
+    alternate-window graph input used by the Chapter 5 detector.
     """
     return load_analysis_columns(
         columns or CHAPTER4_COLUMNS,
         resolution=resolution,
         qc=qc,
-        add_policy=add_policy,
         window_stride=window_stride,
         window_offset=window_offset,
         renumber_windows=renumber_windows,

@@ -13,37 +13,21 @@ stats
     Light statistical helpers: negative-binomial cluster-size regression,
     bootstrapped confidence intervals, singleton odds ratios, and tidy
     coefficient tables for forest plots.
-policy
-    Ordered policy-period helpers for Scotland COVID-19 restriction phases.
 """
 
-from . import policy, style, data
+from . import style, data
 
 from .data import (
     QCStatus,
     VALID_QC_STATUSES,
     load_analysis_columns,
+    load_policy_data,
     load_datazone_info,
     load_pairwise_edges,
     pango_lineages_for_clades,
     CLADES,
     CLADE_PALETTE,
     PRIMARY_RESOLUTION,
-)
-from .policy import (
-    PERIOD_ORDER,
-    POLICY_PERIODS,
-    PERIOD_LABELS,
-    PERIOD_STRINGENCY,
-    PERIOD_CONTAINMENT,
-    OXCGRT_STRINGENCY_PATH,
-    OXCGRT_CONTAINMENT_PATH,
-    load_oxcgrt_stringency,
-    load_oxcgrt_containment,
-    derive_period_stringency,
-    derive_period_containment,
-    assign_period,
-    attach_period,
 )
 from .style import (
     set_theme,
@@ -59,30 +43,17 @@ from .style import (
 
 __all__ = [
     "data",
-    "policy",
     "style",
     "QCStatus",
     "VALID_QC_STATUSES",
     "load_analysis_columns",
+    "load_policy_data",
     "load_datazone_info",
     "load_pairwise_edges",
     "pango_lineages_for_clades",
     "PRIMARY_RESOLUTION",
     "CLADES",
     "CLADE_PALETTE",
-    "PERIOD_ORDER",
-    "POLICY_PERIODS",
-    "PERIOD_LABELS",
-    "PERIOD_STRINGENCY",
-    "PERIOD_CONTAINMENT",
-    "OXCGRT_STRINGENCY_PATH",
-    "OXCGRT_CONTAINMENT_PATH",
-    "load_oxcgrt_stringency",
-    "load_oxcgrt_containment",
-    "derive_period_stringency",
-    "derive_period_containment",
-    "assign_period",
-    "attach_period",
     "set_theme",
     "save_figure",
     "add_panel_labels",

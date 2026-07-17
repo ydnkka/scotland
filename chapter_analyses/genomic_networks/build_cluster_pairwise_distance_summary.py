@@ -143,7 +143,6 @@ def _load_sequence_rows(
         SEQUENCE_COLUMNS,
         resolution=resolution,
         qc=qc,
-        add_policy=False,
     )
     df = df.dropna(subset=["window_id", "sequence_id", "cluster_id", "pango_lineage"])
     df["window_id"] = df["window_id"].map(_normalise_window)

@@ -54,7 +54,6 @@ def load_sequence_data() -> pd.DataFrame:
     """Load sequence-window rows for the retained transition-window stride."""
     return load_analysis_columns(
         ANALYSIS_COLUMNS,
-        add_policy=True,
         window_stride=TRANSITION_WINDOW_STRIDE,
     )
 

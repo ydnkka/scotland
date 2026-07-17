@@ -999,7 +999,7 @@ def main() -> int:
     attributes = specs_by_name(args.attributes)
     attr_cols = [spec.column for spec in attributes]
     columns = ["window_id", "window_idx", "sequence_id", *attr_cols]
-    sequence_df = load_chapter4_sequence_data(columns=columns, add_policy=False)
+    sequence_df = load_chapter4_sequence_data(columns=columns)
 
     if args.all_windows:
         windows = sorted(sequence_df["window_id"].dropna().unique())

@@ -441,6 +441,12 @@ def write_cohort_table(paths: Paths) -> None:
 
 def write_policy_denominator_table(paths: Paths) -> None:
     denominators = read_table(paths, "window_denominator_contrasts")
+    has_sequences = pd.to_numeric(
+        denominators["median_window_sequences"], errors="coerce"
+    ).gt(0)
+    denominators = denominators.loc[
+        has_sequences | denominators["policy_period"].astype(str).eq("P2")
+    ]
     denominators = sort_by_policy(denominators)
     rows = []
     for row in denominators.itertuples(index=False):

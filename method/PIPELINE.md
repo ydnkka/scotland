@@ -92,17 +92,6 @@ Existing parquets are skipped unless `--force` is used. An EpiLink exception is 
 
 The EpiLink genome length must match `pipeline.alignment_length`. The EpiLink seed is a code constant (`RNG_SEED`), not read from `config.yaml`.
 
-![Scenario-specific EpiLink distance compatibility scoring](../assets/observed_vs_null_distance.svg)
-
-Regenerate both method schematics with:
-
-```bash
-conda run -n PhD python assets/build_sliding_3week_windows.py
-conda run -n PhD python assets/build_observed_vs_null_distance.py
-```
-
-Both builders write SVG and 2× PNG files by default; use `--help` for output overrides.
-
 ### 04 and clustering: Leiden assignments
 
 `04_gen_cluster_commands.py` creates one `cluster_pairwise.py` command per pairwise parquet and forwards the configured resolutions, seed, sparsification threshold, and matching `.ids` path. `--include` and `--exclude` restrict stems.

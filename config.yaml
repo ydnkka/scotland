@@ -8,9 +8,12 @@ pipeline:
   sparsification: 0.001
 
 tn93:
-  threshold: 0.001
-  ambiguous: skip     # skip | resolve
+  threshold: 0.0005 # This translates to a threshold of roughly 15 mutations across the ~29,903 base pair SARS-CoV-2 genome
+  ambiguous: resolve # If Sequence A has an N (any nucleotide) and Sequence B has an A, resolve treats this as a match. This ensures that a single low-quality sequence with high missing data does not get artificially grouped with every other sequence in your dataset. 
+  overlap: 500 # Only process pairs of sequences that overlap over at least OVERLAP nucleotides
+  fraction: 0.05 #
   quiet: true
+  nextclade_qc: good #
 
 data:
   raw:
@@ -22,6 +25,8 @@ data:
     simd_csv: data/raw/datazone/2020v2_simd.csv
     geography_shp: data/raw/datazone/sg_datazone_bdry_2011.shp
     daily_hb_trends_csv: data/raw/phs/confidential/daily_trend_by_health_board.csv
+    oxcgrt_stringency_csv: data/raw/oxcgrt/OxCGRT_timeseries_StringencyIndex_v1.csv
+    oxcgrt_containment_csv: data/raw/oxcgrt/OxCGRT_timeseries_ContainmentHealthIndex_v1.csv
   processed:
     metadata: data/processed/scotland_sequence_metadata.parquet
     testing: data/processed/scotland_testing.parquet
@@ -29,6 +34,7 @@ data:
     simd: data/processed/scotland_datazone_simd_data.parquet
     geography: data/processed/scotland_geography.parquet
     hb_trends: data/processed/scotland_hb_daily_trends.parquet
+    policy: data/processed/scotland_policy.parquet
     group_fasta_dir: data/processed/group_fastas
     tn93_results_dir: data/processed/group_fastas/tn93_results
     tn93_commands_file: data/processed/group_fastas/tn93_commands.txt
@@ -37,3 +43,119 @@ data:
     cluster_long_dir: data/processed/cluster_assignments_long
     cluster_commands_file: data/processed/cluster_commands.txt
     analysis_dataset: data/processed/scotland_clustering_analysis_dataset.parquet
+
+policy:
+  region_name: Scotland
+  periods:
+    - {
+        code: E0,
+        label: Emergence,
+        start_date: 2020-03-01,
+        end_date: 2020-03-23,
+        era: early_restriction_easing,
+      }
+    - {
+        code: L1,
+        label: First lockdown,
+        start_date: 2020-03-24,
+        end_date: 2020-05-28,
+        era: early_restriction_easing,
+      }
+    - {
+        code: P1,
+        label: Route map phase 1,
+        start_date: 2020-05-29,
+        end_date: 2020-06-18,
+        era: early_restriction_easing,
+      }
+    - {
+        code: P2,
+        label: Route map phase 2,
+        start_date: 2020-06-19,
+        end_date: 2020-07-09,
+        era: early_restriction_easing,
+      }
+    - {
+        code: P3,
+        label: Route map phase 3,
+        start_date: 2020-07-10,
+        end_date: 2020-10-01,
+        era: early_restriction_easing,
+      }
+    - {
+        code: T1,
+        label: Pre-tier tightening,
+        start_date: 2020-10-02,
+        end_date: 2020-11-01,
+        era: autumn_winter_restrictions,
+      }
+    - {
+        code: F5,
+        label: Five-tier framework,
+        start_date: 2020-11-02,
+        end_date: 2021-01-04,
+        era: autumn_winter_restrictions,
+      }
+    - {
+        code: L2,
+        label: Second lockdown,
+        start_date: 2021-01-05,
+        end_date: 2021-04-01,
+        era: autumn_winter_restrictions,
+      }
+    - {
+        code: SL,
+        label: Stay local — Level 3,
+        start_date: 2021-04-02,
+        end_date: 2021-04-25,
+        era: spring_summer_2021_easing,
+      }
+    - {
+        code: L3,
+        label: Level 3,
+        start_date: 2021-04-26,
+        end_date: 2021-05-16,
+        era: spring_summer_2021_easing,
+      }
+    - {
+        code: L21,
+        label: Level 2 / Level 1,
+        start_date: 2021-05-17,
+        end_date: 2021-07-18,
+        era: spring_summer_2021_easing,
+      }
+    - {
+        code: L0,
+        label: Level 0,
+        start_date: 2021-07-19,
+        end_date: 2021-08-08,
+        era: spring_summer_2021_easing,
+      }
+    - {
+        code: NN,
+        label: Near-normal,
+        start_date: 2021-08-09,
+        end_date: 2021-11-28,
+        era: near_normal_delta,
+      }
+    - {
+        code: OM,
+        label: Omicron wave,
+        start_date: 2021-11-29,
+        end_date: 2022-01-23,
+        era: omicron_response,
+      }
+    - {
+        code: FE,
+        label: Final easing,
+        start_date: 2022-01-24,
+        end_date: 2022-04-17,
+        era: omicron_response,
+      }
+    - {
+        code: PR,
+        label: Post-restriction,
+        start_date: 2022-04-18,
+        end_date: 2023-05-05,
+        era: post_restriction,
+      }

@@ -31,10 +31,11 @@ Cluster descriptors:
 
 Sample-level:
     collection_date, datazone, dz_xcoord, dz_ycoord,
-    sex, is_female, age_band, age_midpoint,
+    sex, is_female, age_band, age_group, age_midpoint,
     is_vaccinated, vacc_dose_number, vacc_date_prior,
     vacc_product_name, vacc_booster, days_since_vaccination,
-    test_type, test_reason, s_gene_status,
+    test_type, test_reason_raw, test_reason, s_gene_status,
+    policy_period, policy_period_label, policy_era,
     pango_lineage, clade, who_voc, nextclade_qc
 
 Datazone sociodemographic:
@@ -619,6 +620,7 @@ def main() -> int:
         "sex",
         "is_female",
         "age_band",
+        "age_group",
         "age_midpoint",
         "is_vaccinated",
         "vacc_dose_number",
@@ -627,8 +629,12 @@ def main() -> int:
         "vacc_booster",
         "days_since_vaccination",
         "test_type",
+        "test_reason_raw",
         "test_reason",
         "s_gene_status",
+        "policy_period",
+        "policy_period_label",
+        "policy_era",
         "is_reinfection",
         "pango_lineage",
         "clade",
@@ -684,11 +690,19 @@ def main() -> int:
         "hb_daily_reinfections",
         "hb_reinfection_rate",
     ]
-    required_columns = {"test_type", "test_reason"}
+    required_columns = {
+        "age_group",
+        "test_type",
+        "test_reason_raw",
+        "test_reason",
+        "policy_period",
+        "policy_period_label",
+        "policy_era",
+    }
     missing_required = sorted(required_columns - set(ds.columns))
     if missing_required:
         raise KeyError(
-            "Dataset is missing expected specimen-level test columns after consolidation: "
+            "Dataset is missing expected derived metadata columns after consolidation: "
             f"{missing_required}. Rebuild processed metadata with method/01_prep_metadata.py."
         )
     ds = ds[[c for c in column_order if c in ds.columns]].reset_index(drop=True)

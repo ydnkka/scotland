@@ -17,8 +17,6 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from .policy import attach_period
-
 
 __all__ = [
     "QCStatus",
@@ -26,6 +24,7 @@ __all__ = [
     "CLADE_PALETTE",
     "VALID_QC_STATUSES",
     "load_analysis_columns",
+    "load_policy_data",
     "load_pairwise_edges",
     "load_datazone_info",
     "pango_lineages_for_clades",
@@ -72,8 +71,8 @@ SIMD_GROUP_COLUMNS: dict[str, int] = {
         for group_name, n_groups in SIMD_GROUP_SIZES.items()
     },
 }
-SIMD_COMPUTED_GROUP_COLUMNS: set[str] = (
-    set(SIMD_GROUP_COLUMNS) - set(SIMD_BASE_GROUP_COLUMNS)
+SIMD_COMPUTED_GROUP_COLUMNS: set[str] = set(SIMD_GROUP_COLUMNS) - set(
+    SIMD_BASE_GROUP_COLUMNS
 )
 
 CLADES: dict[str, str] = {
@@ -107,99 +106,6 @@ CLADE_PALETTE: dict[str, str] = {
     "Other": "#DDDDDD",
 }
 
-TEST_REASON_MAP = {
-    "symptomatic-citizen": "symptomatic_citizen",
-    "I have coronavirus symptoms": "symptomatic_citizen",
-    "I live~ work or study in a lockdown area with a coronavirus outbreak": "symptomatic_citizen",
-    "symptomatic-essential-worker": "symptomatic_essential_worker",
-    "Im an essential worker": "symptomatic_essential_worker",
-    "scotland-wales-keyworker": "symptomatic_essential_worker",
-    "wales-keyworker": "symptomatic_essential_worker",
-    "test-for-contact-tracing": "contact_tracing",
-    "test-for-contact-tracing-app": "contact_tracing",
-    "test-for-contact-self-referral": "contact_tracing",
-    "for-symptomatic-household-member": "contact_tracing",
-    "Ive been in contact with a person who has tested positive for coronavirus and Ive been asked to take a test by a contact tracer (Northern Ireland and Scotland)": "contact_tracing",
-    "Ive been in contact with a person who has tested positive for coronavirus and have since developed symptoms": "contact_tracing",
-    "confirmatory-positive-test": "confirmatory",
-    "confirmatory-other-reason": "confirmatory",
-    "confirmatory-test-unclear": "confirmatory",
-    "confirmatory-test-borders": "confirmatory",
-    "told-to-order-repeat-test": "confirmatory",
-    "self-isolation-support-grant": "isolation_scheme",
-    "isolation-testing-home": "isolation_scheme",
-    "isolation-testing-facility": "isolation_scheme",
-    "gp-healthcare-request": "clinical",
-    "antiviral-order": "clinical",
-    "dental-patient-testing": "clinical",
-    "I have been told to have a test before I go into hospital~ for example~ for surgery": "clinical",
-    "zoe-symptom-study": "surveillance_research",
-    "contact-testing-study": "surveillance_research",
-    "events-research-programme": "surveillance_research",
-    "serial-testing": "surveillance_research",
-    "ntrg-member": "surveillance_research",
-    "local-council-request": "local_outbreak",
-    "attended-outbreak-venue": "local_outbreak",
-    "community-testing": "local_outbreak",
-    "scotland-university": "local_outbreak",
-    "wales-university": "local_outbreak",
-    "green-traveller": "travel",
-    "other": "other",
-    "Other": "other",
-    "none": "other",
-    "do-not-know": "other",
-    "general-cta-referral": "other",
-    "personal-assistant": "other",
-    "Im a visiting professional": "other",
-    "asymptomatic-home-order": "other",
-}
-
-POLICY_ERA_BY_PERIOD = {
-    "E0": "early_restriction_easing",
-    "L1": "early_restriction_easing",
-    "P1": "early_restriction_easing",
-    "P2": "early_restriction_easing",
-    "P3": "early_restriction_easing",
-    "T1": "autumn_winter_restrictions",
-    "F5": "autumn_winter_restrictions",
-    "L2": "autumn_winter_restrictions",
-    "SL": "spring_summer_2021_easing",
-    "L3": "spring_summer_2021_easing",
-    "L21": "spring_summer_2021_easing",
-    "L0": "spring_summer_2021_easing",
-    "NN": "near_normal_delta",
-    "OM": "omicron_response",
-    "FE": "omicron_response",
-    "PR": "post_restriction",
-}
-
-# Aligning 5-year census/health bands to Scottish infectious disease brackets
-# "Because raw data was aggregated in 5-year intervals, age 15 was grouped into the 15-24 young-adult band rather than the 5-15 school-age band, closely approximating Public Health Scotland's youth surveillance frameworks."
-AGE_GROUP_MAP = {
-    "00-04": "00-04",  # Infants/Toddlers (RSV/Rotavirus)
-    "05-09": "05-14",  # School-age (Primary school mixing)
-    "10-14": "05-14",  # School-age (Secondary school mixing)
-    
-    # NOTE: 15-19 includes 15 (school) and 16-19 (young adult). 
-    # In Scottish data, 15-19 is usually kept together or grouped with 20-24 
-    # to capture the broader "Youth/Higher Education" transition.
-    "15-19": "15-24",  
-    "20-24": "15-24",  # Young Adults / University / High Social Mixing
-    
-    "25-29": "25-64",  # Working-age Adults
-    "30-34": "25-64",
-    "35-39": "25-64",
-    "40-44": "25-64",
-    "45-49": "25-64",
-    "50-54": "25-64",
-    "55-59": "25-64",
-    "60-64": "25-64",
-    
-    "65-69": "65-74",  # "Young-Old" / Post-retirement / Elevated COVID Risk
-    "70-74": "65-74",  
-    
-    "75+"  : "75+",    # Older Adults / Highest Clinical Vulnerability
-}
 
 def repo_root(start: Path | None = None) -> Path:
     """Walk up from *start* until ``config.yaml`` is found."""
@@ -220,6 +126,7 @@ class Paths:
     analysis_dataset: Path
     pairwise_distances_dataset: Path
     geography: Path
+    policy: Path
 
     @classmethod
     def from_config(cls, root: Path | None = None) -> "Paths":
@@ -241,7 +148,35 @@ class Paths:
                 )
             ),
             geography=root / proc["geography"],
+            policy=root / proc["policy"],
         )
+
+
+def load_policy_data(
+    columns: Iterable[str] | None = None,
+    *,
+    start_date: str | pd.Timestamp | None = None,
+    end_date: str | pd.Timestamp | None = None,
+) -> pd.DataFrame:
+    """Load the processed daily Scotland policy calendar.
+
+    The table is the authoritative source for daily OxCGRT indices and policy
+    period codes, labels, dates, ordering, and eras.
+    """
+    paths = Paths.from_config()
+    selected = list(columns) if columns is not None else None
+    if selected is not None and "date" not in selected:
+        selected.insert(0, "date")
+
+    policy = pd.read_parquet(paths.policy, columns=selected)
+    policy["date"] = pd.to_datetime(policy["date"], errors="raise").dt.normalize()
+    if policy["date"].duplicated().any():
+        raise ValueError("Processed policy table contains duplicate dates.")
+    if start_date is not None:
+        policy = policy.loc[policy["date"].ge(pd.Timestamp(start_date).normalize())]
+    if end_date is not None:
+        policy = policy.loc[policy["date"].le(pd.Timestamp(end_date).normalize())]
+    return policy.sort_values("date", ignore_index=True)
 
 
 def _normalise_qc(qc: QCStatus | Iterable[QCStatus] | None) -> list[str] | None:
@@ -461,9 +396,7 @@ def _apply_simd_groups(
         df.columns
     )
     if missing:
-        raise KeyError(
-            f"SIMD grouping requires source columns: {sorted(missing)}"
-        )
+        raise KeyError(f"SIMD grouping requires source columns: {sorted(missing)}")
 
     out = df.copy()
     for rank_col in sorted({SIMD_GROUP_RANK_COLUMNS[col] for col in simd_cols}):
@@ -551,7 +484,6 @@ def load_analysis_columns(
     all_cols: bool = False,
     resolution: float | None = PRIMARY_RESOLUTION,
     qc: QCStatus | Iterable[QCStatus] | None = "good",
-    add_policy: bool = False,
     window_stride: int | None = None,
     window_offset: int = 0,
     renumber_windows: bool = True,
@@ -573,10 +505,6 @@ def load_analysis_columns(
         If provided, rows are restricted to these Nextclade QC statuses.
         Accepted values are ``"good"``, ``"mediocre"``, and ``"bad"``.
         Pass ``None`` to skip QC filtering.
-    add_policy:
-        If True, attach policy period labels ``policy_period``,
-        ``policy_period_label``, and ``policy_intensity`` using the configured
-        policy periods.
     window_stride:
         If provided, retain sorted unique ``window_idx`` values by positional
         stride using ``windows[window_offset::window_stride]``. For example,
@@ -608,7 +536,8 @@ def load_analysis_columns(
     "collection_date", "datazone", "dz_xcoord", "dz_ycoord", "sex",
     "is_female", "age_band", "age_group", "age_midpoint", "is_vaccinated",
     "vacc_dose_number", "vacc_date_prior", "vacc_product_name",
-    "vacc_booster", "days_since_vaccination", "test_reason",
+    "vacc_booster", "days_since_vaccination", "test_reason_raw", "test_reason",
+    "policy_period", "policy_period_label", "policy_era",
     "is_reinfection", "pango_lineage", "clade", "who_voc", "nextclade_qc",
     "dz_population", "dz_working_age_population", "dz_area_km2",
     "dz_population_density", "dz_simd_rank", "dz_simd_quintile",
@@ -653,13 +582,9 @@ def load_analysis_columns(
         simd_cols,
         weighted=weighted_simd,
     )
-    computed_age_cols = {"age_group"} & requested
 
     if columns is not None:
-        need.update(requested - computed_simd_cols - computed_age_cols)
-
-    if "age_group" in requested:
-        need.add("age_band")
+        need.update(requested - computed_simd_cols)
 
     if window_stride is not None:
         need.add("window_idx")
@@ -679,11 +604,6 @@ def load_analysis_columns(
     read_columns = None if all_cols else list(need)
 
     df = pd.read_parquet(paths.analysis_dataset, columns=read_columns)
-
-    if all_cols or "age_group" in requested:
-        df["age_group"] = df["age_band"].map(AGE_GROUP_MAP).fillna("unknown")
-        if not all_cols and "age_band" not in requested:
-            df = df.drop(columns="age_band")
 
     if resolution is not None:
         df = df.loc[df["resolution"] == resolution]
@@ -711,15 +631,6 @@ def load_analysis_columns(
         if not all_cols:
             drop_cols = {"datazone"} - output_columns
             df = df.drop(columns=[c for c in drop_cols if c in df.columns])
-
-    if add_policy:
-        df = attach_period(df, "collection_date")
-        df["policy_era"] = (
-            df["policy_period"].map(POLICY_ERA_BY_PERIOD).fillna(df["policy_period"])
-        )
-
-    if "test_reason" in df.columns:
-        df["test_reason"] = df["test_reason"].replace(TEST_REASON_MAP).fillna("other")
 
     fill_values = {
         "is_vaccinated": 0.0,

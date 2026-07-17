@@ -19,7 +19,7 @@ from .config import (
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils import attach_period  # noqa: E402
+from utils import load_policy_data  # noqa: E402
 
 
 VACCINATION_DOSE_GROUPS = (
@@ -29,21 +29,43 @@ VACCINATION_DOSE_GROUPS = (
     "Booster/3+ doses",
     "Vaccinated dose unknown",
 )
-POLICY_PERIOD_ORDER = (
-    "P2",
-    "P3",
-    "T1",
-    "F5",
-    "L2",
-    "SL",
-    "L3",
-    "L21",
-    "L0",
-    "NN",
-    "OM",
-    "FE",
-    "PR",
-)
+
+
+def _attach_policy_calendar(df: pd.DataFrame, date_col: str) -> pd.DataFrame:
+    """Attach policy fields by directly joining the processed daily calendar."""
+    if date_col not in df.columns:
+        raise KeyError(f"{date_col!r} is required for the policy-calendar join")
+
+    lookup = load_policy_data(
+        ["period_code", "period_label", "policy_era", "period_order"]
+    ).rename(
+        columns={
+            "date": "_policy_date",
+            "period_code": "policy_period",
+            "period_label": "policy_period_label",
+        }
+    )
+    policy_cols = [col for col in lookup.columns if col != "_policy_date"]
+    out = df.drop(columns=policy_cols, errors="ignore").copy()
+    out["_policy_date"] = pd.to_datetime(out[date_col], errors="coerce").dt.normalize()
+    return out.merge(
+        lookup,
+        on="_policy_date",
+        how="left",
+        validate="many_to_one",
+    ).drop(columns="_policy_date")
+
+
+def _policy_period_order() -> list[str]:
+    """Return policy codes in the ordering stored in the policy calendar."""
+    policy = load_policy_data(["period_code", "period_order"])
+    return (
+        policy[["period_code", "period_order"]]
+        .drop_duplicates()
+        .sort_values("period_order")["period_code"]
+        .astype(str)
+        .tolist()
+    )
 
 
 def sequence_level_frame(df: pd.DataFrame) -> pd.DataFrame:
@@ -138,7 +160,7 @@ def build_window_coverage(df: pd.DataFrame) -> pd.DataFrame:
     for col in ("wn_start_date", "wn_mid_date", "wn_end_date"):
         out[col] = pd.to_datetime(out[col], errors="coerce")
 
-    out = attach_period(out, "wn_mid_date")
+    out = _attach_policy_calendar(out, "wn_mid_date")
     out["sequences_per_positive_test"] = out["wn_no_sequences"] / out[
         "wn_positive_tests"
     ].replace(0, np.nan)
@@ -348,13 +370,11 @@ def build_vaccination_context_by_policy(df: pd.DataFrame) -> pd.DataFrame:
     """Summarise sequence-level vaccination context by policy period."""
     seq = sequence_level_frame(df)
     if "policy_period" not in seq.columns:
-        if "collection_date" not in seq.columns:
-            raise KeyError("'policy_period' or 'collection_date' is required")
-        seq = attach_period(seq, "collection_date")
+        raise KeyError("'policy_period' is required in the persisted sequence metadata")
 
     work = _vaccination_context_frame(seq)
     out = _vaccination_summary_rows(work, ("policy_period",))
-    policy_order = {period: idx for idx, period in enumerate(POLICY_PERIOD_ORDER)}
+    policy_order = {period: idx for idx, period in enumerate(_policy_period_order())}
     out["_policy_sort"] = out["policy_period"].astype(str).map(policy_order).fillna(999)
     return out.sort_values(["_policy_sort", "policy_period"]).drop(
         columns="_policy_sort"
@@ -378,8 +398,7 @@ def build_vaccination_window_context(df: pd.DataFrame) -> pd.DataFrame:
     work = df.drop_duplicates(["window_id", "sequence_id"]).copy()
     for col in ("wn_start_date", "wn_mid_date", "wn_end_date"):
         work[col] = pd.to_datetime(work[col], errors="coerce")
-    if "policy_period" not in work.columns:
-        work = attach_period(work, "wn_mid_date")
+    work = _attach_policy_calendar(work, "wn_mid_date")
 
     work = _vaccination_context_frame(work)
     group_cols = (
