@@ -1,0 +1,177 @@
+$ python3 method/01_prep_metadata.py
+    2026-07-17 12:56:02 [INFO] Policy data: 1161 daily Scotland rows (2020-03-01 to 2023-05-05) → data/processed/scotland_policy.parquet
+    2026-07-17 12:56:02 [WARNING] Policy data has 125 calendar dates after/between available OxCGRT values.
+    2026-07-17 12:58:51 [INFO] Testing data: 5467764 rows → data/processed/scotland_testing.parquet
+    2026-07-17 12:59:44 [INFO] Vaccination data: 2809720 rows → data/processed/scotland_datazone_vaccinations.parquet
+    2026-07-17 12:59:44 [INFO] SIMD data: 6976 datazones → data/processed/scotland_datazone_simd_data.parquet
+    2026-07-17 12:59:44 [INFO] Geography: 6976 datazones → data/processed/scotland_geography.parquet
+    2026-07-17 12:59:44 [INFO] HB trends: 18241 rows → data/processed/scotland_hb_daily_trends.parquet
+    2026-07-17 12:59:52 [INFO] Nextclade QC filter (good): retained 322815/369580 sequences; dropped 46765.
+    2026-07-17 13:02:17 [INFO] Sequence metadata: 322389 rows → data/processed/scotland_sequence_metadata.parquet
+
+
+$ python3 method/02_gen_tn93_commands.py
+    2026-07-17 13:13:22 [INFO] Nextclade QC filter (good): retained 322389/322389 metadata rows; dropped 0.
+    2026-07-17 13:13:23 [INFO] Generated 134 windows.
+    2026-07-17 13:13:24 [INFO] Wrote 6021 group commands to data/processed/group_fastas/tn93_commands.txt
+    2026-07-17 13:13:24 [INFO] Example:
+    samtools faidx -o data/processed/group_fastas/W001_B.1.1.369_5.fasta data/raw/cog-uk/cog_all_scotland_aligned.fasta.gz -r data/processed/group_fastas/W001_B.1.1.369_5.ids && tn93 -q -t 0.0005 -a resolve -g 0.05 -l 500 -o data/processed/group_fastas/tn93_results/W001_B.1.1.369_5.csv data/processed/group_fastas/W001_B.1.1.369_5.fasta
+
+$ ./method/parallel_run.sh -c data/processed/group_fastas/tn93_commands.txt -j 18 --progress
+    Done. Joblog: data/processed/group_fastas/tn93_commands.txt.joblog.tsv (all jobs succeeded)
+
+
+$ python3 method/03_build_pairwise_dataset.py
+    2026-07-18 11:05:16,514 [INFO] TN93 input dir: data/processed/group_fastas/tn93_results
+    2026-07-18 11:05:16,514 [INFO] Metadata path: data/processed/scotland_sequence_metadata.parquet
+    2026-07-18 11:05:16,514 [INFO] Pairwise output dir: data/processed/pairwise_distances_dataset
+    2026-07-18 11:05:16,514 [INFO] Alignment length: 29903
+    2026-07-18 11:05:16,514 [INFO] Loading metadata dates...
+    2026-07-18 11:05:16,719 [INFO] Found 6021 CSV files to process.
+    2026-07-18 11:05:16,743 [INFO] W004_B.1.36_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,748 [INFO] W005_B.1.1.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,755 [INFO] W013_B.1.1.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,759 [INFO] W014_B.1.1.170_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,763 [INFO] W016_B.1.1.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,766 [INFO] W017_B.1.1.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,770 [INFO] W018_B.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,774 [INFO] W027_B.1.258_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,777 [INFO] W032_B.1.177.53_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,780 [INFO] W034_B.1.1.420_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,784 [INFO] W035_B.1.351_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,787 [INFO] W037_C.36.3_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,791 [INFO] W045_AY.4.2_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,795 [INFO] W052_AY.90_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,799 [INFO] W056_AY.3_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,803 [INFO] W062_AY.34.2_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,807 [INFO] W062_AY.42_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,810 [INFO] W063_AY.34.2_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,813 [INFO] W063_AY.42_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,817 [INFO] W064_AY.34.2_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,820 [INFO] W065_AY.126_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,823 [INFO] W065_AY.42_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,827 [INFO] W066_AY.126_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,830 [INFO] W066_AY.42_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,834 [INFO] W068_AY.33_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,837 [INFO] W069_AY.100_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,840 [INFO] W069_AY.103_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,843 [INFO] W069_AY.33_3: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,847 [INFO] W071_AY.46_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,851 [INFO] W073_AY.129_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,854 [INFO] W073_AY.25_5: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,857 [INFO] W073_AY.4.2.3_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,861 [INFO] W074_AY.124_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,864 [INFO] W074_AY.25_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,867 [INFO] W074_AY.4.2.3_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,870 [INFO] W074_AY.90_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,874 [INFO] W074_BA.1.12_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,877 [INFO] W075_AY.100_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,880 [INFO] W075_AY.118_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,883 [INFO] W075_AY.124_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,886 [INFO] W075_AY.25_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,890 [INFO] W075_AY.4.2.3_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,893 [INFO] W075_BA.1.12_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,897 [INFO] W076_BA.1.12_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,900 [INFO] W077_AY.4.8_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,903 [INFO] W078_AY.9.2_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,907 [INFO] W079_AY.5_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,910 [INFO] W079_AY.9.2_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,914 [INFO] W081_AY.4_8: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,917 [INFO] W082_AY.4.2_3: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,920 [INFO] W082_AY.4_4: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,923 [INFO] W082_BA.2.26_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,927 [INFO] W083_AY.4.2_3: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,930 [INFO] W083_BA.2.26_3: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,934 [INFO] W084_BA.2.26_4: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,938 [INFO] W085_BA.2.26_3: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,941 [INFO] W086_BA.2.26_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,949 [INFO] W093_BD.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,952 [INFO] W093_XY_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,956 [INFO] W094_BA.1.1.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,959 [INFO] W094_BA.1.17.2_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,963 [INFO] W096_BA.2.44_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,966 [INFO] W096_BA.2.71_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,970 [INFO] W097_BA.2.57_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,973 [INFO] W097_BA.2.71_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,976 [INFO] W098_BA.2.57_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,984 [INFO] W104_B.1.1.529_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,990 [INFO] W105_B.1.1.529_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,994 [INFO] W106_B.1.1.529_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:16,997 [INFO] W106_BA.5.2.27_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,000 [INFO] W106_BA.5.2.33_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,004 [INFO] W107_BA.2.75.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,007 [INFO] W107_BA.2_3: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,011 [INFO] W107_BA.5.2.4_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,014 [INFO] W108_BA.5.2.33_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,018 [INFO] W110_BA.4.1.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,022 [INFO] W110_BA.4.2_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,026 [INFO] W112_BA.5.1.5_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,030 [INFO] W114_BE.1.2_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,034 [INFO] W115_BE.1.2_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,037 [INFO] W116_BA.5.1.33_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,041 [INFO] W117_BA.4.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,044 [INFO] W117_BA.5.1.33_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,048 [INFO] W117_BA.5.5_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,051 [INFO] W118_BA.4.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,055 [INFO] W118_BA.5.3.1_3: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,058 [INFO] W118_BA.5.5_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,061 [INFO] W118_BF.36_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,064 [INFO] W118_BQ.1.1.6_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,068 [INFO] W119_BQ.1.1.6_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,071 [INFO] W119_BQ.1.16_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,074 [INFO] W119_EF.2_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,077 [INFO] W120_BA.5.1.22_3: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,081 [INFO] W120_BE.1.1.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,084 [INFO] W120_BF.7.6_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,088 [INFO] W120_BQ.1.1.6_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,091 [INFO] W120_BQ.1.1.8_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,093 [INFO] W120_BQ.1.16_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,097 [INFO] W121_BA.4.1.8_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,100 [INFO] W121_BA.5.1.22_3: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,103 [INFO] W121_BF.7.6_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,106 [INFO] W121_BM.4.1.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,110 [INFO] W122_BA.5.2.3_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,114 [INFO] W122_BA.5.2.9_3: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,117 [INFO] W122_BA.5_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,120 [INFO] W122_BF.7.6_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,123 [INFO] W122_BQ.1.14_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,127 [INFO] W123_BA.4.1.8_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,130 [INFO] W123_BA.5.2.20_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,133 [INFO] W123_BQ.1.14_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,136 [INFO] W123_CB.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,140 [INFO] W124_BQ.1.16_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,143 [INFO] W124_CB.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,146 [INFO] W124_XBB.3_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,149 [INFO] W125_BA.2.75.2_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,153 [INFO] W125_CB.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,156 [INFO] W126_BA.4.6_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,160 [INFO] W126_BQ.1.1.6_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,163 [INFO] W127_BE.1.1.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,166 [INFO] W127_BQ.1.1.40_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,170 [INFO] W128_BA.4.6_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,174 [INFO] W128_BQ.1.1.40_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,179 [INFO] W130_BR.2.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,183 [INFO] W131_BQ.1.1.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,186 [INFO] W132_BQ.1.1.1_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,190 [INFO] W133_BQ.1.1.22_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,193 [INFO] W133_BQ.1.1.5_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,196 [INFO] W133_CH.1.1.2_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,200 [INFO] W134_BQ.1.1.24_2: No valid pairs left after date filtering. Skipping.
+    2026-07-18 11:05:17,203 [INFO] W134_BQ.1.1.2_2: No valid pairs left after date filtering. Skipping.
+
+
+$ python3 method/04_gen_cluster_commands.py
+    Wrote 5891 commands to data/processed/cluster_commands.txt
+
+
+$ ./method/parallel_run.sh -c data/processed/cluster_commands.txt -j 18 --progress
+    Done. Joblog: data/processed/cluster_commands.txt.joblog.tsv (all jobs succeeded)
+
+
+$ python3 method/05_consolidate.py
+    2026-07-18 13:46:01 [INFO] Nextclade QC filter (good): retained 322389/322389 metadata rows; dropped 0.
+    2026-07-18 13:46:02 [INFO] 134 time windows
+    2026-07-18 13:46:02 [INFO] Loading 5891 cluster parquets from data/processed/cluster_assignments_long
+    2026-07-18 13:46:14 [INFO] Cluster rows: 7712520 + 20224 singletons = 7732744 total
+    2026-07-18 13:47:18 [INFO] Joined HB trends (11 columns).
+    2026-07-18 13:47:45 [INFO] Analysis dataset: 7732744 rows × 88 cols → data/processed/scotland_clustering_analysis_dataset.parquet

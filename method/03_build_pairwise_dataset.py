@@ -88,17 +88,14 @@ def process_pairwise_dataset(
     date_map = load_metadata_dates(metadata_path)
     csv_files = sorted(input_dir.glob("*.csv"))
 
-    logging.info(f"Found {len(csv_files)} CSV files to process.")
     if not csv_files:
-        raise ValueError("No TN93 CSV files matched the requested filters.")
+        raise ValueError(f"No TN93 CSV files found in {input_dir}")
+
+    logging.info(f"Found {len(csv_files)} CSV files to process.")
 
     for tn93_csv in csv_files:
         stem = tn93_csv.stem
         window_id, lineage, n_unique = parse_group_label(stem)
-
-        if not window_id:
-            logging.warning(f"Skipping {tn93_csv.name}: Filename format mismatch.")
-            continue
 
         out_path = output_dataset_dir / f"{stem}.parquet"
 

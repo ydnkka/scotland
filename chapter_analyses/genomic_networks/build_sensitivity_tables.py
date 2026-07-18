@@ -198,15 +198,6 @@ def _normalise_windows(values: Sequence[str] | None) -> list[str] | None:
     return [_normalise_window(value) for value in values]
 
 
-def _normalise_qc(qc: str | None) -> set[str] | None:
-    if qc is None:
-        return None
-    text = str(qc).strip()
-    if not text or text.lower() in {"all", "none"}:
-        return None
-    return {part.strip() for part in text.split(",") if part.strip()}
-
-
 def _float_key(value: float) -> float:
     return float(f"{float(value):.12g}")
 
@@ -255,15 +246,12 @@ def build_leiden_sensitivity_tables(
     analysis_dataset: Path,
     baseline_resolution: float,
     include_ami: bool,
-    qc: set[str] | None,
     windows: Sequence[str] | None,
     max_windows: int | None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return window-level and resolution-level Leiden sensitivity tables."""
     LOGGER.info("Loading multi-resolution clustering rows from %s", analysis_dataset)
     df = pd.read_parquet(analysis_dataset, columns=LEIDEN_COLUMNS)
-    if qc is not None:
-        df = df.loc[df["nextclade_qc"].isin(qc)]
     df = _apply_window_filters(df, windows=windows, max_windows=max_windows)
     if df.empty:
         raise ValueError("No clustering rows remain after sensitivity filters.")
@@ -861,7 +849,6 @@ def main() -> int:
     args.table_dir.mkdir(parents=True, exist_ok=True)
 
     windows = _normalise_windows(args.windows)
-    qc = _normalise_qc(args.qc)
     thresholds = _sorted_unique_float(args.thresholds)
 
     if args.only in {"all", "leiden"}:
@@ -869,7 +856,6 @@ def main() -> int:
             analysis_dataset=args.analysis_dataset,
             baseline_resolution=args.baseline_resolution,
             include_ami=args.include_ami,
-            qc=qc,
             windows=windows,
             max_windows=args.max_windows,
         )

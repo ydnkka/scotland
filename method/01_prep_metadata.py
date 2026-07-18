@@ -286,7 +286,7 @@ def prep_policy(
     out_path.parent.mkdir(parents=True, exist_ok=True)
     daily.to_parquet(out_path, index=False, compression="zstd")
     logging.info(
-        "Policy data: %d daily Scotland rows (%s to %s) → %s",
+        "Policy data: %d daily Scotland rows (%s to %s) \u2192 %s",
         len(daily),
         daily["date"].min().date(),
         daily["date"].max().date(),
@@ -373,7 +373,7 @@ def prep_testing(csv_path: Path, out_path: Path) -> pd.DataFrame:
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out.to_parquet(out_path, index=False, compression="zstd")
-    logging.info("Testing data: %d rows → %s", len(out), out_path)
+    logging.info("Testing data: %d rows \u2192 %s", len(out), out_path)
     return out
 
 
@@ -430,7 +430,7 @@ def prep_simd(csv_path: Path, out_path: Path) -> pd.DataFrame:
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(out_path, index=False)
-    logging.info("SIMD data: %d datazones → %s", len(df), out_path)
+    logging.info("SIMD data: %d datazones \u2192 %s", len(df), out_path)
     return df
 
 
@@ -456,7 +456,7 @@ def prep_geography(
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     gdf.to_parquet(out_path, index=True)
-    logging.info("Geography: %d datazones → %s", len(gdf), out_path)
+    logging.info("Geography: %d datazones \u2192 %s", len(gdf), out_path)
     return gdf
 
 
@@ -492,7 +492,7 @@ def prep_vaccination(csv_path: Path, out_path: Path) -> pd.DataFrame:
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out.to_parquet(out_path, index=False, compression="zstd")
-    logging.info("Vaccination data: %d rows → %s", len(out), out_path)
+    logging.info("Vaccination data: %d rows \u2192 %s", len(out), out_path)
     return out
 
 
@@ -550,7 +550,7 @@ def prep_hb_trends(csv_path: Path, out_path: Path) -> pd.DataFrame:
     df.sort_values(["hb_code", "date"], inplace=True)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(out_path, index=False, compression="zstd")
-    logging.info("HB trends: %d rows → %s", len(df), out_path)
+    logging.info("HB trends: %d rows \u2192 %s", len(df), out_path)
     return df
 
 
@@ -859,7 +859,7 @@ def prep_sequence_metadata(
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     meta.to_parquet(out_path, index=False, compression="zstd")
-    logging.info("Sequence metadata: %d rows → %s", len(meta), out_path)
+    logging.info("Sequence metadata: %d rows \u2192 %s", len(meta), out_path)
     return meta
 
 

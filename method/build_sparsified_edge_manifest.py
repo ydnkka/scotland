@@ -139,20 +139,6 @@ def build_manifest(
     )
 
 
-def write_manifest(df: pd.DataFrame, out_path: Path) -> dict[str, Path]:
-    """Write parquet plus a CSV companion using atomic replacement."""
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    csv_path = out_path.with_suffix(".csv")
-    tmp_parquet = out_path.with_suffix(out_path.suffix + ".tmp")
-    tmp_csv = csv_path.with_suffix(csv_path.suffix + ".tmp")
-
-    df.to_parquet(tmp_parquet, index=False)
-    df.to_csv(tmp_csv, index=False)
-    tmp_parquet.replace(out_path)
-    tmp_csv.replace(csv_path)
-    return {"parquet": out_path, "csv": csv_path}
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=Path("config.yaml"))
@@ -242,13 +228,14 @@ def main() -> int:
         batch_size=args.batch_size,
         max_files=args.max_files,
     )
-    written = write_manifest(manifest, out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest.to_parquet(out_path, index=False)
+    
     LOGGER.info(
-        "Wrote %s rows at threshold %g to %s and %s",
+        "Wrote %s rows at threshold %g to %s",
         f"{len(manifest):,}",
         threshold,
-        written["parquet"],
-        written["csv"],
+        str(out_path)
     )
     return 0
 
