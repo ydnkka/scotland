@@ -5,7 +5,7 @@ from . import style, data
 
 from .data import (
     load_analysis_columns,
-    load_policy_data,
+    load_daily_policy_data,
     load_datazone_info,
     load_pairwise_edges,
     pango_lineages_for_clades,
@@ -29,7 +29,7 @@ __all__ = [
     "data",
     "style",
     "load_analysis_columns",
-    "load_policy_data",
+    "load_daily_policy_data",
     "load_datazone_info",
     "load_pairwise_edges",
     "pango_lineages_for_clades",

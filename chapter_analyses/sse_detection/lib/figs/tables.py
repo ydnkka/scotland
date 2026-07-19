@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import re
-from typing import Callable
+from typing import Callable, Any, cast
 
 import numpy as np
 import pandas as pd
@@ -135,28 +135,28 @@ def build_full_results_table(result_dir: Path = BAYESIAN_OUTPUT_DIR) -> pd.DataF
             )
         for row in rows.itertuples(index=False):
             if family == "logistic":
-                estimate = float(row.OR_mean)
-                low = float(row.OR_hdi95_lb)
-                high = float(row.OR_hdi95_ub)
-                summary = pd.read_csv(row.summary_path).set_index("parameter")
+                estimate = cast(float, row.OR_mean)
+                low = cast(float, row.OR_hdi95_lb)
+                high = cast(float, row.OR_hdi95_ub)
+                summary = pd.read_csv(str(row.summary_path)).set_index("parameter")
                 source = summary.loc[row.parameter]
-                p_positive = float(source["P(OR > 1 | data)"])
-                p_negative = float(source["P(OR < 1 | data)"])
+                p_positive = cast(float, source["P(OR > 1 | data)"])
+                p_negative = cast(float, source["P(OR < 1 | data)"])
                 effect_type = "odds ratio"
                 reference = 1.0
                 positive_label, negative_label = "OR > 1", "OR < 1"
             else:
-                estimate = float(row.mean)
-                low = float(row.hdi95_lb)
-                high = float(row.hdi95_ub)
-                summary = pd.read_csv(row.summary_path).set_index("parameter")
+                estimate = cast(float, row.mean)
+                low = cast(float, row.hdi95_lb)
+                high = cast(float, row.hdi95_ub)
+                summary = pd.read_csv(str(row.summary_path)).set_index("parameter")
                 source = summary.loc[row.parameter]
-                p_positive = float(source["P(beta > 0 | data)"])
-                p_negative = float(source["P(beta < 0 | data)"])
+                p_positive = cast(float, source["P(beta > 0 | data)"])
+                p_negative = cast(float, source["P(beta < 0 | data)"])
                 effect_type = "coefficient"
                 reference = 0.0
                 positive_label, negative_label = "beta > 0", "beta < 0"
-            if estimate >= reference:
+            if cast(float, estimate) >= reference:
                 direction = positive_label
                 direction_probability = p_positive
             else:
@@ -371,7 +371,6 @@ def write_main_table(paths: Paths) -> dict[str, Path]:
     rows = []
     boundaries = set()
     for outcome_idx, (_, group) in enumerate(table.groupby("outcome", sort=False)):
-        start = len(rows)
         for row_idx, (_, row) in enumerate(group.iterrows()):
             rows.append(
                 [

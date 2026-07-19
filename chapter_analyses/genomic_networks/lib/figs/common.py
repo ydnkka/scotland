@@ -21,30 +21,35 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from utils import new_figure as styled_new_figure  # noqa: E402, F401
-from utils import load_policy_data  # noqa: E402
+from utils import load_daily_policy_data  # noqa: E402
 from utils import save_figure as _styled_save_figure  # noqa: E402
 from utils import add_panel_labels as styled_add_panel_labels  # noqa: E402
 
 DEFAULT_TABLE_DIR = PROJECT_ROOT / "chapter_analyses/genomic_networks/results/tables"
 FIGURE_DIR = PROJECT_ROOT / "chapter_analyses/genomic_networks/results/figures"
 
-_POLICY_DAILY = load_policy_data()
+_POLICY_DAILY = load_daily_policy_data()
 _POLICY_DESCRIPTORS = (
-    _POLICY_DAILY[
-        ["period_code", "period_label", "period_order"]
-    ]
+    _POLICY_DAILY[["period_code", "period_label", "period_order", "policy_era"]]
     .drop_duplicates()
     .sort_values("period_order")
 )
-POLICY_ORDER = _POLICY_DESCRIPTORS["period_code"].astype(str).tolist()
+
+POLICY_ORDER = {
+    "policy_era": _POLICY_DESCRIPTORS["policy_era"].astype(str).tolist(),
+    "period_code": _POLICY_DESCRIPTORS["period_code"].astype(str).tolist(),
+    "policy_period": _POLICY_DESCRIPTORS["period_code"].astype(str).tolist(),
+}
 POLICY_LABELS = dict(
     zip(
-        _POLICY_DESCRIPTORS["period_code"].astype(str),
-        _POLICY_DESCRIPTORS["period_label"].astype(str),
+        _POLICY_DESCRIPTORS["policy_era"].astype(str),
+        _POLICY_DESCRIPTORS["policy_era"]
+        .str.upper()
+        .str.replace("_", " ", regex=False),
     )
 )
 POLICY_STRINGENCY = (
-    _POLICY_DAILY.groupby("period_code", sort=False, observed=True)["stringency_index"]
+    _POLICY_DAILY.groupby("policy_era", sort=False, observed=True)["stringency_index"]
     .mean()
     .to_dict()
 )
@@ -126,28 +131,28 @@ def window_idx_from_id(values: pd.Series) -> pd.Series:
     return pd.to_numeric(extracted, errors="coerce")
 
 
-def ordered_policy_values(values: pd.Series) -> list[object]:
-    order = {policy: idx for idx, policy in enumerate(POLICY_ORDER)}
+def ordered_policy_values(values: pd.Series, column: str) -> list[object]:
+    order = {policy: idx for idx, policy in enumerate(POLICY_ORDER.get(column, []))}
     unique = [value for value in pd.unique(values.dropna())]
     return sorted(unique, key=lambda value: (order.get(str(value), 999), str(value)))
 
 
-def sort_by_policy(df: pd.DataFrame, column: str = "policy_period") -> pd.DataFrame:
-    order = {policy: idx for idx, policy in enumerate(POLICY_ORDER)}
+def sort_by_policy(df: pd.DataFrame, column: str) -> pd.DataFrame:
+    order = {policy: idx for idx, policy in enumerate(POLICY_ORDER.get(column, []))}
     out = df.copy()
     out["_policy_sort"] = out[column].astype(str).map(order).fillna(999)
     return out.sort_values(["_policy_sort", column]).drop(columns="_policy_sort")
 
 
 def add_policy_bands(ax: Axes, window_coverage: pd.DataFrame) -> None:
-    if "policy_period" not in window_coverage.columns:
+    if "policy_era" not in window_coverage.columns:
         return
-    work = window_coverage[["wn_mid_date", "policy_period"]].dropna().copy()
+    work = window_coverage[["wn_mid_date", "policy_era"]].dropna().copy()
     if work.empty:
         return
     work = work.sort_values("wn_mid_date")
     half_window = pd.Timedelta(days=7)
-    for period, group in work.groupby("policy_period", sort=False):
+    for period, group in work.groupby("policy_era", sort=False):
         start = group["wn_mid_date"].min() - half_window
         end = group["wn_mid_date"].max() + half_window
         ax.axvspan(

@@ -97,7 +97,7 @@ def main() -> int:
         ),
         "clade_window_counts": (build_clade_window_counts(df), ("parquet",)),
         "sequence_composition_by_policy": (
-            build_sequence_composition(df, group_cols=("policy_period",)),
+            build_sequence_composition(df),
             ("parquet", "csv"),
         ),
         "vaccination_context_by_policy": (

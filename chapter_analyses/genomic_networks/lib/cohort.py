@@ -19,7 +19,7 @@ from .config import (
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils import load_policy_data  # noqa: E402
+from utils import load_daily_policy_data  # noqa: E402
 
 
 VACCINATION_DOSE_GROUPS = (
@@ -36,7 +36,7 @@ def _attach_policy_calendar(df: pd.DataFrame, date_col: str) -> pd.DataFrame:
     if date_col not in df.columns:
         raise KeyError(f"{date_col!r} is required for the policy-calendar join")
 
-    lookup = load_policy_data(
+    lookup = load_daily_policy_data(
         ["period_code", "period_label", "policy_era", "period_order"]
     ).rename(
         columns={
@@ -58,10 +58,9 @@ def _attach_policy_calendar(df: pd.DataFrame, date_col: str) -> pd.DataFrame:
 
 def _policy_period_order() -> list[str]:
     """Return policy codes in the ordering stored in the policy calendar."""
-    policy = load_policy_data(["period_code", "period_order"])
+    policy = load_daily_policy_data(["period_code", "period_order", "policy_era"])
     return (
-        policy[["period_code", "period_order"]]
-        .drop_duplicates()
+        policy.drop_duplicates()
         .sort_values("period_order")["period_code"]
         .astype(str)
         .tolist()
@@ -200,7 +199,7 @@ def build_sequence_composition(
     df: pd.DataFrame,
     *,
     attributes: Iterable[AttributeSpec] = DEFAULT_MIXING_ATTRIBUTES,
-    group_cols: Sequence[str] | None = ("policy_period",),
+    group_cols: Sequence[str] | None = ("policy_period", "policy_era"),
     min_cell: int = DISCLOSURE_MIN_CELL,
 ) -> pd.DataFrame:
     """Build long sequence-composition tables for selected categorical variables."""
@@ -331,9 +330,7 @@ def _vaccination_summary_rows(
                 "n_unvaccinated": int(dose_counts.get("Unvaccinated", 0)),
                 "n_one_dose": int(dose_counts.get("One dose", 0)),
                 "n_two_doses": int(dose_counts.get("Two doses", 0)),
-                "n_booster_or_three_plus": int(
-                    dose_counts.get("Booster/3+ doses", 0)
-                ),
+                "n_booster_or_three_plus": int(dose_counts.get("Booster/3+ doses", 0)),
                 "n_vaccinated_dose_unknown": int(
                     dose_counts.get("Vaccinated dose unknown", 0)
                 ),
@@ -369,11 +366,13 @@ def _vaccination_summary_rows(
 def build_vaccination_context_by_policy(df: pd.DataFrame) -> pd.DataFrame:
     """Summarise sequence-level vaccination context by policy period."""
     seq = sequence_level_frame(df)
-    if "policy_period" not in seq.columns:
-        raise KeyError("'policy_period' is required in the persisted sequence metadata")
+    if "policy_period" not in seq.columns or "policy_era" not in seq.columns:
+        raise KeyError(
+            "'policy_period' and 'policy_era' are required in the persisted sequence metadata"
+        )
 
     work = _vaccination_context_frame(seq)
-    out = _vaccination_summary_rows(work, ("policy_period",))
+    out = _vaccination_summary_rows(work, ("policy_period", "policy_era"))
     policy_order = {period: idx for idx, period in enumerate(_policy_period_order())}
     out["_policy_sort"] = out["policy_period"].astype(str).map(policy_order).fillna(999)
     return out.sort_values(["_policy_sort", "policy_period"]).drop(
@@ -408,6 +407,7 @@ def build_vaccination_window_context(df: pd.DataFrame) -> pd.DataFrame:
         "wn_mid_date",
         "wn_end_date",
         "policy_period",
+        "policy_era",
     )
     out = _vaccination_summary_rows(work, group_cols)
     return out.sort_values("window_idx").reset_index(drop=True)
@@ -418,6 +418,7 @@ def build_denominator_contrasts(window_coverage: pd.DataFrame) -> pd.DataFrame:
     required = {
         "window_id",
         "policy_period",
+        "policy_era",
         "wn_no_sequences",
         "wn_positive_tests",
     }
@@ -426,7 +427,7 @@ def build_denominator_contrasts(window_coverage: pd.DataFrame) -> pd.DataFrame:
         raise KeyError(f"Missing denominator columns: {sorted(missing)}")
 
     out = (
-        window_coverage.groupby("policy_period", dropna=False)
+        window_coverage.groupby(["policy_period", "policy_era"], dropna=False)
         .agg(
             n_windows=("window_id", "nunique"),
             median_window_sequences=("wn_no_sequences", "median"),

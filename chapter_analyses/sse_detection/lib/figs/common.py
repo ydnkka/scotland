@@ -29,8 +29,9 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from utils import add_panel_labels as styled_add_panel_labels  # noqa: E402
 from utils import new_figure as styled_new_figure  # noqa: E402, F401
-from utils import load_policy_data  # noqa: E402
+from utils import load_daily_policy_data  # noqa: E402
 from utils import save_figure as _styled_save_figure  # noqa: E402
+from utils import CLADES as CLADES
 
 
 DEFAULT_TABLE_DIR = SSE_OUTPUT_DIR
@@ -44,16 +45,28 @@ HIGH_PRIORITY = frozenset(
     }
 )
 
-_POLICY_DAILY = load_policy_data()
-POLICY_ORDER = (
-    _POLICY_DAILY[["period_code", "period_order"]]
+_POLICY_DAILY = load_daily_policy_data()
+_POLICY_DESCRIPTORS = (
+    _POLICY_DAILY[["period_code", "period_label", "period_order", "policy_era"]]
     .drop_duplicates()
-    .sort_values("period_order")["period_code"]
-    .astype(str)
-    .tolist()
+    .sort_values("period_order")
+)
+
+POLICY_ORDER = {
+    "policy_era": _POLICY_DESCRIPTORS["policy_era"].astype(str).tolist(),
+    "period_code": _POLICY_DESCRIPTORS["period_code"].astype(str).tolist(),
+    "policy_period": _POLICY_DESCRIPTORS["period_code"].astype(str).tolist(),
+}
+POLICY_LABELS = dict(
+    zip(
+        _POLICY_DESCRIPTORS["policy_era"].astype(str),
+        _POLICY_DESCRIPTORS["policy_era"]
+        .str.upper()
+        .str.replace("_", " ", regex=False),
+    )
 )
 POLICY_STRINGENCY = (
-    _POLICY_DAILY.groupby("period_code", sort=False, observed=True)["stringency_index"]
+    _POLICY_DAILY.groupby("policy_era", sort=False, observed=True)["stringency_index"]
     .mean()
     .to_dict()
 )
@@ -129,17 +142,15 @@ def panel_label(ax: Axes, label: str) -> None:
         ha="left",
     )
 
-
-def add_policy_bands(ax: Axes, window_context: pd.DataFrame) -> None:
-    if "policy_period" not in window_context.columns:
+def add_policy_bands(ax: Axes, window_coverage: pd.DataFrame) -> None:
+    if "policy_era" not in window_coverage.columns:
         return
-    work = window_context[["wn_mid_date", "policy_period"]].dropna().copy()
+    work = window_coverage[["wn_mid_date", "policy_era"]].dropna().copy()
     if work.empty:
         return
-    work["wn_mid_date"] = pd.to_datetime(work["wn_mid_date"], errors="coerce")
-    work = work.dropna(subset=["wn_mid_date"]).sort_values("wn_mid_date")
+    work = work.sort_values("wn_mid_date")
     half_window = pd.Timedelta(days=7)
-    for period, group in work.groupby("policy_period", sort=False):
+    for period, group in work.groupby("policy_era", sort=False):
         start = group["wn_mid_date"].min() - half_window
         end = group["wn_mid_date"].max() + half_window
         ax.axvspan(
@@ -150,6 +161,12 @@ def add_policy_bands(ax: Axes, window_context: pd.DataFrame) -> None:
             lw=0,
             zorder=0,
         )
+
+def sort_by_policy(df: pd.DataFrame, column: str) -> pd.DataFrame:
+    order = {policy: idx for idx, policy in enumerate(POLICY_ORDER.get(column, []))}
+    out = df.copy()
+    out["_policy_sort"] = out[column].astype(str).map(order).fillna(999)
+    return out.sort_values(["_policy_sort", column]).drop(columns="_policy_sort")
 
 
 def date_axis(ax: Axes) -> None:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 import argparse
 import sys
-from typing import Callable
+from typing import Callable, Any
 
 import numpy as np
 import pandas as pd
@@ -39,7 +39,7 @@ TABLE_NAMES = {
 }
 
 
-def fmt_int(value: float | int | str | None) -> str:
+def fmt_int(value: Any) -> str:
     if value is None or (isinstance(value, float) and np.isnan(value)):
         return ""
     try:
@@ -51,25 +51,25 @@ def fmt_int(value: float | int | str | None) -> str:
     return f"{value_float:,.1f}"
 
 
-def fmt_percent(value: float | int | str | None) -> str:
+def fmt_percent(value: Any) -> str:
     if value is None or (isinstance(value, float) and np.isnan(value)):
         return ""
     return f"{100 * float(value):.1f}%"
 
 
-def fmt_percent_points(value: float | int | str | None) -> str:
+def fmt_percent_points(value: Any) -> str:
     if value is None or (isinstance(value, float) and np.isnan(value)):
         return ""
     return f"{float(value):.1f}%"
 
 
-def fmt_float(value: float | int | str | None, digits: int = 2) -> str:
+def fmt_float(value: Any, digits: int = 2) -> str:
     if value is None or (isinstance(value, float) and np.isnan(value)):
         return ""
     return f"{float(value):.{digits}f}"
 
 
-def fmt_ci(low: float | int | None, high: float | int | None, digits: int = 2) -> str:
+def fmt_ci(low: Any, high: Any, digits: int = 2) -> str:
     if (
         low is None
         or high is None
@@ -81,9 +81,9 @@ def fmt_ci(low: float | int | None, high: float | int | None, digits: int = 2) -
 
 
 def fmt_iqr(
-    median: float | int | None,
-    q25: float | int | None,
-    q75: float | int | None,
+    median: Any,
+    q25: Any,
+    q75: Any,
     digits: int = 0,
 ) -> str:
     if median is None or (isinstance(median, float) and np.isnan(median)):
@@ -181,7 +181,7 @@ def write_latex_table(
     caption: str,
     label: str,
     columns: list[str],
-    rows: list[list[object]],
+    rows: list[list[Any]],
     column_spec: str | None = None,
     small: bool = True,
     addlinespace_after: set[int] | None = None,
@@ -222,7 +222,6 @@ def simd_appendix_table_tex(
         + "--"
         + display["last_simd_rank"].map(fmt_int)
     )
-
     rows = []
     addlinespace_after: set[int] = set()
     method_groups = list(display.groupby("_method_sort", sort=False))
@@ -232,7 +231,7 @@ def simd_appendix_table_tex(
             rows.append(
                 [
                     str(row.grouping_method_label) if row_idx == 0 else "",
-                    str(int(row.simd_group)),
+                    row.simd_group,
                     fmt_int(row.n_datazones),
                     fmt_int(row.total_population),
                     fmt_percent_points(row.pct_population),
@@ -382,7 +381,9 @@ def compatibility_attribute_summary(paths: Paths) -> pd.DataFrame:
             group["edge_weight_total"],
             group["assortativity_se"],
         )
-        window_group = window_summary.loc[window_summary["attribute"].eq(attribute)]
+        window_group = window_summary.loc[
+            window_summary["attribute"].eq(str(attribute))
+        ]
         rows.append(
             {
                 "attribute": attribute,
@@ -447,12 +448,13 @@ def write_policy_denominator_table(paths: Paths) -> None:
     denominators = denominators.loc[
         has_sequences | denominators["policy_period"].astype(str).eq("P2")
     ]
-    denominators = sort_by_policy(denominators)
+    denominators = sort_by_policy(denominators, column="policy_period")
     rows = []
     for row in denominators.itertuples(index=False):
         rows.append(
             [
                 row.policy_period,
+                str(row.policy_era).upper().replace("_", " "),
                 fmt_int(row.n_windows),
                 fmt_int(row.median_window_sequences),
                 fmt_int(row.median_window_positive_tests),
@@ -467,7 +469,8 @@ def write_policy_denominator_table(paths: Paths) -> None:
         caption="Rolling-window observation denominators by policy period",
         label=TABLE_NAMES["policy_denominators"],
         columns=[
-            "Period",
+            "Policy period",
+            "Epidemic era",
             "Windows",
             "Median sequences",
             "Median positives",
@@ -481,12 +484,13 @@ def write_policy_denominator_table(paths: Paths) -> None:
 
 def write_vaccination_context_table(paths: Paths) -> None:
     vaccination = read_table(paths, "vaccination_context_by_policy")
-    vaccination = sort_by_policy(vaccination)
+    vaccination = sort_by_policy(vaccination, column="policy_period")
     rows = []
     for row in vaccination.itertuples(index=False):
         rows.append(
             [
                 row.policy_period,
+                str(row.policy_era).upper().replace("_", " "),
                 fmt_int(row.n_sequences),
                 fmt_percent(row.prop_vaccinated),
                 fmt_percent(row.prop_booster),
@@ -505,7 +509,8 @@ def write_vaccination_context_table(paths: Paths) -> None:
         caption="Vaccination context of sequenced records by policy period",
         label=TABLE_NAMES["vaccination_context"],
         columns=[
-            "Period",
+            "Policy period",
+            "Epidemic era",
             "Sequences",
             "Vaccinated",
             "Booster recorded",
@@ -519,12 +524,13 @@ def write_vaccination_context_table(paths: Paths) -> None:
 
 def write_cluster_period_table(paths: Paths) -> None:
     clusters = read_table(paths, "cluster_period_summary")
-    clusters = sort_by_policy(clusters)
+    clusters = sort_by_policy(clusters, column="policy_period")
     rows = []
     for row in clusters.itertuples(index=False):
         rows.append(
             [
                 row.policy_period,
+                str(row.policy_era).upper().replace("_", " "),
                 fmt_int(row.n_clusters),
                 fmt_int(row.n_singleton_clusters),
                 fmt_int(row.n_non_singleton_clusters),
@@ -544,7 +550,8 @@ def write_cluster_period_table(paths: Paths) -> None:
         ),
         label=TABLE_NAMES["cluster_period_summary"],
         columns=[
-            "Period",
+            "Policy period",
+            "Epidemic era",
             "All clusters",
             "Singletons",
             "Non-singletons",
@@ -571,9 +578,7 @@ def write_assortativity_summary_table(paths: Paths) -> None:
             [
                 attribute,
                 fmt_int(row["n_windows"]),
-                fmt_int(row["n_networks"])
-                if not pd.isna(row["n_networks"])
-                else "",
+                fmt_int(row["n_networks"]) if not pd.isna(row["n_networks"]) else "",
                 fmt_float(row["weighted_mean"], 4),
                 fmt_ci(row["ci_low"], row["ci_high"], 4),
                 f"{fmt_float(row['window_median'], 3)} "

@@ -36,6 +36,7 @@ def build_score_landscape(nodes: pd.DataFrame) -> pd.DataFrame:
         "window_id",
         "window_idx",
         "wn_mid_date",
+        "policy_era",
         "policy_period",
         "who_voc",
         "clade",

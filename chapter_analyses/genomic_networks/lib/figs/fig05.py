@@ -173,7 +173,7 @@ def _plot_window_distance(
     panel: str,
 ) -> None:
     work = window_summary.merge(
-        window_coverage[["window_idx", "wn_mid_date", "policy_period"]],
+        window_coverage[["window_idx", "wn_mid_date", "policy_era", "policy_period"]],
         on="window_idx",
         how="left",
     ).sort_values("wn_mid_date")

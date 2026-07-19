@@ -22,7 +22,7 @@ __all__ = [
     "CLADES",
     "CLADE_PALETTE",
     "load_analysis_columns",
-    "load_policy_data",
+    "load_daily_policy_data",
     "load_pairwise_edges",
     "load_datazone_info",
     "pango_lineages_for_clades",
@@ -147,7 +147,7 @@ class Paths:
         )
 
 
-def load_policy_data(
+def load_daily_policy_data(
     columns: Iterable[str] | None = None,
     *,
     start_date: str | pd.Timestamp | None = None,

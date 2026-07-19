@@ -89,6 +89,7 @@ def build_exemplars(
                 "candidate_tier",
                 "burst_score_null_z",
                 "burden_score_null_z",
+                "policy_era",
                 "policy_period",
                 "who_voc",
             ],

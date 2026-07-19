@@ -184,7 +184,7 @@ def build_cluster_window_summary(cluster_table: pd.DataFrame) -> pd.DataFrame:
 
 def build_cluster_period_summary(cluster_table: pd.DataFrame) -> pd.DataFrame:
     """Summarise cluster distributions by policy period where available."""
-    if "policy_period" not in cluster_table.columns:
+    if "policy_period" not in cluster_table.columns and "policy_era" not in cluster_table.columns:
         return pd.DataFrame()
 
     work = cluster_table.copy()
@@ -202,7 +202,7 @@ def build_cluster_period_summary(cluster_table: pd.DataFrame) -> pd.DataFrame:
     ).where(work["_is_non_singleton"])
 
     out = (
-        work.groupby("policy_period", dropna=False)
+        work.groupby(["policy_period", "policy_era"], dropna=False)
         .agg(
             n_clusters=("cluster_id", "nunique"),
             n_singleton_clusters=("_is_singleton", "sum"),
@@ -242,7 +242,7 @@ def build_cluster_attribute_composition(
 ) -> pd.DataFrame:
     """Count modal cluster attributes for appendix mixing tables."""
     rows: list[pd.DataFrame] = []
-    group_cols = [col for col in ("policy_period",) if col in cluster_table.columns]
+    group_cols = [col for col in ("policy_period", "policy_era") if col in cluster_table.columns]
 
     for spec in attributes:
         modal_col = f"modal_{spec.name}"

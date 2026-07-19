@@ -154,7 +154,7 @@ def _plot_days_since_vaccination(ax: Axes, window: pd.DataFrame) -> None:
 
 
 def _plot_policy_composition(ax: Axes, policy: pd.DataFrame) -> None:
-    policy = sort_by_policy(policy)
+    policy = sort_by_policy(policy, column="policy_period")
     labels = policy["policy_period"].astype(str).tolist()
     x = np.arange(len(policy))
     left = np.zeros(len(policy), dtype=float)

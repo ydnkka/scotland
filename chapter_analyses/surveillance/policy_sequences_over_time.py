@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import logging
 import matplotlib.dates as mdates
 import matplotlib.patheffects as pe
@@ -34,7 +33,7 @@ from utils import (  # noqa: E402
     CLADE_PALETTE,
     set_theme,
     load_analysis_columns,
-    load_policy_data,
+    load_daily_policy_data,
     add_panel_labels,
     new_figure,
     save_figure,
@@ -48,7 +47,7 @@ POLICY_STRINGENCY_NORM = colors.Normalize(
 LOGGER = logging.getLogger(__name__)
 
 
-POLICY_DAILY = load_policy_data()
+POLICY_DAILY = load_daily_policy_data()
 POLICY_PERIODS = (
     POLICY_DAILY[
         [
@@ -84,6 +83,18 @@ POLICY_PERIODS = (
         }
     )
     .sort_values("period_order", ignore_index=True)
+)
+
+# Coarse epidemic eras derived from the individual policy periods.
+POLICY_ERAS = (
+    POLICY_PERIODS.groupby("policy_era", sort=False)
+    .agg(
+        start_date=("start_date", "min"),
+        end_date=("end_date", "max"),
+        era_order=("period_order", "min"),
+    )
+    .reset_index()
+    .sort_values("era_order", ignore_index=True)
 )
 
 
@@ -145,6 +156,45 @@ def attach_policy_timeline(df_full: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def compute_sequencing_proportion(
+    df: pd.DataFrame,
+    *,
+    date_col: str = "collection_date",
+    prop_sequenced_col: str = "wn_prop_sequenced",
+    time_freq: str = "W",
+    smooth_window: int | None = 3,
+) -> pd.DataFrame:
+    """Return the proportion of positive cases (PCR + LF) sequenced over time."""
+    dd = df.dropna(subset=[date_col]).copy()
+
+    if prop_sequenced_col not in dd.columns:
+        raise ValueError(f"Missing required column: {prop_sequenced_col}")
+
+    if time_freq == "MS":
+        dd["time_period"] = dd[date_col].dt.to_period("M").dt.start_time
+    else:
+        dd["time_period"] = dd[date_col].dt.to_period(time_freq).dt.start_time
+
+    sampling_df = (
+        dd.groupby("time_period")[prop_sequenced_col]
+        .mean()
+        .reset_index(name="prop_cases_sequenced")
+        .sort_values("time_period")
+        .set_index("time_period")
+    )
+
+    if smooth_window is not None:
+        sampling_df["plot_prop_cases_sequenced"] = (
+            sampling_df["prop_cases_sequenced"]
+            .rolling(window=smooth_window, min_periods=1)
+            .mean()
+        )
+    else:
+        sampling_df["plot_prop_cases_sequenced"] = sampling_df["prop_cases_sequenced"]
+
+    return sampling_df
+
+
 def configure_date_axis(ax: Axes, dates: pd.Series):
     """Use quarterly date ticks with month above year."""
     dates = dates.dropna()
@@ -172,55 +222,123 @@ def configure_date_axis(ax: Axes, dates: pd.Series):
         ax.xaxis.set_minor_locator(mdates.MonthLocator(interval=3))
 
 
-def policy_stringency_color(stringency) -> tuple[float, float, float, float]:
-    """Map policy stringency to the shared policy strip colour scale."""
-    return POLICY_STRINGENCY_CMAP(POLICY_STRINGENCY_NORM(float(stringency)))
-
-
-def add_policy_background(
+def add_epidemic_eras(
     ax: Axes,
     dates: pd.Series,
+    *,
+    label: bool = True,
+    label_y: float = 0.4,
+    zorder: int = 1,
 ) -> None:
-    """Shade policy periods behind plotted data."""
+    """Mark coarse epidemic-era boundaries with vertical lines (and labels)."""
     dates = dates.dropna()
     if dates.empty:
         return
 
     plot_start = dates.min().normalize()
     plot_end = dates.max().normalize()
-    policy_periods = POLICY_PERIODS.sort_values("start_date")
 
-    for _, row in enumerate(policy_periods.itertuples(index=False)):
+    eras = POLICY_ERAS.sort_values("start_date")
+    blended = ax.get_xaxis_transform()
+
+    for _, row in eras.iterrows():
         start = max(row.start_date, plot_start)
         end = min(row.end_date, plot_end)
         if start > end:
             continue
 
-        shade_color = policy_stringency_color(row.policy_stringency)
-        shade_alpha = 0.25
+        ax.axvline(
+            row.start_date,
+            color="#4d4d4d",
+            lw=0.8,
+            ls="--",
+            alpha=0.55,
+            zorder=zorder,
+        )
 
-        if shade_alpha > 0:
-            ax.axvspan(
-                start,
-                end + pd.Timedelta(days=1),
-                color=shade_color,
-                alpha=shade_alpha,
-                lw=0,
-                zorder=-20,
+        if label:
+            era_name = str(row.policy_era).replace("_", " ").upper()
+            ax.text(
+                start + (pd.Timedelta(weeks=1)),
+                label_y,
+                era_name,
+                transform=blended,
+                ha="left",
+                va="top",
+                rotation=90,
+                rotation_mode="anchor",
+                fontsize=6,
+                fontweight="bold",
+                color="#2304EF",
+                clip_on=True,
+                zorder=7,
+                path_effects=[pe.withStroke(linewidth=1.6, foreground="white")],
             )
-
-        ax.axvline(start, color="#b3b3b3", lw=0.45, alpha=0.3, zorder=-10)
 
 
 def add_policy_strip(ax: Axes, dates: pd.Series):
-    """Draw a horizontal policy-period strip with stringency-coloured segments."""
+    """Draw a continuous daily-stringency strip with period-boundary lines."""
     dates = dates.dropna()
     if dates.empty:
         return
 
     plot_start = dates.min().normalize()
     plot_end = dates.max().normalize()
-    policy_periods = POLICY_PERIODS.sort_values("start_date")
+
+    daily = (
+        POLICY_DAILY[["date", "stringency_index"]]
+        .dropna(subset=["date"])
+        .sort_values("date")
+    )
+    daily = daily[(daily["date"] >= plot_start) & (daily["date"] <= plot_end)]
+
+    if not daily.empty:
+        values = daily["stringency_index"].to_numpy(dtype=float).reshape(1, -1)
+        x0 = float(mdates.date2num(daily["date"].min()))
+        x1 = float(mdates.date2num(daily["date"].max() + pd.Timedelta(days=1)))
+        ax.imshow(
+            values,
+            aspect="auto",
+            cmap=POLICY_STRINGENCY_CMAP,
+            norm=POLICY_STRINGENCY_NORM,
+            extent=(x0, x1, 0.0, 1.0),
+            origin="lower",
+            interpolation="nearest",
+            zorder=0,
+        )
+
+    # Vertical lines marking individual policy-period boundaries, plus code labels.
+    for _, row in POLICY_PERIODS.sort_values("start_date").iterrows():
+        start = max(row.start_date, plot_start)
+        end = min(row.end_date, plot_end)
+        if start > end:
+            continue
+
+        # Boundary line at the period start.
+        if plot_start <= row.start_date <= plot_end:
+            ax.axvline(
+                row.start_date,
+                color="black",
+                lw=0.5,
+                alpha=0.8,
+                zorder=2,
+            )
+
+        width_days = (end - start).days + 1
+        if width_days >= 18:
+            midpoint = start + (end - start) / 2
+            ax.text(
+                midpoint,
+                0.5,
+                str(row.period_code),
+                ha="center",
+                va="center",
+                color="black",
+                fontsize=6,
+                fontweight="bold",
+                clip_on=True,
+                zorder=3,
+            )
 
     ax.set_ylim(0, 1)
     ax.set_yticks([])
@@ -228,39 +346,9 @@ def add_policy_strip(ax: Axes, dates: pd.Series):
     for spine in ax.spines.values():
         spine.set_visible(False)
 
-    for _, row in policy_periods.iterrows():
-        start = max(row.start_date, plot_start)
-        end = min(row.end_date, plot_end)
-        if start > end:
-            continue
-
-        width_days = (end - start).days + 1
-        ax.broken_barh(
-            [(float(mdates.date2num(start)), float(width_days))],
-            (0.08, 0.84),
-            facecolors=[policy_stringency_color(row["policy_stringency"])],
-            edgecolors="white",
-            linewidth=0.45,
-        )
-
-        if width_days >= 18:
-            midpoint = start + (end - start) / 2
-            ax.text(
-                midpoint,
-                0.5,
-                str(row["period_code"]),
-                ha="center",
-                va="center",
-                color="white",
-                fontsize=5.5,
-                fontweight="bold",
-                clip_on=True,
-                path_effects=[pe.withStroke(linewidth=0.9, foreground="#333333")],
-            )
-
     ax.set_xlim(
-        (plot_start - pd.Timedelta(days=7)).to_pydatetime(),
-        (plot_end + pd.Timedelta(days=7)).to_pydatetime(),
+        float(mdates.date2num(plot_start - pd.Timedelta(days=7))),
+        float(mdates.date2num(plot_end + pd.Timedelta(days=7))),
     )
     ax.tick_params(axis="x", which="both", bottom=False, labelbottom=False)
 
@@ -268,19 +356,17 @@ def add_policy_strip(ax: Axes, dates: pd.Series):
 def add_policy_stringency_colorbar(
     fig: Figure,
     ax_policy: Axes,
-    ax_top: Axes,
 ) -> Axes:
-    """Add a slim stringency colour bar spanning the policy strip and panel A."""
+    """Add a slim horizontal stringency colour bar centred above the policy strip."""
     policy_box = ax_policy.get_position()
-    top_box = ax_top.get_position()
-    full_height = policy_box.y1 - top_box.y0
-    bar_height = full_height * 0.95
-    bar_bottom = top_box.y0 + (full_height - bar_height) / 2
+
+    bar_width = policy_box.width * 0.28
+    bar_height = 0.010
     cax = fig.add_axes(
         (
-            policy_box.x1 + 0.006,
-            bar_bottom,
-            0.010,
+            policy_box.x0 + (policy_box.width - bar_width) / 2,
+            policy_box.y1 + 0.006,
+            bar_width,
             bar_height,
         )
     )
@@ -290,10 +376,12 @@ def add_policy_stringency_colorbar(
         cmap=POLICY_STRINGENCY_CMAP,
     )
     scalar.set_array([])
-    cbar = fig.colorbar(scalar, cax=cax, orientation="vertical")
-    cbar.set_label("Restriction stringency", fontsize=7, labelpad=5)
+    cbar = fig.colorbar(scalar, cax=cax, orientation="horizontal")
+    cbar.set_label("Restriction stringency", fontsize=6.5, labelpad=3)
     cbar.set_ticks([10, 30, 55, 75, 95])
-    cbar.ax.tick_params(labelsize=6.5, length=2.2, width=0.6, pad=1.5)
+    cbar.ax.tick_params(labelsize=6.0, length=2.0, width=0.6, pad=1.5)
+    cbar.ax.xaxis.set_ticks_position("top")
+    cbar.ax.xaxis.set_label_position("top")
     outline = getattr(cbar, "outline", None)
     if outline is not None:
         try:
@@ -302,7 +390,6 @@ def add_policy_stringency_colorbar(
             try:
                 outline.set_lw(0.4)
             except Exception:
-                # best-effort: ignore if neither method exists
                 pass
     return cax
 
@@ -329,18 +416,20 @@ def place_policy_strip_flush(
 
 def plot_sequences_with_policy(
     timeline: pd.DataFrame,
+    sampling_df: pd.DataFrame,
     *,
     ax: Axes,
     show_xlabel: bool = True,
-):
-    """Plot daily sequences with subtle policy-period shading."""
+) -> Axes:
+    """Plot daily sequences (main axis) and proportion sequenced (twin axis)."""
 
     dates = timeline["collection_date"]
     counts = timeline["count"]
     smoothed = timeline["smoothed_count"]
-    add_policy_background(ax, dates)
 
-    ax.bar(
+    add_epidemic_eras(ax, dates, label=True)
+
+    bar_handle = ax.bar(
         dates,
         counts,
         width=1.0,
@@ -350,7 +439,7 @@ def plot_sequences_with_policy(
         label="Daily sequences",
         zorder=5,
     )
-    ax.plot(
+    (mean_handle,) = ax.plot(
         dates,
         smoothed,
         color="#0b1f3b",
@@ -366,8 +455,34 @@ def plot_sequences_with_policy(
     ax.grid(axis="y", color="#d9d9d9", linewidth=0.6, alpha=0.5)
     ax.margins(x=0.01)
 
+    # Twin axis: proportion of positive cases (PCR + LF) sequenced.
+    ax2 = ax.twinx()
+    (prop_handle,) = ax2.plot(
+        sampling_df.index,
+        sampling_df["plot_prop_cases_sequenced"].to_numpy(),
+        linestyle=":",
+        linewidth=1.6,
+        alpha=0.9,
+        color="#c1272d",
+        label="Proportion sequenced",
+        zorder=7,
+    )
+    ax2.set_ylabel("Positive tests sequenced (PCR + LF)")
+    ax2.set_ylim(0, 1)
+    ax2.yaxis.set_major_formatter(PercentFormatter(xmax=1, decimals=0))
+    ax2.tick_params(axis="y", colors="#c1272d")
+    ax2.grid(False)
+
     configure_date_axis(ax, dates)
-    ax.legend(loc="upper left", ncol=2, frameon=False)
+
+    ax.legend(
+        [bar_handle, mean_handle, prop_handle],
+        ["Daily sequences", "7-day rolling mean", "Proportion sequenced"],
+        loc="upper right",
+        ncol=1,
+        frameon=False,
+    )
+    return ax2
 
 
 def plot_lineage_frequency_and_overtakes(
@@ -376,7 +491,6 @@ def plot_lineage_frequency_and_overtakes(
     date_col: str = "collection_date",
     clade_col: str = "variant",
     sequence_col: str = "sequence_id",
-    prop_sequenced_col: str = "wn_prop_sequenced",
     time_freq: str = "W",
     smooth_window: int | None = 3,
     min_sequences_per_period: int = 1,
@@ -388,12 +502,10 @@ def plot_lineage_frequency_and_overtakes(
     pd.DataFrame,
     pd.DataFrame,
     pd.DataFrame,
-    pd.DataFrame,
-    Axes,
     list,
     list,
 ]:
-    """Plot selected lineage-group frequency and sequencing coverage over time.
+    """Plot selected lineage-group frequency over time.
 
     Returns
     -------
@@ -407,23 +519,17 @@ def plot_lineage_frequency_and_overtakes(
         Dominant clade group per period.
     overtakes
         Periods where the dominant clade group changed.
-    sampling_df
-        Proportion of cases sequenced per period.
-    ax2
-        Twin y-axis for proportion of cases sequenced.
     """
     dd = df.copy()
 
-    required_cols = {date_col, clade_col, sequence_col, prop_sequenced_col}
+    required_cols = {date_col, clade_col, sequence_col}
     missing_cols = required_cols - set(dd.columns)
     if missing_cols:
         raise ValueError(f"Missing required columns: {missing_cols}")
 
     dd = dd.dropna(subset=[date_col, clade_col])
 
-    if time_freq == "W":
-        dd["time_period"] = dd[date_col].dt.to_period("W").dt.start_time
-    elif time_freq == "MS":
+    if time_freq == "MS":
         dd["time_period"] = dd[date_col].dt.to_period("M").dt.start_time
     else:
         dd["time_period"] = dd[date_col].dt.to_period(time_freq).dt.start_time
@@ -461,30 +567,10 @@ def plot_lineage_frequency_and_overtakes(
     )
     clade_counts.insert(0, "total_sequences", clade_counts.sum(axis=1))
 
-    sampling_df = (
-        dd.groupby("time_period")[prop_sequenced_col]
-        .mean()
-        .reset_index(name="prop_cases_sequenced")
-        .sort_values("time_period")
-        .set_index("time_period")
-    )
-
-    # Keep sampling data aligned to periods that pass the sequence-count threshold.
-    sampling_df = sampling_df.reindex(clade_freq.index)
-
     if smooth_window is not None:
         plot_freq = clade_freq.rolling(window=smooth_window, min_periods=1).mean()
-        plot_sampling = (
-            sampling_df["prop_cases_sequenced"]
-            .rolling(window=smooth_window, min_periods=1)
-            .mean()
-        )
     else:
         plot_freq = clade_freq.copy()
-        plot_sampling = sampling_df["prop_cases_sequenced"].copy()
-
-    sampling_df = sampling_df.copy()
-    sampling_df["plot_prop_cases_sequenced"] = plot_sampling
 
     dominance_df = pd.DataFrame(
         {
@@ -504,7 +590,10 @@ def plot_lineage_frequency_and_overtakes(
     )
 
     ax.set_facecolor("white")
-    stack_colors = [CLADE_PALETTE.get(clade, "#999999") for clade in clade_order]
+    stack_colors = [
+        "white" if clade == "Other" else CLADE_PALETTE.get(clade, "#999999")
+        for clade in clade_order
+    ]
     stack_handles = ax.stackplot(
         plot_freq.index,
         *[plot_freq[clade].to_numpy() for clade in clade_order],
@@ -516,21 +605,8 @@ def plot_lineage_frequency_and_overtakes(
         zorder=2,
     )
 
-    ax2 = ax.twinx()
-    coverage_line = ax2.plot(
-        plot_sampling.index,
-        plot_sampling.to_numpy(),
-        linestyle=":",
-        linewidth=1.6,
-        alpha=0.85,
-        color="#303030",
-        label="Sequenced cases",
-    )[0]
-    ax2.set_ylabel("Proportion of cases sequenced")
-    ax2.set_ylim(0, 1)
-    ax2.yaxis.set_major_formatter(PercentFormatter(xmax=1, decimals=0))
-    ax2.tick_params(axis="y", colors="#4d4d4d")
-    ax2.grid(False)
+    # Epidemic-era boundaries (labels live on panel A).
+    add_epidemic_eras(ax, dd[date_col], label=False, zorder=5)
 
     ax.set_xlabel("Collection date", labelpad=3)
     ax.set_ylabel("Clade frequency")
@@ -541,17 +617,19 @@ def plot_lineage_frequency_and_overtakes(
 
     configure_date_axis(ax, dd[date_col])
 
-    legend_handles = [*stack_handles, coverage_line]
-    legend_labels = [*clade_order, "Sequenced cases"]
+    legend_handles = [
+        handle for handle, clade in zip(stack_handles, clade_order) if clade != "Other"
+    ]
+    legend_labels = [clade for clade in clade_order if clade != "Other"]
     if legend_ax is not None:
         legend_ax.axis("off")
         legend_ax.legend(
             legend_handles,
             legend_labels,
-            ncol=5,
+            ncol=4,
             loc="center",
             frameon=False,
-            columnspacing=1.1,
+            columnspacing=1.3,
             handlelength=1.5,
             borderaxespad=0.0,
         )
@@ -562,71 +640,52 @@ def plot_lineage_frequency_and_overtakes(
         clade_counts,
         dominance_df,
         overtakes,
-        sampling_df,
-        ax2,
         legend_handles,
         legend_labels,
     )
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--smooth-window",
-        type=int,
-        default=DAILY_SMOOTH_WINDOW,
-        help="Centered daily sequence-count smoothing window.",
-    )
-    parser.add_argument(
-        "--window-stride",
-        type=int,
-        default=SEQUENCE_WINDOW_STRIDE,
-        help="Processed analysis-window stride used while loading sequences.",
-    )
-    parser.add_argument("--figure-dir", type=Path, default=FIGURES_DIR)
-    parser.add_argument("--table-dir", type=Path, default=TABLES_DIR)
-    parser.add_argument(
-        "--log-level",
-        default="INFO",
-        choices=("DEBUG", "INFO", "WARNING", "ERROR"),
-    )
-    return parser.parse_args()
-
-
 def main() -> int:
     """Load processed metadata and write policy/clade surveillance outputs."""
-    args = parse_args()
-    logging.basicConfig(level=args.log_level, format="%(levelname)s: %(message)s")
+    # ---- Configuration (previously command-line arguments) ------------------
+    smooth_window = DAILY_SMOOTH_WINDOW
+    window_stride = SEQUENCE_WINDOW_STRIDE
+    figure_dir = FIGURES_DIR
+    table_dir = TABLES_DIR
+    log_level = "INFO"
+    # -------------------------------------------------------------------------
+
+    logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
     logging.getLogger("fontTools").setLevel(logging.WARNING)
-    if args.smooth_window < 1:
-        raise SystemExit("--smooth-window must be at least 1.")
-    if args.window_stride < 1:
-        raise SystemExit("--window-stride must be at least 1.")
+    if smooth_window < 1:
+        raise SystemExit("smooth_window must be at least 1.")
+    if window_stride < 1:
+        raise SystemExit("window_stride must be at least 1.")
 
     set_theme(context="paper")
-    out_dir = args.figure_dir
-    table_dir = args.table_dir
+    out_dir = figure_dir
     out_dir.mkdir(parents=True, exist_ok=True)
     table_dir.mkdir(parents=True, exist_ok=True)
 
     LOGGER.info("Loading surveillance sequence data")
     sequences = load_analysis_columns(
         ["sequence_id", "collection_date", "clade", "wn_prop_sequenced"],
-        window_stride=args.window_stride,
-        qc=None,
+        window_stride=window_stride,
     )
     sequences["variant"] = sequences["clade"].map(CLADES).fillna("Other")
 
     timeline = attach_policy_timeline(
-        build_daily_sequence_counts(sequences, smooth_window=args.smooth_window)
+        build_daily_sequence_counts(sequences, smooth_window=smooth_window)
     )
+
+    sampling_df = compute_sequencing_proportion(sequences)
 
     fig, axes = new_figure(
         width="double",
-        height_in=6,
+        height_in=7,
         nrows=3,
         ncols=1,
-        gridspec_kw={"height_ratios": [0.16, 2.5, 2.5], "hspace": 0.20},
+        gridspec_kw={"height_ratios": [0.15, 2.5, 2.5], "hspace": 0.25},
     )
 
     axes = axes.ravel()
@@ -636,10 +695,8 @@ def main() -> int:
     ax_bottom = axes[2]
 
     add_policy_strip(ax_policy, timeline["collection_date"])
-    plot_sequences_with_policy(timeline, ax=ax_top, show_xlabel=False)
+    plot_sequences_with_policy(timeline, sampling_df, ax=ax_top, show_xlabel=False)
     ax_top.tick_params(axis="x", labelbottom=False)
-    place_policy_strip_flush(ax_policy, ax_top)
-    add_policy_stringency_colorbar(fig, ax_policy, ax_top)
 
     (
         clade_freq,
@@ -647,8 +704,6 @@ def main() -> int:
         clade_counts,
         dominance_df,
         overtakes,
-        sampling_df,
-        _,
         legend_handles,
         legend_labels,
     ) = plot_lineage_frequency_and_overtakes(
@@ -657,15 +712,18 @@ def main() -> int:
         clade_col="variant",
     )
 
+    place_policy_strip_flush(ax_policy, ax_top)
+    add_policy_stringency_colorbar(fig, ax_policy)
+
     fig.legend(
         legend_handles,
         legend_labels,
-        ncol=5,
+        ncol=4,
         loc="lower center",
-        bbox_to_anchor=(0.5, -0.075),
+        bbox_to_anchor=(0.5, -0.05),
         bbox_transform=fig.transFigure,
         frameon=False,
-        columnspacing=1.1,
+        columnspacing=2,
         handlelength=1.5,
         borderaxespad=0.0,
     )
@@ -683,7 +741,7 @@ def main() -> int:
         write_table(table, name, table_dir=table_dir)
 
     fig.align_ylabels([ax_top, ax_bottom])
-    add_panel_labels([ax_top, ax_bottom], x=-0.05, y=1.1)
+    add_panel_labels([ax_top, ax_bottom], x=-0.1, y=1.1)
 
     _ = save_figure(
         fig,

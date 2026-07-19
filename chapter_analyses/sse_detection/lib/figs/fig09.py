@@ -15,26 +15,35 @@ from .common import (
     styled_new_figure,
     styled_save_figure,
     wilson,
+    CLADES,
+    sort_by_policy,
+    POLICY_LABELS,
 )
 from ..sse.io import write_table
 
 FILE_NAME = "ch5_candidate_context_rates"
 
+EPOCHS = [
+    ("Epidemic era", "policy_era"),
+    ("Policy period", "policy_period"),
+    ("Clade", "clade"),
+]
+
+FACTOR = 100
+
 
 def build_group_rates(nodes: pd.DataFrame) -> pd.DataFrame:
     tested = nodes.loc[nodes["sse_tested"].fillna(False)].copy()
+    tested["clade"] = tested["clade"].map(CLADES).fillna("Other")
     tested["candidate"] = tested["candidate_tier"].isin(HIGH_PRIORITY)
     rows = []
-    for dimension, column in (
-        ("Policy period", "policy_period"),
-        ("Variant", "who_voc"),
-    ):
+    for dimension, column in EPOCHS:
         for value, group in tested.groupby(column, dropna=False, observed=True):
             n, k = len(group), int(group["candidate"].sum())
             rows.append(
                 {
                     "dimension": dimension,
-                    "group": str(value),
+                    column: str(value),
                     "eligible_n": n,
                     "candidate_n": k,
                 }
@@ -50,32 +59,44 @@ def build(paths: Paths) -> dict[str, object]:
     table = build_group_rates(nodes)
     write_table(table, paths.result_table_dir, f"tab_{FILE_NAME}")
     fig, axes = styled_new_figure(
-        width="double", height_in=6.2, nrows=2, ncols=1, constrained_layout=True
+        width="double",
+        height_in=6.2,
+        nrows=1,
+        ncols=3,
+        constrained_layout=True,
     )
-    for ax, dimension, label in zip(axes, ("Policy period", "Variant"), "AB"):
+    for ax, (dimension, column), label in zip(axes, EPOCHS, "ABC"):
         data = table.loc[table["dimension"].eq(dimension)].copy()
-        if dimension == "Policy period":
-            rank = {value: idx for idx, value in enumerate(POLICY_ORDER)}
-            data = data.sort_values("group", key=lambda s: s.map(rank).fillna(999))
+        if column in POLICY_ORDER:
+            data = sort_by_policy(data, column)
         else:
-            data = data.sort_values("eligible_n", ascending=False)
-        x = np.arange(len(data))
-        rate = 100 * data["candidate_rate"]
+            data = data.sort_values(column, ignore_index=True)
+        if column == "policy_era":
+            data[column] = data[column].map(POLICY_LABELS)
+        rate = (FACTOR * data["candidate_rate"]).to_numpy(dtype=float)
+        y = np.arange(len(data))
+        # Clip tiny negative values introduced by floating-point roundoff.
+        xerr = np.vstack(
+            (
+                np.maximum(rate - FACTOR * data["ci95_low"].to_numpy(dtype=float), 0.0),
+                np.maximum(
+                    FACTOR * data["ci95_high"].to_numpy(dtype=float) - rate, 0.0
+                ),
+            )
+        )
         ax.errorbar(
-            x,
             rate,
-            yerr=[rate - 100 * data["ci95_low"], 100 * data["ci95_high"] - rate],
+            y,
+            xerr=xerr,
             fmt="o",
             color="#2F6690",
             capsize=2,
         )
-        rotation = 35 if dimension == "Variant" else 0
-        ax.set_xticks(
-            x, data["group"], rotation=rotation, ha="right" if rotation else "center"
-        )
-        ax.set_ylabel("Candidates per 100 eligible clusters")
-        ax.set_title(f"Candidate rate by {dimension.lower()}")
+
+        ax.set_yticks(y, data[column], rotation=0)
+        ax.set_title(f"{dimension}")
         panel_label(ax, label)
+    fig.supxlabel(f"Candidates per {FACTOR} eligible clusters")
     outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}", tight=False)
     return {"figure": fig, "outputs": outputs}
 

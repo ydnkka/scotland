@@ -182,7 +182,7 @@ def build(paths: Paths) -> None:
         on=["window_id", "window_idx"],
         how="left",
     )
-    policy_context_cols = ["window_id", "window_idx", "wn_mid_date", "policy_period"]
+    policy_context_cols = ["window_id", "window_idx", "wn_mid_date", "policy_era"]
     policy_context = (
         nodes[[col for col in policy_context_cols if col in nodes.columns]]
         .drop_duplicates(["window_id", "window_idx"])
