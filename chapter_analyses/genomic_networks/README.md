@@ -21,7 +21,7 @@ Build `data/processed/sparsified_edge_counts_by_window_lineage.parquet` first wi
 
 ## Commands
 
-`build_cluster_tables` writes the core cohort, coverage, composition, vaccination, and cluster tables. `--max-windows N` is a development cap. Its transition flags are deprecated no-ops.
+`build_cluster_tables` writes the core cohort, coverage, composition, test-reason, vaccination, and cluster tables. `--max-windows N` is a development cap. Its transition flags are deprecated no-ops.
 
 `build_mixing` requires either `--all-windows` or `--windows ...`. Useful invocations:
 

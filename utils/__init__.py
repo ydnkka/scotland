@@ -1,7 +1,7 @@
-"""Shared utilities for Scotland clustering chapters.
-"""
+"""Shared utilities for Scotland clustering chapters."""
 
 from . import style, data
+from . import policy
 
 from .data import (
     load_analysis_columns,
@@ -12,6 +12,24 @@ from .data import (
     CLADES,
     CLADE_PALETTE,
     PRIMARY_RESOLUTION,
+)
+from .policy import (
+    attach_policy_calendar,
+    clades_for_pango_lineages,
+    lineage_clade_lookup,
+    lineage_to_clade_map,
+    load_policy_calendar,
+    policy_descriptors,
+    policy_era_labels,
+    policy_order,
+    policy_period_labels,
+    window_id_from_idx,
+    window_id_to_policy_era,
+    window_id_to_policy_era_map,
+    window_id_to_policy_period,
+    window_id_to_policy_period_map,
+    window_idx_from_id,
+    window_policy_lookup,
 )
 from .style import (
     set_theme,
@@ -28,6 +46,7 @@ from .style import (
 __all__ = [
     "data",
     "style",
+    "policy",
     "load_analysis_columns",
     "load_daily_policy_data",
     "load_datazone_info",
@@ -36,6 +55,22 @@ __all__ = [
     "PRIMARY_RESOLUTION",
     "CLADES",
     "CLADE_PALETTE",
+    "load_policy_calendar",
+    "policy_descriptors",
+    "policy_order",
+    "policy_period_labels",
+    "policy_era_labels",
+    "attach_policy_calendar",
+    "window_idx_from_id",
+    "window_id_from_idx",
+    "window_policy_lookup",
+    "window_id_to_policy_period_map",
+    "window_id_to_policy_era_map",
+    "window_id_to_policy_period",
+    "window_id_to_policy_era",
+    "lineage_clade_lookup",
+    "lineage_to_clade_map",
+    "clades_for_pango_lineages",
     "set_theme",
     "save_figure",
     "add_panel_labels",

@@ -28,4 +28,4 @@ chapter_analyses/surveillance/results/tables/
 chapter_analyses/surveillance/results/figures/
 ```
 
-Policy periods and OxCGRT loaders are defined in `utils/policy.py`. Both OxCGRT source files must exist under `data/raw/oxcgrt/`; they are read when that module is imported.
+Policy-period, window-policy, and lineage/clade lookup helpers are defined in `utils/policy.py`. The module works from the processed daily policy calendar produced by the pipeline.

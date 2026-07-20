@@ -19,7 +19,7 @@ from .config import (
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils import load_daily_policy_data  # noqa: E402
+from utils import load_daily_policy_data, policy_order  # noqa: E402
 
 
 VACCINATION_DOSE_GROUPS = (
@@ -265,6 +265,34 @@ def build_sequence_composition(
         )
 
     return pd.concat(rows, ignore_index=True, sort=False)
+
+
+def build_test_reason_by_policy_era(df: pd.DataFrame) -> pd.DataFrame:
+    """Count unique sequences by test reason and epidemic era."""
+    seq = sequence_level_frame(df)
+    required = {"sequence_id", "test_reason", "policy_era"}
+    missing = required - set(seq.columns)
+    if missing:
+        raise KeyError(f"Missing test-reason summary columns: {sorted(missing)}")
+
+    work = seq[["sequence_id", "test_reason", "policy_era"]].copy()
+    work["test_reason"] = work["test_reason"].astype("string").fillna("missing")
+    work["policy_era"] = work["policy_era"].astype("string").fillna("missing")
+
+    out = (
+        work.groupby(["test_reason", "policy_era"], dropna=False)["sequence_id"]
+        .nunique()
+        .rename("n_sequences")
+        .reset_index()
+    )
+
+    era_order = {era: idx for idx, era in enumerate(policy_order("policy_era"))}
+    out["_policy_sort"] = out["policy_era"].map(era_order).fillna(999)
+    return (
+        out.sort_values(["_policy_sort", "test_reason"], kind="mergesort")
+        .drop(columns="_policy_sort")
+        .reset_index(drop=True)
+    )
 
 
 def _vaccination_context_frame(df: pd.DataFrame) -> pd.DataFrame:

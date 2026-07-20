@@ -43,7 +43,6 @@ from .lib.io import (
 from .lib.mixing import (
     build_degree_assortativity_for_edge_table,
     build_mixing_for_edge_table,
-    node_attribute_lookup,
     specs_by_name,
 )
 from utils import load_pairwise_edges

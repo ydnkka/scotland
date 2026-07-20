@@ -31,12 +31,14 @@ from chapter_analyses.surveillance.lib.io import write_table  # noqa: E402
 from utils import (  # noqa: E402
     CLADES,
     CLADE_PALETTE,
+    attach_policy_calendar,
     set_theme,
     load_analysis_columns,
-    load_daily_policy_data,
+    load_policy_calendar,
     add_panel_labels,
     new_figure,
     save_figure,
+    policy_era_labels,
 )
 
 POLICY_STRINGENCY_CMAP = plt.get_cmap("RdYlGn_r")
@@ -47,21 +49,22 @@ POLICY_STRINGENCY_NORM = colors.Normalize(
 LOGGER = logging.getLogger(__name__)
 
 
-POLICY_DAILY = load_daily_policy_data()
+POLICY_ERA_LABELS = policy_era_labels()
+POLICY_CALENDAR = load_policy_calendar()
 POLICY_PERIODS = (
-    POLICY_DAILY[
+    POLICY_CALENDAR[
         [
-            "period_code",
-            "period_label",
-            "period_start_date",
-            "period_end_date",
-            "period_order",
+            "policy_period",
+            "policy_period_label",
+            "policy_period_start_date",
+            "policy_period_end_date",
+            "policy_period_order",
             "policy_era",
         ]
     ]
     .drop_duplicates()
     .merge(
-        POLICY_DAILY.groupby("period_code", sort=False, observed=True)[
+        POLICY_CALENDAR.groupby("policy_period", sort=False, observed=True)[
             ["stringency_index", "containment_index"]
         ]
         .mean()
@@ -72,14 +75,17 @@ POLICY_PERIODS = (
             }
         )
         .reset_index(),
-        on="period_code",
+        on="policy_period",
         how="left",
         validate="one_to_one",
     )
     .rename(
         columns={
-            "period_start_date": "start_date",
-            "period_end_date": "end_date",
+            "policy_period": "period_code",
+            "policy_period_label": "period_label",
+            "policy_period_start_date": "start_date",
+            "policy_period_end_date": "end_date",
+            "policy_period_order": "period_order",
         }
     )
     .sort_values("period_order", ignore_index=True)
@@ -138,22 +144,7 @@ def build_daily_sequence_counts(
 
 def attach_policy_timeline(df_full: pd.DataFrame) -> pd.DataFrame:
     """Join policy metadata directly from the processed daily calendar."""
-    lookup = POLICY_DAILY.rename(
-        columns={
-            "date": "collection_date",
-            "period_code": "policy_period",
-            "period_label": "policy_period_label",
-            "period_start_date": "policy_period_start_date",
-            "period_end_date": "policy_period_end_date",
-            "period_order": "policy_level",
-        }
-    )
-    return df_full.merge(
-        lookup,
-        on="collection_date",
-        how="left",
-        validate="one_to_one",
-    )
+    return attach_policy_calendar(df_full, "collection_date")
 
 
 def compute_sequencing_proportion(
@@ -257,7 +248,10 @@ def add_epidemic_eras(
         )
 
         if label:
-            era_name = str(row.policy_era).replace("_", " ").upper()
+            era_name = POLICY_ERA_LABELS.get(
+                str(row.policy_era),
+                str(row.policy_era).replace("_", " ").upper(),
+            )
             ax.text(
                 start + (pd.Timedelta(weeks=1)),
                 label_y,
@@ -286,7 +280,7 @@ def add_policy_strip(ax: Axes, dates: pd.Series):
     plot_end = dates.max().normalize()
 
     daily = (
-        POLICY_DAILY[["date", "stringency_index"]]
+        POLICY_CALENDAR[["date", "stringency_index"]]
         .dropna(subset=["date"])
         .sort_values("date")
     )

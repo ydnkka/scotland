@@ -21,6 +21,7 @@ from .lib.cohort import (
     build_cohort_summary,
     build_denominator_contrasts,
     build_sequence_composition,
+    build_test_reason_by_policy_era,
     build_vaccination_context_by_policy,
     build_vaccination_window_context,
     build_window_coverage,
@@ -99,6 +100,10 @@ def main() -> int:
         "sequence_composition_by_policy": (
             build_sequence_composition(df),
             ("parquet", "csv"),
+        ),
+        "test_reason_by_policy_era": (
+            build_test_reason_by_policy_era(df),
+            ("csv", "parquet"),
         ),
         "vaccination_context_by_policy": (
             build_vaccination_context_by_policy(df),

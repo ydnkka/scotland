@@ -63,6 +63,7 @@ def load_pairwise_compatibility_edges(
     windows: str | int | Iterable[str | int] | None = None,
     clades: str | Iterable[str] | None = None,
     pango_lineages: str | Iterable[str] | None = None,
+    sequence_ids: object | Iterable[object] | None = None,
     compatibility_threshold: float | None = SPARSIFICATION_THRESHOLD,
     columns: Sequence[str] | None = None,
 ) -> pd.DataFrame:
@@ -82,6 +83,7 @@ def load_pairwise_compatibility_edges(
         windows=windows,
         clades=clades,
         pango_lineages=pango_lineages,
+        sequence_ids=sequence_ids,
         compatibility_threshold=compatibility_threshold,
     )
 

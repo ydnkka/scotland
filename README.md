@@ -21,7 +21,7 @@ raw sequence and linked metadata
 
 - `config.yaml`: method paths and parameters.
 - `method/`: preprocessing, pairwise scoring, clustering, consolidation, and batch helpers.
-- `utils/`: shared data, policy, and plotting helpers.
+- `utils/`: shared data, policy, mapping, and plotting helpers.
 - `chapter_analyses/surveillance/`: policy timeline and lineage surveillance.
 - `chapter_analyses/genomic_networks/`: Chapter 4 cohort, cluster, mixing, topology, and sensitivity analyses.
 - `chapter_analyses/sse_detection/`: Chapter 5 transition graph, detector, figures, and Bayesian models.

@@ -714,6 +714,7 @@ def _pairwise_filter_expression(
     *,
     window_ids: list[str] | None,
     pango_lineages: list[str] | None,
+    sequence_ids: list[str] | None,
     compatibility_threshold: float | None,
     score_column: str,
 ):
@@ -730,6 +731,12 @@ def _pairwise_filter_expression(
         lineage_expr = pc.field("pango_lineage").isin(pango_lineages)
         expr = lineage_expr if expr is None else expr & lineage_expr
 
+    if sequence_ids is not None:
+        endpoint_expr = pc.field("id1").isin(sequence_ids) & pc.field("id2").isin(
+            sequence_ids
+        )
+        expr = endpoint_expr if expr is None else expr & endpoint_expr
+
     if compatibility_threshold is not None:
         score_expr = pc.field(score_column) > float(compatibility_threshold)
         expr = score_expr if expr is None else expr & score_expr
@@ -743,6 +750,7 @@ def _read_pairwise_dataset(
     columns: list[str],
     window_ids: list[str] | None,
     pango_lineages: list[str] | None,
+    sequence_ids: list[str] | None,
     compatibility_threshold: float | None,
     score_column: str,
 ) -> pd.DataFrame:
@@ -755,6 +763,7 @@ def _read_pairwise_dataset(
         filter=_pairwise_filter_expression(
             window_ids=window_ids,
             pango_lineages=pango_lineages,
+            sequence_ids=sequence_ids,
             compatibility_threshold=compatibility_threshold,
             score_column=score_column,
         ),
@@ -763,12 +772,38 @@ def _read_pairwise_dataset(
     return table.to_pandas()
 
 
+def _deduplicate_pairwise_edges(df: pd.DataFrame) -> pd.DataFrame:
+    """Return one canonical row per unordered pair of sequence endpoints."""
+    required = {"id1", "id2"}
+    missing = required - set(df.columns)
+    if missing:
+        raise KeyError(f"Missing pairwise endpoint columns: {sorted(missing)}")
+
+    if df.empty:
+        return df.copy().reset_index(drop=True)
+
+    work = df.dropna(subset=["id1", "id2"]).copy()
+    if work.empty:
+        return work.reset_index(drop=True)
+
+    endpoints = work[["id1", "id2"]].astype("string").to_numpy(dtype=object)
+    ordered = np.sort(endpoints, axis=1)
+    work["id1"] = ordered[:, 0]
+    work["id2"] = ordered[:, 1]
+    return (
+        work.sort_values(["id1", "id2"], kind="mergesort")
+        .drop_duplicates(["id1", "id2"], keep="first")
+        .reset_index(drop=True)
+    )
+
+
 def load_pairwise_edges(
     columns: Iterable[str] | None = None,
     *,
     windows: str | int | Iterable[str | int] | None = None,
     clades: str | Iterable[str] | None = None,
     pango_lineages: str | Iterable[str] | None = None,
+    sequence_ids: str | Iterable[str] | None = None,
     compatibility_threshold: float | None = 0.001,
     score_column: str = "epilink_compatibility",
     pairwise_dataset: str | Path | None = None,
@@ -792,6 +827,10 @@ def load_pairwise_edges(
     pango_lineages:
         Optional direct Pango lineage filter. If both ``clades`` and
         ``pango_lineages`` are supplied, the filters are intersected.
+    sequence_ids:
+        Optional iterable of sequence IDs. Rows are retained only when both
+        ``id1`` and ``id2`` are in the supplied set, and the returned edges are
+        deduplicated to one canonical row per unordered endpoint pair.
     compatibility_threshold:
         Sparsification threshold for ``score_column``. Rows are retained where
         ``score_column > compatibility_threshold``. Pass ``None`` to skip score
@@ -830,6 +869,9 @@ def load_pairwise_edges(
         if columns is not None
         else ["window_id", "pango_lineage", "id1", "id2", score_column]
     )
+    sequence_id_values = _normalise_str_values(sequence_ids, name="sequence_ids")
+    if sequence_id_values is not None:
+        selected_columns = list(dict.fromkeys([*selected_columns, "id1", "id2"]))
 
     window_ids = _normalise_window_ids(windows)
     lineage_values = _resolve_pairwise_lineages(
@@ -840,14 +882,18 @@ def load_pairwise_edges(
         paths=paths,
     )
 
-    return _read_pairwise_dataset(
+    edges = _read_pairwise_dataset(
         pairwise_path,
         columns=selected_columns,
         window_ids=window_ids,
         pango_lineages=lineage_values,
+        sequence_ids=sequence_id_values,
         compatibility_threshold=compatibility_threshold,
         score_column=score_column,
     )
+    if sequence_id_values is not None:
+        edges = _deduplicate_pairwise_edges(edges)
+    return edges
 
 
 def load_datazone_info(

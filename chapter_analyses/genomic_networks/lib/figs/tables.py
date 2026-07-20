@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from common import (
     ATTRIBUTE_ORDER,
+    POLICY_LABELS,
     Paths,
     add_common_args,
     paths_from_args,
@@ -33,6 +34,7 @@ TABLE_NAMES = {
     "cohort_objects": "tab_ch4_cohort_objects",
     "policy_denominators": "tab_ch4_policy_denominators",
     "vaccination_context": "tab_ch4_vaccination_context",
+    "test_reason_by_policy_era": "tab_ch4_test_reason_by_policy_era",
     "cluster_period_summary": "tab_ch4_cluster_period_summary",
     "assortativity_summary": "tab_ch4_assortativity_summary",
     "simd_population_weighting": "tab_ch4_simd_population_weighting",
@@ -522,6 +524,62 @@ def write_vaccination_context_table(paths: Paths) -> None:
     )
 
 
+def write_test_reason_by_policy_era_table(paths: Paths) -> None:
+    summary = read_table(paths, "test_reason_by_policy_era").copy()
+    if summary.empty:
+        pivot = pd.DataFrame(columns=["test_reason"])
+    else:
+        summary["test_reason"] = summary["test_reason"].astype("string").fillna("missing")
+        summary["policy_era"] = summary["policy_era"].astype("string").fillna("missing")
+        pivot = summary.pivot_table(
+            index="test_reason",
+            columns="policy_era",
+            values="n_sequences",
+            aggfunc="sum",
+            fill_value=0,
+        )
+        era_order = list(POLICY_LABELS)
+        ordered_eras = list(era_order)
+        extra_eras = [era for era in pivot.columns if era not in era_order]
+        extra_eras = sorted(extra_eras, key=lambda value: (str(value) == "missing", str(value)))
+        pivot = pivot.reindex(columns=[*ordered_eras, *extra_eras], fill_value=0)
+        pivot = pivot.reset_index()
+        value_columns = [*ordered_eras, *extra_eras]
+        pivot["__total__"] = pivot[value_columns].sum(axis=1)
+        pivot = pivot.sort_values(
+            ["__total__", "test_reason"],
+            ascending=[False, True],
+            kind="mergesort",
+        ).drop(columns="__total__")
+
+    value_columns = [column for column in pivot.columns if column != "test_reason"]
+    rows = []
+    for row in pivot.itertuples(index=False):
+        rows.append(
+            [
+                str(row.test_reason).replace("_", " ").title(),
+                *[fmt_int(getattr(row, column)) for column in value_columns],
+            ]
+        )
+
+    columns = [
+        "Test reason",
+        *[
+            POLICY_LABELS.get(column, str(column).replace("_", " ").title())
+            for column in value_columns
+        ],
+    ]
+    write_latex_table(
+        paths,
+        TABLE_NAMES["test_reason_by_policy_era"],
+        caption="Unique-sequence test-reason counts by epidemic era",
+        label=TABLE_NAMES["test_reason_by_policy_era"],
+        columns=columns,
+        rows=rows,
+        column_spec="l" + "r" * len(value_columns),
+    )
+
+
 def write_cluster_period_table(paths: Paths) -> None:
     clusters = read_table(paths, "cluster_period_summary")
     clusters = sort_by_policy(clusters, column="policy_period")
@@ -608,6 +666,7 @@ TABLE_WRITERS: tuple[tuple[str, Callable[[Paths], object]], ...] = (
     (TABLE_NAMES["cohort_objects"], write_cohort_table),
     (TABLE_NAMES["policy_denominators"], write_policy_denominator_table),
     (TABLE_NAMES["vaccination_context"], write_vaccination_context_table),
+    (TABLE_NAMES["test_reason_by_policy_era"], write_test_reason_by_policy_era_table),
     (TABLE_NAMES["cluster_period_summary"], write_cluster_period_table),
     (TABLE_NAMES["assortativity_summary"], write_assortativity_summary_table),
     (TABLE_NAMES["simd_population_weighting"], write_simd_population_weighting_table),

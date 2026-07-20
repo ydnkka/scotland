@@ -21,33 +21,23 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from utils import new_figure as styled_new_figure  # noqa: E402, F401
-from utils import load_daily_policy_data  # noqa: E402
+from utils import load_policy_calendar  # noqa: E402
 from utils import save_figure as _styled_save_figure  # noqa: E402
 from utils import add_panel_labels as styled_add_panel_labels  # noqa: E402
+from utils import policy_era_labels  # noqa: E402
+from utils import policy_order  # noqa: E402
+from utils import window_idx_from_id  # noqa: E402, F401
 
 DEFAULT_TABLE_DIR = PROJECT_ROOT / "chapter_analyses/genomic_networks/results/tables"
 FIGURE_DIR = PROJECT_ROOT / "chapter_analyses/genomic_networks/results/figures"
 
-_POLICY_DAILY = load_daily_policy_data()
-_POLICY_DESCRIPTORS = (
-    _POLICY_DAILY[["period_code", "period_label", "period_order", "policy_era"]]
-    .drop_duplicates()
-    .sort_values("period_order")
-)
-
+_POLICY_DAILY = load_policy_calendar()
 POLICY_ORDER = {
-    "policy_era": _POLICY_DESCRIPTORS["policy_era"].astype(str).tolist(),
-    "period_code": _POLICY_DESCRIPTORS["period_code"].astype(str).tolist(),
-    "policy_period": _POLICY_DESCRIPTORS["period_code"].astype(str).tolist(),
+    "policy_era": policy_order("policy_era"),
+    "period_code": policy_order("policy_period"),
+    "policy_period": policy_order("policy_period"),
 }
-POLICY_LABELS = dict(
-    zip(
-        _POLICY_DESCRIPTORS["policy_era"].astype(str),
-        _POLICY_DESCRIPTORS["policy_era"]
-        .str.upper()
-        .str.replace("_", " ", regex=False),
-    )
-)
+POLICY_LABELS = policy_era_labels()
 POLICY_STRINGENCY = (
     _POLICY_DAILY.groupby("policy_era", sort=False, observed=True)["stringency_index"]
     .mean()
@@ -124,11 +114,6 @@ def panel_label(ax: Axes, label: str) -> None:
         va="top",
         ha="left",
     )
-
-
-def window_idx_from_id(values: pd.Series) -> pd.Series:
-    extracted = values.astype(str).str.extract(r"(\d+)")[0]
-    return pd.to_numeric(extracted, errors="coerce")
 
 
 def ordered_policy_values(values: pd.Series, column: str) -> list[object]:

@@ -31,6 +31,7 @@ The command loads data once and writes:
 | `window_denominator_contrasts` | Policy-period medians/ranges of window denominators and coverage |
 | `clade_window_counts` | Clade counts by window |
 | `sequence_composition_by_policy` | Counts/proportions for configured categorical attributes, including `Missing` and small-cell flags |
+| `test_reason_by_policy_era` | Unique-sequence test-reason counts by epidemic era |
 | `vaccination_context_by_policy` | Unique-sequence vaccination categories by policy period |
 | `vaccination_window_context` | Within-window deduplicated vaccination categories |
 | `cluster_table` | One row per window-specific cluster with size, spread, duration, lineage/policy, and modal attributes |
