@@ -28,4 +28,4 @@ chapter_analyses/surveillance/results/tables/
 chapter_analyses/surveillance/results/figures/
 ```
 
-Policy-period, window-policy, and lineage/clade lookup helpers are defined in `utils/policy.py`. The module works from the processed daily policy calendar produced by the pipeline.
+Policy-period, window-policy, and lineage/clade lookup helpers live in the shared `utils` package and work from the processed daily policy calendar produced by the pipeline.

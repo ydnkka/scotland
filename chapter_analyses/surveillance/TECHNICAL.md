@@ -10,7 +10,7 @@ Results describe observed sequenced records; the package does not fit causal or 
 
 - Daily sequence count: unique `sequence_id` values by collection date, with missing calendar dates filled as zero.
 - Daily trend: centred rolling mean, default 7 days (`--smooth-window`).
-- Policy period: ordered, inclusive date intervals in `utils/policy.py`, derived from the processed daily policy calendar.
+- Policy period: ordered, inclusive date intervals derived from the processed daily policy calendar via shared `utils` helpers.
 - Lineage composition: weekly unique-sequence counts and within-week frequencies. The plotted frequency is a trailing 3-week mean fixed inside `plot_lineage_frequency_and_overtakes(...)`.
 - Dominance: clade with the largest plotted frequency; an overtake is a change from the previous retained week.
 - Sequencing proportion: weekly mean of row-level `wn_prop_sequenced`, aligned to retained lineage-frequency weeks; the plotted value uses the same trailing 3-week mean.
@@ -19,7 +19,7 @@ Because rolling-window rows repeat sequences, the loader stride and deduplicatio
 
 ## Policy indices
 
-`utils/policy.py` reads the processed daily calendar at `data/processed/scotland_policy.parquet`, normalises the policy-period columns to `policy_period`, `policy_period_label`, `policy_period_order`, and `policy_era`, and exposes the same date-indexed information used by the figure code. The parquet is produced upstream by `method/01_prep_metadata.py`, so a stale or missing policy build still fails when the pipeline is rebuilt.
+The shared policy helpers read the processed daily calendar at `data/processed/scotland_policy.parquet`, normalise the policy-period columns to `policy_period`, `policy_period_label`, `policy_period_order`, and `policy_era`, and expose the same date-indexed information used by the figure code. The parquet is produced upstream by `method/01_prep_metadata.py`, so a stale or missing policy build still fails when the pipeline is rebuilt.
 
 `policy_index_comparison.py` inner-joins the two daily series, restricts them to the configured dates, and reports complete-day Pearson correlation, Spearman correlation, an ordinary linear slope/intercept, and Pearson (r^2). It intentionally omits independence-based p-values because adjacent daily policy values are serially dependent.
 
