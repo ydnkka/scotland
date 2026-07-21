@@ -7,12 +7,17 @@ uncertainty for edge-weighted statistics.
 
 from __future__ import annotations
 
-from typing import Iterable, Sequence, Any
+from collections.abc import Callable, Iterator
+from typing import Iterable, Sequence, Any, cast
 
 import numpy as np
 import pandas as pd
 
 from .config import DEFAULT_MIXING_ATTRIBUTES, AttributeSpec
+
+
+EdgeGroup = tuple[dict[str, Any], pd.DataFrame]
+BootstrapStatFn = Callable[[np.ndarray], float]
 
 
 def specs_by_name(
@@ -147,15 +152,13 @@ def prepare_graph_arrays(
 
 def complete_mixing_matrix(
     matrix: np.ndarray,
-    group_labels: Sequence[Any],
-    all_categories: Sequence[Any],
+    group_labels: pd.Index | np.ndarray,
+    all_categories: pd.Index | np.ndarray,
     fill_value: float = 0.0,
     return_dataframe: bool = True,
-):
+) -> tuple[pd.DataFrame | np.ndarray, pd.Index | np.ndarray]:
     """Expand a mixing matrix so that it includes all requested categories."""
     matrix = np.asarray(matrix)
-    group_labels = np.asarray(group_labels)
-    all_categories = np.asarray(all_categories)
 
     if matrix.ndim != 2 or matrix.shape[0] != matrix.shape[1]:
         raise ValueError("`matrix` must be a square 2D array.")
@@ -191,13 +194,15 @@ def complete_mixing_matrix(
     completed[np.ix_(old_positions, old_positions)] = matrix
 
     if return_dataframe:
-        return pd.DataFrame(completed, index=all_categories, columns=all_categories), all_categories
+        return pd.DataFrame(
+            completed, index=all_categories, columns=all_categories
+        ), all_categories
 
     return completed, all_categories
 
 
 def _factorize_referenced(
-    categories: Sequence[Any],
+    categories: pd.Index,
     i: np.ndarray,
     j: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -207,7 +212,7 @@ def _factorize_referenced(
     triggering an error; only endpoints that actually contribute to the graph
     must have a valid category.
     """
-    categories = pd.Series(categories, dtype="object")
+
     codes, labels = pd.factorize(categories, sort=True)
 
     if len(i) and (np.any(codes[i] < 0) or np.any(codes[j] < 0)):
@@ -251,9 +256,9 @@ def weighted_categorical_assortativity(
     i: np.ndarray,
     j: np.ndarray,
     w: np.ndarray,
-    categories: Sequence[Any],
-    levels: Sequence[Any] | None = None,
-) -> tuple[float, pd.DataFrame, np.ndarray]:
+    categories: pd.Index | np.ndarray,
+    levels: pd.Index | np.ndarray | None = None,
+) -> tuple[float, pd.DataFrame, pd.Index | np.ndarray]:
     """
     Weighted assortativity for categorical node attributes.
 
@@ -266,7 +271,7 @@ def weighted_categorical_assortativity(
     labels
         Category labels corresponding to rows/columns.
     """
-    codes, labels = _factorize_referenced(categories, i, j)
+    codes, labels = _factorize_referenced(cast(Any, categories), i, j)
 
     if len(w) == 0 or np.sum(w) <= 0:
         all_levels = levels if levels is not None else labels
@@ -278,7 +283,7 @@ def weighted_categorical_assortativity(
             fill_value=0.0,
             return_dataframe=True,
         )
-        return np.nan, matrix, np.asarray(labels)
+        return np.nan, pd.DataFrame(matrix), np.asarray(labels)
 
     k = len(labels)
     flat_index = codes[i] * k + codes[j]
@@ -302,7 +307,11 @@ def weighted_categorical_assortativity(
         expected_same = np.sum(a**2)
         observed_same = np.trace(e)
         denominator = 1.0 - expected_same
-        r = np.nan if denominator <= 0 else float((observed_same - expected_same) / denominator)
+        r = (
+            np.nan
+            if denominator <= 0
+            else float((observed_same - expected_same) / denominator)
+        )
 
     e, labels = complete_mixing_matrix(
         e,
@@ -312,18 +321,18 @@ def weighted_categorical_assortativity(
         return_dataframe=True,
     )
 
-    return r, e, labels
+    return r, pd.DataFrame(e), labels
 
 
 def raw_categorical_mixing_matrix(
     i: np.ndarray,
     j: np.ndarray,
     w: np.ndarray,
-    categories: Sequence[Any],
-    levels: Sequence[Any],
+    categories: pd.Index | np.ndarray,
+    levels: pd.Index | np.ndarray | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return normalized weighted matrix and contribution-count matrix."""
-    codes, labels = _factorize_referenced(categories, i, j)
+    codes, labels = _factorize_referenced(cast(Any, categories), i, j)
 
     k = len(labels)
 
@@ -351,26 +360,28 @@ def raw_categorical_mixing_matrix(
     weighted_completed, _ = complete_mixing_matrix(
         weighted,
         group_labels=labels,
-        all_categories=levels,
+        all_categories=levels if levels is not None else labels,
         fill_value=0.0,
         return_dataframe=True,
     )
     counts_completed, _ = complete_mixing_matrix(
         counts,
         group_labels=labels,
-        all_categories=levels,
+        all_categories=levels if levels is not None else labels,
         fill_value=0,
         return_dataframe=True,
     )
 
-    total = float(weighted_completed.to_numpy().sum())
-    normalized = weighted_completed / total if total > 0 else weighted_completed.astype(float)
+    total = float(np.asarray(weighted_completed).sum())
+    normalized = (
+        weighted_completed / total if total > 0 else weighted_completed.astype(float)
+    )
 
-    return normalized, counts_completed
+    return pd.DataFrame(normalized), pd.DataFrame(counts_completed)
 
 
 def multiplier_bootstrap(
-    stat_fn,
+    stat_fn: BootstrapStatFn,
     w: np.ndarray,
     B: int = 500,
     alpha: float = 0.05,
@@ -429,7 +440,7 @@ def node_degrees(
 def _iter_edge_groups(
     edges: pd.DataFrame,
     group_cols: Sequence[str] | None,
-):
+) -> Iterator[EdgeGroup]:
     group_cols = [col for col in (group_cols or []) if col]
     if not group_cols:
         yield {}, edges
@@ -459,14 +470,16 @@ def _dense_result_to_long_matrix(
         "attribute_label",
         "source_category",
         "target_category",
-        "edge_contributions",
-        "edge_weight_proportion",
     ]
 
     for source_category in matrix.index:
         for target_category in matrix.columns:
-            edge_weight_proportion = float(matrix.loc[source_category, target_category])
-            edge_contributions = int(contributions.loc[source_category, target_category])
+            edge_weight_proportion = float(
+                cast(Any, matrix.loc[source_category, target_category])
+            )
+            edge_contributions = int(
+                cast(Any, contributions.loc[source_category, target_category])
+            )
 
             if edge_weight_proportion <= 0 and edge_contributions <= 0:
                 continue
@@ -477,8 +490,6 @@ def _dense_result_to_long_matrix(
                     "attribute_label": attribute.label,
                     "source_category": str(source_category),
                     "target_category": str(target_category),
-                    "edge_contributions": edge_contributions,
-                    "edge_weight_proportion": edge_weight_proportion,
                 }
             )
 
@@ -490,14 +501,14 @@ def _attribute_levels(
     column: str,
     *,
     missing_label: str | None,
-) -> list[Any]:
+) -> pd.Index:
     values = nodes[column]
     if missing_label is not None:
         values = values.fillna(missing_label)
     else:
         values = values.dropna()
 
-    return sorted(pd.unique(values.astype(str)).tolist())
+    return pd.Index(sorted(pd.unique(values.astype(str)).tolist()))
 
 
 def _labels_for_nodes(
@@ -531,17 +542,21 @@ def build_mixing_for_edge_table(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Build mixing matrices and assortativity summaries for an edge table."""
     if not symmetric:
-        raise NotImplementedError("The new implementation currently assumes undirected graphs.")
+        raise NotImplementedError(
+            "The new implementation currently assumes undirected graphs."
+        )
 
     matrix_parts: list[pd.DataFrame] = []
     summary_rows: list[dict[str, Any]] = []
 
     attributes = tuple(attributes)
 
-    for group_idx, (group_values, edge_group) in enumerate(_iter_edge_groups(edges, group_cols)):
+    for group_idx, (group_values, edge_group) in enumerate(
+        _iter_edge_groups(edges, group_cols)
+    ):
         n_edges_observed = len(edge_group)
 
-        node_ids, i, j, w, _ = prepare_graph_arrays(
+        _, i, j, w, _ = prepare_graph_arrays(
             nodes,
             edge_group,
             node_id_col=node_id_col,
@@ -595,6 +610,7 @@ def build_mixing_for_edge_table(
                 continue
 
             attr_labels = labels.to_numpy()
+            edge_weight_total = float(w_attr.sum())
             levels = _attribute_levels(
                 nodes,
                 spec.column,
@@ -621,8 +637,13 @@ def build_mixing_for_edge_table(
             if bootstrap_replicates > 0 and len(w_attr) > 0:
                 seed = bootstrap_seed + group_idx * 10_000 + attr_idx
 
-                def stat_fn(w_boot, i_attr=i_attr, j_attr=j_attr,
-                            attr_labels=attr_labels, levels=levels):
+                def stat_fn(
+                    w_boot: np.ndarray,
+                    i_attr: np.ndarray = i_attr,
+                    j_attr: np.ndarray = j_attr,
+                    attr_labels: np.ndarray = attr_labels,
+                    levels: pd.Index | np.ndarray | None = levels,
+                ) -> float:
                     return weighted_categorical_assortativity(
                         i_attr,
                         j_attr,
@@ -666,7 +687,7 @@ def build_mixing_for_edge_table(
                     **group_values,
                     "n_edges_observed": n_edges_observed,
                     "n_edges_used": int(len(w_attr)),
-                    "edge_weight_total": float(w_attr.sum()),
+                    "edge_weight_total": edge_weight_total,
                     "n_categories": int(len(completed_labels)),
                     "assortativity": float(point) if np.isfinite(point) else np.nan,
                     "observed_same_category_weight": observed_same,
@@ -708,7 +729,9 @@ def build_degree_assortativity_for_edge_table(
     """Build degree/strength assortativity diagnostics for each edge group."""
     rows: list[dict[str, Any]] = []
 
-    for group_idx, (group_values, edge_group) in enumerate(_iter_edge_groups(edges, group_cols)):
+    for group_idx, (group_values, edge_group) in enumerate(
+        _iter_edge_groups(edges, group_cols)
+    ):
         n_edges_observed = len(edge_group)
 
         node_ids, i, j, w, _ = prepare_graph_arrays(
@@ -763,7 +786,12 @@ def build_degree_assortativity_for_edge_table(
         if bootstrap_replicates > 0:
             seed = bootstrap_seed + group_idx * 10_000
 
-            def stat_fn(w_boot, i=i, j=j, n_nodes=n_nodes):
+            def stat_fn(
+                w_boot: np.ndarray,
+                i: np.ndarray = i,
+                j: np.ndarray = j,
+                n_nodes: int = n_nodes,
+            ) -> float:
                 strength_boot = node_strengths(i, j, w_boot, n_nodes)
                 return weighted_numeric_assortativity(i, j, w_boot, strength_boot)
 
@@ -794,7 +822,9 @@ def build_degree_assortativity_for_edge_table(
                 "max_strength": float(strength.max()),
                 "degree_assortativity": degree_r,
                 "weighted_degree_assortativity": weighted_degree_r,
-                "strength_assortativity": float(point) if np.isfinite(point) else np.nan,
+                "strength_assortativity": float(point)
+                if np.isfinite(point)
+                else np.nan,
                 "strength_assortativity_se": se,
                 "strength_assortativity_ci_low": ci[0],
                 "strength_assortativity_ci_high": ci[1],
