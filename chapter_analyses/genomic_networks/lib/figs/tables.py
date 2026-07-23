@@ -23,6 +23,12 @@ from common import (
     window_idx_from_id,
 )
 from chapter_analyses.genomic_networks.lib.config import TABLES_DIR  # noqa: E402
+from assortativity_analysis import (  # noqa: E402
+    compatibility_variance_decomposition_long,
+    compatibility_window_pooled_meta,
+    pooled_window_attribute_summary,
+    variance_decomposition_summary,
+)
 
 
 SIMD_GROUP_LABELS = {
@@ -37,6 +43,7 @@ TABLE_NAMES = {
     "test_reason_by_policy_era": "tab_ch4_test_reason_by_policy_era",
     "cluster_period_summary": "tab_ch4_cluster_period_summary",
     "assortativity_summary": "tab_ch4_assortativity_summary",
+    "variance_decomposition_summary": "tab_ch4_assortativity_variance_decomposition",
     "simd_population_weighting": "tab_ch4_simd_population_weighting",
 }
 
@@ -407,6 +414,25 @@ def compatibility_attribute_summary(paths: Paths) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def pooled_window_attribute_summary_table(paths: Paths) -> pd.DataFrame:
+    try:
+        summary = read_table(paths, "compatibility_window_pooled_summary")
+        if {"gls_mean", "gls_ci_low", "gls_ci_high"}.issubset(summary.columns):
+            return summary
+    except FileNotFoundError:
+        pass
+    window_meta, _ = compatibility_window_pooled_meta(paths)
+    return pooled_window_attribute_summary(window_meta)
+
+
+def variance_decomposition_summary_table(paths: Paths) -> pd.DataFrame:
+    try:
+        return read_table(paths, "compatibility_variance_decomposition_summary")
+    except FileNotFoundError:
+        vd_long = compatibility_variance_decomposition_long(paths)
+        return variance_decomposition_summary(vd_long)
+
+
 def write_cohort_table(paths: Paths) -> None:
     cohort = read_table(paths, "cohort_summary")
     cohort_map = cohort.set_index("metric")["value"].to_dict()
@@ -625,7 +651,53 @@ def write_cluster_period_table(paths: Paths) -> None:
 
 
 def write_assortativity_summary_table(paths: Paths) -> None:
-    summary = compatibility_attribute_summary(paths)
+    summary = pooled_window_attribute_summary_table(paths)
+    rows = []
+    for attribute in ATTRIBUTE_ORDER:
+        group = summary.loc[summary["attribute_label"].eq(attribute)]
+        if group.empty:
+            continue
+        row = group.iloc[0]
+        mean_col = "gls_mean" if "gls_mean" in row.index else "weighted_mean"
+        low_col = "gls_ci_low" if "gls_ci_low" in row.index else "ci_low"
+        high_col = "gls_ci_high" if "gls_ci_high" in row.index else "ci_high"
+        rows.append(
+            [
+                attribute,
+                fmt_int(row["n_windows"]),
+                fmt_int(row["n_estimated_windows"]),
+                fmt_float(row["median_n_lineages"], 1),
+                fmt_float(row[mean_col], 4),
+                fmt_ci(row[low_col], row[high_col], 4),
+                f"{fmt_float(row['window_median'], 3)} "
+                f"({fmt_float(row['window_q10'], 3)}--"
+                f"{fmt_float(row['window_q90'], 3)})",
+            ]
+        )
+    write_latex_table(
+        paths,
+        TABLE_NAMES["assortativity_summary"],
+        caption=(
+            "Pooled assortativity summaries with overlap-based correlated GLS "
+            "confidence intervals"
+        ),
+        label=TABLE_NAMES["assortativity_summary"],
+        columns=[
+            "Attribute",
+            "Windows",
+            "Estimated windows",
+            "Median lineages",
+            "GLS mean r",
+            "95% CI",
+            "Window median (10--90%)",
+        ],
+        rows=rows,
+        column_spec="lrrrrll",
+    )
+
+
+def write_variance_decomposition_summary_table(paths: Paths) -> None:
+    summary = variance_decomposition_summary_table(paths)
     rows = []
     for attribute in ATTRIBUTE_ORDER:
         group = summary.loc[summary["attribute_label"].eq(attribute)]
@@ -635,30 +707,50 @@ def write_assortativity_summary_table(paths: Paths) -> None:
         rows.append(
             [
                 attribute,
+                fmt_int(row["n"]),
                 fmt_int(row["n_windows"]),
-                fmt_int(row["n_networks"]) if not pd.isna(row["n_networks"]) else "",
-                fmt_float(row["weighted_mean"], 4),
-                fmt_ci(row["ci_low"], row["ci_high"], 4),
-                f"{fmt_float(row['window_median'], 3)} "
-                f"({fmt_float(row['window_q10'], 3)}--"
-                f"{fmt_float(row['window_q90'], 3)})",
+                fmt_int(row["n_lineages"]),
+                fmt_float(row["additive_model_fraction"], 3),
+                fmt_float(row["adj_additive_model_fraction"], 3),
+                fmt_float(row["residual_fraction"], 3),
+                fmt_float(row["window_alone_fraction"], 3),
+                fmt_float(row["lineage_alone_fraction"], 3),
+                fmt_float(row["lineage_given_window_fraction"], 3),
+                fmt_float(row["window_given_lineage_fraction"], 3),
+                fmt_float(row["weight_cap"], 2),
+                fmt_int(row["n_weights_capped"]),
+                fmt_float(row["median_boot_se"], 3),
+                fmt_float(row["median_ci_width"], 3),
             ]
         )
+
     write_latex_table(
         paths,
-        TABLE_NAMES["assortativity_summary"],
-        caption="Weighted assortativity summaries with compatibility confidence intervals",
-        label=TABLE_NAMES["assortativity_summary"],
+        TABLE_NAMES["variance_decomposition_summary"],
+        caption=(
+            "Variance decomposition of weighted assortativity at the 90th "
+            "percentile inverse-variance weight cap"
+        ),
+        label=TABLE_NAMES["variance_decomposition_summary"],
         columns=[
             "Attribute",
+            "Rows",
             "Windows",
-            "Networks",
-            "Weighted mean r",
-            "95% CI",
-            "Window median (10--90%)",
+            "Lineages",
+            "Additive model",
+            "Adj. additive",
+            "Residual",
+            "Window alone",
+            "Lineage alone",
+            "Lineage | Window",
+            "Window | Lineage",
+            "Weight cap",
+            "Capped weights",
+            "Median boot SE",
+            "Median CI width",
         ],
         rows=rows,
-        column_spec="lrrrll",
+        column_spec="l" + "r" * 14,
     )
 
 
@@ -669,14 +761,25 @@ TABLE_WRITERS: tuple[tuple[str, Callable[[Paths], object]], ...] = (
     (TABLE_NAMES["test_reason_by_policy_era"], write_test_reason_by_policy_era_table),
     (TABLE_NAMES["cluster_period_summary"], write_cluster_period_table),
     (TABLE_NAMES["assortativity_summary"], write_assortativity_summary_table),
+    (
+        TABLE_NAMES["variance_decomposition_summary"],
+        write_variance_decomposition_summary_table,
+    ),
     (TABLE_NAMES["simd_population_weighting"], write_simd_population_weighting_table),
 )
 
 
 def write_tables(paths: Paths) -> None:
     paths.figure_dir.mkdir(parents=True, exist_ok=True)
+    skipped: list[str] = []
     for _, write_table in TABLE_WRITERS:
-        write_table(paths)
+        try:
+            write_table(paths)
+        except FileNotFoundError as err:
+            skipped.append(str(err))
+            print(f"Skipping table writer: {err}")
+    if skipped:
+        print(f"Skipped {len(skipped)} table writer(s) because required source tables were missing.")
 
 
 def main() -> int:

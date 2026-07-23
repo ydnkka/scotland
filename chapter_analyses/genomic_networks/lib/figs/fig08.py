@@ -34,7 +34,7 @@ def weighted_mean(values: pd.Series, weights: pd.Series) -> float:
 
 
 def build(paths: Paths) -> None:
-    degree = read_table(paths, "compatibility_degree_assortativity")
+    degree = read_table(paths, "compatibility_degree_assortativity_bootstrap")
     degree["window_idx"] = window_idx_from_id(degree["window_id"])
     degree = degree.loc[degree["n_edges_used"].gt(0)].copy()
     metrics = [

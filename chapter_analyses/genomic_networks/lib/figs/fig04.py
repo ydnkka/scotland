@@ -1,176 +1,137 @@
-"""Build Chapter 4 Figure 4: selected compatibility mixing matrices."""
+"""Build Chapter 4 Supplementary Figure 5: assortativity variance decomposition."""
 
 from __future__ import annotations
 
 from pathlib import Path
 import argparse
-import re
 import sys
-from typing import Any
 
-from matplotlib.image import AxesImage
-from matplotlib.axes import Axes
+from matplotlib.lines import Line2D
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from common import (
+from assortativity_analysis import (  # noqa: E402
+    VARIANCE_REFERENCE_WINDSORISE,
+    compatibility_variance_decomposition_long,
+    variance_decomposition_summary,
+)
+from common import (  # noqa: E402
     Paths,
     add_common_args,
     panel_label,
     paths_from_args,
-    read_table,
     styled_new_figure,
     styled_save_figure,
 )
+from chapter_analyses.genomic_networks.lib.io import write_table  # noqa: E402
 
 
-FIGURE_NAME = "fig_ch4_mixing_matrices"
+FIGURE_NAME = "fig_ch4_assortativity_confidence_intervals"
 
 
-def display_matrix_category(attribute: str, value: Any) -> str:
-    if attribute == "simd_quintile":
-        try:
-            numeric = float(value)
-        except (TypeError, ValueError):
-            return str(value)
-        if numeric.is_integer():
-            return str(int(numeric))
-    return str(value)
-
-
-def matrix_order(
-    categories: list[str],
-    *,
-    attribute: str,
-    grouped: pd.DataFrame | None = None,
-) -> list[str]:
-    if attribute == "age_group":
-        preferred = ["00-04", "05-14", "15-24", "25-64", "65-74", "75+"]
-        return [value for value in preferred if value in categories]
-    if attribute == "urban_rural":
-        preferred = [
-            "Large Urban Areas",
-            "Other Urban Areas",
-            "Accessible Small Towns",
-            "Remote Small Towns",
-            "Accessible Rural",
-            "Remote Rural",
-        ]
-        return [value for value in preferred if value in categories]
-    if attribute == "health_board" and grouped is not None:
-        row_totals = grouped.groupby("source_category", dropna=False)[
-            "edge_weight"
-        ].sum()
-        col_totals = grouped.groupby("target_category", dropna=False)[
-            "edge_weight"
-        ].sum()
-        totals = row_totals.add(col_totals, fill_value=0.0)
-        return totals.sort_values(ascending=False).index.astype(str).tolist()
-
-    def key(value: str) -> tuple[int, object]:
-        text = str(value)
-        match = re.search(r"\d+", text)
-        if match:
-            return (0, int(match.group()))
-        return (1, text)
-
-    return sorted(categories, key=key)
-
-
-def aggregate_row_matrix(
-    matrix_table: pd.DataFrame,
-    attribute: str,
-) -> tuple[pd.DataFrame, str]:
-    work = matrix_table.loc[matrix_table["attribute"].eq(attribute)].copy()
-    label = work["attribute_label"].dropna().iloc[0] if not work.empty else attribute
-    work["source_category"] = work["source_category"].map(
-        lambda value: display_matrix_category(attribute, value)
+def plot_variance_decomposition(paths: Paths, vd_long: pd.DataFrame) -> None:
+    order = (
+        vd_long.loc[vd_long["winsorize"].eq(95)]
+        .sort_values("additive_model_fraction", ascending=False)["attribute_label"]
+        .drop_duplicates()
+        .tolist()
     )
-    work["target_category"] = work["target_category"].map(
-        lambda value: display_matrix_category(attribute, value)
-    )
-    grouped = (
-        work.groupby(["source_category", "target_category"], dropna=False)[
-            "edge_weight"
-        ]
-        .sum()
-        .reset_index()
-    )
-    cats = matrix_order(
-        sorted(
-            set(grouped["source_category"].astype(str))
-            | set(grouped["target_category"].astype(str))
-        ),
-        attribute=attribute,
-        grouped=grouped,
-    )
-    matrix = grouped.pivot_table(
-        index="source_category",
-        columns="target_category",
-        values="edge_weight",
-        aggfunc="sum",
-        fill_value=0.0,
-    ).reindex(index=cats, columns=cats, fill_value=0.0)
-    row_totals = matrix.sum(axis=1).replace(0, np.nan)
-    row_share = matrix.div(row_totals, axis=0)
-    return row_share, str(label)
 
+    cycle = plt.rcParams["axes.prop_cycle"].by_key().get("color", ["#1f77b4"])
+    palette = {label: cycle[idx % len(cycle)] for idx, label in enumerate(order)}
 
-def draw_matrix_heatmap(
-    ax: Axes,
-    matrix: pd.DataFrame,
-    *,
-    title: str,
-    vmax: float | None = None,
-) -> AxesImage:
-    values = matrix.to_numpy(dtype=float)
-    vmax = vmax or np.nanquantile(values, 0.98)
-    image = ax.imshow(values, cmap="Blues", vmin=0, vmax=vmax, aspect="auto")
-    ax.set_title(title)
-    ax.set_xticks(np.arange(matrix.shape[1]))
-    ax.set_yticks(np.arange(matrix.shape[0]))
-    ax.set_xticklabels(matrix.columns, rotation=90)
-    ax.set_yticklabels(matrix.index)
-    return image
-
-
-def build(paths: Paths) -> None:
-    compatibility = read_table(paths, "compatibility_mixing_matrix")
-
-    panels = [
-        ("age_group", "Age group", "A", (0, 0)),
-        ("simd_quintile", "SIMD quintile", "B", (1, 0)),
-        ("urban_rural", "Urban/rural class", "C", (2, 0)),
-        ("health_board", "Health board", "D", (slice(None), 1)),
-    ]
-    matrices = [aggregate_row_matrix(compatibility, attr)[0] for attr, *_ in panels]
-    vmax = max(np.nanquantile(matrix.to_numpy(), 0.98) for matrix in matrices)
-
-    fig, placeholder_ax = styled_new_figure(
+    fig, axes = styled_new_figure(
         width="double",
-        height_in=8.2,
+        height_in=3.5,
+        nrows=1,
+        ncols=3,
         constrained_layout=True,
     )
-    placeholder_ax.remove()
-    grid = fig.add_gridspec(3, 3, width_ratios=[1.0, 1.65, 0.045])
-    colorbar_axis = fig.add_subplot(grid[:, 2])
-    for attr, title, label, grid_position in panels:
-        ax = fig.add_subplot(grid[grid_position])
-        matrix, _ = aggregate_row_matrix(compatibility, attr)
-        image = draw_matrix_heatmap(
-            ax,
-            matrix,
-            title=title,
-            vmax=vmax,
-        )
-        panel_label(ax, label)
-    cbar = fig.colorbar(image, cax=colorbar_axis)
-    cbar.set_label("Row share of weighted edge mass")
-    fig.supxlabel("Linked endpoint category")
-    fig.supylabel("Reference endpoint category")
+    axes = np.array(axes).reshape(-1)
+
+    panels = [
+        ("additive_model_fraction", "Additive model", (0, 1)),
+        ("window_given_lineage_fraction", "Window | Lineage", (0, 0.5)),
+        ("lineage_given_window_fraction", "Lineage | Window", (0, 0.5)),
+    ]
+
+    for idx, (ax, (col, title, ylim)) in enumerate(zip(axes, panels)):
+        for label in order:
+            group = vd_long.loc[vd_long["attribute_label"].eq(label)].sort_values(
+                "winsorize"
+            )
+            x = group["winsorize"].to_numpy()
+            ax.plot(
+                x,
+                group[col].to_numpy(),
+                marker="o",
+                color=palette[label],
+                label=label,
+            )
+            if col == "additive_model_fraction":
+                ax.plot(
+                    x,
+                    group["adj_additive_model_fraction"].to_numpy(),
+                    color=palette[label],
+                    linestyle="--",
+                    alpha=0.5,
+                    label="_nolegend_",
+                )
+
+        ax.set_title(title)
+        ax.set_xlabel("")
+        ax.set_ylabel("")
+        ax.set_ylim(*ylim)
+        ax.axvline(90, ls="--", color="black", alpha=0.6)
+        panel_label(ax, chr(ord("A") + idx))
+
+    handles, labels = axes[1].get_legend_handles_labels()
+    handles.append(Line2D([], [], ls="--", color="black", alpha=0.6))
+    labels.append("Reported cap (90)")
+
+    fig.legend(
+        handles,
+        labels,
+        loc="lower center",
+        ncol=4,
+        bbox_to_anchor=(0.5, -0.15),
+    )
+
+    axes[0].text(
+        0.03,
+        0.05,
+        "dashed = adjusted",
+        transform=axes[0].transAxes,
+        fontsize="small",
+        color="grey",
+    )
+
+    fig.supxlabel("Winsorising percentile")
+    fig.supylabel("Fraction of variance explained")
     styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
+
+
+def build(paths: Paths) -> pd.DataFrame:
+    vd_long = compatibility_variance_decomposition_long(paths)
+    summary = variance_decomposition_summary(
+        vd_long,
+        winsorize=VARIANCE_REFERENCE_WINDSORISE,
+    )
+    write_table(
+        vd_long,
+        "compatibility_variance_decomposition",
+        table_dir=paths.table_dir,
+    )
+    write_table(
+        summary,
+        "compatibility_variance_decomposition_summary",
+        table_dir=paths.table_dir,
+    )
+    plot_variance_decomposition(paths, vd_long)
+    return summary
 
 
 def main() -> int:

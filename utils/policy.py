@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable as IterableABC
 import re
-from typing import Iterable
+from typing import Iterable, Any
 
 import numpy as np
 import pandas as pd
@@ -50,7 +50,7 @@ _POLICY_SOURCE_TO_NORMALISED = {
 }
 
 
-def _as_list(value: object | Iterable[object] | None) -> list[object] | None:
+def _as_list(value: Any | Iterable[Any] | None) -> list[Any] | None:
     """Return scalar or iterable input as a list, treating strings as scalars."""
     if value is None:
         return None
@@ -62,7 +62,7 @@ def _as_list(value: object | Iterable[object] | None) -> list[object] | None:
 
 
 def _normalise_str_values(
-    values: object | Iterable[object] | None,
+    values: Any | Iterable[Any] | None,
     *,
     name: str,
 ) -> list[str] | None:
@@ -97,7 +97,7 @@ def _requested_policy_columns(
 
 
 def _normalise_window_ids(
-    windows: object | Iterable[object] | None,
+    windows: Any | Iterable[Any] | None,
 ) -> list[str] | None:
     """Normalise window identifiers to the processed ``W###`` format."""
     raw_windows = _as_list(windows)
@@ -276,7 +276,7 @@ def attach_policy_calendar(
     return merged.drop(columns="_policy_date")
 
 
-def window_idx_from_id(value: object | pd.Series) -> object:
+def window_idx_from_id(value: Any | pd.Series) -> Any:
     """Extract a numeric window index from a window ID or series of IDs."""
     if isinstance(value, pd.Series):
         extracted = value.astype("string").str.extract(r"(\d+)")[0]
@@ -291,7 +291,7 @@ def window_idx_from_id(value: object | pd.Series) -> object:
     return int(match.group(1))
 
 
-def window_id_from_idx(value: object | pd.Series) -> object:
+def window_id_from_idx(value: Any | pd.Series) -> Any:
     """Convert a numeric window index or series of indices to ``W###`` IDs."""
     if isinstance(value, pd.Series):
         return value.map(window_id_from_idx)
@@ -325,7 +325,7 @@ def window_id_from_idx(value: object | pd.Series) -> object:
 
 
 def window_policy_lookup(
-    windows: str | int | Iterable[str | int] | None = None,
+    windows: Any | Iterable[Any] | None = None,
     *,
     paths: Paths | None = None,
 ) -> pd.DataFrame:
@@ -338,8 +338,6 @@ def window_policy_lookup(
         columns=["window_id", "window_idx", "wn_mid_date"],
     )
     window["window_id"] = window["window_id"].astype(str)
-    window["window_idx"] = pd.to_numeric(window["window_idx"], errors="coerce")
-    window["wn_mid_date"] = pd.to_datetime(window["wn_mid_date"], errors="coerce")
     window = window.drop_duplicates(["window_id", "window_idx"]).sort_values(
         "window_idx"
     )
@@ -348,7 +346,7 @@ def window_policy_lookup(
     if window.empty:
         detail = f"windows={window_ids}" if window_ids is not None else "the dataset"
         raise ValueError(f"No window-policy rows found for {detail}.")
-
+        
     return attach_policy_calendar(window, "wn_mid_date", paths=paths)
 
 
@@ -456,7 +454,7 @@ def lineage_to_clade_map(
     *,
     paths: Paths | None = None,
     display_labels: bool = False,
-) -> dict[str, tuple[str, ...]]:
+) -> dict[Any, tuple[Any, ...]]:
     """Return a lineage-to-clade mapping with deterministic tuple values."""
     lookup = lineage_clade_lookup(
         windows=windows,
