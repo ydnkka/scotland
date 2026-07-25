@@ -2,23 +2,23 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import argparse
 import sys
+from pathlib import Path
 
-from matplotlib.lines import Line2D
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.lines import Line2D
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from assortativity_analysis import (  # noqa: E402
+from assortativity_analysis import (
     VARIANCE_REFERENCE_WINDSORISE,
     compatibility_variance_decomposition_long,
     variance_decomposition_summary,
 )
-from common import (  # noqa: E402
+from common import (
     Paths,
     add_common_args,
     panel_label,
@@ -26,10 +26,10 @@ from common import (  # noqa: E402
     styled_new_figure,
     styled_save_figure,
 )
-from chapter_analyses.genomic_networks.lib.io import write_table  # noqa: E402
 
+from chapter_analyses.genomic_networks.lib.io import write_table
 
-FIGURE_NAME = "fig_ch4_assortativity_confidence_intervals"
+FIGURE_NAME = "fig_ch4_assortativity_variance_decomposition"
 
 
 def plot_variance_decomposition(paths: Paths, vd_long: pd.DataFrame) -> None:

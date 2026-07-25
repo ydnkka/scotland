@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import argparse
 import sys
+from pathlib import Path
 
-from matplotlib.ticker import PercentFormatter
 import numpy as np
 import pandas as pd
+from matplotlib.ticker import PercentFormatter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -23,7 +23,6 @@ from common import (
     styled_new_figure,
     styled_save_figure,
 )
-
 
 FIGURE_NAME = "fig_ch4_cluster_landscape"
 

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import argparse
 import sys
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -21,7 +21,6 @@ from common import (
     styled_save_figure,
     window_idx_from_id,
 )
-
 
 FIGURE_NAME = "fig_ch4_compatibility_topology"
 

@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import argparse
 import sys
+from pathlib import Path
 
-from matplotlib.axes import Axes
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -23,8 +23,8 @@ from common import (
     styled_new_figure,
     styled_save_figure,
 )
-from chapter_analyses.genomic_networks.lib.io import write_table
 
+from chapter_analyses.genomic_networks.lib.io import write_table
 
 FIGURE_NAME = "fig_ch4_cluster_pairwise_distances"
 OVERALL_SUMMARY_NAME = "cluster_pairwise_distance_overall_summary"

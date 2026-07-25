@@ -2,20 +2,19 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import argparse
 import math
 import re
 import sys
 import textwrap
+from pathlib import Path
 
-
-from matplotlib.cm import ScalarMappable
-from matplotlib.patches import Patch
-from matplotlib.axes import Axes
-from matplotlib.ticker import PercentFormatter
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
+from matplotlib.cm import ScalarMappable
+from matplotlib.patches import Patch
+from matplotlib.ticker import PercentFormatter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -33,7 +32,6 @@ from common import (
     styled_new_figure,
     styled_save_figure,
 )
-
 
 FIGURE_NAME = "fig_ch4_sequence_composition_by_policy"
 
@@ -164,8 +162,8 @@ def build(paths: Paths) -> None:
     fig, grid = styled_new_figure(
         nrows=3,
         ncols=2,
-        width="double", 
-        height_in=8, 
+        width="double",
+        height_in=8,
         constrained_layout=True,
         gridspec_kw={"height_ratios": [0.2, 0.4, 0.5]},
     )
@@ -231,9 +229,10 @@ def build(paths: Paths) -> None:
     ]
     fig.supxlabel("Proportion of sequences by epidemic era", y=0.075)
     fig.legend(
+        title="Chronological epidemic era",
         handles=handles,
-        loc="outside lower center",
-        bbox_to_anchor=(0.5, -0.06),
+        loc="outside upper center",
+        # bbox_to_anchor=(0.5, -0.06),
         ncol=legend_ncol,
         columnspacing=1.2,
         handlelength=1.5,

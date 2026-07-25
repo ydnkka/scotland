@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import argparse
 import sys
+from pathlib import Path
 
 import matplotlib.dates as mdates
+import numpy as np
+import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.patches import Patch
 from matplotlib.ticker import PercentFormatter
-import numpy as np
-import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -25,9 +25,7 @@ from common import (
     read_table,
     styled_new_figure,
     styled_save_figure,
-    sort_by_policy,
 )
-
 
 FIGURE_NAME = "fig_ch4_vaccination_context"
 MIN_DAYS_SERIES_COUNT = 20
@@ -153,74 +151,54 @@ def _plot_days_since_vaccination(ax: Axes, window: pd.DataFrame) -> None:
     panel_label(ax, "C")
 
 
-def _plot_policy_composition(ax: Axes, policy: pd.DataFrame) -> None:
-    policy = sort_by_policy(policy, column="policy_period")
-    labels = policy["policy_period"].astype(str).tolist()
-    x = np.arange(len(policy))
-    left = np.zeros(len(policy), dtype=float)
-    groups = _active_dose_groups(policy, "proportion")
-    for label, col in groups:
-        values = _numeric(policy[col])
-        ax.bar(
-            x,
-            values,
-            bottom=left,
-            width=0.78,
-            color=DOSE_COLORS[label],
-            edgecolor="white",
-            linewidth=0.35,
-        )
-        left += np.nan_to_num(values, nan=0.0)
-    ax.set_title("Dose composition by policy period")
+def _plot_window_dose_composition(ax: Axes, window: pd.DataFrame) -> None:
+    add_policy_bands(ax, window)
+    x = pd.to_datetime(window["wn_mid_date"], errors="coerce")
+    groups = _active_dose_groups(window, "proportion")
+    values = [np.nan_to_num(_numeric(window[col]), nan=0.0) for _, col in groups]
+    colors = [DOSE_COLORS[label] for label, _ in groups]
+    ax.stackplot(x, values, colors=colors, linewidth=0, alpha=0.94)
+    ax.set_title("Dose composition over time")
     ax.set_ylabel("Share of sequences")
-    sequence_tick_mask = np.array(
-        [label not in {"E0", "L1", "P1"} for label in labels], dtype=bool
-    )
-    ax.set_xticks(x[sequence_tick_mask])
-    ax.set_xticklabels(
-        [label for label, show in zip(labels, sequence_tick_mask) if show], rotation=0
-    )
     ax.set_ylim(0, 1)
     ax.yaxis.set_major_formatter(PercentFormatter(1.0))
     ax.grid(axis="y", color="#d9d9d9", lw=0.5, alpha=0.8)
     ax.set_axisbelow(True)
+    date_axis(ax)
     panel_label(ax, "D")
 
 
 def build(paths: Paths) -> None:
     window = read_table(paths, "vaccination_window_context")
-    policy = read_table(paths, "vaccination_context_by_policy")
     for col in ("wn_start_date", "wn_mid_date", "wn_end_date"):
         if col in window.columns:
             window[col] = pd.to_datetime(window[col], errors="coerce")
     window = window.sort_values("window_idx")
 
-    fig, placeholder_ax = styled_new_figure(
+    fig, axes = styled_new_figure(
+        nrows=2,
+        ncols=2,
         width="double",
         height_in=7.3,
         constrained_layout=True,
+        sharex=True,
     )
-    placeholder_ax.remove()
-    grid = fig.add_gridspec(2, 2)
-    axes = [
-        fig.add_subplot(grid[0, 0]),
-        fig.add_subplot(grid[0, 1]),
-        fig.add_subplot(grid[1, 0]),
-        fig.add_subplot(grid[1, 1]),
-    ]
+
+    axes = axes.flatten()
 
     _plot_window_counts(axes[0], window)
     _plot_window_proportions(axes[1], window)
     _plot_days_since_vaccination(axes[2], window)
-    _plot_policy_composition(axes[3], policy)
+    _plot_window_dose_composition(axes[3], window)
 
     dose_handles = [
         Patch(facecolor=DOSE_COLORS[label], edgecolor="none", label=label)
-        for label, _ in _active_dose_groups(policy, "proportion")
+        for label, _ in _active_dose_groups(window, "proportion")
     ]
     fig.legend(
         handles=dose_handles,
-        loc="outside lower center",
+        loc="outside upper center",
+        title="Vaccination dose group",
         ncol=len(dose_handles),
         columnspacing=1.1,
         handlelength=1.5,

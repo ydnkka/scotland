@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import argparse
 import sys
+from pathlib import Path
 
 import numpy as np
 
@@ -19,7 +19,6 @@ from common import (
     styled_new_figure,
     styled_save_figure,
 )
-
 
 FIGURE_NAME = "fig_ch4_simd_population_weighting"
 

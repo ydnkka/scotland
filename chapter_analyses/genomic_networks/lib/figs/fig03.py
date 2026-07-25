@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import argparse
 import sys
+from pathlib import Path
 
 import matplotlib.dates as mdates
 import numpy as np
@@ -12,11 +12,11 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from assortativity_analysis import (  # noqa: E402
+from assortativity_analysis import (
     compatibility_window_pooled_meta,
     pooled_window_attribute_summary,
 )
-from common import (  # noqa: E402
+from common import (
     Paths,
     add_common_args,
     date_axis,
@@ -25,8 +25,8 @@ from common import (  # noqa: E402
     styled_new_figure,
     styled_save_figure,
 )
-from chapter_analyses.genomic_networks.lib.io import write_table  # noqa: E402
 
+from chapter_analyses.genomic_networks.lib.io import write_table
 
 FIGURE_NAME = "fig_ch4_assortativity_pooled_window"
 
