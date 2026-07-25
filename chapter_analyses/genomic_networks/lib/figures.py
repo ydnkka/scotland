@@ -23,6 +23,7 @@ from .figs import (
     fig07,
     fig08,
     fig09,
+    fig10,
     tables,
 )
 from .figs.common import Paths
@@ -45,12 +46,12 @@ FIGURE_BUILDERS: tuple[ArtifactBuilder, ...] = (
     ArtifactBuilder(fig02.FIGURE_NAME, fig02.build),
     ArtifactBuilder(fig03.FIGURE_NAME, fig03.build),
     ArtifactBuilder(fig04.FIGURE_NAME, fig04.build),
+    ArtifactBuilder(fig05.FIGURE_NAME, fig05.build),
     ArtifactBuilder(fig06.FIGURE_NAME, fig06.build),
     ArtifactBuilder(fig07.FIGURE_NAME, fig07.build),
     ArtifactBuilder(fig08.FIGURE_NAME, fig08.build),
     ArtifactBuilder(fig09.FIGURE_NAME, fig09.build),
-    ArtifactBuilder(fig04.FIGURE_NAME, fig04.build),
-    ArtifactBuilder(fig05.FIGURE_NAME, fig05.build),
+    ArtifactBuilder(fig10.FIGURE_NAME, fig10.build),
 )
 
 TABLE_BUILDERS: tuple[ArtifactBuilder, ...] = tuple(
