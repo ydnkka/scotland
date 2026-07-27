@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 # config.py lives at <project>/chapter_analyses/sse_detection/lib/sse/config.py.
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 PACKAGE_DIR = PROJECT_ROOT / "chapter_analyses/sse_detection"

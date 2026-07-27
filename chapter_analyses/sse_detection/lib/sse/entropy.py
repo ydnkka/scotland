@@ -24,7 +24,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-
 DEFAULT_MIXING_FEATURES = [
     "sex_entropy_z",
     "age_entropy_z",

@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import re
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-import re
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -17,7 +18,6 @@ from ..concurrent_io import (
     exclusive_file_lock,
 )
 from .prep import GROUP_VARS, PreparedModelFrame, PreparedRegressionRun
-
 
 RANDOM_SEED = 123
 _RANDOM_EFFECT_RE = re.compile(r"\([^|()]+\|([^()]+)\)")

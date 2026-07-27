@@ -9,22 +9,22 @@ It prepares:
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Literal, Sequence, Any
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
 
-from ..sse.config import PROJECT_ROOT, RESULTS_DIR
 from ..concurrent_io import atomic_write_csv, atomic_write_parquet, exclusive_file_lock
+from ..sse.config import PROJECT_ROOT, RESULTS_DIR
 from ..sse.entropy import (
     DEFAULT_MIXING_FEATURES,
     OBSERVED_MIXING_FEATURES_X10,
     add_observed_mixing_entropy_scales,
 )
 from ..sse.io import HIGH_PRIORITY_CANDIDATE_TIERS, SseOutputs
-
 
 RANDOM_SEED = 123
 CLUSTER_ID_COL = "cluster_id"
@@ -173,7 +173,7 @@ class SampleSpec:
         if self.fraction is not None:
             if not 0 < self.fraction <= 1:
                 raise ValueError("SampleSpec.fraction must be in (0, 1].")
-            return max(1, min(n_rows, int(round(n_rows * self.fraction))))
+            return max(1, min(n_rows, round(n_rows * self.fraction)))
         return None
 
 
@@ -487,8 +487,8 @@ def default_model_specs(domain: Domain) -> tuple[ModelSpec, ...]:
                 domain="mixing",
                 model_set="null_expanded",
                 predictor="null_predictors_plus_context",
-                predictors=tuple([*NULL_MIXING_FEATURES, *EPIDEMIC_CONTEXT_ADJUSTERS]),
-                terms=tuple([*NULL_MIXING_FEATURES, *EPIDEMIC_CONTEXT_ADJUSTERS]),
+                predictors=(*NULL_MIXING_FEATURES, *EPIDEMIC_CONTEXT_ADJUSTERS),
+                terms=(*NULL_MIXING_FEATURES, *EPIDEMIC_CONTEXT_ADJUSTERS),
             ),
             ModelSpec(
                 domain="mixing",
@@ -501,10 +501,9 @@ def default_model_specs(domain: Domain) -> tuple[ModelSpec, ...]:
                 domain="mixing",
                 model_set="observed_expanded",
                 predictor="observed_predictors_plus_context",
-                predictors=tuple(
-                    [*OBSERVED_MIXING_FEATURES, *EPIDEMIC_CONTEXT_ADJUSTERS]
+                predictors=(*OBSERVED_MIXING_FEATURES, *EPIDEMIC_CONTEXT_ADJUSTERS
                 ),
-                terms=tuple([*OBSERVED_MIXING_FEATURES, *EPIDEMIC_CONTEXT_ADJUSTERS]),
+                terms=(*OBSERVED_MIXING_FEATURES, *EPIDEMIC_CONTEXT_ADJUSTERS),
             ),
         )
 
@@ -524,8 +523,8 @@ def default_model_specs(domain: Domain) -> tuple[ModelSpec, ...]:
             domain="composition",
             model_set="expanded",
             predictor="composition_predictors_plus_context",
-            predictors=tuple([*COMPOSITION_FEATURES, *EPIDEMIC_CONTEXT_ADJUSTERS]),
-            terms=tuple([*composition_terms, *EPIDEMIC_CONTEXT_ADJUSTERS]),
+            predictors=(*COMPOSITION_FEATURES, *EPIDEMIC_CONTEXT_ADJUSTERS),
+            terms=(*composition_terms, *EPIDEMIC_CONTEXT_ADJUSTERS),
         ),
     )
 
@@ -675,7 +674,7 @@ def sample_binary_outcome_data(
     seed_pos = int((seed_outcomes == 1).sum())
     seed_neg = int((seed_outcomes == 0).sum())
 
-    n_pos = min(len(positives), max(1, int(round(max_rows * positive_fraction))))
+    n_pos = min(len(positives), max(1, round(max_rows * positive_fraction)))
     n_neg = min(len(negatives), max_rows - n_pos)
     if n_neg <= 0:
         raise ValueError("Sampling settings left no room for negative controls.")
@@ -685,7 +684,7 @@ def sample_binary_outcome_data(
     n_neg_fill = max(0, n_neg - seed_neg)
     if n_pos_fill + n_neg_fill > remaining_capacity:
         scale = remaining_capacity / (n_pos_fill + n_neg_fill)
-        n_pos_fill = int(round(n_pos_fill * scale))
+        n_pos_fill = round(n_pos_fill * scale)
         n_neg_fill = remaining_capacity - n_pos_fill
 
     def sample_available(frame: pd.DataFrame, n: int, seed_offset: int) -> pd.DataFrame:
@@ -719,7 +718,7 @@ def sample_binary_outcome_data(
     return _restore_categories(sampled, data, category_cols)
 
 
-def treatment_term(variable: str, reference: str | int | float | None) -> str:
+def treatment_term(variable: str, reference: str | float | None) -> str:
     """Return a formulae categorical term with an optional reference level."""
     if reference is None:
         return f"C({variable})"
@@ -979,7 +978,7 @@ def _category_seed_indices(
 
     for col, levels in missing_by_col.items():
         for level in list(levels):
-            if level not in missing_by_col[col]:
+            if level not in levels:
                 continue
             candidates = data.loc[data[col].eq(level)]
             coverage = pd.Series(0, index=candidates.index, dtype=int)

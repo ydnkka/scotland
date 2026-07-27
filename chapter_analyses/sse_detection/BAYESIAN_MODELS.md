@@ -1,6 +1,6 @@
 # Bayesian SSE Regression Models
 
-This workflow characterises detector outcomes with socio-geodemographic mixing or sequence composition. It estimates associations, not causal effects.
+This workflow characterises detector outcomes with sociogeodemographic mixing or sequence composition. It estimates associations, not causal effects.
 
 ## Code and inputs
 
@@ -33,10 +33,10 @@ All formulas include varying intercepts for `policy_period` and `clade`:
 outcome ~ focal terms + optional context terms + (1|policy_period) + (1|clade)
 ```
 
-| Family | Likelihood | Outcome |
-| --- | --- | --- |
-| Logistic | Bernoulli | `candidate` |
-| Linear | Gaussian | `burst_score` or `burden_score` |
+| Family   | Likelihood | Outcome                         |
+| -------- | ---------- | ------------------------------- |
+| Logistic | Bernoulli  | `candidate`                     |
+| Linear   | Gaussian   | `burst_score` or `burden_score` |
 
 Rows missing the outcome, any selected predictor, or either grouping variable are removed separately for each specification. Burden models therefore retain only rows with a non-missing burden score.
 
@@ -44,12 +44,12 @@ Rows missing the outcome, any selected predictor, or either grouping variable ar
 
 Node-level model sets:
 
-| Set | Fixed effects |
-| --- | --- |
-| `null_primary` | Null-standardised entropy for sex, age, SIMD, urban/rural class, and Health Board |
-| `null_expanded` | `null_primary` plus context adjusters |
-| `observed_primary` | Observed entropy for the same five attributes, scaled ×10 |
-| `observed_expanded` | `observed_primary` plus context adjusters |
+| Set                 | Fixed effects                                                                     |
+| ------------------- | --------------------------------------------------------------------------------- |
+| `null_primary`      | Null-standardised entropy for sex, age, SIMD, urban/rural class, and Health Board |
+| `null_expanded`     | `null_primary` plus context adjusters                                             |
+| `observed_primary`  | Observed entropy for the same five attributes, scaled ×10                         |
+| `observed_expanded` | `observed_primary` plus context adjusters                                         |
 
 Data Zone and local-authority entropy are computed by the detector but explicitly excluded from the current saved mixing specifications.
 
@@ -57,10 +57,10 @@ Data Zone and local-authority entropy are computed by the detector but explicitl
 
 Sequence-level model sets:
 
-| Set | Fixed effects |
-| --- | --- |
-| `primary` | Sex, age group, SIMD quintile, urban/rural class, and Health Board |
-| `expanded` | `primary` plus context adjusters |
+| Set        | Fixed effects                                                      |
+| ---------- | ------------------------------------------------------------------ |
+| `primary`  | Sex, age group, SIMD quintile, urban/rural class, and Health Board |
+| `expanded` | `primary` plus context adjusters                                   |
 
 Treatment-code references are defined in `COMPOSITION_SPECS`: Male, age 25–64, SIMD quintile 1, Large Urban Areas, and Greater Glasgow and Clyde.
 
@@ -111,12 +111,12 @@ Logistic development samples preserve the requested positive fraction; when unsp
 
 ## Priors and sampling defaults
 
-| Term | Logistic | Linear |
-| --- | --- | --- |
-| Intercept | `Normal(logit(observed rate), 1.5)` | `Normal(observed mean, 1.0)` |
-| Common effects | `Normal(0, 1.0)` | `Normal(0, 0.5)` |
-| Varying intercepts | `Normal(0, HalfNormal(1.0))` | `Normal(0, HalfNormal(0.5))` |
-| Residual SD | — | `HalfNormal(0.5)` |
+| Term               | Logistic                            | Linear                       |
+| ------------------ | ----------------------------------- | ---------------------------- |
+| Intercept          | `Normal(logit(observed rate), 1.5)` | `Normal(observed mean, 1.0)` |
+| Common effects     | `Normal(0, 1.0)`                    | `Normal(0, 0.5)`             |
+| Varying intercepts | `Normal(0, HalfNormal(1.0))`        | `Normal(0, HalfNormal(0.5))` |
+| Residual SD        | —                                   | `HalfNormal(0.5)`            |
 
 Defaults are 2,000 draws, 2,000 tuning iterations, 4 chains, 4 cores, target acceptance 0.99, PyMC inference, random seed 123, non-centred group effects, and log-likelihood calculation. Flags can override all listed scales/settings.
 
@@ -141,13 +141,13 @@ linear/<domain>/<outcome>/<model_set>/
 
 Each fitted model writes:
 
-| File | Content |
-| --- | --- |
-| `summary.csv` | Posterior parameter, HDI, R-hat, ESS, scale, and direction summaries |
-| `diagnostics.csv` | Divergence, BFMI, R-hat, ESS, and tree-depth checks |
-| `metadata.csv` | Formula, rows, outcome mean/rate, and sampling flag |
-| `fit.log` | Structured header, diagnostic report, saved paths, or traceback |
-| `idata.nc` | Optional inference data with `--save-idata` |
+| File              | Content                                                              |
+| ----------------- | -------------------------------------------------------------------- |
+| `summary.csv`     | Posterior parameter, HDI, R-hat, ESS, scale, and direction summaries |
+| `diagnostics.csv` | Divergence, BFMI, R-hat, ESS, and tree-depth checks                  |
+| `metadata.csv`    | Formula, rows, outcome mean/rate, and sampling flag                  |
+| `fit.log`         | Structured header, diagnostic report, saved paths, or traceback      |
+| `idata.nc`        | Optional inference data with `--save-idata`                          |
 
 Backend output is suppressed by default and not copied to `fit.log`; `--live-progress` shows it in the terminal. CSV, parquet, and NetCDF model artifacts use same-directory temporary files and atomic replacement.
 

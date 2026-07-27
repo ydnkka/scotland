@@ -3,17 +3,14 @@
 from __future__ import annotations
 
 import contextlib
+import fcntl
 import os
-from pathlib import Path
 import socket
 import time
-from typing import Any, Iterator
+from collections.abc import Generator
+from pathlib import Path
+from typing import Any
 from uuid import uuid4
-
-try:
-    import fcntl
-except ImportError:  # pragma: no cover - fcntl is available on macOS/Linux.
-    fcntl = None  # type: ignore[assignment]
 
 
 class LockAlreadyHeldError(RuntimeError):
@@ -39,7 +36,7 @@ def atomic_write_netcdf(data: Any, path: Path | str, **kwargs: Any) -> None:
 
 
 @contextlib.contextmanager
-def atomic_write_path(path: Path | str) -> Iterator[Path]:
+def atomic_write_path(path: Path | str) -> Generator[Path]:
     """Yield a same-directory temporary path and replace the target on success."""
     final_path = Path(path)
     final_path.parent.mkdir(parents=True, exist_ok=True)
@@ -53,7 +50,7 @@ def atomic_write_path(path: Path | str) -> Iterator[Path]:
 
 
 @contextlib.contextmanager
-def exclusive_file_lock(lock_path: Path | str) -> Iterator[Path]:
+def exclusive_file_lock(lock_path: Path | str) -> Generator[Path]:
     """Block on an advisory lock file until exclusive access is available."""
     path = Path(lock_path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -79,7 +76,7 @@ def exclusive_create_lock(
     lock_path: Path | str,
     *,
     details: str | None = None,
-) -> Iterator[Path]:
+) -> Generator[Path]:
     """Acquire a fail-fast lock by atomically creating a lock file."""
     path = Path(lock_path)
     path.parent.mkdir(parents=True, exist_ok=True)

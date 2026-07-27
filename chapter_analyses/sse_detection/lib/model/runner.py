@@ -13,27 +13,28 @@ import os
 import sys
 import time
 import traceback
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
-from typing import Iterator, Sequence, TextIO
+from typing import TextIO
 
 import pandas as pd
 
-from ..sse.config import BAYESIAN_OUTPUT_DIR, PROJECT_ROOT, SSE_OUTPUT_DIR
-from .bayesian import (
-    BayesianFitConfig,
-    fit_prepared_model,
-    print_diagnostic_report,
-    save_prepared_model_result,
-)
 from ..concurrent_io import (
     LockAlreadyHeldError,
     atomic_write_csv,
     exclusive_create_lock,
     exclusive_file_lock,
 )
+from ..sse.config import BAYESIAN_OUTPUT_DIR, PROJECT_ROOT, SSE_OUTPUT_DIR
 from ..sse.io import load_sse_outputs
+from .bayesian import (
+    BayesianFitConfig,
+    fit_prepared_model,
+    print_diagnostic_report,
+    save_prepared_model_result,
+)
 from .prep import (
     SCORE_OUTCOMES,
     Domain,
@@ -47,7 +48,6 @@ from .prep import (
     prepare_regression_data,
     prepare_regression_run,
 )
-
 
 ALL_FAMILIES: tuple[RegressionFamily, ...] = ("logistic", "linear")
 ALL_OUTCOMES = ("candidate", *SCORE_OUTCOMES)
@@ -447,12 +447,12 @@ def suppress_backend_output(*, live: bool) -> Iterator[None]:
         yield
         return
 
-    with Path(os.devnull).open("w", encoding="utf-8") as sink:
-        with (
-            contextlib.redirect_stdout(sink),
-            contextlib.redirect_stderr(sink),
-        ):
-            yield
+    with (
+        Path(os.devnull).open("w", encoding="utf-8") as sink,
+        contextlib.redirect_stdout(sink),
+        contextlib.redirect_stderr(sink),
+    ):
+        yield
 
 
 def write_model_log_header(
@@ -843,8 +843,8 @@ __all__ = [
     "frame_key",
     "load_regression_data",
     "main_for_domain",
-    "model_log_path",
     "model_lock_path",
+    "model_log_path",
     "model_outputs_exist",
     "outcomes_for_family",
     "prepare_domain_regression_run",

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Superspreading Signature Detection
 ==================================
@@ -14,38 +13,35 @@ From the repository root:
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import pandas as pd
-
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[4]
 
 if __package__ in {None, ""} and str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from utils import load_analysis_columns  # noqa: E402
+from utils import load_analysis_columns
 
-
-from .cluster_features import (  # noqa: E402
+from ..model.prep import validate_regression_cluster_columns
+from .cluster_features import (
     build_cluster_attributes,
     build_cluster_stats,
     build_cluster_table,
 )
-from .config import (  # noqa: E402
+from .config import (
     ANALYSIS_COLUMNS,
     SSE_OUTPUT_DIR,
     TRANSITION_WINDOW_STRIDE,
 )
-from ..model.prep import validate_regression_cluster_columns  # noqa: E402
-from .scoring import add_sse_node_metrics  # noqa: E402
-from .transition_graph import (  # noqa: E402
+from .scoring import add_sse_node_metrics
+from .transition_graph import (
     TransitionSummaryOutputs,
     build_transition_network,
     build_transition_summary_outputs,
 )
-
 
 LOGGER = logging.getLogger(__name__)
 

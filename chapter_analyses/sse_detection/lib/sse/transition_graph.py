@@ -143,7 +143,7 @@ def component_maps(graph: nx.DiGraph) -> tuple[dict[object, str], dict[str, int]
     """Return deterministic weak-component ids and sizes for graph nodes."""
     components = sorted(
         nx.weakly_connected_components(graph),
-        key=lambda nodes: (-len(nodes), sorted(nodes)[0]),
+        key=lambda nodes: (-len(nodes), sorted(nodes)[0]),  # noqa: FURB192
     )
     node_to_component = {
         node: f"CC{idx:05d}"
@@ -408,10 +408,9 @@ def build_new_downstream_metrics(
                 new_child_count += 1
                 new_sequences.update(child_new_sequences)
 
-            if edge.n_shared_sequences >= min_shared_sequences:  # type: ignore
-                if child_new_count > 0:
-                    supported_new_child_count += 1
-                    supported_new_sequences.update(child_new_sequences)
+            if edge.n_shared_sequences >= min_shared_sequences and child_new_count > 0:  # type: ignore
+                supported_new_child_count += 1
+                supported_new_sequences.update(child_new_sequences)
 
         rows.append(
             {
