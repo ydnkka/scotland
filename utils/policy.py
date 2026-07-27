@@ -8,9 +8,10 @@ the analysis packages.
 
 from __future__ import annotations
 
-from collections.abc import Iterable as IterableABC
 import re
-from typing import Iterable, Any
+from collections.abc import Iterable
+from collections.abc import Iterable as IterableABC
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -18,23 +19,23 @@ import pandas as pd
 from .data import CLADES, Paths, pango_lineages_for_clades
 
 __all__ = [
-    "load_policy_calendar",
-    "policy_descriptors",
-    "policy_order",
-    "policy_period_labels",
-    "policy_era_labels",
     "attach_policy_calendar",
-    "window_idx_from_id",
-    "window_id_from_idx",
-    "window_policy_lookup",
-    "window_id_to_policy_period_map",
-    "window_id_to_policy_era_map",
-    "window_id_to_policy_period",
-    "window_id_to_policy_era",
+    "clades_for_pango_lineages",
     "lineage_clade_lookup",
     "lineage_to_clade_map",
-    "clades_for_pango_lineages",
+    "load_policy_calendar",
     "pango_lineages_for_clades",
+    "policy_descriptors",
+    "policy_era_labels",
+    "policy_order",
+    "policy_period_labels",
+    "window_id_from_idx",
+    "window_id_to_policy_era",
+    "window_id_to_policy_era_map",
+    "window_id_to_policy_period",
+    "window_id_to_policy_period_map",
+    "window_idx_from_id",
+    "window_policy_lookup",
 ]
 
 

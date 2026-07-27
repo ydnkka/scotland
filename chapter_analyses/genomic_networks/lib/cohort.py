@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Iterable, Sequence, Any
 import sys
+from collections.abc import Iterable, Sequence
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -15,12 +16,10 @@ from .config import (
     AttributeSpec,
 )
 
-
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils import load_daily_policy_data, policy_order  # noqa: E402
-
+from utils import load_daily_policy_data, policy_order
 
 VACCINATION_DOSE_GROUPS = (
     "Unvaccinated",

@@ -28,7 +28,6 @@ from .lib.cohort import (
 )
 from .lib.io import ensure_results_dirs, load_sequence_data, write_table
 
-
 LOGGER = logging.getLogger(__name__)
 
 

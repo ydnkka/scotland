@@ -7,14 +7,13 @@ uncertainty for edge-weighted statistics.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
-from typing import Iterable, Sequence, Any, cast
+from collections.abc import Callable, Iterable, Iterator, Sequence
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
 
 from .config import DEFAULT_MIXING_ATTRIBUTES, AttributeSpec
-
 
 EdgeGroup = tuple[dict[str, Any], pd.DataFrame]
 BootstrapStatFn = Callable[[np.ndarray], float]
@@ -592,7 +591,7 @@ def build_mixing_for_edge_table(
                         "attribute_label": spec.label,
                         **group_values,
                         "n_edges_observed": n_edges_observed,
-                        "n_edges_used": int(len(w_attr)),
+                        "n_edges_used": len(w_attr),
                         "edge_weight_total": float(w_attr.sum()),
                         "n_categories": np.nan,
                         "assortativity": np.nan,

@@ -25,12 +25,15 @@ import argparse
 import logging
 import os
 import tempfile
+from collections.abc import Sequence
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence, cast
+from typing import cast
 
 import pandas as pd
+
+from utils import load_pairwise_edges
 
 from .lib.config import (
     DEFAULT_MIXING_ATTRIBUTES,
@@ -48,7 +51,6 @@ from .lib.mixing import (
     build_mixing_for_edge_table,
     specs_by_name,
 )
-from utils import load_pairwise_edges
 
 LOGGER = logging.getLogger(__name__)
 
@@ -263,20 +265,17 @@ def _write_parquet_atomic(df: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
     tmp_path: Path | None = None
-    tmp_file = tempfile.NamedTemporaryFile(
-        dir=path.parent,
-        prefix=f".{path.stem}.",
-        suffix=f".tmp{path.suffix}",
-        delete=False,
-    )
-
     try:
-        tmp_path = Path(tmp_file.name)
-        tmp_file.close()
-        df.to_parquet(tmp_path, index=False)
+        with tempfile.NamedTemporaryFile(
+            dir=path.parent,
+            prefix=f".{path.stem}.",
+            suffix=f".tmp{path.suffix}",
+            delete=False,
+        ) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+            df.to_parquet(tmp_path, index=False)
         os.replace(tmp_path, path)
     finally:
-        tmp_file.close()
         if tmp_path is not None and tmp_path.exists():
             tmp_path.unlink()
 

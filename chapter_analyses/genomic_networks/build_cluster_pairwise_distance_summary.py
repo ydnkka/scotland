@@ -15,15 +15,18 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Sequence, Any
-import sys
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from utils import load_analysis_columns, load_pairwise_edges
 
 from .lib.config import (
     ANALYSIS_RESOLUTION,
@@ -31,8 +34,6 @@ from .lib.config import (
     TABLES_DIR,
 )
 from .lib.io import ensure_results_dirs, write_table
-from utils import load_analysis_columns, load_pairwise_edges
-
 
 LOGGER = logging.getLogger(__name__)
 

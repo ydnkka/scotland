@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import sys
-from typing import Iterable, Sequence
+from collections.abc import Iterable, Sequence
+from pathlib import Path
 
 import pandas as pd
 
 from .config import (
-    ANALYSIS_RESOLUTION,
     ANALYSIS_COLUMNS,
+    ANALYSIS_RESOLUTION,
     FIGURES_DIR,
     INTERMEDIATE_DIR,
     PROJECT_ROOT,
@@ -19,11 +19,10 @@ from .config import (
     TABLES_DIR,
 )
 
-
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils import load_analysis_columns, load_pairwise_edges  # noqa: E402
+from utils import load_analysis_columns, load_pairwise_edges
 
 
 def ensure_results_dirs() -> None:
@@ -63,7 +62,7 @@ def load_pairwise_compatibility_edges(
     windows: str | int | Iterable[str | int] | None = None,
     clades: str | Iterable[str] | None = None,
     pango_lineages: str | Iterable[str] | None = None,
-    sequence_ids: object | Iterable[object] | None = None,
+    sequence_ids: str | Iterable[str] | None = None,
     compatibility_threshold: float | None = SPARSIFICATION_THRESHOLD,
     columns: Sequence[str] | None = None,
 ) -> pd.DataFrame:

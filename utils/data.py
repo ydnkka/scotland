@@ -7,24 +7,23 @@ rolling-window stride used by the notebooks.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from collections.abc import Iterable as IterableABC
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 import yaml
 
-
 __all__ = [
     "CLADES",
     "CLADE_PALETTE",
     "load_analysis_columns",
     "load_daily_policy_data",
-    "load_pairwise_edges",
     "load_datazone_info",
+    "load_pairwise_edges",
     "pango_lineages_for_clades",
 ]
 

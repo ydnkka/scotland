@@ -8,7 +8,6 @@ import logging
 from .lib.figures import build_all_figures, build_all_tables
 from .lib.io import ensure_results_dirs
 
-
 LOGGER = logging.getLogger(__name__)
 
 

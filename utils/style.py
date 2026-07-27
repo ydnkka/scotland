@@ -13,25 +13,26 @@ Usage
 
 from __future__ import annotations
 
-from typing import Literal, Sequence, Any
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Any, Literal
 
 import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
+import seaborn as sns
 from matplotlib.axes import Axes
 from matplotlib.colors import to_rgb
-import seaborn as sns
+from matplotlib.figure import Figure
 
 __all__ = [
-    "set_theme",
-    "save_figure",
-    "add_panel_labels",
-    "new_figure",
-    "lighten",
-    "FIG_WIDTHS_IN",
-    "WIDTHS",
     "CONTEXTS",
     "DEFAULT_HEIGHT_IN",
+    "FIG_WIDTHS_IN",
+    "WIDTHS",
+    "add_panel_labels",
+    "lighten",
+    "new_figure",
+    "save_figure",
+    "set_theme",
 ]
 
 # ---------------------------------------------------------------------------

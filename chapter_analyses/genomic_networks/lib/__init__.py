@@ -1,8 +1,8 @@
 """Reusable Chapter 4 genomic surveillance and network-analysis code."""
 
 from .config import (
-    ANALYSIS_RESOLUTION,
     ANALYSIS_COLUMNS,
+    ANALYSIS_RESOLUTION,
     DEFAULT_MIXING_ATTRIBUTES,
     DISCLOSURE_MIN_CELL,
     FIGURES_DIR,
@@ -12,8 +12,8 @@ from .config import (
 )
 
 __all__ = [
-    "ANALYSIS_RESOLUTION",
     "ANALYSIS_COLUMNS",
+    "ANALYSIS_RESOLUTION",
     "DEFAULT_MIXING_ATTRIBUTES",
     "DISCLOSURE_MIN_CELL",
     "FIGURES_DIR",

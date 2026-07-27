@@ -13,7 +13,6 @@ import logging
 from .lib.io import ensure_results_dirs, write_table
 from .lib.simd import build_simd_validation_tables
 
-
 LOGGER = logging.getLogger(__name__)
 
 

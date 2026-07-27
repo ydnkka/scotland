@@ -7,10 +7,11 @@ figure set from saved tables.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Iterable, Any
+from typing import Any
 
 from .config import FIGURES_DIR, TABLES_DIR
 from .figs import (
@@ -27,7 +28,6 @@ from .figs import (
     tables,
 )
 from .figs.common import Paths
-
 
 LOGGER = logging.getLogger(__name__)
 

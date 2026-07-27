@@ -16,7 +16,7 @@ import argparse
 import logging
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
-from typing import Any, TypedDict, Union, cast
+from typing import Any, TypedDict, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -27,10 +27,9 @@ from sklearn.metrics import adjusted_mutual_info_score, adjusted_rand_score
 from .lib.config import PROJECT_ROOT, SPARSIFICATION_THRESHOLD, TABLES_DIR
 from .lib.io import ensure_results_dirs, write_table
 
-
 LOGGER = logging.getLogger(__name__)
 
-AggregationFunc = Union[str, Callable[[pd.Series], float]]
+AggregationFunc = str | Callable[[pd.Series], float]
 NamedAggregation = tuple[str, AggregationFunc]
 
 
@@ -359,7 +358,7 @@ def _build_leiden_ari_table(
                 on="sequence_id",
                 how="inner",
             )
-            n_compared = int(len(merged))
+            n_compared = len(merged)
             if n_compared < 2:
                 ari = np.nan
                 ami = np.nan if include_ami else None
@@ -643,7 +642,7 @@ def build_sparsification_sensitivity_tables(
             retained_edges = (
                 int(retained_scan_edges)
                 if not estimated
-                else int(round(retained_fraction * total_pairwise_edges))
+                else round(retained_fraction * total_pairwise_edges)
             )
             retained_weight_sum = (
                 retained_scan_weight_sum

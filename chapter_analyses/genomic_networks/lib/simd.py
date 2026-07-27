@@ -2,20 +2,18 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import sys
+from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
 
 from .config import PROJECT_ROOT
 
-
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils import load_datazone_info  # noqa: E402
-
+from utils import load_datazone_info
 
 SOURCE_GROUP_COLUMNS = {
     5: "dz_simd_quintile",
