@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Generate per-(window, lineage) group .ids files and a tn93 command file.
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Generate the parallel command file for running cluster_pairwise.py.
 

@@ -5,7 +5,6 @@ from __future__ import annotations
 import numpy as np
 from epilink import EpiLink, InfectiousnessToTransmission, NaturalHistoryParameters
 
-
 RNG_SEED = 42
 
 

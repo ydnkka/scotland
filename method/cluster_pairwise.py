@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Cluster one pairwise compatibility parquet with Leiden.
 
 Reads:

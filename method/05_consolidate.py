@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Consolidate per-group cluster parquets and merge with all metadata.
 

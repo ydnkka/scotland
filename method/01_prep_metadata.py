@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Prepare all processed metadata files from raw PHS and COG-UK data.
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Process pairwise genetic distances into an extended, distributed Parquet dataset.
 
@@ -42,7 +41,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import yaml
-
 from epilink_wrapper import estimate_epilink_compatibility
 
 

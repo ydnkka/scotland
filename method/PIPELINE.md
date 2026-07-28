@@ -1,4 +1,4 @@
-# Scotland SARS-CoV-2 Clustering Pipeline
+# Scotland SARS-CoV-2 Data Integration and Clustering Pipeline
 
 The pipeline prepares linked metadata, groups sequences by overlapping time window and Pango lineage, computes TN93 distances, scores EpiLink compatibility, applies Leiden clustering, and consolidates the results.
 
@@ -85,8 +85,6 @@ SIMD rows containing a null in any retained field are dropped with a warning. Be
 
 For each retained group it writes `group_fastas/<stem>.ids` and adds a compound `samtools faidx && tn93` command to `tn93_commands_file`. The TN93 invocation uses the configured threshold (`-t`), ambiguous-site strategy (`-a`), ambiguity fraction (`-g`), minimum overlap (`-l`), and quiet mode (`-q`). Output stems have the form `W042_BA.2_317`. A sequence can occur in up to three windows with the default width and step.
 
-![Sliding three-week windows with a one-week step](../assets/sliding_3week_windows.svg)
-
 ### Batch runner
 
 `parallel_run.sh` executes one command per line with GNU parallel:
@@ -158,6 +156,6 @@ It scans `epilink_compatibility` in batches, counts rows strictly above the conf
 
 ## Dependencies and reproducibility
 
-Python dependencies are in `requirements.txt`; external executables are `samtools`, `tn93`, and GNU parallel.
+Python dependencies are in `requirements.txt`; external executables are `samtools` (version 1.23), [`tn93`](https://github.com/veg/tn93), and GNU `parallel` (version 20210822).
 
 Record `config.yaml`, raw inputs, software versions, and batch joblogs. Leiden uses `pipeline.seed`; EpiLink uses its separate fixed seed. Changing alignment length, grouping, QC status, thresholds, resolution, or either seed requires rebuilding the affected intermediate and downstream outputs. Remove stale group FASTA/ID, TN93, pairwise, and cluster outputs when changing the QC cohort; consolidation rejects cluster assignments containing sequences outside the configured cohort. Do not mix same-stem chunks created under different settings.

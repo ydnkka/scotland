@@ -22,7 +22,6 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 import yaml
 
-
 LOGGER = logging.getLogger(__name__)
 
 
