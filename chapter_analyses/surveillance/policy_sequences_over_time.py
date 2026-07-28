@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 import logging
+import sys
+from pathlib import Path
+
 import matplotlib.dates as mdates
 import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
 import pandas as pd
 from matplotlib import colors
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from matplotlib.ticker import PercentFormatter
-
-from pathlib import Path
-import sys
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(_PROJECT_ROOT) not in sys.path:
@@ -155,7 +155,7 @@ def compute_sequencing_proportion(
     time_freq: str = "W",
     smooth_window: int | None = 3,
 ) -> pd.DataFrame:
-    """Return the proportion of positive cases (PCR + LF) sequenced over time."""
+    """Return the proportion of positive cases (PCR + antigen tests) sequenced over time."""
     dd = df.dropna(subset=[date_col]).copy()
 
     if prop_sequenced_col not in dd.columns:
@@ -449,7 +449,7 @@ def plot_sequences_with_policy(
     ax.grid(axis="y", color="#d9d9d9", linewidth=0.6, alpha=0.5)
     ax.margins(x=0.01)
 
-    # Twin axis: proportion of positive cases (PCR + LF) sequenced.
+    # Twin axis: proportion of positive cases (PCR + antigen tests) sequenced.
     ax2 = ax.twinx()
     (prop_handle,) = ax2.plot(
         sampling_df.index,
@@ -461,7 +461,7 @@ def plot_sequences_with_policy(
         label="Proportion sequenced",
         zorder=7,
     )
-    ax2.set_ylabel("Positive tests sequenced (PCR + LF)")
+    ax2.set_ylabel("Positive tests sequenced")
     ax2.set_ylim(0, 1)
     ax2.yaxis.set_major_formatter(PercentFormatter(xmax=1, decimals=0))
     ax2.tick_params(axis="y", colors="#c1272d")

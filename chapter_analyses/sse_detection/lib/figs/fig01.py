@@ -1,4 +1,4 @@
-"""Build SSE Figure 5: temporal cluster-transition graph baseline."""
+"""Build Chapter 5 Figure 1: graph-role schematic."""
 
 from __future__ import annotations
 
@@ -6,23 +6,16 @@ import argparse
 
 from matplotlib.axes import Axes
 from matplotlib.patches import Rectangle
-import numpy as np
-import pandas as pd
 
 from .common import (
     Paths,
     add_common_args,
-    add_policy_bands,
-    date_axis,
-    panel_label,
     paths_from_args,
-    read_table,
     styled_new_figure,
     styled_save_figure,
 )
 
-
-FIGURE_NAME = "fig_ch5_transition_graph_baseline"
+FIGURE_NAME = "fig_ch5_transition_graph_roles"
 
 
 CLUSTER_ROLE_GROUPS = {
@@ -161,143 +154,11 @@ def draw_graph_role_schematic(ax: Axes) -> None:
 
     ax.set_xlim(-0.42, 3.02)
     ax.set_ylim(-0.03, 3.25)
-    ax.set_title("Graph role defined by continuity-edge degree", pad=8)
     ax.set_axis_off()
-    panel_label(ax, "A")
-
 
 def build(paths: Paths) -> None:
-    window = read_table(paths, "transition_window_summary")
-    nodes = read_table(paths, "transition_node_table")
-    components = read_table(paths, "transition_component_summary")
-
-    nodes["wn_mid_date"] = pd.to_datetime(nodes["wn_mid_date"], errors="coerce")
-    window_dates = (
-        nodes[["window_id", "window_idx", "wn_mid_date"]]
-        .drop_duplicates(["window_id", "window_idx"])
-        .sort_values("window_idx")
-    )
-    window = window.merge(
-        window_dates[["window_id", "window_idx", "wn_mid_date"]],
-        on=["window_id", "window_idx"],
-        how="left",
-    )
-    policy_context_cols = ["window_id", "window_idx", "wn_mid_date", "policy_era"]
-    policy_context = (
-        nodes[[col for col in policy_context_cols if col in nodes.columns]]
-        .drop_duplicates(["window_id", "window_idx"])
-        .sort_values("window_idx")
-    )
-
-    nodes["role_group"] = (
-        nodes["primary_graph_role"].map(CLUSTER_ROLE_GROUPS).fillna("Other")
-    )
-    role_counts = (
-        nodes.groupby(["window_idx", "wn_mid_date", "role_group"], dropna=False)
-        .size()
-        .rename("n")
-        .reset_index()
-    )
-    role_pivot = role_counts.pivot_table(
-        index="wn_mid_date",
-        columns="role_group",
-        values="n",
-        fill_value=0,
-    ).sort_index()
-    preferred_roles = [
-        "Isolated",
-        "Source",
-        "Sink",
-        "Linear continuation",
-        "Branching source",
-        "Merging sink",
-        "Internal branching",
-        "Internal merging",
-        "Merge and branch",
-        "Other",
-    ]
-    role_pivot = role_pivot[[col for col in preferred_roles if col in role_pivot]]
-
-    fig, placeholder_ax = styled_new_figure(
-        width="double",
-        height_in=8,
-        constrained_layout=True,
-    )
-    placeholder_ax.remove()
-    grid = fig.add_gridspec(3, 2, height_ratios=[1.35, 1.0, 1.0])
-
-    ax = fig.add_subplot(grid[0, :])
+    fig, ax = styled_new_figure(width="double", height_in=4.2, constrained_layout=True)
     draw_graph_role_schematic(ax)
-
-    ax = fig.add_subplot(grid[1, 0])
-    add_policy_bands(ax, policy_context)
-    nodes_line = ax.plot(
-        window["wn_mid_date"], window["n_nodes"], color="#1f4e79", lw=1.3
-    )[0]
-    edges_line = ax.plot(
-        window["wn_mid_date"], window["n_out_edges"], color="#d95f02", lw=1.3
-    )[0]
-    ax.set_title("Transition graph size")
-    ax.set_ylabel("Count")
-    ax.legend([nodes_line, edges_line], ["Nodes", "Outgoing edges"], loc="upper left")
-    date_axis(ax)
-    panel_label(ax, "B")
-
-    ax = fig.add_subplot(grid[1, 1])
-    add_policy_bands(ax, policy_context)
-    colors = [ROLE_COLORS.get(role, "#bab0ac") for role in role_pivot.columns]
-    ax.stackplot(
-        role_pivot.index,
-        role_pivot.T.to_numpy(),
-        labels=role_pivot.columns,
-        colors=colors,
-        linewidth=0,
-    )
-    ax.set_title("Graph-role composition")
-    ax.set_ylabel("Nodes")
-    date_axis(ax)
-    panel_label(ax, "C")
-
-    ax = fig.add_subplot(grid[2, 0])
-    comp_sizes = components["n_nodes"].dropna().sort_values().to_numpy()
-    ccdf = 1.0 - np.arange(len(comp_sizes)) / len(comp_sizes)
-    ax.plot(comp_sizes, ccdf, color="#1f4e79", lw=1.4)
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_title("Weak-component size distribution")
-    ax.set_xlabel("Weak-component size (nodes)")
-    ax.set_ylabel("Pr(component size >= x)")
-    panel_label(ax, "D")
-
-    ax = fig.add_subplot(grid[2, 1])
-    add_policy_bands(ax, policy_context)
-    isolates_line = ax.plot(
-        window["wn_mid_date"],
-        window["n_isolates"],
-        color=ROLE_COLORS["Isolated"],
-        lw=1.1,
-    )[0]
-    branching_line = ax.plot(
-        window["wn_mid_date"],
-        window["n_branching"],
-        color=ROLE_COLORS["Branching source"],
-        lw=1.1,
-    )[0]
-    merging_line = ax.plot(
-        window["wn_mid_date"],
-        window["n_merging"],
-        color=ROLE_COLORS["Merging sink"],
-        lw=1.1,
-    )[0]
-    ax.set_title("Selected degree-class counts")
-    ax.set_ylabel("Nodes")
-    ax.legend(
-        [isolates_line, branching_line, merging_line],
-        ["Isolated", "Multiple outgoing", "Multiple incoming"],
-        loc="upper left",
-    )
-    date_axis(ax)
-    panel_label(ax, "E")
     styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
 
 

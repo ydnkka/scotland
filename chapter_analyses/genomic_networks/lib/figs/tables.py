@@ -2,16 +2,23 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import argparse
 import sys
-from typing import Callable, Any
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from assortativity_analysis import (
+    compatibility_variance_decomposition_long,
+    compatibility_window_pooled_meta,
+    pooled_window_attribute_summary,
+    variance_decomposition_summary,
+)
 from common import (
     ATTRIBUTE_ORDER,
     POLICY_LABELS,
@@ -22,14 +29,8 @@ from common import (
     sort_by_policy,
     window_idx_from_id,
 )
-from chapter_analyses.genomic_networks.lib.config import TABLES_DIR  # noqa: E402
-from assortativity_analysis import (  # noqa: E402
-    compatibility_variance_decomposition_long,
-    compatibility_window_pooled_meta,
-    pooled_window_attribute_summary,
-    variance_decomposition_summary,
-)
 
+from chapter_analyses.genomic_networks.lib.config import TABLES_DIR
 
 SIMD_GROUP_LABELS = {
     5: "quintile",
@@ -134,10 +135,7 @@ def render_latex_table(
     columns: list[str],
     rows: list[list[object]],
     column_spec: str | None = None,
-    small: bool = True,
     addlinespace_after: set[int] | None = None,
-    tabcolsep: str = "4pt",
-    arraystretch: str = "1.12",
 ) -> str:
     column_spec = latex_column_spec(column_spec, len(columns))
     addlinespace_after = addlinespace_after or set()
@@ -159,27 +157,15 @@ def render_latex_table(
         r"\begin{table}[htbp]",
         r"\centering",
         f"\\caption[{latex_escape(caption)}]{{{latex_escape(caption)}}}\\label{{{label}}}",
-        r"\begingroup",
+        f"\\begin{{thesistablebody}}{{{column_spec}}}",
+        r"\toprule",
+        f"{header} \\\\",
+        r"\midrule",
+        *body_lines,
+        r"\bottomrule",
+        r"\end{thesistablebody}",
+        r"\end{table}",
     ]
-    if small:
-        lines.append(r"\small")
-    lines.extend(
-        [
-            f"\\setlength{{\\tabcolsep}}{{{tabcolsep}}}",
-            f"\\renewcommand{{\\arraystretch}}{{{arraystretch}}}",
-            r"\begin{adjustbox}{max width=\textwidth,center}",
-            f"\\begin{{tabular}}{{{column_spec}}}",
-            r"\toprule",
-            f"{header} \\\\",
-            r"\midrule",
-            *body_lines,
-            r"\bottomrule",
-            r"\end{tabular}",
-            r"\end{adjustbox}",
-            r"\endgroup",
-            r"\end{table}",
-        ]
-    )
     return "\n".join(lines)
 
 
@@ -192,7 +178,6 @@ def write_latex_table(
     columns: list[str],
     rows: list[list[Any]],
     column_spec: str | None = None,
-    small: bool = True,
     addlinespace_after: set[int] | None = None,
 ) -> None:
     paths.figure_dir.mkdir(parents=True, exist_ok=True)
@@ -202,7 +187,6 @@ def write_latex_table(
         columns=columns,
         rows=rows,
         column_spec=column_spec,
-        small=small,
         addlinespace_after=addlinespace_after,
     )
     (paths.figure_dir / f"{name}.tex").write_text(content + "\n")
@@ -441,8 +425,10 @@ def write_cohort_table(paths: Paths) -> None:
         ["Unique patients", fmt_int(cohort_map.get("unique_patients"))],
         [
             "Collection dates",
-            f"{cohort_map.get('first_collection_date')} to "
-            f"{cohort_map.get('last_collection_date')}",
+            (
+                f"{cohort_map.get('first_collection_date')} to "
+                f"{cohort_map.get('last_collection_date')}"
+            ),
         ],
         ["Rolling windows", fmt_int(cohort_map.get("windows"))],
         ["Window-level clusters (all)", fmt_int(cohort_map.get("clusters"))],
@@ -487,8 +473,10 @@ def write_policy_denominator_table(paths: Paths) -> None:
                 fmt_int(row.median_window_sequences),
                 fmt_int(row.median_window_positive_tests),
                 fmt_percent(row.median_window_prop_sequenced),
-                f"{fmt_percent(row.min_window_prop_sequenced)}--"
-                f"{fmt_percent(row.max_window_prop_sequenced)}",
+                (
+                    f"{fmt_percent(row.min_window_prop_sequenced)}--"
+                    f"{fmt_percent(row.max_window_prop_sequenced)}"
+                ),
             ]
         )
     write_latex_table(
@@ -555,7 +543,9 @@ def write_test_reason_by_policy_era_table(paths: Paths) -> None:
     if summary.empty:
         pivot = pd.DataFrame(columns=["test_reason"])
     else:
-        summary["test_reason"] = summary["test_reason"].astype("string").fillna("missing")
+        summary["test_reason"] = (
+            summary["test_reason"].astype("string").fillna("missing")
+        )
         summary["policy_era"] = summary["policy_era"].astype("string").fillna("missing")
         pivot = summary.pivot_table(
             index="test_reason",
@@ -567,7 +557,9 @@ def write_test_reason_by_policy_era_table(paths: Paths) -> None:
         era_order = list(POLICY_LABELS)
         ordered_eras = list(era_order)
         extra_eras = [era for era in pivot.columns if era not in era_order]
-        extra_eras = sorted(extra_eras, key=lambda value: (str(value) == "missing", str(value)))
+        extra_eras = sorted(
+            extra_eras, key=lambda value: (str(value) == "missing", str(value))
+        )
         pivot = pivot.reindex(columns=[*ordered_eras, *extra_eras], fill_value=0)
         pivot = pivot.reset_index()
         value_columns = [*ordered_eras, *extra_eras]
@@ -669,9 +661,11 @@ def write_assortativity_summary_table(paths: Paths) -> None:
                 fmt_float(row["median_n_lineages"], 1),
                 fmt_float(row[mean_col], 4),
                 fmt_ci(row[low_col], row[high_col], 4),
-                f"{fmt_float(row['window_median'], 3)} "
-                f"({fmt_float(row['window_q10'], 3)}--"
-                f"{fmt_float(row['window_q90'], 3)})",
+                (
+                    f"{fmt_float(row['window_median'], 3)} "
+                    f"({fmt_float(row['window_q10'], 3)}--"
+                    f"{fmt_float(row['window_q90'], 3)})"
+                ),
             ]
         )
     write_latex_table(
@@ -779,7 +773,9 @@ def write_tables(paths: Paths) -> None:
             skipped.append(str(err))
             print(f"Skipping table writer: {err}")
     if skipped:
-        print(f"Skipped {len(skipped)} table writer(s) because required source tables were missing.")
+        print(
+            f"Skipped {len(skipped)} table writer(s) because required source tables were missing."
+        )
 
 
 def main() -> int:

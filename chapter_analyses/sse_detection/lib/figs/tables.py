@@ -78,20 +78,13 @@ def _render_latex_table(
             r"\centering",
             f"\\caption[{_latex_escape(caption)}]{{{_latex_escape(caption)}}}"
             f"\\label{{{label}}}",
-            r"\begingroup",
-            r"\small",
-            r"\setlength{\tabcolsep}{4pt}",
-            r"\renewcommand{\arraystretch}{1.12}",
-            r"\begin{adjustbox}{max width=\textwidth,center}",
-            f"\\begin{{tabular}}{{@{{}}{column_spec}@{{}}}}",
+            f"\\begin{{thesistablebody}}{{@{{}}{column_spec}@{{}}}}",
             r"\toprule",
             f"{header} " + r"\\",
             r"\midrule",
             *body,
             r"\bottomrule",
-            r"\end{tabular}",
-            r"\end{adjustbox}",
-            r"\endgroup",
+            r"\end{thesistablebody}",
             r"\end{table}",
         ]
     )
