@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import argparse
 import logging
+from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Iterable, Sequence
 
 import pandas as pd
 
@@ -22,7 +22,6 @@ from .lib.model.prep import COMPOSITION_SPECS
 from .lib.sse.config import MIN_CLUSTER_SIZE, RESULTS_DIR, SSE_OUTPUT_DIR
 from .lib.sse.detection import load_sequence_data
 from .lib.sse.io import HIGH_PRIORITY_CANDIDATE_TIERS
-
 
 LOGGER = logging.getLogger(__name__)
 DEFAULT_OUTPUT_DIR = RESULTS_DIR / "tables"

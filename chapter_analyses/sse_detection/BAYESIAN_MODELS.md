@@ -139,6 +139,23 @@ logistic/<domain>/<model_set>/
 linear/<domain>/<outcome>/<model_set>/
 ```
 
+Consolidate saved summaries, metadata, fit-frame counts, and headline diagnostics into family/domain result tables with:
+
+```bash
+python -m chapter_analyses.sse_detection.combine_bayesian_results
+```
+
+The default output directory is `results/bayesian_outputs/consolidated_tables/`. It writes four CSV/parquet table pairs:
+
+```text
+mixing_logistic_consolidated_results
+mixing_linear_consolidated_results
+composition_logistic_consolidated_results
+composition_linear_consolidated_results
+```
+
+Missing or still-running model directories are skipped and reported. Consolidated tables include `plot_*` columns for downstream figures. The single display field is `plot_label`, and it is populated for fixed effects, intercepts, policy-period/clade random intercepts, group SDs, and linear residual SDs. Composition model rows parse Patsy categorical terms with local label logic and include contrast references and panels. Mixing tables omit composition-only contrast columns such as `plot_level` and `plot_reference`; their `plot_scale` uses `null_standardised` instead of `null` so CSV readers do not treat it as missing. Sample columns are family-specific: logistic tables include candidate counts/rate, while linear tables include outcome mean/SD fields. The script also writes three thesis-facing summary tables: diagnostics, directional estimates, and directionless random-effect/residual SD components.
+
 Each fitted model writes:
 
 | File              | Content                                                              |
