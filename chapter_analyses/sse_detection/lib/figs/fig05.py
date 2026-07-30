@@ -1,9 +1,13 @@
 """Build Chapter 5 Figure 5: high-priority candidates over time."""
 
 from __future__ import annotations
+
 import argparse
+
 import numpy as np
 import pandas as pd
+
+from ..sse.io import write_table
 from .common import (
     Paths,
     add_common_args,
@@ -15,8 +19,6 @@ from .common import (
     styled_save_figure,
     wilson,
 )
-from ..sse.io import write_table
-
 
 FILE_NAME = "ch5_candidate_timeline"
 

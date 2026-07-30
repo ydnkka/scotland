@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import argparse
 
-from matplotlib.lines import Line2D
 import numpy as np
 import pandas as pd
+from matplotlib.lines import Line2D
 
+from ..sse.config import DETECTION_RANDOM_SEED
+from ..sse.io import write_table
 from .common import (
     Paths,
     add_common_args,
@@ -17,9 +19,6 @@ from .common import (
     styled_new_figure,
     styled_save_figure,
 )
-from ..sse.config import DETECTION_RANDOM_SEED
-from ..sse.io import write_table
-
 
 FIGURE_NAME = "fig_ch5_sse_score_null_calibration"
 SUMMARY_NAME = "tab_ch5_null_calibration_summary"

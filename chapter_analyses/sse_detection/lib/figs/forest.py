@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -13,6 +15,23 @@ PROJECT_ROOT = Path(__file__).resolve().parents[4]
 
 if __package__ in {None, ""} and str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+
+
+MIXING_FEATURE_LABELS: dict[str, str] = {
+    "sex_entropy": "Sex",
+    "age_entropy": "Age",
+    "simd_entropy": "SIMD",
+    "urban_rural_entropy": "Urban/rural",
+    "health_board_entropy": "Health board",
+}
+DEFAULT_MIXING_FEATURE_ORDER: tuple[str, ...] = (
+    "sex_entropy",
+    "age_entropy",
+    "simd_entropy",
+    "urban_rural_entropy",
+    "health_board_entropy",
+)
+RANDOM_EFFECT_PREFIX = "1|"
 
 
 def plot_mixing_forest(
@@ -457,3 +476,165 @@ def plot_composition_forest(
 
     ax.legend(loc="best")
     return ax
+
+
+def _collect_mixing_forest_rows(
+    model_config: Any | str | Path,
+    *,
+    family: str,
+    outcome: str,
+    feature_order: Sequence[str],
+) -> tuple[pd.DataFrame, list[str]]:
+    """Collect legacy mixing fixed-effect rows from per-model summary files."""
+    model_sets = (
+        ("observed", "primary", "observed_primary"),
+        ("observed", "expanded", "observed_expanded"),
+        ("null", "primary", "null_primary"),
+        ("null", "expanded", "null_expanded"),
+    )
+    rows: list[pd.DataFrame] = []
+    missing: list[str] = []
+
+    for scale, model_kind, model_set in model_sets:
+        summary_path = _summary_path(
+            model_config,
+            domain="mixing",
+            model_set=model_set,
+            family=family,
+            outcome=outcome,
+        )
+        if summary_path is None or not summary_path.exists():
+            missing.append(model_set)
+            continue
+        summary = pd.read_csv(summary_path)
+        fixed = _tidy_mixing_summary(
+            summary,
+            family=family,
+            scale=scale,
+            model_kind=model_kind,
+            model_set=model_set,
+            feature_order=feature_order,
+            summary_path=summary_path,
+        )
+        rows.append(fixed)
+
+    if not rows:
+        return pd.DataFrame(), missing
+
+    out = pd.concat(rows, ignore_index=True)
+    out["row_id"] = out["feature"]
+    out["feature"] = pd.Categorical(
+        out["feature"],
+        categories=list(feature_order),
+        ordered=True,
+    )
+    out["model_kind"] = _model_kind_categorical(out["model_kind"].tolist())
+    out["scale"] = pd.Categorical(out["scale"], categories=["observed", "null"])
+    return out.sort_values(["scale", "feature", "model_kind"]), missing
+
+
+def _tidy_mixing_summary(
+    summary: pd.DataFrame,
+    *,
+    family: str,
+    scale: str,
+    model_kind: str,
+    model_set: str,
+    feature_order: Sequence[str],
+    summary_path: Path,
+) -> pd.DataFrame:
+    _require_summary_columns(summary, family=family, path=summary_path)
+    out = _fixed_effect_rows(summary)
+    out["feature"] = out["parameter"].map(_mixing_feature_stem)
+    out = out.loc[out["feature"].isin(feature_order)].copy()
+    out["scale"] = scale
+    out["model_kind"] = model_kind
+    out["model_set"] = model_set
+    out["summary_path"] = str(summary_path)
+    return _select_plot_columns(out, family=family)
+
+
+def _summary_path(
+    model_config: Any | str | Path,
+    *,
+    domain: str,
+    model_set: str,
+    family: str,
+    outcome: str,
+) -> Path | None:
+    if isinstance(model_config, (str, Path)):
+        result_dir = Path(model_config)
+        parts = [result_dir, Path(domain)]
+        if family == "linear":
+            parts.append(Path(_slug(outcome)))
+        parts.append(Path(_slug(model_set)))
+        return Path(*parts) / "summary.csv"
+
+    try:
+        frame = model_config.select(
+            domain=domain,
+            outcome=outcome,
+            model_set=model_set,
+        )
+    except (AttributeError, KeyError, ValueError):
+        return None
+    return Path(frame.output_dir) / "summary.csv"
+
+
+def _fixed_effect_rows(summary: pd.DataFrame) -> pd.DataFrame:
+    return summary.loc[
+        ~summary["parameter"].eq("Intercept")
+        & ~summary["parameter"].str.startswith(RANDOM_EFFECT_PREFIX, na=False)
+    ].copy()
+
+
+def _select_plot_columns(
+    out: pd.DataFrame,
+    *,
+    family: str,
+) -> pd.DataFrame:
+    keep = [
+        "scale",
+        "model_kind",
+        "model_set",
+        "feature",
+        "parameter",
+        "mean",
+        "hdi95_lb",
+        "hdi95_ub",
+        "OR_mean",
+        "OR_hdi95_lb",
+        "OR_hdi95_ub",
+        "P(OR > 1 | data)",
+        "P(OR < 1 | data)",
+        "P(beta > 0 | data)",
+        "P(beta < 0 | data)",
+        "summary_path",
+    ]
+    if family == "linear":
+        keep = [col for col in keep if not col.startswith("OR_")]
+    return out.loc[:, [col for col in keep if col in out.columns]]
+
+
+def _require_summary_columns(summary: pd.DataFrame, *, family: str, path: Path) -> None:
+    required = {"parameter", "mean", "hdi95_lb", "hdi95_ub"}
+    if family == "logistic":
+        required |= {"OR_mean", "OR_hdi95_lb", "OR_hdi95_ub"}
+    missing = required.difference(summary.columns)
+    if missing:
+        raise ValueError(f"{path} is missing columns: {sorted(missing)}")
+
+
+def _mixing_feature_stem(parameter: str) -> str:
+    for suffix in ("_obs_x10", "_z"):
+        if str(parameter).endswith(suffix):
+            return str(parameter)[: -len(suffix)]
+    return str(parameter)
+
+
+def _model_kind_categorical(values: list[object]) -> pd.Categorical:
+    return pd.Categorical(values, categories=["primary", "expanded"], ordered=True)
+
+
+def _slug(value: str) -> str:
+    return str(value).replace("/", "_").replace(" ", "_")

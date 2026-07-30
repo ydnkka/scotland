@@ -1,10 +1,8 @@
 """Public helpers for the SSE detection workflow."""
 
 from .figs.forest import (
-    ForestPlotResult,
-    plot_composition_primary_expanded_forest,
-    plot_logistic_composition_primary_expanded_forest,
-    plot_mixing_primary_expanded_forest,
+    plot_composition_forest,
+    plot_mixing_forest,
 )
 from .model.bayesian import (
     BayesianFitConfig,
@@ -128,7 +126,6 @@ __all__ = [
     "BayesianFitConfig",
     "BayesianModelResult",
     "Domain",
-    "ForestPlotResult",
     "ModelSpec",
     "PreparedModelFrame",
     "PreparedRegressionRun",
@@ -177,9 +174,8 @@ __all__ = [
     "observed_mixing_entropy_scales",
     "onward_edge_entropy",
     "outcomes_for_family",
-    "plot_composition_primary_expanded_forest",
-    "plot_logistic_composition_primary_expanded_forest",
-    "plot_mixing_primary_expanded_forest",
+    "plot_composition_forest",
+    "plot_mixing_forest",
     "posterior_dataset",
     "posterior_probability_summary",
     "posterior_vars_from_formula",

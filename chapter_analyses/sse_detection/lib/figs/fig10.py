@@ -1,8 +1,12 @@
 """Build Chapter 5 Figure 10: detector-threshold robustness."""
 
 from __future__ import annotations
+
 import argparse
+
 import pandas as pd
+
+from ..sse.io import write_table
 from .common import (
     HIGH_PRIORITY,
     Paths,
@@ -13,7 +17,6 @@ from .common import (
     styled_new_figure,
     styled_save_figure,
 )
-from ..sse.io import write_table
 
 FILE_NAME = "ch5_threshold_robustness"
 

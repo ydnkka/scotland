@@ -1,130 +1,253 @@
-"""Build the main-text null-standardised Bayesian mixing forest figure."""
+"""Build fixed-effect Bayesian forest plots for SSE detection models."""
 
 from __future__ import annotations
 
 import argparse
+from collections.abc import Callable
 
 import pandas as pd
 
-from .fig04_app import OUTCOMES, _collect_rows, _sample_size
-from .forest import (
-    DEFAULT_COLORS,
-    DEFAULT_MIXING_FEATURE_ORDER,
-    DEFAULT_MODEL_LABELS,
-    MIXING_FEATURE_LABELS,
-    _add_model_legend,
-    _draw_paired_forest_panel,
-    _estimate_columns,
-    _finish_forest_figure,
-    _set_panel_xlim,
-    _set_readable_coefficient_ticks,
-    _set_readable_or_ticks,
-    _y_lookup,
-)
 from .common import (
     Paths,
     add_common_args,
-    panel_label,
+    add_panel_labels,
     paths_from_args,
     styled_new_figure,
     styled_save_figure,
 )
+from .forest import (
+    plot_composition_forest,
+    plot_mixing_forest,
+)
+
+FIGURE_NAME = {
+    "mixing": "fig_ch5_fixed_effects_mixing",
+    "composition": "fig_ch5_fixed_effects_composition",
+}
+OUTLIER_LABELS = ["Orkney", "Western Isles"]
+MIXING_OUTCOMES = (
+    ("candidate", "Candidate status"),
+    ("burst_score", "Burst score"),
+    ("burden_score", "Burden score"),
+)
+COMPOSITION_OUTCOMES = (
+    ("candidate", "Candidate status"),
+    ("burst_score", "Burst score"),
+    ("burden_score", "Burden score"),
+)
 
 
-FIGURE_NAME = "fig_ch5_bayesian_mixing_forest_main"
-SCALE = "null"
-SCALE_LABEL = "Null-standardised entropy"
-SCALE_UNITS = "per 1-SD increase"
+def _consolidated_table(paths: Paths, name: str) -> pd.DataFrame:
+    table_dir = paths.bayesian_result_dir / "consolidated_tables"
+    searched = []
+    for suffix, reader in (("parquet", pd.read_parquet), ("csv", pd.read_csv)):
+        path = table_dir / f"{name}.{suffix}"
+        searched.append(path)
+        if path.exists():
+            return reader(path)
+    locations = ", ".join(str(path) for path in searched)
+    raise FileNotFoundError(f"Missing consolidated table {name!r}; searched: {locations}")
 
 
-def build(paths: Paths) -> dict[str, object]:
-    """Create a 3x1 forest plot restricted to null-standardised entropy."""
-    collected, _, missing = _collect_rows(paths)
-    plot_rows: list[pd.DataFrame] = []
+def _load_mixing_tables(paths: Paths) -> tuple[pd.DataFrame, pd.DataFrame]:
+    return (
+        _consolidated_table(paths, "mixing_logistic_consolidated_results"),
+        _consolidated_table(paths, "mixing_linear_consolidated_results"),
+    )
+
+
+def _load_composition_tables(paths: Paths) -> tuple[pd.DataFrame, pd.DataFrame]:
+    return (
+        _consolidated_table(paths, "composition_logistic_consolidated_results"),
+        _consolidated_table(paths, "composition_linear_consolidated_results"),
+    )
+
+
+def _finish_legend(fig, axes, *, ncol: int, y: float) -> None:
+    handles, labels = axes[0].get_legend_handles_labels()
+    for ax in axes:
+        legend = ax.get_legend()
+        if legend:
+            legend.remove()
+    fig.legend(
+        handles=handles,
+        labels=labels,
+        loc="lower center",
+        bbox_to_anchor=(0.5, y),
+        ncol=ncol,
+        frameon=False,
+    )
+
+
+def _label_rows(axes, labels: tuple[str, ...], *, x: float = -0.55) -> None:
+    for ax, label in zip(axes, labels):
+        ax.annotate(
+            label,
+            xy=(x, 0.5),
+            xycoords="axes fraction",
+            ha="center",
+            va="center",
+            rotation=90,
+            fontweight="bold",
+        )
+
+
+def build_mixing(paths: Paths) -> dict[str, object]:
+    """Create the fixed-effect forest plot for mixing models."""
+    mixing_logistic, mixing_linear = _load_mixing_tables(paths)
 
     fig, axes = styled_new_figure(
+        nrows=1,
+        ncols=3,
         width="double",
-        height_in=8.0,
-        nrows=3,
-        ncols=1,
-        constrained_layout=True,
+        height_in=3.5,
         sharey=True,
     )
-    y_lookup = _y_lookup(DEFAULT_MIXING_FEATURE_ORDER)
-    colors = dict(DEFAULT_COLORS)
+    axes = list(axes)
 
-    for row_idx, (family, outcome, outcome_label) in enumerate(OUTCOMES):
-        ax = axes[row_idx]
-        panel = pd.DataFrame(
-            collected[(family, outcome)].loc[
-            lambda frame: frame["scale"].eq(SCALE)
-        ]
-        )
-        tagged = panel.copy()
-        tagged["family"] = family
-        tagged["outcome"] = outcome
-        plot_rows.append(tagged)
+    plot_mixing_forest(
+        axes[0],
+        mixing_logistic,
+        plot_scale=["null_standardised", "observed"],
+        term_type="mixing_entropy",
+    )
+    plot_mixing_forest(
+        axes[1],
+        mixing_linear,
+        outcome="burst_score",
+        plot_scale=["null_standardised", "observed"],
+        term_type="mixing_entropy",
+    )
+    plot_mixing_forest(
+        axes[2],
+        mixing_linear,
+        outcome="burden_score",
+        plot_scale=["null_standardised", "observed"],
+        term_type="mixing_entropy",
+    )
 
-        x_cols = _estimate_columns(family)
-        reference = 1.0 if family == "logistic" else 0.0
-        _draw_paired_forest_panel(
-            ax,
-            panel,
-            y_lookup=y_lookup,
-            row_order=DEFAULT_MIXING_FEATURE_ORDER,
-            row_labels=MIXING_FEATURE_LABELS,
-            model_labels=DEFAULT_MODEL_LABELS,
-            colors=colors,
-            x_cols=x_cols,
-            reference=reference,
-            point_size=4.6,
-            interval_lw=1.25,
-            dodge=0.12,
-        )
-        _set_panel_xlim(ax, panel, x_cols=x_cols, reference=reference)
-        if family == "logistic":
-            ax.set_xscale("log")
-            _set_readable_or_ticks(ax)
-            measure = "Odds ratio"
-        else:
-            _set_readable_coefficient_ticks(ax)
-            measure = "Coefficient"
-        ax.set_xlabel(f"{measure} {SCALE_UNITS}")
-        if row_idx == 0:
-            ax.set_title(SCALE_LABEL, pad=12)
-        n = _sample_size(family, outcome, SCALE, paths.bayesian_result_dir)
-        ax.text(
-            0.98,
-            0.95,
-            f"n = {n:,}",
-            transform=ax.transAxes,
-            ha="right",
-            va="top",
-            color="#444444",
-        )
+    for ax, (_, label) in zip(axes, MIXING_OUTCOMES):
+        ax.set_title(label)
         ax.grid(axis="x", color="#E6E6E6", lw=0.6)
-        ax.tick_params(axis="y", length=0)
-        ax.set_ylabel(outcome_label)
-        panel_label(ax, chr(ord("A") + row_idx))
 
-    _add_model_legend(fig, axes[0], colors, DEFAULT_MODEL_LABELS, 4.6)
-    _finish_forest_figure(fig, axes, title=None)
-    outputs = styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
+    add_panel_labels(axes, x=-0.08, y=1.07)
+    _finish_legend(fig, axes, ncol=4, y=-0.1)
+    outputs = styled_save_figure(fig, paths, FIGURE_NAME["mixing"], tight=False)
     return {
         "figure": fig,
         "outputs": outputs,
-        "plot_data": pd.concat(plot_rows, ignore_index=True),
-        "missing_model_sets": tuple(missing),
+        "plot_data": pd.concat([mixing_logistic, mixing_linear], ignore_index=True),
+    }
+
+
+def build_composition(paths: Paths) -> dict[str, object]:
+    """Create the fixed-effect forest plot for composition models."""
+    composition_logistic, composition_linear = _load_composition_tables(paths)
+
+    fig, axes = styled_new_figure(
+        nrows=3,
+        ncols=2,
+        width="double",
+        height_in=7,
+        constrained_layout=True,
+    )
+
+    plot_composition_forest(
+        axes[0, 0],
+        composition_logistic,
+        panel=["demographic", "socioeconomic"],
+        term_type="categorical_contrast",
+        label_col="plot_label",
+    )
+    plot_composition_forest(
+        axes[0, 1],
+        composition_logistic,
+        panel="geographic",
+        term_type="categorical_contrast",
+        label_col="plot_label",
+        exclude=OUTLIER_LABELS,
+    )
+    plot_composition_forest(
+        axes[1, 0],
+        composition_linear,
+        outcome="burst_score",
+        panel=["demographic", "socioeconomic"],
+        term_type="categorical_contrast",
+        label_col="plot_label",
+    )
+    plot_composition_forest(
+        axes[1, 1],
+        composition_linear,
+        outcome="burst_score",
+        panel="geographic",
+        term_type="categorical_contrast",
+        label_col="plot_label",
+    )
+    plot_composition_forest(
+        axes[2, 0],
+        composition_linear,
+        outcome="burden_score",
+        panel=["demographic", "socioeconomic"],
+        term_type="categorical_contrast",
+        label_col="plot_label",
+    )
+    plot_composition_forest(
+        axes[2, 1],
+        composition_linear,
+        outcome="burden_score",
+        panel="geographic",
+        term_type="categorical_contrast",
+        label_col="plot_label",
+        exclude=OUTLIER_LABELS,
+    )
+
+    flat_axes = list(axes.ravel())
+    axes[0, 0].set_title("Demographic and sociodemographic")
+    axes[0, 1].set_title("Geographic")
+    _label_rows(axes[:, 0], tuple(label for _, label in COMPOSITION_OUTCOMES))
+    for ax in flat_axes:
+        ax.grid(axis="x", color="#E6E6E6", lw=0.6)
+
+    add_panel_labels(flat_axes, x=-0.08, y=1.1)
+    _finish_legend(fig, flat_axes, ncol=2, y=-0.05)
+    outputs = styled_save_figure(fig, paths, FIGURE_NAME["composition"], tight=False)
+    return {
+        "figure": fig,
+        "outputs": outputs,
+        "plot_data": pd.concat(
+            [composition_logistic, composition_linear],
+            ignore_index=True,
+        ),
+    }
+
+
+def build(paths: Paths) -> dict[str, object]:
+    """Create both fixed-effect fig04 outputs."""
+    return {
+        "mixing": build_mixing(paths),
+        "composition": build_composition(paths),
     }
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_args(parser)
+    parser.add_argument(
+        "--domain",
+        choices=("all", "mixing", "composition"),
+        default="all",
+        help="Fixed-effect figure domain to build.",
+    )
     args = parser.parse_args()
     paths = paths_from_args(args)
-    build(paths)
-    print(f"Wrote {FIGURE_NAME} to {paths.figure_dir}")
+    builders: dict[str, Callable[[Paths], dict[str, object]]] = {
+        "mixing": build_mixing,
+        "composition": build_composition,
+    }
+    selected = builders if args.domain == "all" else {args.domain: builders[args.domain]}
+    for domain, builder in selected.items():
+        builder(paths)
+        print(f"Wrote {FIGURE_NAME[domain]} to {paths.figure_dir}")
     return 0
 
 

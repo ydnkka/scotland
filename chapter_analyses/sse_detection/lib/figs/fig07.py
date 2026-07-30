@@ -1,11 +1,14 @@
 """Build Chapter 5 Figure 7: representative candidate trajectories."""
 
 from __future__ import annotations
+
 import argparse
+
 import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
 
+from ..sse.io import write_table
 from .common import (
     Paths,
     add_common_args,
@@ -15,7 +18,6 @@ from .common import (
     styled_new_figure,
     styled_save_figure,
 )
-from ..sse.io import write_table
 
 FILE_NAME = "ch5_candidate_exemplars"
 COLORS = {

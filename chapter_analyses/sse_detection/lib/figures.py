@@ -47,8 +47,16 @@ FIGURE_BUILDERS: tuple[ArtifactBuilder, ...] = (
     ArtifactBuilder(fig01.FIGURE_NAME, fig01.build),
     ArtifactBuilder(fig02.FIGURE_NAME, fig02.build),
     ArtifactBuilder(fig03.FIGURE_NAME, fig03.build),
-    ArtifactBuilder(fig04_main.FIGURE_NAME, fig04_main.build),
-    ArtifactBuilder(fig04_app.FIGURE_NAME, fig04_app.build),
+    ArtifactBuilder(fig04_main.FIGURE_NAME["mixing"], fig04_main.build_mixing),
+    ArtifactBuilder(
+        fig04_main.FIGURE_NAME["composition"],
+        fig04_main.build_composition,
+    ),
+    ArtifactBuilder(fig04_app.FIGURE_NAME["mixing"], fig04_app.build_mixing),
+    ArtifactBuilder(
+        fig04_app.FIGURE_NAME["composition"],
+        fig04_app.build_composition,
+    ),
     ArtifactBuilder(fig05.FILE_NAME, fig05.build),
     ArtifactBuilder(fig06.FILE_NAME, fig06.build),
     ArtifactBuilder(fig07.FILE_NAME, fig07.build),

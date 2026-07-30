@@ -1,25 +1,28 @@
 """Build Chapter 5 Figure 9: candidate rates by epidemic context."""
 
 from __future__ import annotations
+
 import argparse
+
 import numpy as np
 import pandas as pd
+
+from ..sse.io import write_table
 from .common import (
+    CLADES,
     HIGH_PRIORITY,
+    POLICY_LABELS,
     POLICY_ORDER,
     Paths,
     add_common_args,
     panel_label,
     paths_from_args,
     read_table,
+    sort_by_policy,
     styled_new_figure,
     styled_save_figure,
     wilson,
-    CLADES,
-    sort_by_policy,
-    POLICY_LABELS,
 )
-from ..sse.io import write_table
 
 FILE_NAME = "ch5_candidate_context_rates"
 

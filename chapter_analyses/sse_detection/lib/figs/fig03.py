@@ -19,7 +19,6 @@ from .common import (
     styled_save_figure,
 )
 
-
 FIGURE_NAME = "fig_ch5_sse_composition_descriptive"
 POINT_COLOR = "#2F6690"
 CI_COLOR = "#2F6690"
