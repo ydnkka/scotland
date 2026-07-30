@@ -202,7 +202,7 @@ def build_composition(paths: Paths) -> dict[str, object]:
     )
 
     flat_axes = list(axes.ravel())
-    axes[0, 0].set_title("Demographic and sociodemographic")
+    axes[0, 0].set_title("Sociodemographic")
     axes[0, 1].set_title("Geographic")
     _label_rows(axes[:, 0], tuple(label for _, label in COMPOSITION_OUTCOMES))
     for ax in flat_axes:
