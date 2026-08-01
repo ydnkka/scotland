@@ -27,6 +27,8 @@ Detailed consolidated tables:
 
 Use the expanded models as the main results and the primary models as sensitivity checks. The expanded models include surveillance-context adjusters.
 
+For mixing models, use expanded null-standardised entropy as the main inferential scale. It asks whether cluster composition is more or less mixed than expected under the within-window, cluster-size matched null model. Observed entropy is an absolute heterogeneity companion scale and should be reported as a sensitivity/descriptive result, especially where directions differ from the null-standardised estimates.
+
 For composition models, categorical contrasts are relative to:
 
 - Sex: Male.
@@ -37,7 +39,7 @@ For composition models, categorical contrasts are relative to:
 
 For logistic models, estimates are odds ratios or multiplicative odds. Values above 1 indicate higher candidate odds; values below 1 indicate lower candidate odds.
 
-For linear models, estimates are beta coefficients on the burst-score or burden-score scale. Positive values indicate higher score; negative values indicate lower score.
+For linear models, estimates are beta coefficients on the burst-score or burden-score scale (0 to 1). Positive values indicate higher score; negative values indicate lower score.
 
 Direction probabilities are posterior probabilities of the effect direction:
 
@@ -51,11 +53,12 @@ Direction probabilities are not p-values. They should be used to support effect-
 
 The strongest chapter-level finding is that the detection signal is structured by geography, socioeconomic context, demographic composition, surveillance intensity, policy period, and clade. The models suggest that detection is not explained by sampling intensity alone.
 
-The mixing models show that heterogeneity in the sampled population is associated with candidate detection, burst score, and burden score. The composition models then show which population groups, places, periods, and clades drive those differences.
+The mixing models show that sampled-population heterogeneity is associated with candidate detection, burst score, and burden score. The main mixing interpretation comes from null-standardised entropy, with observed entropy used to describe absolute heterogeneity. The composition models then show which population groups, places, periods, and clades drive those differences.
 
 The most robust findings are:
 
-- Observed mixing entropy is strongly associated with candidate detection and burst score.
+- Null-standardised mixing entropy shows that several attributes differ from the within-window, cluster-size matched expectation.
+- Observed mixing entropy is strongly associated with candidate detection and burst score, but it should be interpreted as absolute heterogeneity rather than the main null-adjusted mixing result.
 - Health-board effects are large, especially in the composition models.
 - Urban/rural composition is consistently associated with lower candidate odds and lower linear scores outside large urban areas.
 - Female samples have lower detection signal than male samples.
@@ -95,7 +98,13 @@ Thesis implication: report composition linear findings, but phrase them more cau
 
 ### 2.1 Mixing: Health-Board Entropy
 
-Observed health-board mixing is consistently associated with stronger detection signal.
+The main null-standardised health-board mixing result differs by outcome:
+
+- Candidate odds are lower: OR 0.868, P(lower) = 1.000.
+- Burst score is lower: beta -0.030, P(negative) = 1.000.
+- Burden score is higher: beta 0.017, P(positive) = 1.000.
+
+Observed health-board mixing is consistently associated with stronger absolute heterogeneity signal.
 
 Expanded observed health-board entropy:
 
@@ -105,13 +114,7 @@ Expanded observed health-board entropy:
 | Burst score | beta 0.014 | 0.011 to 0.017 | Positive, P = 1.000 |
 | Burden score | beta 0.006 | 0.001 to 0.011 | Positive, P = 0.993 |
 
-The null-standardised health-board entropy has a different interpretation and should not be collapsed with the observed scale:
-
-- Candidate odds are lower: OR 0.868, P(lower) = 1.000.
-- Burst score is lower: beta -0.030, P(negative) = 1.000.
-- Burden score is higher: beta 0.017, P(positive) = 1.000.
-
-Thesis interpretation: observed geographic mixing is associated with higher candidate detection and burst/burden signal, while null-standardised health-board entropy captures a different contrast and should be presented separately.
+Thesis interpretation: null-standardised health-board entropy captures whether health-board mixing exceeds the size/window null expectation and should be the main inferential contrast. Observed geographic mixing captures absolute heterogeneity and is associated with higher candidate detection and burst/burden signal, so it should be presented as a companion result rather than collapsed with the null-standardised scale.
 
 ### 2.2 Composition: Health Board Contrasts
 
@@ -160,7 +163,13 @@ Thesis interpretation: health board is one of the clearest sources of structured
 
 ### 3.1 Mixing: SIMD Entropy
 
-Observed SIMD entropy is one of the strongest mixing effects.
+The main null-standardised SIMD entropy result is outcome-dependent:
+
+- Candidate odds are slightly lower: OR 0.959, P(lower) = 0.977.
+- Burst score is lower: beta -0.0045, P(negative) = 0.999.
+- Burden score is higher: beta 0.0096, P(positive) = 1.000.
+
+Observed SIMD entropy is one of the strongest absolute heterogeneity effects.
 
 Expanded observed SIMD entropy:
 
@@ -170,15 +179,15 @@ Expanded observed SIMD entropy:
 | Burst score | beta 0.038 | 0.035 to 0.040 | Positive, P = 1.000 |
 | Burden score | beta -0.011 | -0.016 to -0.006 | Negative, P = 1.000 |
 
-This is a strong and coherent result for candidate odds and burst score, but burden score moves in the opposite direction on the observed scale.
-
-Null-standardised SIMD entropy differs:
-
-- Candidate odds are slightly lower: OR 0.959, P(lower) = 0.977.
-- Burst score is lower: beta -0.0045, P(negative) = 0.999.
-- Burden score is higher: beta 0.0096, P(positive) = 1.000.
+This is a strong and coherent observed-scale result for candidate odds and burst score, but burden score moves in the opposite direction on the observed scale. The observed and null-standardised SIMD results should therefore be interpreted as different contrasts: absolute SIMD heterogeneity versus mixing relative to the size/window null expectation.
 
 ### 3.2 Mixing: Urban/Rural Entropy
+
+The main null-standardised urban/rural entropy result is directionally similar to the observed scale for all three outcomes:
+
+- Candidate odds: OR 1.069, P(higher) = 0.994.
+- Burst score: beta 0.010, P(positive) = 1.000.
+- Burden score: beta -0.006, P(negative) = 0.987.
 
 Observed urban/rural entropy is also associated with detection signal.
 
@@ -190,11 +199,7 @@ Expanded observed urban/rural entropy:
 | Burst score | beta 0.009 | 0.007 to 0.012 | Positive, P = 1.000 |
 | Burden score | beta -0.007 | -0.012 to -0.002 | Negative, P = 0.997 |
 
-The null-standardised urban/rural effects are directionally similar for candidate odds and burst score:
-
-- Candidate odds: OR 1.069, P(higher) = 0.994.
-- Burst score: beta 0.010, P(positive) = 1.000.
-- Burden score: beta -0.006, P(negative) = 0.987.
+Thesis interpretation: urban/rural mixing is the clearest case where the main null-standardised scale and the observed absolute-heterogeneity scale tell a similar story.
 
 ### 3.3 Composition: SIMD Contrasts
 
@@ -254,7 +259,13 @@ Thesis interpretation: samples from less urban settings generally show lower can
 
 ### 4.1 Mixing: Age Entropy
 
-Observed age entropy is strongly associated with detection outcomes.
+The main null-standardised age entropy result differs from the observed scale:
+
+- Candidate odds are lower: OR 0.849, P(lower) = 1.000.
+- Burst score is lower: beta -0.020, P(negative) = 1.000.
+- Burden score is weak or uncertain: beta -0.002, P(negative) = 0.679.
+
+Observed age entropy is strongly associated with absolute heterogeneity in detection outcomes.
 
 Expanded observed age entropy:
 
@@ -264,13 +275,15 @@ Expanded observed age entropy:
 | Burst score | beta 0.022 | 0.020 to 0.025 | Positive, P = 1.000 |
 | Burden score | beta -0.013 | -0.018 to -0.008 | Negative, P = 1.000 |
 
-Null-standardised age entropy behaves differently:
-
-- Candidate odds are lower: OR 0.849, P(lower) = 1.000.
-- Burst score is lower: beta -0.020, P(negative) = 1.000.
-- Burden score is weak or uncertain: beta -0.002, P(negative) = 0.679.
+Thesis interpretation: absolute age heterogeneity is higher in candidate and high-burst clusters, but age mixing above the within-window, size-matched null expectation is associated with lower candidate odds and lower burst score.
 
 ### 4.2 Mixing: Sex Entropy
+
+The main null-standardised sex entropy result is lower for candidate odds and burst score, with weak burden-score evidence:
+
+- Candidate odds: OR 0.938, P(lower) = 0.996.
+- Burst score: beta -0.005, P(negative) = 0.998.
+- Burden score is weak or uncertain: beta -0.002, P(negative) = 0.700.
 
 Observed sex entropy has strong linear effects but a weaker candidate-odds effect.
 
@@ -282,11 +295,7 @@ Expanded observed sex entropy:
 | Burst score | beta 0.016 | 0.013 to 0.019 | Positive, P = 1.000 |
 | Burden score | beta -0.013 | -0.019 to -0.007 | Negative, P = 1.000 |
 
-Null-standardised sex entropy is lower for candidate odds and burst score:
-
-- Candidate odds: OR 0.938, P(lower) = 0.996.
-- Burst score: beta -0.005, P(negative) = 0.998.
-- Burden score is weak or uncertain: beta -0.002, P(negative) = 0.700.
+Thesis interpretation: sex mixing should be presented carefully because the absolute and null-standardised contrasts point in different directions for candidate odds and burst score.
 
 ### 4.3 Composition: Sex
 
@@ -573,11 +582,11 @@ Thesis interpretation: clade heterogeneity is larger for candidate odds and burd
 
 ## 9. Primary vs Expanded Models
 
-The expanded models are the main results because they account for surveillance context. Primary models should be used as sensitivity checks.
+The expanded models are the main results because they account for surveillance context. Primary models should be used as sensitivity checks. Within the mixing domain, expanded null-standardised models are the main inferential scale, while expanded observed models are the absolute-heterogeneity companion scale.
 
 Across the main results, the broad findings are stable:
 
-- Mixing entropy effects remain strong after context adjustment.
+- Mixing entropy effects remain visible after context adjustment, but observed and null-standardised scales answer different questions.
 - Demographic composition effects remain coherent.
 - Urban/rural composition effects remain coherent.
 - Health-board effects remain substantial.
@@ -592,7 +601,7 @@ Recommended ordering:
 1. State the modelling framework and outcome definitions.
 2. Present model diagnostics using Table 1.
 3. Present main fixed effects using Table 2 and forest plots.
-4. Start with mixing results because they describe broad heterogeneity.
+4. Start with null-standardised mixing results because they describe broad heterogeneity relative to the size/window null expectation.
 5. Then present composition results because they identify which groups drive the signal.
 6. Organise substantive effects as:
    - Health board and geography.
@@ -601,14 +610,14 @@ Recommended ordering:
    - Surveillance context.
 7. Present policy-period and clade random intercepts as contextual residual structure.
 8. Present Table 3 as variance-component evidence that clade generally contributes more heterogeneity than policy period, especially in composition models.
-9. Use primary models as sensitivity checks, not as the main results.
+9. Use observed mixing entropy and primary models as sensitivity/descriptive checks, not as the main inferential mixing result.
 
 ## 11. Suggested Figure And Table Strategy
 
 Main text:
 
 - Table 1: diagnostics summary.
-- A compact fixed-effect forest plot for mixing entropy effects.
+- A compact fixed-effect forest plot for mixing entropy effects, showing null-standardised estimates as the main scale and observed estimates as the companion scale.
 - Composition forest plots split by:
   - demographic contrasts,
   - socioeconomic/urban-rural contrasts,
@@ -627,7 +636,7 @@ Direction probabilities should mainly appear in tables and prose. They do not ne
 
 ## 12. Draft Thesis-Level Summary
 
-The Bayesian SSE detection models indicate that detection signal is structured by both the composition and mixing of sampled populations. Mixing entropy effects were especially strong on the observed scale: higher observed age, SIMD, urban/rural, and health-board mixing were associated with higher candidate odds and higher burst scores, although burden-score effects sometimes moved in the opposite direction. This suggests that different detection summaries capture distinct aspects of heterogeneity.
+The Bayesian SSE detection models indicate that detection signal is structured by both the composition and mixing of sampled populations. The main mixing models use null-standardised entropy, which compares each cluster with a within-window, cluster-size matched expectation. These models show that several attributes have detection associations that differ from their absolute observed-entropy associations, especially age, SIMD, sex, and health board. Observed entropy remains useful as a companion scale: higher observed age, SIMD, urban/rural, and health-board mixing were associated with higher candidate odds and higher burst scores, although burden-score effects sometimes moved in the opposite direction.
 
 Composition models showed coherent demographic and geographic structure. Female samples had consistently lower candidate odds and lower burst and burden scores than male samples. Age 15-24 had higher detection signal than age 25-64, while children and older age groups generally had lower signal. Urban/rural composition was also consistent: samples outside large urban areas, especially remote rural and remote town categories, had lower candidate odds and lower linear scores.
 

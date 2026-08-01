@@ -420,8 +420,6 @@ THESIS_COLUMN_LABELS: dict[str, str] = {
     "random_effect_sd_rank": "Random Effect SD Rank",
     "diagnostic_status": "Diagnostic Status",
     "divergences": "Divergences",
-    "draws": "Draws",
-    "divergence_percent": "Divergence Percent",
     "min_bfmi": "Min BFMI",
     "max_rhat": "Max Rhat",
     "min_bulk_ess": "Min Bulk ESS",
@@ -475,8 +473,6 @@ def _build_thesis_diagnostics_summary(
     metric_columns = [
         "diagnostic_status",
         "divergences",
-        "draws",
-        "divergence_percent",
         "min_bfmi",
         "max_rhat",
         "min_bulk_ess",
@@ -542,7 +538,7 @@ def _build_thesis_estimate_summary(
         out["parameter"] = sub.apply(_thesis_parameter_label, axis=1)
         out["term_type"] = sub["plot_term_type"].map(_pretty_value)
         out["effect_scale"] = sub.apply(
-            lambda row: _effect_scale_label(family, row["parameter_type"]),
+            lambda row: _effect_scale_label(family, row["parameter_type"]), # type: ignore  # noqa: B023
             axis=1,
         )
         estimates = _estimate_columns(sub, family=family)
@@ -603,7 +599,7 @@ def _build_thesis_random_effects_summary(
         out["grouping_factor"] = sub.apply(_grouping_factor_label, axis=1)
         out["parameter"] = sub.apply(_thesis_parameter_label, axis=1)
         out["effect_scale"] = sub.apply(
-            lambda row: _effect_scale_label(family, row["parameter_type"]),
+            lambda row: _effect_scale_label(family, row["parameter_type"]), # type: ignore  # noqa: B023
             axis=1,
         )
         estimates = _estimate_columns(sub, family=family)
@@ -895,7 +891,7 @@ def _finalise_thesis_table(table: pd.DataFrame, columns: Sequence[str]) -> pd.Da
     return out
 
 
-def _has_value(value: object) -> bool:
+def _has_value(value: Any) -> bool:
     if value is None:
         return False
     try:
@@ -1413,7 +1409,7 @@ def _clean_level(value: str) -> str:
 def _composition_display_label(variable: str, value: Any) -> str:
     text = str(value)
     if variable == "dz_simd_quintile":
-        return f"SIMD Q{text}"
+        return f"SIMD Q{int(eval(text))}"
     if variable in {"urban_rural_class", "dz_urban_rural_class"}:
         return _shorten_urban_rural_label(text)
     if variable in {"health_board", "dz_health_board"}:
