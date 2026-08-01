@@ -78,7 +78,7 @@ def build(paths: Paths) -> dict[str, object]:
 
     plot_y = y.fillna(strip_y)
     
-    fig, ax = styled_new_figure(width="double", height_in=5.2, constrained_layout=True)
+    fig, ax = styled_new_figure(width="onehalf", height_in=4.5)
     
     # Plot background
     background = table["candidate_tier"].eq("background_or_low_information")
