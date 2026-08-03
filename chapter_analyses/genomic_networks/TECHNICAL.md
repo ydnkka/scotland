@@ -103,6 +103,14 @@ Existing complete chunks are reused unless `--force` is passed. Chunk filenames 
 
 `cluster_pairwise_distance_summary.{csv,parquet}` records selected/eligible clusters and sequences, possible/observed pair counts, status, and quartile/IQR summaries for SNP and temporal distance. Cluster or group caps alter the target population and are development options.
 
+After `cluster_period_summary`, `window_coverage`, and `cluster_pairwise_distance_summary` exist, run:
+
+```bash
+python -m chapter_analyses.genomic_networks.build_cluster_period_typical_summary
+```
+
+`cluster_period_typical_summary.{csv,parquet}` combines non-singleton cluster size, duration, residential Data Zone spread, and period-level within-cluster SNP-distance summaries. The genetic-distance columns join window-lineage pairwise summaries to `window_coverage`, keep rows with `status == "ok"` and at least 10 observed within-cluster pairwise rows, and report pair-count-weighted quartiles of the window-lineage median SNP distances by policy period.
+
 ## Sensitivity analyses
 
 `build_sensitivity_tables.py --only leiden` compares each available resolution with baseline 0.3. Window-level outputs include counts, size/singleton summaries, duration/spread, adjusted Rand index, and baseline differences. `--include-ami` adds exact adjusted mutual information.

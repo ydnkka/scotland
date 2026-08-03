@@ -136,6 +136,7 @@ def render_latex_table(
     rows: list[list[object]],
     column_spec: str | None = None,
     addlinespace_after: set[int] | None = None,
+    short_caption: str | None = None,
 ) -> str:
     column_spec = latex_column_spec(column_spec, len(columns))
     addlinespace_after = addlinespace_after or set()
@@ -156,7 +157,7 @@ def render_latex_table(
     lines = [
         r"\begin{table}[htbp]",
         r"\centering",
-        f"\\caption[{latex_escape(caption)}]{{{latex_escape(caption)}}}\\label{{{label}}}",
+        f"\\caption[{latex_escape(short_caption or caption)}]{{{latex_escape(caption)}}}\\label{{{label}}}",
         f"\\begin{{thesistablebody}}{{{column_spec}}}",
         r"\toprule",
         f"{header} \\\\",
@@ -179,6 +180,7 @@ def write_latex_table(
     rows: list[list[Any]],
     column_spec: str | None = None,
     addlinespace_after: set[int] | None = None,
+    short_caption: str | None = None,
 ) -> None:
     paths.figure_dir.mkdir(parents=True, exist_ok=True)
     content = render_latex_table(
@@ -188,6 +190,7 @@ def write_latex_table(
         rows=rows,
         column_spec=column_spec,
         addlinespace_after=addlinespace_after,
+        short_caption=short_caption,
     )
     (paths.figure_dir / f"{name}.tex").write_text(content + "\n")
 
@@ -197,12 +200,17 @@ def simd_appendix_table_tex(
     *,
     n_groups: int = 5,
     caption: str | None = None,
+    short_caption: str | None = None,
     label: str = TABLE_NAMES["simd_population_weighting"],
 ) -> str:
     """Render a compact LaTeX table for the SIMD validation appendix."""
     group_name = SIMD_GROUP_LABELS.get(n_groups, f"{n_groups}-group")
     caption = caption or (
-        f"Validation of national population-weighted SIMD {group_name} groupings."
+        f"Summary of national SIMD {group_name} boundaries under equal-Data-Zone and population-weighted grouping. The table reports the number of Data Zones, total population, population share, and SIMD rank range in each group."
+    )
+
+    short_caption = short_caption or (
+        f"SIMD {group_name} population-weighting summary."
     )
 
     methods = ["equal_datazone", "population_weighted"]
@@ -236,6 +244,7 @@ def simd_appendix_table_tex(
 
     return render_latex_table(
         caption=caption,
+        short_caption=short_caption,
         label=label,
         columns=[
             "Grouping",
@@ -467,8 +476,8 @@ def write_policy_denominator_table(paths: Paths) -> None:
     for row in denominators.itertuples(index=False):
         rows.append(
             [
-                row.policy_period,
                 str(row.policy_era).upper().replace("_", " "),
+                row.policy_period,
                 fmt_int(row.n_windows),
                 fmt_int(row.median_window_sequences),
                 fmt_int(row.median_window_positive_tests),
@@ -482,15 +491,16 @@ def write_policy_denominator_table(paths: Paths) -> None:
     write_latex_table(
         paths,
         TABLE_NAMES["policy_denominators"],
-        caption="Rolling-window observation denominators by policy period",
+        caption="Rolling-window observation denominators by policy period. Rows are grouped by epidemic era; period codes are used throughout the text above. ``Median coverage'' is the median window-level percentage of positives that were sequenced.",
+        short_caption="Rolling-window observation denominators by policy period.",
         label=TABLE_NAMES["policy_denominators"],
         columns=[
-            "Policy period",
             "Epidemic era",
+            "Policy period",
             "Windows",
             "Median sequences",
             "Median positives",
-            "Median sequenced",
+            "Median coverage",
             "Coverage range",
         ],
         rows=rows,
@@ -605,8 +615,8 @@ def write_cluster_period_table(paths: Paths) -> None:
     for row in clusters.itertuples(index=False):
         rows.append(
             [
-                row.policy_period,
                 str(row.policy_era).upper().replace("_", " "),
+                row.policy_period,
                 fmt_int(row.n_clusters),
                 fmt_int(row.n_singleton_clusters),
                 fmt_int(row.n_non_singleton_clusters),
@@ -626,8 +636,8 @@ def write_cluster_period_table(paths: Paths) -> None:
         ),
         label=TABLE_NAMES["cluster_period_summary"],
         columns=[
-            "Policy period",
             "Epidemic era",
+            "Policy period",
             "All clusters",
             "Singletons",
             "Non-singletons",

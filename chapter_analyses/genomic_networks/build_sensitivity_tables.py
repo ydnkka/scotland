@@ -4,16 +4,15 @@ Run from the Scotland repository root:
 
     python -m chapter_analyses.genomic_networks.build_sensitivity_tables
 
-For a quick development check:
-
-    python -m chapter_analyses.genomic_networks.build_sensitivity_tables --max-windows 3 \
-        --max-files 10
+This script runs with the module-level defaults below. For filtered or development
+builds, edit those constants or call ``build_leiden_sensitivity_tables`` or
+``build_sparsification_sensitivity_tables`` from Python with explicit arguments.
 """
 
 from __future__ import annotations
 
-import argparse
 import logging
+import sys
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
 from typing import Any, TypedDict, cast
@@ -24,7 +23,12 @@ import pandas as pd
 import pyarrow.parquet as pq
 from sklearn.metrics import adjusted_mutual_info_score, adjusted_rand_score
 
-from .lib.config import PROJECT_ROOT, SPARSIFICATION_THRESHOLD, TABLES_DIR
+from .lib.config import (
+    ANALYSIS_RESOLUTION,
+    PROJECT_ROOT,
+    SPARSIFICATION_THRESHOLD,
+    TABLES_DIR,
+)
 from .lib.io import ensure_results_dirs, write_table
 
 LOGGER = logging.getLogger(__name__)
@@ -60,6 +64,20 @@ DEFAULT_SPARSIFICATION_THRESHOLDS = (
     1e-1,
 )
 
+BUILD_LEIDEN_TABLES = True
+BUILD_SPARSIFICATION_TABLES = True
+BASELINE_RESOLUTION = ANALYSIS_RESOLUTION
+BASELINE_THRESHOLD = SPARSIFICATION_THRESHOLD
+INCLUDE_AMI = False
+WINDOW_FILTERS: tuple[str, ...] | None = None
+PANGO_LINEAGE_FILTERS: tuple[str, ...] | None = None
+MAX_WINDOWS: int | None = None
+MAX_FILES: int | None = None
+MAX_ROW_GROUPS_PER_FILE: int | None = None
+MAX_ROWS_PER_FILE: int | None = None
+SCORE_COLUMN = "epilink_compatibility"
+LOG_LEVEL = "INFO"
+
 LEIDEN_COLUMNS = [
     "resolution",
     "nextclade_qc",
@@ -73,114 +91,6 @@ LEIDEN_COLUMNS = [
 ]
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--only",
-        choices=("all", "leiden", "sparsification"),
-        default="all",
-        help="Build only one sensitivity family. Default: all.",
-    )
-    parser.add_argument(
-        "--analysis-dataset",
-        type=Path,
-        default=ANALYSIS_DATASET_PATH,
-        help="Multi-resolution clustering analysis parquet.",
-    )
-    parser.add_argument(
-        "--pairwise-dir",
-        type=Path,
-        default=PAIRWISE_DATASET_DIR,
-        help="Directory of window-lineage pairwise parquet files.",
-    )
-    parser.add_argument(
-        "--edge-manifest",
-        type=Path,
-        default=EDGE_MANIFEST_PATH,
-        help="Saved pairwise edge-count manifest used for metadata.",
-    )
-    parser.add_argument(
-        "--table-dir",
-        type=Path,
-        default=TABLES_DIR,
-        help="Output table directory. Default: chapter_analyses/genomic_networks/results/tables.",
-    )
-    parser.add_argument(
-        "--baseline-resolution",
-        type=float,
-        default=0.3,
-        help="Reference Leiden resolution. Default: EpiLink manuscript main analysis resolution.",
-    )
-    parser.add_argument(
-        "--include-ami",
-        action="store_true",
-        help=(
-            "Add exact adjusted mutual information columns for Leiden sensitivity. "
-            "This is substantially slower than ARI on large high-resolution windows."
-        ),
-    )
-    parser.add_argument(
-        "--baseline-threshold",
-        type=float,
-        default=SPARSIFICATION_THRESHOLD,
-        help="Reference EpiLink compatibility threshold. Default: Chapter 4 baseline.",
-    )
-    parser.add_argument(
-        "--thresholds",
-        nargs="+",
-        type=float,
-        default=list(DEFAULT_SPARSIFICATION_THRESHOLDS),
-        help="Sparsification thresholds to evaluate. Baseline is added if absent.",
-    )
-    parser.add_argument(
-        "--windows",
-        nargs="*",
-        default=None,
-        help="Optional window IDs or indices to retain, e.g. W080 81.",
-    )
-    parser.add_argument(
-        "--pango-lineages",
-        nargs="*",
-        default=None,
-        help="Optional Pango lineage filters for sparsification scans.",
-    )
-    parser.add_argument(
-        "--max-windows",
-        type=int,
-        default=None,
-        help="Development cap on the first N selected windows.",
-    )
-    parser.add_argument(
-        "--max-files",
-        type=int,
-        default=None,
-        help="Development cap on the first N selected pairwise files.",
-    )
-    parser.add_argument(
-        "--max-row-groups-per-file",
-        type=int,
-        default=None,
-        help="Approximate sparsification scan by reading only first N row groups.",
-    )
-    parser.add_argument(
-        "--max-rows-per-file",
-        type=int,
-        default=None,
-        help="Approximate sparsification scan by reading only first N rows per file.",
-    )
-    parser.add_argument(
-        "--score-column",
-        default="epilink_compatibility",
-        help="Pairwise score column used for sparsification. Default: epilink_compatibility.",
-    )
-    parser.add_argument(
-        "--log-level",
-        default="INFO",
-        choices=("DEBUG", "INFO", "WARNING", "ERROR"),
-    )
-    return parser.parse_args()
-
-
 def _normalise_window(value: str | int) -> str:
     text = str(value).strip()
     upper = text.upper()
@@ -189,12 +99,6 @@ def _normalise_window(value: str | int) -> str:
     if upper.isdigit():
         return f"W{int(upper):03d}"
     return text
-
-
-def _normalise_windows(values: Sequence[str] | None) -> list[str] | None:
-    if values is None:
-        return None
-    return [_normalise_window(value) for value in values]
 
 
 def _float_key(value: float) -> float:
@@ -470,6 +374,18 @@ def _build_leiden_summary(
             ),
             "q75_clusters_per_1000_sequences": (
                 "clusters_per_1000_sequences",
+                _quantile(0.75),
+            ),
+            "median_ratio_clusters_per_1000_sequences_vs_baseline": (
+                "ratio_clusters_per_1000_sequences_vs_baseline",
+                "median",
+            ),
+            "q25_ratio_clusters_per_1000_sequences_vs_baseline": (
+                "ratio_clusters_per_1000_sequences_vs_baseline",
+                _quantile(0.25),
+            ),
+            "q75_ratio_clusters_per_1000_sequences_vs_baseline": (
+                "ratio_clusters_per_1000_sequences_vs_baseline",
                 _quantile(0.75),
             ),
             "median_p90_cluster_size": ("p90_cluster_size", "median"),
@@ -842,54 +758,57 @@ def _write_table(df: pd.DataFrame, name: str, *, table_dir: Path) -> None:
 
 
 def main() -> int:
-    args = parse_args()
-    logging.basicConfig(level=args.log_level, format="%(levelname)s: %(message)s")
+    logging.basicConfig(level=LOG_LEVEL, format="%(levelname)s: %(message)s")
     ensure_results_dirs()
-    args.table_dir.mkdir(parents=True, exist_ok=True)
+    TABLES_DIR.mkdir(parents=True, exist_ok=True)
 
-    windows = _normalise_windows(args.windows)
-    thresholds = _sorted_unique_float(args.thresholds)
+    thresholds = _sorted_unique_float(DEFAULT_SPARSIFICATION_THRESHOLDS)
 
-    if args.only in {"all", "leiden"}:
+    if BUILD_LEIDEN_TABLES:
         detail, summary = build_leiden_sensitivity_tables(
-            analysis_dataset=args.analysis_dataset,
-            baseline_resolution=args.baseline_resolution,
-            include_ami=args.include_ami,
-            windows=windows,
-            max_windows=args.max_windows,
+            analysis_dataset=ANALYSIS_DATASET_PATH,
+            baseline_resolution=BASELINE_RESOLUTION,
+            include_ami=INCLUDE_AMI,
+            windows=WINDOW_FILTERS,
+            max_windows=MAX_WINDOWS,
         )
         _write_table(
-            detail, "leiden_resolution_window_sensitivity", table_dir=args.table_dir
+            detail, "leiden_resolution_window_sensitivity", table_dir=TABLES_DIR
         )
         _write_table(
-            summary, "leiden_resolution_sensitivity_summary", table_dir=args.table_dir
+            summary, "leiden_resolution_sensitivity_summary", table_dir=TABLES_DIR
         )
 
-    if args.only in {"all", "sparsification"}:
+    if BUILD_SPARSIFICATION_TABLES:
         detail, summary = build_sparsification_sensitivity_tables(
-            pairwise_dir=args.pairwise_dir,
-            edge_manifest=args.edge_manifest,
+            pairwise_dir=PAIRWISE_DATASET_DIR,
+            edge_manifest=EDGE_MANIFEST_PATH,
             thresholds=thresholds,
-            baseline_threshold=args.baseline_threshold,
-            windows=windows,
-            pango_lineages=args.pango_lineages,
-            max_windows=args.max_windows,
-            max_files=args.max_files,
-            max_row_groups_per_file=args.max_row_groups_per_file,
-            max_rows_per_file=args.max_rows_per_file,
-            score_column=args.score_column,
+            baseline_threshold=BASELINE_THRESHOLD,
+            windows=WINDOW_FILTERS,
+            pango_lineages=PANGO_LINEAGE_FILTERS,
+            max_windows=MAX_WINDOWS,
+            max_files=MAX_FILES,
+            max_row_groups_per_file=MAX_ROW_GROUPS_PER_FILE,
+            max_rows_per_file=MAX_ROWS_PER_FILE,
+            score_column=SCORE_COLUMN,
         )
         _write_table(
-            detail, "sparsification_threshold_sensitivity", table_dir=args.table_dir
+            detail, "sparsification_threshold_sensitivity", table_dir=TABLES_DIR
         )
         _write_table(
             summary,
             "sparsification_threshold_sensitivity_summary",
-            table_dir=args.table_dir,
+            table_dir=TABLES_DIR,
         )
 
     return 0
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        raise SystemExit(
+            "build_sensitivity_tables no longer accepts command-line arguments; "
+            "edit the module-level defaults or call the build functions from Python."
+        )
     raise SystemExit(main())

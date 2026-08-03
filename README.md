@@ -1,6 +1,6 @@
 # Scotland SARS-CoV-2 Genomic Surveillance and Network Analysis
 
-This repository links Scottish SARS-CoV-2 sequence metadata to rolling-window genetic compatibility, Leiden clusters, descriptive surveillance, compatibility-network analysis, and superspreading-compatible (SSE) candidate characterisation.
+This repository links Scottish SARS-CoV-2 sequence metadata to rolling-window genetic compatibility, Leiden clusters, descriptive surveillance, compatibility-network analysis, and superspreading-compatible candidate characterisation.
 
 EpiLink edges and cluster transitions are compatibility and continuity signals, not observed transmission events.
 
@@ -25,7 +25,6 @@ raw sequence and linked metadata
 - `chapter_analyses/surveillance/`: policy timeline and lineage surveillance.
 - `chapter_analyses/genomic_networks/`: Chapter 4 cohort, cluster, mixing, topology, and sensitivity analyses.
 - `chapter_analyses/sse_detection/`: Chapter 5 transition graph, detector, figures, and Bayesian models.
-- `assets/`: method schematics and research notes.
 - `data/`: local raw and processed data; excluded from version control.
 
 Detailed documentation:
@@ -39,7 +38,7 @@ Detailed documentation:
 
 ## Environment
 
-Run commands from the repository root. Install the Python dependencies, plus the external method tools `samtools`, `tn93`, and GNU parallel:
+Run commands from the repository root. Install the Python dependencies, plus the external method tools `samtools`, `tn93`, and GNU `parallel`:
 
 ```bash
 python -m pip install -r requirements.txt

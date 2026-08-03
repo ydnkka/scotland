@@ -1,18 +1,19 @@
-"""Build Chapter 4 Supplementary Figure 1: parameter sensitivity summaries."""
+"""Build Chapter 4 Supplementary Figure 1: parameter sensitivity summary."""
 
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 import sys
+from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.ticker import PercentFormatter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from common import (  # noqa: E402
+from common import (
     Paths,
     add_common_args,
     add_panel_labels,
@@ -22,7 +23,7 @@ from common import (  # noqa: E402
     styled_save_figure,
 )
 
-from chapter_analyses.genomic_networks.lib.config import (  # noqa: E402
+from chapter_analyses.genomic_networks.lib.config import (
     ANALYSIS_RESOLUTION,
     SPARSIFICATION_THRESHOLD,
 )
@@ -31,24 +32,23 @@ BASELINE_THRESHOLD = SPARSIFICATION_THRESHOLD
 FIGURE_NAME = "fig_ch4_parameter_sensitivity"
 LEIDEN_SUMMARY_TABLE = "leiden_resolution_sensitivity_summary"
 SPARSIFICATION_SUMMARY_TABLE = "sparsification_threshold_sensitivity_summary"
-SPARSIFICATION_DETAIL_TABLE = "sparsification_threshold_sensitivity"
 
 LEIDEN_COLOR = "#35618f"
 SPARSIFICATION_COLOR = "#b0473c"
-AMI_COLOR = "#7b5ea7"
-BACKGROUND_COLOR = "#b8b8b8"
 REFERENCE_COLOR = "#555555"
+BASELINE_EDGE_COLOR = "#222222"
+
+FRAGMENTATION_RATIO_COLS = {
+    "median": "median_ratio_clusters_per_1000_sequences_vs_baseline",
+    "q25": "q25_ratio_clusters_per_1000_sequences_vs_baseline",
+    "q75": "q75_ratio_clusters_per_1000_sequences_vs_baseline",
+}
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_args(parser)
     return parser.parse_args()
-
-
-def _positive_thresholds(df: pd.DataFrame) -> pd.DataFrame:
-    """Drop threshold zero because the figure uses a logarithmic x-axis."""
-    return df.loc[df["threshold"].astype(float) > 0].copy()
 
 
 def _line_with_iqr(
@@ -85,105 +85,66 @@ def _line_with_iqr(
         )
 
 
-def _format_threshold_axis(ax: Axes) -> None:
-    ax.set_xscale("log")
-    ax.set_xlabel("Compatibility threshold")
-
-
 def _add_reference_line(ax: Axes, value: float, *, log_axis: bool = False) -> None:
     if log_axis and value <= 0:
         return
     ax.axvline(value, color=REFERENCE_COLOR, lw=0.8, ls=":")
 
 
-def _plot_leiden_fragmentation(
-    ax: Axes,
+def _format_resolution_axis(ax: Axes) -> None:
+    ax.set_xlabel("Leiden resolution")
+    ax.set_xlim(0.08, 0.82)
+
+
+def _baseline_value(
+    df: pd.DataFrame,
+    *,
+    x_col: str,
+    y_col: str,
+    baseline: float,
+) -> float:
+    values = df[x_col].astype(float)
+    baseline_rows = df.loc[np.isclose(values, baseline), y_col]
+    if baseline_rows.empty:
+        raise ValueError(f"Baseline value {baseline:g} not found in {x_col}.")
+    return float(baseline_rows.iloc[0])
+
+
+def _with_fragmentation_ratio(
     leiden: pd.DataFrame,
     *,
     baseline_resolution: float,
-) -> None:
-    _line_with_iqr(
-        ax,
-        leiden,
-        x="resolution",
-        median="median_clusters_per_1000_sequences",
-        q25="q25_clusters_per_1000_sequences",
-        q75="q75_clusters_per_1000_sequences",
-        color=LEIDEN_COLOR,
-    )
-    _add_reference_line(ax, baseline_resolution)
-    ax.set_title("Leiden sensitivity")
-    ax.set_ylabel("Clusters per 1,000 sequences")
+) -> pd.DataFrame:
+    """Add baseline-relative fragmentation columns if the table predates them."""
+    out = leiden.sort_values("resolution").copy()
+    if all(col in out.columns for col in FRAGMENTATION_RATIO_COLS.values()):
+        return out
 
+    required = {
+        "median_clusters_per_1000_sequences",
+        "q25_clusters_per_1000_sequences",
+        "q75_clusters_per_1000_sequences",
+    }
+    missing = required - set(out.columns)
+    if missing:
+        raise KeyError(
+            "Leiden sensitivity summary lacks columns needed for fragmentation "
+            f"ratios: {sorted(missing)}"
+        )
 
-def _plot_sparsification_edge_fraction(
-    ax: Axes,
-    sparsification: pd.DataFrame,
-    *,
-    baseline_threshold: float,
-) -> None:
-    work = _positive_thresholds(sparsification)
-    y_col = (
-        "pooled_retained_weight_fraction"
-        if "pooled_retained_weight_fraction" in work.columns
-        else "pooled_retained_edge_fraction"
+    baseline_median = _baseline_value(
+        out,
+        x_col="resolution",
+        y_col="median_clusters_per_1000_sequences",
+        baseline=baseline_resolution,
     )
-    ylabel = (
-        "Retained compatibility weight"
-        if y_col == "pooled_retained_weight_fraction"
-        else "Retained pairwise rows"
-    )
-    ax.plot(
-        work["threshold"],
-        work[y_col],
-        color=SPARSIFICATION_COLOR,
-        lw=1.4,
-    )
-    _add_reference_line(ax, baseline_threshold, log_axis=True)
-    _format_threshold_axis(ax)
-    ax.set_title("Sparsification sensitivity")
-    ax.yaxis.set_major_formatter(PercentFormatter(1.0))
-    ax.set_ylabel(ylabel)
-
-
-def _plot_leiden_cluster_size(
-    ax: Axes,
-    leiden: pd.DataFrame,
-    *,
-    baseline_resolution: float,
-) -> None:
-    _line_with_iqr(
-        ax,
-        leiden,
-        x="resolution",
-        median="median_p90_cluster_size",
-        q25="q25_p90_cluster_size",
-        q75="q75_p90_cluster_size",
-        color=LEIDEN_COLOR,
-    )
-    _add_reference_line(ax, baseline_resolution)
-    ax.set_ylabel("90th percentile cluster size")
-
-
-def _plot_sparsification_mean_degree(
-    ax: Axes,
-    sparsification: pd.DataFrame,
-    *,
-    baseline_threshold: float,
-) -> None:
-    work = _positive_thresholds(sparsification)
-    _line_with_iqr(
-        ax,
-        work,
-        x="threshold",
-        median="median_retained_mean_degree",
-        q25="q25_retained_mean_degree",
-        q75="q75_retained_mean_degree",
-        color=SPARSIFICATION_COLOR,
-    )
-    _add_reference_line(ax, baseline_threshold, log_axis=True)
-    _format_threshold_axis(ax)
-    ax.set_ylabel("Retained mean degree")
+    for source, target in {
+        "median_clusters_per_1000_sequences": FRAGMENTATION_RATIO_COLS["median"],
+        "q25_clusters_per_1000_sequences": FRAGMENTATION_RATIO_COLS["q25"],
+        "q75_clusters_per_1000_sequences": FRAGMENTATION_RATIO_COLS["q75"],
+    }.items():
+        out[target] = out[source] / baseline_median
+    return out
 
 
 def _plot_leiden_stability(
@@ -200,177 +161,169 @@ def _plot_leiden_stability(
         q25="q25_ari_vs_baseline",
         q75="q75_ari_vs_baseline",
         color=LEIDEN_COLOR,
-        label="ARI",
     )
-    if "median_ami_vs_baseline" in leiden.columns:
-        _line_with_iqr(
-            ax,
-            leiden,
-            x="resolution",
-            median="median_ami_vs_baseline",
-            q25="q25_ami_vs_baseline",
-            q75="q75_ami_vs_baseline",
-            color=AMI_COLOR,
-            label="AMI",
-            linestyle="--",
-        )
     _add_reference_line(ax, baseline_resolution)
-    ax.set_xlabel("Leiden resolution")
-    ax.set_ylabel("Agreement with R=0.3")
+    _format_resolution_axis(ax)
+    ax.set_title("Partition stability")
+    ax.set_ylabel("ARI vs R=0.3")
     ax.set_ylim(-0.02, 1.04)
-    ax.legend(loc="lower left")
 
 
-def _sample_background_groups(
-    detail: pd.DataFrame,
-    *,
-    max_groups: int,
-    seed: int,
-) -> pd.DataFrame:
-    if max_groups <= 0:
-        return detail.iloc[0:0].copy()
-    stems = pd.Index(detail["pairwise_stem"].dropna().unique())
-    if len(stems) > max_groups:
-        stems = stems.to_series().sample(max_groups, random_state=seed).to_numpy()
-    return detail.loc[detail["pairwise_stem"].isin(stems)].copy()
-
-
-def _plot_sparsification_group_retention(
+def _plot_leiden_fragmentation(
     ax: Axes,
-    detail: pd.DataFrame,
+    leiden: pd.DataFrame,
     *,
-    baseline_threshold: float,
-    max_background_groups: int,
-    background_seed: int,
+    baseline_resolution: float,
 ) -> None:
-    work = _positive_thresholds(detail)
-    y_col = (
-        "retained_weight_fraction"
-        if "retained_weight_fraction" in work.columns
-        else "retained_edge_fraction"
-    )
-    ylabel = (
-        "Pairwise-group weight retention"
-        if y_col == "retained_weight_fraction"
-        else "Pairwise-group row retention"
-    )
-    background = _sample_background_groups(
-        work,
-        max_groups=max_background_groups,
-        seed=background_seed,
-    )
-    for _, group in background.groupby("pairwise_stem", sort=False):
-        group = group.sort_values("threshold")
-        ax.plot(
-            group["threshold"],
-            group[y_col],
-            color=BACKGROUND_COLOR,
-            lw=0.35,
-            alpha=0.12,
-            zorder=1,
-        )
-
-    summary = (
-        work.groupby("threshold", dropna=False)[y_col]
-        .agg(
-            median="median",
-            q25=lambda x: x.quantile(0.25),
-            q75=lambda x: x.quantile(0.75),
-        )
-        .reset_index()
+    work = _with_fragmentation_ratio(
+        leiden,
+        baseline_resolution=baseline_resolution,
     )
     _line_with_iqr(
         ax,
-        summary,
-        x="threshold",
-        median="median",
-        q25="q25",
-        q75="q75",
-        color=SPARSIFICATION_COLOR,
-        label="Median and IQR",
+        work,
+        x="resolution",
+        median=FRAGMENTATION_RATIO_COLS["median"],
+        q25=FRAGMENTATION_RATIO_COLS["q25"],
+        q75=FRAGMENTATION_RATIO_COLS["q75"],
+        color=LEIDEN_COLOR,
     )
-    _add_reference_line(ax, baseline_threshold, log_axis=True)
-    _format_threshold_axis(ax)
+    _add_reference_line(ax, baseline_resolution)
+    ax.axhline(1.0, color=REFERENCE_COLOR, lw=0.8, ls=":")
+    _format_resolution_axis(ax)
+    ax.set_title("Cluster fragmentation")
+    ax.set_ylabel("Clusters per 1,000 sequences\nrelative to R=0.3")
+
+
+def _plot_sparsification_tradeoff(
+    ax: Axes,
+    sparsification: pd.DataFrame,
+    *,
+    baseline_threshold: float,
+) -> None:
+    required = {
+        "threshold",
+        "pooled_retained_edge_fraction",
+        "pooled_retained_weight_fraction",
+    }
+    missing = required - set(sparsification.columns)
+    if missing:
+        raise KeyError(
+            "Sparsification summary lacks columns needed for the trade-off panel: "
+            f"{sorted(missing)}"
+        )
+
+    work = (
+        sparsification.dropna(
+            subset=[
+                "threshold",
+                "pooled_retained_edge_fraction",
+                "pooled_retained_weight_fraction",
+            ]
+        )
+        .sort_values("threshold")
+        .copy()
+    )
+    x = work["pooled_retained_edge_fraction"].astype(float)
+    y = work["pooled_retained_weight_fraction"].astype(float)
+    ax.plot(
+        x,
+        y,
+        color=SPARSIFICATION_COLOR,
+        lw=1.4,
+        marker="o",
+        ms=3.5,
+    )
+
+    baseline_rows = work.loc[
+        np.isclose(work["threshold"].astype(float), baseline_threshold)
+    ]
+    if not baseline_rows.empty:
+        baseline = baseline_rows.iloc[0]
+        baseline_x = float(baseline["pooled_retained_edge_fraction"])
+        baseline_y = float(baseline["pooled_retained_weight_fraction"])
+        ax.scatter(
+            [baseline_x],
+            [baseline_y],
+            s=36,
+            color=SPARSIFICATION_COLOR,
+            edgecolor=BASELINE_EDGE_COLOR,
+            linewidth=0.8,
+            zorder=4,
+        )
+        ax.annotate(
+            f"baseline\n{baseline_threshold:g}",
+            xy=(baseline_x, baseline_y),
+            xytext=(8, -14),
+            textcoords="offset points",
+            ha="left",
+            va="top",
+            arrowprops={
+                "arrowstyle": "-",
+                "color": REFERENCE_COLOR,
+                "lw": 0.7,
+            },
+        )
+
+    ax.xaxis.set_major_formatter(PercentFormatter(1.0))
     ax.yaxis.set_major_formatter(PercentFormatter(1.0))
-    ax.set_ylabel(ylabel)
-    ax.legend(loc="lower left")
+    ax.set_xlabel("Retained pairwise rows")
+    ax.set_ylabel("Retained compatibility weight")
+    ax.set_title("Sparsification trade-off")
+    ax.set_xlim(max(0.0, float(x.min()) - 0.04), min(1.0, float(x.max()) + 0.04))
+    ax.set_ylim(max(0.0, float(y.min()) - 0.04), min(1.02, float(y.max()) + 0.02))
 
 
 def plot_parameter_sensitivity_grid(
     leiden_summary: pd.DataFrame,
     sparsification_summary: pd.DataFrame,
-    sparsification_detail: pd.DataFrame,
     *,
     paths: Paths,
     baseline_resolution: float = ANALYSIS_RESOLUTION,
     baseline_threshold: float = BASELINE_THRESHOLD,
-    max_background_groups: int = 300,
-    background_seed: int = 42,
 ) -> dict[str, Path]:
-    """Plot the 3x2 Leiden and sparsification sensitivity grid."""
+    """Plot a compact 1x3 parameter-sensitivity summary."""
     leiden = leiden_summary.sort_values("resolution").copy()
     sparsification = sparsification_summary.sort_values("threshold").copy()
-    detail = sparsification_detail.sort_values(["threshold", "pairwise_stem"]).copy()
 
     fig, axes = styled_new_figure(
         width="double",
-        height_in=7.0,
-        nrows=3,
-        ncols=2,
-        sharex=False,
+        height_in=2.75,
+        nrows=1,
+        ncols=3,
         constrained_layout=True,
     )
+    axes = np.ravel(axes)
 
-    _plot_leiden_fragmentation(
-        axes[0, 0],
-        leiden,
-        baseline_resolution=baseline_resolution,
-    )
-    _plot_sparsification_edge_fraction(
-        axes[0, 1],
-        sparsification,
-        baseline_threshold=baseline_threshold,
-    )
-    _plot_leiden_cluster_size(
-        axes[1, 0],
-        leiden,
-        baseline_resolution=baseline_resolution,
-    )
-    _plot_sparsification_mean_degree(
-        axes[1, 1],
-        sparsification,
-        baseline_threshold=baseline_threshold,
-    )
     _plot_leiden_stability(
-        axes[2, 0],
+        axes[0],
         leiden,
         baseline_resolution=baseline_resolution,
     )
-    _plot_sparsification_group_retention(
-        axes[2, 1],
-        detail,
+    _plot_leiden_fragmentation(
+        axes[1],
+        leiden,
+        baseline_resolution=baseline_resolution,
+    )
+    _plot_sparsification_tradeoff(
+        axes[2],
+        sparsification,
         baseline_threshold=baseline_threshold,
-        max_background_groups=max_background_groups,
-        background_seed=background_seed,
     )
 
-    for ax in axes[:, 0]:
-        ax.set_xlim(0.08, 0.82)
-    for ax in axes.flat:
+    for ax in axes:
         ax.tick_params(axis="both", which="major", length=3)
 
-    add_panel_labels(axes.flat, x=-0.12, y=1.08, size="medium")
+    add_panel_labels(axes, x=-0.2, y=1.12, size="medium")
     return styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
 
 
 def build(paths: Paths) -> dict[str, Path]:
     leiden = read_table(paths, LEIDEN_SUMMARY_TABLE)
     sparsification_summary = read_table(paths, SPARSIFICATION_SUMMARY_TABLE)
-    sparsification_detail = read_table(paths, SPARSIFICATION_DETAIL_TABLE)
     return plot_parameter_sensitivity_grid(
         leiden,
         sparsification_summary,
-        sparsification_detail,
         paths=paths,
     )
 
