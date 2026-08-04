@@ -177,6 +177,7 @@ def main() -> int:
             table_dir=args.table_dir,
         )
     else:
+        LOGGER.info("Building cluster_table and window_coverage")
         window_coverage = build_window_coverage(df)
         cluster_table = build_cluster_table(df)
 
@@ -246,7 +247,7 @@ def main() -> int:
     if args.skip_pairwise_distances:
         LOGGER.info("Skipping pairwise-derived cluster summaries")
         return 0
-
+    
     if args.reuse_input_tables:
         LOGGER.info(
             "Reading existing %s",
@@ -257,6 +258,7 @@ def main() -> int:
             table_dir=args.table_dir,
         )
     else:
+        LOGGER.info("Building pairwise distance summary")
         pairwise_summary = (
             build_cluster_pairwise_distance_summary(
                 windows=normalise_windows(args.windows),

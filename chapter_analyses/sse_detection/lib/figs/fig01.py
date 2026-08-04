@@ -10,8 +10,8 @@ from matplotlib.patches import Rectangle
 from .common import (
     Paths,
     add_common_args,
+    new_figure,
     paths_from_args,
-    styled_new_figure,
     styled_save_figure,
 )
 
@@ -157,9 +157,9 @@ def draw_graph_role_schematic(ax: Axes) -> None:
     ax.set_axis_off()
 
 def build(paths: Paths) -> None:
-    fig, ax = styled_new_figure(width="double", height_in=4.2, constrained_layout=True)
+    fig, ax = new_figure(width="double", height_in=4.2, constrained_layout=True)
     draw_graph_role_schematic(ax)
-    styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
+    styled_save_figure(fig, paths, FIGURE_NAME)
 
 
 def main() -> int:

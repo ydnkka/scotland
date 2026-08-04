@@ -1,4 +1,4 @@
-"""Build Chapter 4 Figure 6: vaccination context in the observed cohort."""
+"""Build Chapter 4 Supplementary Figure 1: parameter sensitivity summary."""
 
 from __future__ import annotations
 
@@ -6,11 +6,9 @@ import argparse
 import sys
 from pathlib import Path
 
-import matplotlib.dates as mdates
 import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
-from matplotlib.patches import Patch
 from matplotlib.ticker import PercentFormatter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -18,199 +16,320 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (
     Paths,
     add_common_args,
-    add_policy_bands,
-    date_axis,
-    panel_label,
+    add_panel_labels,
+    new_figure,
     paths_from_args,
     read_table,
-    styled_new_figure,
     styled_save_figure,
 )
 
-FIGURE_NAME = "fig_ch4_vaccination_context"
-MIN_DAYS_SERIES_COUNT = 20
-
-DOSE_GROUPS = (
-    ("Unvaccinated", "n_unvaccinated", "prop_unvaccinated"),
-    ("One dose", "n_one_dose", "prop_one_dose"),
-    ("Two doses", "n_two_doses", "prop_two_doses"),
-    (
-        "Booster/3+ doses",
-        "n_booster_or_three_plus",
-        "prop_booster_or_three_plus",
-    ),
-    (
-        "Dose unknown",
-        "n_vaccinated_dose_unknown",
-        "prop_vaccinated_dose_unknown",
-    ),
+from chapter_analyses.genomic_networks.lib.config import (
+    ANALYSIS_RESOLUTION,
+    SPARSIFICATION_THRESHOLD,
 )
 
-DOSE_COLORS = {
-    "Unvaccinated": "#747474",
-    "One dose": "#59a14f",
-    "Two doses": "#4e79a7",
-    "Booster/3+ doses": "#b07aa1",
-    "Dose unknown": "#bab0ac",
+BASELINE_THRESHOLD = SPARSIFICATION_THRESHOLD
+FIGURE_NAME = "fig_ch4_parameter_sensitivity"
+LEIDEN_SUMMARY_TABLE = "leiden_resolution_sensitivity_summary"
+SPARSIFICATION_SUMMARY_TABLE = "sparsification_threshold_sensitivity_summary"
+
+LEIDEN_COLOR = "#35618f"
+SPARSIFICATION_COLOR = "#b0473c"
+REFERENCE_COLOR = "#555555"
+BASELINE_EDGE_COLOR = "#222222"
+
+FRAGMENTATION_RATIO_COLS = {
+    "median": "median_ratio_clusters_per_1000_sequences_vs_baseline",
+    "q25": "q25_ratio_clusters_per_1000_sequences_vs_baseline",
+    "q75": "q75_ratio_clusters_per_1000_sequences_vs_baseline",
 }
 
 
-def _date_values(values: pd.Series) -> np.ndarray:
-    dates = pd.to_datetime(values, errors="coerce")
-    return mdates.date2num(dates.dt.to_pydatetime())
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    add_common_args(parser)
+    return parser.parse_args()
 
 
-def _numeric(values: pd.Series) -> np.ndarray:
-    return pd.to_numeric(values, errors="coerce").to_numpy(dtype=float)
+def _line_with_iqr(
+    ax: Axes,
+    data: pd.DataFrame,
+    *,
+    x: str,
+    median: str,
+    q25: str | None = None,
+    q75: str | None = None,
+    color: str,
+    label: str | None = None,
+    linestyle: str = "-",
+) -> None:
+    work = data.sort_values(x)
+    x_values = work[x].astype(float).to_numpy()
+    median_values = work[median].astype(float).to_numpy()
+    ax.plot(
+        x_values,
+        median_values,
+        color=color,
+        lw=1.4,
+        ls=linestyle,
+        label=label,
+    )
+    if q25 and q75 and q25 in work.columns and q75 in work.columns:
+        ax.fill_between(
+            x_values,
+            work[q25].astype(float).to_numpy(),
+            work[q75].astype(float).to_numpy(),
+            color=color,
+            alpha=0.16,
+            lw=0,
+        )
 
 
-def _active_dose_groups(table: pd.DataFrame, value_kind: str) -> list[tuple[str, str]]:
-    if value_kind not in {"count", "proportion"}:
-        raise ValueError("value_kind must be 'count' or 'proportion'")
-
-    groups = []
-    for label, count_col, prop_col in DOSE_GROUPS:
-        col = count_col if value_kind == "count" else prop_col
-        total = pd.to_numeric(table[col], errors="coerce").sum() if col in table else 0
-        if total > 0:
-            groups.append((label, col))
-    return groups
+def _add_reference_line(ax: Axes, value: float, *, log_axis: bool = False) -> None:
+    if log_axis and value <= 0:
+        return
+    ax.axvline(value, color=REFERENCE_COLOR, lw=0.8, ls=":")
 
 
-def _plot_window_counts(ax: Axes, window: pd.DataFrame) -> None:
-    add_policy_bands(ax, window)
-    x = pd.to_datetime(window["wn_mid_date"], errors="coerce")
-    groups = _active_dose_groups(window, "count")
-    values = [_numeric(window[col]) for _, col in groups]
-    colors = [DOSE_COLORS[label] for label, _ in groups]
-    ax.stackplot(x, values, colors=colors, linewidth=0, alpha=0.94)
-    ax.set_title("Rolling-window vaccination context")
-    ax.set_ylabel("Sequences")
-    date_axis(ax)
-    panel_label(ax, "A")
+def _format_resolution_axis(ax: Axes) -> None:
+    ax.set_xlabel("Leiden resolution")
+    ax.set_xlim(0.08, 0.82)
 
 
-def _plot_window_proportions(ax: Axes, window: pd.DataFrame) -> None:
-    add_policy_bands(ax, window)
-    x = pd.to_datetime(window["wn_mid_date"], errors="coerce")
-    vaccinated = ax.plot(
+def _baseline_value(
+    df: pd.DataFrame,
+    *,
+    x_col: str,
+    y_col: str,
+    baseline: float,
+) -> float:
+    values = df[x_col].astype(float)
+    baseline_rows = df.loc[np.isclose(values, baseline), y_col]
+    if baseline_rows.empty:
+        raise ValueError(f"Baseline value {baseline:g} not found in {x_col}.")
+    return float(baseline_rows.iloc[0])
+
+
+def _with_fragmentation_ratio(
+    leiden: pd.DataFrame,
+    *,
+    baseline_resolution: float,
+) -> pd.DataFrame:
+    """Add baseline-relative fragmentation columns if the table predates them."""
+    out = leiden.sort_values("resolution").copy()
+    if all(col in out.columns for col in FRAGMENTATION_RATIO_COLS.values()):
+        return out
+
+    required = {
+        "median_clusters_per_1000_sequences",
+        "q25_clusters_per_1000_sequences",
+        "q75_clusters_per_1000_sequences",
+    }
+    missing = required - set(out.columns)
+    if missing:
+        raise KeyError(
+            "Leiden sensitivity summary lacks columns needed for fragmentation "
+            f"ratios: {sorted(missing)}"
+        )
+
+    baseline_median = _baseline_value(
+        out,
+        x_col="resolution",
+        y_col="median_clusters_per_1000_sequences",
+        baseline=baseline_resolution,
+    )
+    for source, target in {
+        "median_clusters_per_1000_sequences": FRAGMENTATION_RATIO_COLS["median"],
+        "q25_clusters_per_1000_sequences": FRAGMENTATION_RATIO_COLS["q25"],
+        "q75_clusters_per_1000_sequences": FRAGMENTATION_RATIO_COLS["q75"],
+    }.items():
+        out[target] = out[source] / baseline_median
+    return out
+
+
+def _plot_leiden_stability(
+    ax: Axes,
+    leiden: pd.DataFrame,
+    *,
+    baseline_resolution: float,
+) -> None:
+    _line_with_iqr(
+        ax,
+        leiden,
+        x="resolution",
+        median="median_ari_vs_baseline",
+        q25="q25_ari_vs_baseline",
+        q75="q75_ari_vs_baseline",
+        color=LEIDEN_COLOR,
+    )
+    _add_reference_line(ax, baseline_resolution)
+    _format_resolution_axis(ax)
+    ax.set_title("Partition stability")
+    ax.set_ylabel("ARI vs R=0.3")
+    ax.set_ylim(-0.02, 1.04)
+
+
+def _plot_leiden_fragmentation(
+    ax: Axes,
+    leiden: pd.DataFrame,
+    *,
+    baseline_resolution: float,
+) -> None:
+    work = _with_fragmentation_ratio(
+        leiden,
+        baseline_resolution=baseline_resolution,
+    )
+    _line_with_iqr(
+        ax,
+        work,
+        x="resolution",
+        median=FRAGMENTATION_RATIO_COLS["median"],
+        q25=FRAGMENTATION_RATIO_COLS["q25"],
+        q75=FRAGMENTATION_RATIO_COLS["q75"],
+        color=LEIDEN_COLOR,
+    )
+    _add_reference_line(ax, baseline_resolution)
+    ax.axhline(1.0, color=REFERENCE_COLOR, lw=0.8, ls=":")
+    _format_resolution_axis(ax)
+    ax.set_title("Cluster fragmentation")
+    ax.set_ylabel("Clusters per 1,000 sequences\nrelative to R=0.3")
+
+
+def _plot_sparsification_tradeoff(
+    ax: Axes,
+    sparsification: pd.DataFrame,
+    *,
+    baseline_threshold: float,
+) -> None:
+    required = {
+        "threshold",
+        "pooled_retained_edge_fraction",
+        "pooled_retained_weight_fraction",
+    }
+    missing = required - set(sparsification.columns)
+    if missing:
+        raise KeyError(
+            "Sparsification summary lacks columns needed for the trade-off panel: "
+            f"{sorted(missing)}"
+        )
+
+    work = (
+        sparsification.dropna(
+            subset=[
+                "threshold",
+                "pooled_retained_edge_fraction",
+                "pooled_retained_weight_fraction",
+            ]
+        )
+        .sort_values("threshold")
+        .copy()
+    )
+    x = work["pooled_retained_edge_fraction"].astype(float)
+    y = work["pooled_retained_weight_fraction"].astype(float)
+    ax.plot(
         x,
-        window["prop_vaccinated"],
-        color="#1f4e79",
-        lw=1.35,
-        label="Vaccinated",
-    )[0]
-    booster = ax.plot(
-        x,
-        window["prop_booster"],
-        color="#8e3b8a",
-        lw=1.35,
-        label="Booster recorded",
-    )[0]
-    ax.set_title("Vaccinated and booster share")
-    ax.set_ylabel("Share of sequences")
-    ax.set_ylim(0, 1)
-    ax.yaxis.set_major_formatter(PercentFormatter(1.0))
-    ax.legend(
-        [vaccinated, booster],
-        ["Vaccinated", "Booster recorded"],
-        loc="upper left",
-    )
-    date_axis(ax)
-    panel_label(ax, "B")
-
-
-def _plot_days_since_vaccination(ax: Axes, window: pd.DataFrame) -> None:
-    add_policy_bands(ax, window)
-    x = _date_values(window["wn_mid_date"])
-    median = _numeric(window["median_days_since_vaccination"])
-    lower = _numeric(window["q25_days_since_vaccination"])
-    upper = _numeric(window["q75_days_since_vaccination"])
-    enough_vaccinated = (
-        pd.to_numeric(window["n_days_since_vaccination"], errors="coerce")
-        .ge(MIN_DAYS_SERIES_COUNT)
-        .to_numpy(dtype=bool)
-    )
-    ribbon_mask = (
-        enough_vaccinated & np.isfinite(x) & np.isfinite(lower) & np.isfinite(upper)
-    )
-    line_mask = enough_vaccinated & np.isfinite(x) & np.isfinite(median)
-    ax.fill_between(
-        x[ribbon_mask],
-        lower[ribbon_mask],
-        upper[ribbon_mask],
-        color="#f28e2b",
-        alpha=0.24,
-        linewidth=0,
-    )
-    ax.plot(x[line_mask], median[line_mask], color="#b85c00", lw=1.35)
-    ax.xaxis_date()
-    ax.set_title("Time since vaccination")  # among vaccinated sequences
-    ax.set_ylabel("Days")
-    date_axis(ax)
-    panel_label(ax, "C")
-
-
-def _plot_window_dose_composition(ax: Axes, window: pd.DataFrame) -> None:
-    add_policy_bands(ax, window)
-    x = pd.to_datetime(window["wn_mid_date"], errors="coerce")
-    groups = _active_dose_groups(window, "proportion")
-    values = [np.nan_to_num(_numeric(window[col]), nan=0.0) for _, col in groups]
-    colors = [DOSE_COLORS[label] for label, _ in groups]
-    ax.stackplot(x, values, colors=colors, linewidth=0, alpha=0.94)
-    ax.set_title("Dose composition over time")
-    ax.set_ylabel("Share of sequences")
-    ax.set_ylim(0, 1)
-    ax.yaxis.set_major_formatter(PercentFormatter(1.0))
-    ax.grid(axis="y", color="#d9d9d9", lw=0.5, alpha=0.8)
-    ax.set_axisbelow(True)
-    date_axis(ax)
-    panel_label(ax, "D")
-
-
-def build(paths: Paths) -> None:
-    window = read_table(paths, "vaccination_window_context")
-    for col in ("wn_start_date", "wn_mid_date", "wn_end_date"):
-        if col in window.columns:
-            window[col] = pd.to_datetime(window[col], errors="coerce")
-    window = window.sort_values("window_idx")
-
-    fig, axes = styled_new_figure(
-        nrows=2,
-        ncols=2,
-        width="double",
-        height_in=7.3,
-        constrained_layout=True,
-        sharex=True,
+        y,
+        color=SPARSIFICATION_COLOR,
+        lw=1.4,
+        marker="o",
+        ms=3.5,
     )
 
-    axes = axes.flatten()
-
-    _plot_window_counts(axes[0], window)
-    _plot_window_proportions(axes[1], window)
-    _plot_days_since_vaccination(axes[2], window)
-    _plot_window_dose_composition(axes[3], window)
-
-    dose_handles = [
-        Patch(facecolor=DOSE_COLORS[label], edgecolor="none", label=label)
-        for label, _ in _active_dose_groups(window, "proportion")
+    baseline_rows = work.loc[
+        np.isclose(work["threshold"].astype(float), baseline_threshold)
     ]
-    fig.legend(
-        handles=dose_handles,
-        loc="outside upper center",
-        title="Vaccination dose group",
-        ncol=len(dose_handles),
-        columnspacing=1.1,
-        handlelength=1.5,
-        frameon=False,
+    if not baseline_rows.empty:
+        baseline = baseline_rows.iloc[0]
+        baseline_x = float(baseline["pooled_retained_edge_fraction"])
+        baseline_y = float(baseline["pooled_retained_weight_fraction"])
+        ax.scatter(
+            [baseline_x],
+            [baseline_y],
+            s=36,
+            color=SPARSIFICATION_COLOR,
+            edgecolor=BASELINE_EDGE_COLOR,
+            linewidth=0.8,
+            zorder=4,
+        )
+        ax.annotate(
+            f"baseline\n{baseline_threshold:g}",
+            xy=(baseline_x, baseline_y),
+            xytext=(8, -14),
+            textcoords="offset points",
+            ha="left",
+            va="top",
+            arrowprops={
+                "arrowstyle": "-",
+                "color": REFERENCE_COLOR,
+                "lw": 0.7,
+            },
+        )
+
+    ax.xaxis.set_major_formatter(PercentFormatter(1.0))
+    ax.yaxis.set_major_formatter(PercentFormatter(1.0))
+    ax.set_xlabel("Retained pairwise rows")
+    ax.set_ylabel("Retained compatibility weight")
+    ax.set_title("Sparsification trade-off")
+    ax.set_xlim(max(0.0, float(x.min()) - 0.04), min(1.0, float(x.max()) + 0.04))
+    ax.set_ylim(max(0.0, float(y.min()) - 0.04), min(1.02, float(y.max()) + 0.02))
+
+
+def plot_parameter_sensitivity_grid(
+    leiden_summary: pd.DataFrame,
+    sparsification_summary: pd.DataFrame,
+    *,
+    paths: Paths,
+    baseline_resolution: float = ANALYSIS_RESOLUTION,
+    baseline_threshold: float = BASELINE_THRESHOLD,
+) -> dict[str, Path]:
+    """Plot a compact 1x3 parameter-sensitivity summary."""
+    leiden = leiden_summary.sort_values("resolution").copy()
+    sparsification = sparsification_summary.sort_values("threshold").copy()
+
+    fig, axes = new_figure(
+        width="double",
+        height_in=2.75,
+        nrows=1,
+        ncols=3,
+        constrained_layout=True,
     )
-    styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
+    axes = axes.ravel()
+
+    _plot_leiden_stability(
+        axes[0],
+        leiden,
+        baseline_resolution=baseline_resolution,
+    )
+    _plot_leiden_fragmentation(
+        axes[1],
+        leiden,
+        baseline_resolution=baseline_resolution,
+    )
+    _plot_sparsification_tradeoff(
+        axes[2],
+        sparsification,
+        baseline_threshold=baseline_threshold,
+    )
+
+    for ax in axes:
+        ax.tick_params(axis="both", which="major", length=3)
+
+    add_panel_labels(axes)
+    return styled_save_figure(fig, paths, FIGURE_NAME)
+
+
+def build(paths: Paths) -> dict[str, Path]:
+    leiden = read_table(paths, LEIDEN_SUMMARY_TABLE)
+    sparsification_summary = read_table(paths, SPARSIFICATION_SUMMARY_TABLE)
+    return plot_parameter_sensitivity_grid(
+        leiden,
+        sparsification_summary,
+        paths=paths,
+    )
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    add_common_args(parser)
-    args = parser.parse_args()
+    args = parse_args()
     paths = paths_from_args(args)
     build(paths)
     print(f"Wrote {FIGURE_NAME} to {paths.figure_dir}")

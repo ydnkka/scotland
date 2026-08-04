@@ -12,10 +12,10 @@ from ..sse.io import write_table
 from .common import (
     Paths,
     add_common_args,
-    panel_label,
+    add_panel_labels,
+    new_figure,
     paths_from_args,
     read_table,
-    styled_new_figure,
     styled_save_figure,
 )
 
@@ -126,24 +126,24 @@ def _draw(ax: Axes, nodes: pd.DataFrame, edges: pd.DataFrame, title: str) -> Non
                 arrowprops={
                     "arrowstyle": "->",
                     "color": "#777777",
-                    "lw": 0.7 + np.log1p(edge.n_shared_sequences) / 3, # type: ignore
+                    "lw": 0.7 + np.log1p(edge.n_shared_sequences) / 3,  # type: ignore
                 },
                 zorder=1,
             )
     for row in nodes.itertuples(index=False):
         x, y = positions[row.cluster_id]
-        color = COLORS.get(row.candidate_tier, "#B8B8B8") # type: ignore
+        color = COLORS.get(row.candidate_tier, "#B8B8B8")  # type: ignore
         ax.scatter(
             x,
             y,
-            s=np.clip(np.sqrt(row.cluster_size) * 22, 45, 250), # type: ignore
+            s=np.clip(np.sqrt(row.cluster_size) * 22, 45, 250),  # type: ignore
             color=color,
             edgecolor="black" if row.is_focal else "white",
             linewidth=1 if row.is_focal else 0.4,
             zorder=2,
         )
         if row.is_focal:
-            ax.text(x, y - 0.42, f"n={int(row.cluster_size)}", ha="center", va="top") # type: ignore
+            ax.text(x, y - 0.42, f"n={int(row.cluster_size)}", ha="center", va="top")  # type: ignore
     focal = nodes.loc[nodes["is_focal"]].iloc[0]
     ax.set_title(f"{title}\n{focal['policy_period']} · {focal['who_voc']}")
     ax.set_xticks(range(len(windows)), [f"W{int(w):03d}" for w in windows])
@@ -159,18 +159,19 @@ def build(paths: Paths) -> dict[str, object]:
     write_table(nodes, paths.result_table_dir, f"tab_{FILE_NAME}_nodes")
     write_table(edges, paths.result_table_dir, f"tab_{FILE_NAME}_edges")
     order = ["Local burst", "Onward burden", "Possible review", "Matched background"]
-    fig, axes = styled_new_figure(
+    fig, axes = new_figure(
         width="double", height_in=6.2, nrows=2, ncols=2, constrained_layout=True
     )
-    for ax, example, label in zip(axes.flat, order, "ABCD"):
+    axes = axes.ravel()
+    for ax, example in zip(axes, order):
         _draw(
             ax,
             nodes.loc[nodes["example"].eq(example)],
             edges.loc[edges["example"].eq(example)],
             example,
         )
-        panel_label(ax, label)
-    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}", tight=False)
+    add_panel_labels(axes, x=-0.08, y=1.1)
+    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}")
     return {"figure": fig, "outputs": outputs}
 
 

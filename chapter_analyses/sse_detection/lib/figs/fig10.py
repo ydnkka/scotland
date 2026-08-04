@@ -11,10 +11,10 @@ from .common import (
     HIGH_PRIORITY,
     Paths,
     add_common_args,
-    panel_label,
+    add_panel_labels,
+    new_figure,
     paths_from_args,
     read_table,
-    styled_new_figure,
     styled_save_figure,
 )
 
@@ -64,14 +64,19 @@ def build(paths: Paths) -> dict[str, object]:
     write_table(table, paths.result_table_dir, f"tab_{FILE_NAME}")
     sizes = sorted(table["min_cluster_size"].unique())
     alphas = sorted(table["alpha"].unique())
-    fig, axes = styled_new_figure(
+    fig, axes = new_figure(
         width="double", height_in=4.2, nrows=1, ncols=2, constrained_layout=True
     )
     specs = (
-        (axes[0], "candidate_n", "Candidates retained", "Blues", "A"),
-        (axes[1], "baseline_jaccard", "Agreement with primary set", "Greens", "B"),
+        (
+            axes[0],
+            "candidate_n",
+            "Candidates retained",
+            "Blues",
+        ),
+        (axes[1], "baseline_jaccard", "Agreement with primary set", "Greens"),
     )
-    for ax, value, title, cmap, label in specs:
+    for ax, value, title, cmap in specs:
         matrix = table.pivot(
             index="min_cluster_size", columns="alpha", values=value
         ).reindex(index=sizes, columns=alphas)
@@ -102,8 +107,9 @@ def build(paths: Paths) -> dict[str, object]:
             ax=ax,
             label="Jaccard similarity" if value == "baseline_jaccard" else "Candidates",
         )
-        panel_label(ax, label)
-    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}", tight=False)
+
+    add_panel_labels(axes)
+    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}")
     return {"figure": fig, "outputs": outputs}
 
 

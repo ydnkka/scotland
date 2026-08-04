@@ -1,26 +1,28 @@
 """Publication-grade plotting defaults.
 
-The style is deliberately conservative: a sans-serif body font at ~8-9 pt,
-thin axes, no top/right spines, and a single-column width tuned to *Lancet*
-and *Virus Evolution* templates. Palettes are colour-blind friendly and
-use perceptually uniform ramps where a quantitative variable is mapped.
-
 Usage
 -----
 >>> from analysis.utils import style
 >>> fig, ax = style.new_figure("single")
+
+>>> # Temporary override without leaking global state:
+>>> with style.theme(context="poster"):
+...     fig, ax = style.new_figure("slide")
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import warnings
+from collections.abc import Generator, Sequence
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Literal
 
+import matplotlib as mpl
+import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.axes import Axes
-from matplotlib.colors import to_rgb
 from matplotlib.figure import Figure
 
 __all__ = [
@@ -29,14 +31,14 @@ __all__ = [
     "FIG_WIDTHS_IN",
     "WIDTHS",
     "add_panel_labels",
-    "lighten",
     "new_figure",
     "save_figure",
     "set_theme",
+    "theme",
 ]
 
 # ---------------------------------------------------------------------------
-# Figure size presets (inches). Aligned with utils journal guidance.
+# Figure size presets (inches). Aligned with journal guidance.
 # ---------------------------------------------------------------------------
 
 FIG_WIDTHS_IN = {
@@ -55,58 +57,135 @@ DEFAULT_HEIGHT_IN = 2.6
 # Theme
 # ---------------------------------------------------------------------------
 
+# Context -> base element scale (relative to "paper").
+_CONTEXT_SCALES: dict[str, float] = {
+    "paper": 1.0,
+    "notebook": 1.0,
+    "talk": 1.3,
+    "poster": 1.6,
+}
+
+# Preferred sans-serif stack, in fallback order. DejaVu Sans is always present
+# with matplotlib and acts as the guaranteed fallback.
+_SANS_SERIF_STACK: list[str] = ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"]
+
+
+def _check_font_availability(stack: list[str]) -> None:
+    """Warn if none of the preferred fonts are installed.
+
+    Matplotlib silently falls back to DejaVu Sans when a requested font is
+    missing, which can make figures render differently on a laptop vs. CI or a
+    journal's print service. This surfaces that situation early.
+    """
+    available = {f.name for f in fm.fontManager.ttflist}
+    if not any(font in available for font in stack[:-1]):  # ignore guaranteed fallback
+        warnings.warn(
+            f"None of {stack[:-1]} are installed; falling back to "
+            f"'{stack[-1]}'. Figures may not match camera-ready output.",
+            stacklevel=3,
+        )
+
+
+def _build_rc(scale: float) -> dict[str, Any]:
+    """Construct the rcParams dict for a given element scale factor."""
+    return {
+        "font.family": "sans-serif",
+        "font.sans-serif": _SANS_SERIF_STACK,
+        # --- scaled elements ---
+        "font.size": 9 * scale,
+        "axes.titlesize": 10 * scale,
+        "axes.labelsize": 9 * scale,
+        "xtick.labelsize": 8 * scale,
+        "ytick.labelsize": 8 * scale,
+        "legend.fontsize": 8 * scale,
+        "legend.title_fontsize": 8 * scale,
+        "axes.linewidth": 0.8 * scale,
+        "lines.linewidth": 1.5 * scale,
+        "lines.markersize": 5 * scale,
+        "patch.linewidth": 0.8 * scale,
+        "xtick.major.width": 0.8 * scale,
+        "ytick.major.width": 0.8 * scale,
+        "xtick.major.size": 3.5 * scale,
+        "ytick.major.size": 3.5 * scale,
+        "xtick.minor.width": 0.6 * scale,
+        "ytick.minor.width": 0.6 * scale,
+        "xtick.minor.size": 2.0 * scale,
+        "ytick.minor.size": 2.0 * scale,
+        # --- unscaled (categorical / boolean) ---
+        "mathtext.fontset": "dejavusans",
+        "figure.facecolor": "white",
+        "axes.facecolor": "white",
+        "savefig.facecolor": "white",
+        "savefig.bbox": "tight",
+        "savefig.pad_inches": 0.03,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "xtick.direction": "out",
+        "ytick.direction": "out",
+        "axes.grid": False,
+        "legend.frameon": False,
+        # Type 42 = embedded TrueType. Avoids Type 3 fonts, which some
+        # publishers/print services reject for camera-ready PDFs.
+        "pdf.fonttype": 42,
+        "ps.fonttype": 42,
+        "svg.fonttype": "none",  # keep text as text in SVG, not outlined paths
+        "image.cmap": "viridis",
+    }
+
 
 def set_theme(
     context: CONTEXTS = "paper",
     font_scale: float = 1.0,
 ) -> None:
-    """Apply the project matplotlib/seaborn theme for figures."""
-    # Seaborn's context scaling factors relative to "paper"
-    _context_scales = {"paper": 1.0, "notebook": 1.0, "talk": 1.3, "poster": 1.6}
-    scale = _context_scales.get(context, 1.0) * font_scale
+    """Apply the project matplotlib/seaborn theme for figures.
+
+    Parameters
+    ----------
+    context:
+        Rendering context controlling the base element scale.
+    font_scale:
+        Additional multiplicative factor applied on top of the context scale.
+    """
+    _check_font_availability(_SANS_SERIF_STACK)
+    scale = _CONTEXT_SCALES[context] * font_scale
 
     sns.set_theme(
         style="white",
-        context=context,  # still sets line/marker base scaling via seaborn internals
-        font_scale=font_scale,
-        rc={
-            "font.family": "sans-serif",
-            "font.sans-serif": ["Arial", "Arial", "Liberation Sans", "DejaVu Sans"],
-            # --- everything below now scales ---
-            "font.size": 9 * scale,
-            "axes.titlesize": 10 * scale,
-            "axes.labelsize": 9 * scale,
-            "xtick.labelsize": 8 * scale,
-            "ytick.labelsize": 8 * scale,
-            "legend.fontsize": 8 * scale,
-            "legend.title_fontsize": 8 * scale,
-            "axes.linewidth": 0.8 * scale,
-            "lines.linewidth": 1.5 * scale,
-            "lines.markersize": 5 * scale,
-            "patch.linewidth": 0.8 * scale,
-            "xtick.major.width": 0.8 * scale,
-            "ytick.major.width": 0.8 * scale,
-            "xtick.major.size": 3.5 * scale,
-            "ytick.major.size": 3.5 * scale,
-            # --- these are booleans/strings, don't scale ---
-            "mathtext.fontset": "dejavusans",
-            "figure.facecolor": "white",
-            "axes.facecolor": "white",
-            "savefig.facecolor": "white",
-            "savefig.bbox": "tight",
-            "savefig.pad_inches": 0.03,
-            "axes.spines.top": False,
-            "axes.spines.right": False,
-            "xtick.direction": "out",
-            "ytick.direction": "out",
-            "axes.grid": False,
-            "legend.frameon": False,
-            "pdf.fonttype": 42,
-            "ps.fonttype": 42,
-            "svg.fonttype": "none",
-            "image.cmap": "viridis",
-        },
+        context="paper",  # neutral baseline; scaling handled explicitly in rc
+        font_scale=1.0,
+        rc=_build_rc(scale),
     )
+
+
+@contextmanager
+def theme(
+    context: CONTEXTS = "paper",
+    font_scale: float = 1.0,
+) -> Generator[None, None, None]:
+    """Temporarily apply the project theme, restoring rcParams on exit.
+
+    Useful for producing multiple renderings (e.g. paper and poster) in a
+    single script without leaking global style state.
+
+    Notes
+    -----
+    ``mpl.rc_context`` restores matplotlib's rcParams on exit, but seaborn's
+    module-level palette/style state is not captured. In practice this is fine
+    as long as every figure-producing block wraps itself in this manager.
+
+    Examples
+    --------
+    >>> with theme(context="poster"):
+    ...     fig, ax = new_figure("slide")
+    ...     ax.plot(x, y)
+    ...     save_figure(fig, Path("figure_poster"))
+    """
+    _check_font_availability(_SANS_SERIF_STACK)
+    scale = _CONTEXT_SCALES[context] * font_scale
+    rc = _build_rc(scale)
+    with mpl.rc_context(rc=rc):
+        sns.set_theme(style="white", context="paper", font_scale=1.0, rc=rc)
+        yield
 
 
 def save_figure(
@@ -125,7 +204,9 @@ def save_figure(
 ) -> dict[str, Path]:
     """Save a figure to the requested raster/vector formats."""
     if not (300 <= dpi <= 600):
-        raise ValueError("dpi should usually be between 300 and 600 for PLOS scripts.")
+        raise ValueError("dpi should usually be between 300 and 600 for print scripts.")
+    if width_in is not None and width_in <= 0:
+        raise ValueError("width_in must be positive when provided.")
     if height_in is not None and height_in <= 0:
         raise ValueError("height_in must be positive when provided.")
 
@@ -160,7 +241,7 @@ def save_figure(
 
     if save_svg:
         svg_path = out_path.with_suffix(".svg")
-        fig.savefig(svg_path, format="eps", dpi=dpi, transparent=False)
+        fig.savefig(svg_path, format="svg", dpi=dpi, transparent=False)
         saved_paths["svg"] = svg_path
 
     if save_tiff:
@@ -180,25 +261,33 @@ def save_figure(
 
 
 def add_panel_labels(
-    axes: Sequence[Axes],
+    axes: Axes | Sequence[Axes],
     *,
-    x: float = 0,
-    y: float = 1.1,
-    size: float | str = "medium",
+    x: float = -0.08,
+    y: float = 1.08,
+    label: str | Sequence[str] | None = None,
+    kwargs: dict[str, Any] | None = None,
 ) -> None:
     """Place sequential panel labels on a list of axes."""
     import string
 
     labels = list(string.ascii_uppercase)
-    for ax, label in zip(axes, labels):
+
+    if isinstance(axes, Axes):
+        axes = [axes]
+
+    if label is not None:
+        labels = [label] if isinstance(label, str) else list(label)
+    for ax, lb in zip(axes, labels):
         ax.text(
             x,
             y,
-            label,
+            lb,
             transform=ax.transAxes,
-            fontsize=size,
             fontweight="bold",
             va="top",
+            ha="left",
+            **(kwargs or {}),
         )
 
 
@@ -229,27 +318,27 @@ def new_figure(
         Passed to ``plt.subplots``.  The default is a single panel, but this
         is often overridden for multi-panel figures.
     context:
-        Seaborn context to set for the figure.
-        This controls the base scaling of fonts and lines.
-        The default is ``"paper"``, but for talks or posters, you may want
-        to use ``"talk"`` or ``"poster"`` for larger text.
+        Seaborn context to set for the figure.  Controls the base scaling of
+        fonts and lines.  The default is ``"paper"``; for talks or posters use
+        ``"talk"`` or ``"poster"`` for larger text.
     font_scale:
-        Additional scaling factor for fonts and lines.  This is applied on top
-        of the scaling from the *context* parameter, allowing for fine-tuning of
-        text size without changing the overall context.
-        The default is 1.0 (no additional scaling), but you can increase this for
-        larger figures or decrease it for smaller ones.
+        Additional scaling factor for fonts and lines, applied on top of the
+        *context* scaling to fine-tune text size without changing the overall
+        context.  Defaults to 1.0 (no additional scaling).
     **subplots_kwargs:
-        Additional keyword arguments passed to ``plt.subplots``.  This allows you to customize the subplots further, for example by setting ``sharex=True`` or ``gridspec_kw={"width            _ratios": [1, 2]}`` for uneven panels.  Note that the figure size is determined by the *width* and *height_in* parameters, so you should not set the *figsize* argument in *subplots_kwargs* when using this function.
+        Additional keyword arguments passed to ``plt.subplots`` (e.g.
+        ``sharex=True`` or ``gridspec_kw={"width_ratios": [1, 2]}``).  Do not
+        pass *figsize*: the size is determined by *width*/*width_in* and
+        *height_in*.
     """
+    if "figsize" in subplots_kwargs:
+        raise ValueError(
+            "Do not pass 'figsize'; use the width/width_in and height_in "
+            "parameters instead."
+        )
+
     set_theme(context=context, font_scale=font_scale)
     w = width_in if width_in is not None else FIG_WIDTHS_IN[width]
     h = height_in if height_in is not None else DEFAULT_HEIGHT_IN * nrows
     fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=(w, h), **subplots_kwargs)
     return fig, ax
-
-
-def lighten(color: str, amount: float = 0.4) -> tuple[float, float, float]:
-    """Blend `color` toward white by `amount` in [0, 1]."""
-    r, g, b = to_rgb(color)
-    return r + (1 - r) * amount, g + (1 - g) * amount, b + (1 - b) * amount

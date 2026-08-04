@@ -152,7 +152,7 @@ def build_cluster_table(
     attributes: Iterable[AttributeSpec] = ASSORTATIVITY_ATTRIBUTES,
 ) -> pd.DataFrame:
     """Collapse sequence-window rows to one row per EpiLink cluster."""
-    base = df[CLUSTER_COLUMNS].copy()
+    base = df[list(CLUSTER_COLUMNS)].copy()
     base = base.drop_duplicates(keep="first")
     agg = {
         "clade": ("clade", safe_mode),

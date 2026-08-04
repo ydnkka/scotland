@@ -13,9 +13,9 @@ from ..model.prep import COMPOSITION_SPECS
 from .common import (
     Paths,
     add_common_args,
-    panel_label,
+    add_panel_labels,
+    new_figure,
     paths_from_args,
-    styled_new_figure,
     styled_save_figure,
 )
 
@@ -194,7 +194,7 @@ def build(
 
     assert sample_sizes is not None
     y = np.arange(len(row_labels))[::-1]
-    fig, axes = styled_new_figure(
+    fig, axes = new_figure(
         width="double",
         height_in=max(8.0, 0.25 * len(row_labels) + 1.5),
         nrows=1,
@@ -237,7 +237,6 @@ def build(
                 linewidth=0.7,
                 zorder=0,
             )
-        panel_label(ax, "ABC"[index])
 
     axes[0].set_yticks(y)
     axes[0].set_yticklabels(row_labels)
@@ -256,7 +255,8 @@ def build(
             color="#333333",
             clip_on=False,
         )
-    outputs = styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
+    add_panel_labels(axes)
+    outputs = styled_save_figure(fig, paths, FIGURE_NAME)
     return {"figure": fig, "outputs": outputs}
 
 

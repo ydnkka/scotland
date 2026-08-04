@@ -1,4 +1,4 @@
-"""Build Chapter 4 Supplementary Figure 2: compatibility topology diagnostics."""
+"""Build Chapter 4 Supplementary Figure 5: assortativity variance decomposition."""
 
 from __future__ import annotations
 
@@ -6,82 +6,131 @@ import argparse
 import sys
 from pathlib import Path
 
-import numpy as np
+import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.lines import Line2D
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from assortativity_analysis import (
+    VARIANCE_REFERENCE_WINDSORISE,
+    compatibility_variance_decomposition_long,
+    variance_decomposition_summary,
+)
 from common import (
     Paths,
     add_common_args,
-    panel_label,
+    add_panel_labels,
+    new_figure,
     paths_from_args,
-    read_table,
-    styled_new_figure,
     styled_save_figure,
-    window_idx_from_id,
 )
 
-FIGURE_NAME = "fig_ch4_compatibility_topology"
+from chapter_analyses.genomic_networks.lib.io import write_table
+
+FIGURE_NAME = "fig_ch4_assortativity_variance_decomposition"
 
 
-def weighted_mean(values: pd.Series, weights: pd.Series) -> float:
-    mask = values.notna() & weights.notna() & weights.gt(0)
-    if not mask.any():
-        return np.nan
-    return float(np.average(values.loc[mask], weights=weights.loc[mask]))
+def plot_variance_decomposition(paths: Paths, vd_long: pd.DataFrame) -> None:
+    order = (
+        vd_long.loc[vd_long["winsorize"].eq(95)]
+        .sort_values("additive_model_fraction", ascending=False)["attribute_label"]
+        .drop_duplicates()
+        .tolist()
+    )
 
+    cycle = plt.rcParams["axes.prop_cycle"].by_key().get("color", ["#1f77b4"])
+    palette = {label: cycle[idx % len(cycle)] for idx, label in enumerate(order)}
 
-def build(paths: Paths) -> None:
-    degree = read_table(paths, "compatibility_degree_assortativity_bootstrap")
-    degree["window_idx"] = window_idx_from_id(degree["window_id"])
-    degree = degree.loc[degree["n_edges_used"].gt(0)].copy()
-    metrics = [
-        ("n_nodes", "Nodes"),
-        ("n_edges_used", "Edges"),
-        ("edge_weight_total", "Total edge weight"),
-        ("degree_assortativity", "Degree assortativity"),
-        ("weighted_degree_assortativity", "Weighted degree assortativity"),
-        ("strength_assortativity", "Strength assortativity"),
-    ]
-    rows = []
-    for window_idx, group in degree.groupby("window_idx"):
-        weights = group["edge_weight_total"].clip(lower=0)
-        row = {"window_idx": window_idx}
-        for metric, _ in metrics:
-            row[metric] = weighted_mean(group[metric], weights)
-        rows.append(row)
-    summary = pd.DataFrame(rows).sort_values("window_idx")
-
-    fig, axes = styled_new_figure(
+    fig, axes = new_figure(
         width="double",
-        height_in=7.0,
-        nrows=3,
-        ncols=1,
-        sharex=True,
+        height_in=3.5,
+        nrows=1,
+        ncols=3,
         constrained_layout=True,
     )
-    axes[0].plot(summary["window_idx"], summary["n_nodes"], label="Nodes")
-    axes[0].plot(summary["window_idx"], summary["n_edges_used"], label="Edges")
-    axes[0].set_yscale("log")
-    axes[0].set_ylabel("Weighted mean")
-    axes[0].legend(loc="upper left")
-    panel_label(axes[0], "A")
+    axes = axes.ravel()
 
-    axes[1].plot(summary["window_idx"], summary["edge_weight_total"], color="#1f4e79")
-    axes[1].set_yscale("log")
-    axes[1].set_ylabel("Total edge weight")
-    panel_label(axes[1], "B")
+    panels = [
+        ("additive_model_fraction", "Additive model", (0, 1)),
+        ("window_given_lineage_fraction", "Window | Lineage", (0, 0.5)),
+        ("lineage_given_window_fraction", "Lineage | Window", (0, 0.5)),
+    ]
 
-    colors = ["#1f4e79", "#d95f02", "#1b9e77"]
-    for (metric, label), color in zip(metrics[3:], colors):
-        axes[2].plot(summary["window_idx"], summary[metric], label=label, color=color)
-    axes[2].axhline(0, color="#777777", lw=0.8, ls=":")
-    axes[2].set_xlabel("Window")
-    axes[2].set_ylabel("Assortativity")
-    axes[2].legend(loc="upper right")
-    panel_label(axes[2], "C")
+    for ax, (col, title, ylim) in zip(axes, panels):
+        for label in order:
+            group = vd_long.loc[vd_long["attribute_label"].eq(label)].sort_values(
+                "winsorize"
+            )
+            x = group["winsorize"].to_numpy()
+            ax.plot(
+                x,
+                group[col].to_numpy(),
+                marker="o",
+                color=palette[label],
+                label=label,
+            )
+            if col == "additive_model_fraction":
+                ax.plot(
+                    x,
+                    group["adj_additive_model_fraction"].to_numpy(),
+                    color=palette[label],
+                    linestyle="--",
+                    alpha=0.5,
+                    label="_nolegend_",
+                )
+
+        ax.set_title(title)
+        ax.set_xlabel("")
+        ax.set_ylabel("")
+        ax.set_ylim(*ylim)
+        ax.axvline(90, ls="--", color="black", alpha=0.6)
+
+    handles, labels = axes[1].get_legend_handles_labels()
+    handles.append(Line2D([], [], ls="--", color="black", alpha=0.6))
+    labels.append("Reported cap (90)")
+
+    fig.legend(
+        handles,
+        labels,
+        loc="lower center",
+        ncol=4,
+        bbox_to_anchor=(0.5, -0.15),
+    )
+
+    axes[0].text(
+        0.03,
+        0.05,
+        "dashed = adjusted",
+        transform=axes[0].transAxes,
+        fontsize="small",
+        color="grey",
+    )
+
+    fig.supxlabel("Winsorising percentile")
+    fig.supylabel("Fraction of variance explained")
+    add_panel_labels(axes)
     styled_save_figure(fig, paths, FIGURE_NAME)
+
+
+def build(paths: Paths) -> pd.DataFrame:
+    vd_long = compatibility_variance_decomposition_long(paths)
+    summary = variance_decomposition_summary(
+        vd_long,
+        winsorize=VARIANCE_REFERENCE_WINDSORISE,
+    )
+    write_table(
+        vd_long,
+        "compatibility_variance_decomposition",
+        table_dir=paths.table_dir,
+    )
+    write_table(
+        summary,
+        "compatibility_variance_decomposition_summary",
+        table_dir=paths.table_dir,
+    )
+    plot_variance_decomposition(paths, vd_long)
+    return summary
 
 
 def main() -> int:

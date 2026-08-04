@@ -11,9 +11,9 @@ from ..sse.io import write_table
 from .common import (
     Paths,
     add_common_args,
+    new_figure,
     paths_from_args,
     read_table,
-    styled_new_figure,
     styled_save_figure,
 )
 
@@ -78,7 +78,7 @@ def build(paths: Paths) -> dict[str, object]:
 
     plot_y = y.fillna(strip_y)
     
-    fig, ax = styled_new_figure(width="onehalf", height_in=4.5)
+    fig, ax = new_figure(width="onehalf", height_in=4.5)
     
     # Plot background
     background = table["candidate_tier"].eq("background_or_low_information")
@@ -123,7 +123,7 @@ def build(paths: Paths) -> dict[str, object]:
     ax.set_ylabel("Onward-burden null-standardised score")
     ax.legend(loc="center left")
     
-    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}", tight=False)
+    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}")
     return {"figure": fig, "outputs": outputs}
 
 

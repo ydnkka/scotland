@@ -11,10 +11,10 @@ from ..sse.io import write_table
 from .common import (
     Paths,
     add_common_args,
-    panel_label,
+    add_panel_labels,
+    new_figure,
     paths_from_args,
     read_table,
-    styled_new_figure,
     styled_save_figure,
 )
 
@@ -64,7 +64,7 @@ def build(paths: Paths) -> dict[str, object]:
     nodes = read_table(paths, "cluster_table")
     table = build_stratified_calibration(nodes)
     write_table(table, paths.result_table_dir, f"tab_{FILE_NAME}")
-    fig, axes = styled_new_figure(
+    fig, axes = new_figure(
         width="double",
         height_in=6.2,
         nrows=2,
@@ -98,11 +98,11 @@ def build(paths: Paths) -> dict[str, object]:
             ax.legend(
                 loc="upper left", frameon=True, facecolor="#ffffff7b", edgecolor="#ffffff7b"
             )
-            panel_label(ax, chr(ord("A") + row * 2 + col))
 
     fig.supxlabel("Randomized null-model p-value")
     fig.supylabel("Empirical cumulative proportion")
-    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}", tight=False)
+    add_panel_labels(axes.ravel())
+    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}")
     return {"figure": fig, "outputs": outputs}
 
 

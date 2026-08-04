@@ -2,31 +2,29 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
 import argparse
 import sys
-from typing import Any
+from dataclasses import dataclass
+from pathlib import Path
 
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
-from matplotlib.colors import Normalize
 import pandas as pd
-
+from matplotlib.axes import Axes
+from matplotlib.colors import Normalize
+from matplotlib.figure import Figure
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils import new_figure as styled_new_figure  # noqa: E402, F401
-from utils import load_policy_calendar  # noqa: E402
-from utils import save_figure as _styled_save_figure  # noqa: E402
-from utils import add_panel_labels as styled_add_panel_labels  # noqa: E402
-from utils import policy_era_labels  # noqa: E402
-from utils import policy_order  # noqa: E402
-from utils import window_idx_from_id  # noqa: E402, F401
+from utils import (
+    load_policy_calendar,
+    policy_era_labels,
+    policy_order,
+    window_idx_from_id,  # noqa: F401
+)
+from utils.style import *
 
 DEFAULT_TABLE_DIR = PROJECT_ROOT / "chapter_analyses/genomic_networks/results/tables"
 FIGURE_DIR = PROJECT_ROOT / "chapter_analyses/genomic_networks/results/figures"
@@ -68,10 +66,6 @@ class Paths:
     figure_dir: Path = FIGURE_DIR
 
 
-def add_panel_labels(*args: Any, **kwargs: Any) -> None:
-    styled_add_panel_labels(*args, **kwargs)
-
-
 def read_table(paths: Paths, name: str) -> pd.DataFrame:
     parquet_path = paths.table_dir / f"{name}.parquet"
     csv_path = paths.table_dir / f"{name}.csv"
@@ -87,32 +81,15 @@ def styled_save_figure(
     paths: Paths,
     name: str,
     *,
-    tight: bool = True,
+    width: WIDTHS = "double",
 ) -> dict[str, Path]:
     paths.figure_dir.mkdir(parents=True, exist_ok=True)
-    if tight and fig.get_layout_engine() is None:
-        fig.tight_layout()
-    width_in, height_in = fig.get_size_inches()
-    return _styled_save_figure(
+    return save_figure(
         fig,
         paths.figure_dir / name,
-        width="double",
-        width_in=float(width_in),
-        height_in=float(height_in),
+        width=width,
         save_pdf=True,
         save_png=True,
-    )
-
-
-def panel_label(ax: Axes, label: str) -> None:
-    ax.text(
-        -0.08,
-        1.08,
-        label,
-        transform=ax.transAxes,
-        fontweight="bold",
-        va="top",
-        ha="left",
     )
 
 

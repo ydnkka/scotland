@@ -1,4 +1,4 @@
-"""Build Chapter 4 Figure 3: pooled compatibility assortativity over time."""
+"""Build Chapter 4 Figure 6: vaccination context in the observed cohort."""
 
 from __future__ import annotations
 
@@ -9,146 +9,200 @@ from pathlib import Path
 import matplotlib.dates as mdates
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
+from matplotlib.patches import Patch
+from matplotlib.ticker import PercentFormatter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from assortativity_analysis import (
-    compatibility_window_pooled_meta,
-    pooled_window_attribute_summary,
-)
 from common import (
     Paths,
     add_common_args,
+    add_panel_labels,
+    add_policy_bands,
     date_axis,
-    panel_label,
+    new_figure,
     paths_from_args,
-    styled_new_figure,
+    read_table,
     styled_save_figure,
 )
 
-from chapter_analyses.genomic_networks.lib.io import write_table
+FIGURE_NAME = "fig_ch4_vaccination_context"
+MIN_DAYS_SERIES_COUNT = 20
 
-FIGURE_NAME = "fig_ch4_assortativity_pooled_window"
+DOSE_GROUPS = (
+    ("Unvaccinated", "n_unvaccinated", "prop_unvaccinated"),
+    ("One dose", "n_one_dose", "prop_one_dose"),
+    ("Two doses", "n_two_doses", "prop_two_doses"),
+    (
+        "Booster/3+ doses",
+        "n_booster_or_three_plus",
+        "prop_booster_or_three_plus",
+    ),
+    (
+        "Dose unknown",
+        "n_vaccinated_dose_unknown",
+        "prop_vaccinated_dose_unknown",
+    ),
+)
+
+DOSE_COLORS = {
+    "Unvaccinated": "#747474",
+    "One dose": "#59a14f",
+    "Two doses": "#4e79a7",
+    "Booster/3+ doses": "#b07aa1",
+    "Dose unknown": "#bab0ac",
+}
 
 
 def _date_values(values: pd.Series) -> np.ndarray:
     dates = pd.to_datetime(values, errors="coerce")
-    out = np.full(len(dates), np.nan, dtype=float)
-    valid = dates.notna().to_numpy()
-    if valid.any():
-        out[valid] = mdates.date2num(dates.loc[valid].dt.to_pydatetime())
-    return out
+    return mdates.date2num(dates.dt.to_pydatetime())
 
 
-def plot_pooled_window_meta(
-    paths: Paths,
-    meta: pd.DataFrame,
-    window_lookup: pd.DataFrame,
-    *,
-    exclude_attrs: list[str] | None = None,
-) -> None:
-    if exclude_attrs is None:
-        exclude_attrs = []
+def _numeric(values: pd.Series) -> np.ndarray:
+    return pd.to_numeric(values, errors="coerce").to_numpy(dtype=float)
 
-    attributes = meta["attribute_label"].dropna().unique()
-    attributes = [attr for attr in attributes if attr not in exclude_attrs]
 
-    n_attrs = len(attributes)
-    ncols = 2
-    nrows = int(np.ceil(n_attrs / ncols))
+def _active_dose_groups(table: pd.DataFrame, value_kind: str) -> list[tuple[str, str]]:
+    if value_kind not in {"count", "proportion"}:
+        raise ValueError("value_kind must be 'count' or 'proportion'")
 
-    fig, axes = styled_new_figure(
-        nrows=nrows,
-        ncols=ncols,
+    groups = []
+    for label, count_col, prop_col in DOSE_GROUPS:
+        col = count_col if value_kind == "count" else prop_col
+        total = pd.to_numeric(table[col], errors="coerce").sum() if col in table else 0
+        if total > 0:
+            groups.append((label, col))
+    return groups
+
+
+def _plot_window_counts(ax: Axes, window: pd.DataFrame) -> None:
+    add_policy_bands(ax, window)
+    x = pd.to_datetime(window["wn_mid_date"], errors="coerce")
+    groups = _active_dose_groups(window, "count")
+    values = [_numeric(window[col]) for _, col in groups]
+    colors = [DOSE_COLORS[label] for label, _ in groups]
+    ax.stackplot(x, values, colors=colors, linewidth=0, alpha=0.94)
+    ax.set_title("Rolling-window vaccination context")
+    ax.set_ylabel("Sequences")
+    date_axis(ax)
+
+
+def _plot_window_proportions(ax: Axes, window: pd.DataFrame) -> None:
+    add_policy_bands(ax, window)
+    x = pd.to_datetime(window["wn_mid_date"], errors="coerce")
+    vaccinated = ax.plot(
+        x,
+        window["prop_vaccinated"],
+        color="#1f4e79",
+        lw=1.35,
+        label="Vaccinated",
+    )[0]
+    booster = ax.plot(
+        x,
+        window["prop_booster"],
+        color="#8e3b8a",
+        lw=1.35,
+        label="Booster recorded",
+    )[0]
+    ax.set_title("Vaccinated and booster share")
+    ax.set_ylabel("Share of sequences")
+    ax.set_ylim(0, 1)
+    ax.yaxis.set_major_formatter(PercentFormatter(1.0))
+    ax.legend(
+        [vaccinated, booster],
+        ["Vaccinated", "Booster recorded"],
+        loc="upper left",
+    )
+    date_axis(ax)
+
+
+def _plot_days_since_vaccination(ax: Axes, window: pd.DataFrame) -> None:
+    add_policy_bands(ax, window)
+    x = _date_values(window["wn_mid_date"])
+    median = _numeric(window["median_days_since_vaccination"])
+    lower = _numeric(window["q25_days_since_vaccination"])
+    upper = _numeric(window["q75_days_since_vaccination"])
+    enough_vaccinated = (
+        pd.to_numeric(window["n_days_since_vaccination"], errors="coerce")
+        .ge(MIN_DAYS_SERIES_COUNT)
+        .to_numpy(dtype=bool)
+    )
+    ribbon_mask = (
+        enough_vaccinated & np.isfinite(x) & np.isfinite(lower) & np.isfinite(upper)
+    )
+    line_mask = enough_vaccinated & np.isfinite(x) & np.isfinite(median)
+    ax.fill_between(
+        x[ribbon_mask],
+        lower[ribbon_mask],
+        upper[ribbon_mask],
+        color="#f28e2b",
+        alpha=0.24,
+        linewidth=0,
+    )
+    ax.plot(x[line_mask], median[line_mask], color="#b85c00", lw=1.35)
+    ax.xaxis_date()
+    ax.set_title("Time since vaccination")  # among vaccinated sequences
+    ax.set_ylabel("Days")
+    date_axis(ax)
+
+
+def _plot_window_dose_composition(ax: Axes, window: pd.DataFrame) -> None:
+    add_policy_bands(ax, window)
+    x = pd.to_datetime(window["wn_mid_date"], errors="coerce")
+    groups = _active_dose_groups(window, "proportion")
+    values = [np.nan_to_num(_numeric(window[col]), nan=0.0) for _, col in groups]
+    colors = [DOSE_COLORS[label] for label, _ in groups]
+    ax.stackplot(x, values, colors=colors, linewidth=0, alpha=0.94)
+    ax.set_title("Dose composition over time")
+    ax.set_ylabel("Share of sequences")
+    ax.set_ylim(0, 1)
+    ax.yaxis.set_major_formatter(PercentFormatter(1.0))
+    ax.grid(axis="y", color="#d9d9d9", lw=0.5, alpha=0.8)
+    ax.set_axisbelow(True)
+    date_axis(ax)
+
+
+def build(paths: Paths) -> None:
+    window = read_table(paths, "vaccination_window_context")
+    for col in ("wn_start_date", "wn_mid_date", "wn_end_date"):
+        if col in window.columns:
+            window[col] = pd.to_datetime(window[col], errors="coerce")
+    window = window.sort_values("window_idx")
+
+    fig, axes = new_figure(
+        nrows=2,
+        ncols=2,
         width="double",
-        height_in=7,
+        height_in=7.3,
         constrained_layout=True,
         sharex=True,
-        sharey=True,
     )
 
-    axes = np.array(axes).reshape(-1)
+    axes = axes.ravel()
 
-    for idx, (ax, attr) in enumerate(zip(axes, attributes)):
-        d = meta[meta["attribute_label"] == attr].sort_values("window_idx")
-        d = d.merge(
-            window_lookup[["window_idx", "wn_mid_date"]],
-            on="window_idx",
-            how="left",
-        )
+    _plot_window_counts(axes[0], window)
+    _plot_window_proportions(axes[1], window)
+    _plot_days_since_vaccination(axes[2], window)
+    _plot_window_dose_composition(axes[3], window)
 
-        x = _date_values(d["wn_mid_date"])
-
-        ax.fill_between(
-            x,
-            d["pooled_ci_low"].to_numpy(),
-            d["pooled_ci_high"].to_numpy(),
-            alpha=0.25,
-            color="#4C72B0",
-            label="95% CI for pooled mean",
-        )
-        ax.plot(
-            x,
-            d["pooled_mean"].to_numpy(),
-            color="#4C72B0",
-            linewidth=2,
-            label="Random-effects pooled mean",
-        )
-
-        ax.fill_between(
-            x,
-            d["q25"].to_numpy(),
-            d["q75"].to_numpy(),
-            alpha=0.20,
-            color="#DD8452",
-            label="Between-lineage IQR",
-        )
-        ax.plot(
-            x,
-            d["median"].to_numpy(),
-            color="#DD8452",
-            linewidth=1.5,
-            linestyle="--",
-            label="Median across lineages",
-        )
-
-        ax.axhline(0, color="black", linestyle="--", linewidth=1)
-        ax.set_title(str(attr))
-        ax.set_xlabel("")
-        ax.set_ylabel("")
-        date_axis(ax)
-        panel_label(ax, chr(ord("A") + idx))
-
-    for ax in axes[len(attributes) :]:
-        ax.remove()
-
-    handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper center", ncol=2, bbox_to_anchor=(0.5, 1.075))
-
-    fig.supylabel("Pooled Window Assortativity")
-    styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
-
-
-def build(paths: Paths) -> pd.DataFrame:
-    window_meta, window_lookup = compatibility_window_pooled_meta(paths)
-    summary = pooled_window_attribute_summary(window_meta)
-    write_table(
-        window_meta,
-        "compatibility_window_pooled_meta",
-        table_dir=paths.table_dir,
+    dose_handles = [
+        Patch(facecolor=DOSE_COLORS[label], edgecolor="none", label=label)
+        for label, _ in _active_dose_groups(window, "proportion")
+    ]
+    fig.legend(
+        handles=dose_handles,
+        loc="outside upper center",
+        title="Vaccination dose group",
+        ncol=len(dose_handles),
+        columnspacing=1.1,
+        handlelength=1.5,
+        frameon=False,
     )
-    write_table(
-        summary,
-        "compatibility_window_pooled_summary",
-        table_dir=paths.table_dir,
-    )
-    plot_pooled_window_meta(
-        paths,
-        window_meta,
-        window_lookup,
-        exclude_attrs=["Age band"],
-    )
-    return summary
+    
+    add_panel_labels(axes)
+    styled_save_figure(fig, paths, FIGURE_NAME)
 
 
 def main() -> int:

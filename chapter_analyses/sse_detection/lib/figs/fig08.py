@@ -13,12 +13,12 @@ from ..sse.io import write_table
 from .common import (
     Paths,
     add_common_args,
+    add_panel_labels,
     add_policy_bands,
     date_axis,
-    panel_label,
+    new_figure,
     paths_from_args,
     read_table,
-    styled_new_figure,
     styled_save_figure,
 )
 from .fig01 import CLUSTER_ROLE_GROUPS, ROLE_COLORS
@@ -114,7 +114,6 @@ def draw_transition_counts(ax, window: pd.DataFrame, policy_context: pd.DataFram
     ax.set_ylabel("Count")
     ax.legend([nodes_line, edges_line], ["Nodes", "Outgoing edges"], loc="upper left")
     date_axis(ax)
-    panel_label(ax, "A")
 
 
 def draw_role_distribution(
@@ -132,7 +131,6 @@ def draw_role_distribution(
     ax.set_ylabel("Nodes")
     ax.legend(loc="upper left")
     date_axis(ax)
-    panel_label(ax, "C")
 
 
 def draw_component_size_distribution(ax, components: pd.DataFrame) -> None:
@@ -144,7 +142,6 @@ def draw_component_size_distribution(ax, components: pd.DataFrame) -> None:
         ax.set_yscale("log")
     ax.set_xlabel("Weak-component size (nodes)")
     ax.set_ylabel("Pr(component size >= x)")
-    panel_label(ax, "B")
 
 
 def draw_selection_funnel(ax, table: pd.DataFrame) -> None:
@@ -170,7 +167,6 @@ def draw_selection_funnel(ax, table: pd.DataFrame) -> None:
             f"{int(value):,}",
             va="center",
         )
-    panel_label(ax, "D")
 
 
 def build(paths: Paths) -> dict[str, object]:
@@ -187,7 +183,7 @@ def build(paths: Paths) -> dict[str, object]:
         transition_window, transition_nodes
     )
 
-    fig, axes = styled_new_figure(
+    fig, axes = new_figure(
         nrows=2,
         ncols=2,
         width="double", 
@@ -200,7 +196,8 @@ def build(paths: Paths) -> dict[str, object]:
     draw_role_distribution(axes[1, 0], role_pivot, policy_context)
     draw_selection_funnel(axes[1, 1], table)
 
-    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}", tight=False)
+    add_panel_labels(axes.ravel())
+    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}")
     return {"figure": fig, "outputs": outputs}
 
 

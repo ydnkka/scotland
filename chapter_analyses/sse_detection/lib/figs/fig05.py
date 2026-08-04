@@ -13,9 +13,9 @@ from .common import (
     add_common_args,
     add_policy_bands,
     date_axis,
+    new_figure,
     paths_from_args,
     read_table,
-    styled_new_figure,
     styled_save_figure,
     wilson,
 )
@@ -64,7 +64,7 @@ def build(paths: Paths) -> dict[str, object]:
         .sum()
         .reset_index()
     )
-    fig, ax = styled_new_figure(
+    fig, ax = new_figure(
         width="double",
         height_in=3.8,
     )
@@ -85,7 +85,7 @@ def build(paths: Paths) -> dict[str, object]:
     ax.set_xlabel("Window midpoint")
     ax.legend(loc="upper left")
     date_axis(ax)
-    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}", tight=False)
+    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}")
     return {"figure": fig, "outputs": outputs}
 
 

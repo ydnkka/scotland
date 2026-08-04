@@ -1,4 +1,4 @@
-"""Build Chapter 4 Supplementary Figure 3: SIMD population-weighting validation."""
+"""Build Chapter 4 Supplementary Figure 2: compatibility topology diagnostics."""
 
 from __future__ import annotations
 
@@ -7,75 +7,79 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from common import (
     Paths,
     add_common_args,
-    panel_label,
+    add_panel_labels,
+    new_figure,
     paths_from_args,
     read_table,
-    styled_new_figure,
     styled_save_figure,
+    window_idx_from_id,
 )
 
-FIGURE_NAME = "fig_ch4_simd_population_weighting"
+FIGURE_NAME = "fig_ch4_compatibility_topology"
+
+
+def weighted_mean(values: pd.Series, weights: pd.Series) -> float:
+    mask = values.notna() & weights.notna() & weights.gt(0)
+    if not mask.any():
+        return np.nan
+    return float(np.average(values.loc[mask], weights=weights.loc[mask]))
 
 
 def build(paths: Paths) -> None:
-    group_summary = read_table(paths, "simd_population_weighting_group_summary")
-    movement = read_table(paths, "simd_population_weighting_movement")
-    movement = movement.loc[movement["comparison_method"].eq("equal_datazone")]
+    degree = read_table(paths, "compatibility_degree_assortativity_bootstrap")
+    degree["window_idx"] = window_idx_from_id(degree["window_id"])
+    degree = degree.loc[degree["n_edges_used"].gt(0)].copy()
+    metrics = [
+        ("n_nodes", "Nodes"),
+        ("n_edges_used", "Edges"),
+        ("edge_weight_total", "Total edge weight"),
+        ("degree_assortativity", "Degree assortativity"),
+        ("weighted_degree_assortativity", "Weighted degree assortativity"),
+        ("strength_assortativity", "Strength assortativity"),
+    ]
+    rows = []
+    for window_idx, group in degree.groupby("window_idx"):
+        weights = group["edge_weight_total"].clip(lower=0)
+        row = {"window_idx": window_idx}
+        for metric, _ in metrics:
+            row[metric] = weighted_mean(group[metric], weights)
+        rows.append(row)
+    summary = pd.DataFrame(rows).sort_values("window_idx")
 
-    fig, axes = styled_new_figure(
+    fig, axes = new_figure(
         width="double",
-        height_in=3.5,
-        nrows=1,
-        ncols=2,
+        height_in=7.0,
+        nrows=3,
+        ncols=1,
+        sharex=True,
         constrained_layout=True,
     )
-    ax = axes[0]
-    for method, group in group_summary.groupby("grouping_method_label"):
-        group = group.sort_values("simd_group")
-        ax.plot(
-            group["simd_group"],
-            group["pct_population"],
-            marker="o",
-            lw=1.2,
-            label=method,
-        )
-    ax.axhline(20, color="#777777", lw=0.8, ls=":")
-    ax.set_xlabel("SIMD quintile")
-    ax.set_ylabel("Population share (%)")
-    ax.legend(loc="best")
-    panel_label(ax, "A")
+    axes[0].plot(summary["window_idx"], summary["n_nodes"], label="Nodes")
+    axes[0].plot(summary["window_idx"], summary["n_edges_used"], label="Edges")
+    axes[0].set_yscale("log")
+    axes[0].set_ylabel("Weighted mean")
+    axes[0].legend(loc="upper left")
 
-    matrix = (
-        movement.pivot_table(
-            index="comparison_group",
-            columns="population_weighted_group",
-            values="pct_population",
-            fill_value=0.0,
-        )
-        .sort_index()
-        .sort_index(axis=1)
-    )
-    image = axes[1].imshow(matrix.to_numpy(), cmap="Blues", vmin=0)
-    axes[1].set_xticks(np.arange(matrix.shape[1]))
-    axes[1].set_xticklabels(matrix.columns)
-    axes[1].set_yticks(np.arange(matrix.shape[0]))
-    axes[1].set_yticklabels(matrix.index)
-    axes[1].set_xlabel("Population-weighted group")
-    axes[1].set_ylabel("Equal-Data-Zone group")
-    for i in range(matrix.shape[0]):
-        for j in range(matrix.shape[1]):
-            value = matrix.iloc[i, j]
-            if value > 0: # type: ignore
-                axes[1].text(j, i, f"{value:.1f}", ha="center", va="center")
-    fig.colorbar(image, ax=axes[1], label="Population share (%)")
-    panel_label(axes[1], "B")
-    styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
+    axes[1].plot(summary["window_idx"], summary["edge_weight_total"], color="#1f4e79")
+    axes[1].set_yscale("log")
+    axes[1].set_ylabel("Total edge weight")
+
+    colors = ["#1f4e79", "#d95f02", "#1b9e77"]
+    for (metric, label), color in zip(metrics[3:], colors):
+        axes[2].plot(summary["window_idx"], summary[metric], label=label, color=color)
+    axes[2].axhline(0, color="#777777", lw=0.8, ls=":")
+    axes[2].set_xlabel("Window")
+    axes[2].set_ylabel("Assortativity")
+    axes[2].legend(loc="upper right")
+    add_panel_labels(axes)
+    styled_save_figure(fig, paths, FIGURE_NAME)
 
 
 def main() -> int:

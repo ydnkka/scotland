@@ -15,11 +15,11 @@ from .common import (
     POLICY_ORDER,
     Paths,
     add_common_args,
-    panel_label,
+    add_panel_labels,
+    new_figure,
     paths_from_args,
     read_table,
     sort_by_policy,
-    styled_new_figure,
     styled_save_figure,
     wilson,
 )
@@ -61,14 +61,14 @@ def build(paths: Paths) -> dict[str, object]:
     nodes = read_table(paths, "cluster_table")
     table = build_group_rates(nodes)
     write_table(table, paths.result_table_dir, f"tab_{FILE_NAME}")
-    fig, axes = styled_new_figure(
+    fig, axes = new_figure(
         width="double",
         height_in=6.2,
         nrows=1,
         ncols=3,
         constrained_layout=True,
     )
-    for ax, (dimension, column), label in zip(axes, EPOCHS, "ABC"):
+    for ax, (dimension, column) in zip(axes, EPOCHS):
         data = table.loc[table["dimension"].eq(dimension)].copy()
         if column in POLICY_ORDER:
             data = sort_by_policy(data, column)
@@ -98,9 +98,9 @@ def build(paths: Paths) -> dict[str, object]:
 
         ax.set_yticks(y, data[column], rotation=0)
         ax.set_title(f"{dimension}")
-        panel_label(ax, label)
     fig.supxlabel(f"Candidates per {FACTOR} eligible clusters")
-    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}", tight=False)
+    add_panel_labels(axes)
+    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}")
     return {"figure": fig, "outputs": outputs}
 
 

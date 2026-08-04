@@ -13,10 +13,10 @@ from ..sse.io import write_table
 from .common import (
     Paths,
     add_common_args,
-    panel_label,
+    add_panel_labels,
+    new_figure,
     paths_from_args,
     read_table,
-    styled_new_figure,
     styled_save_figure,
 )
 
@@ -166,7 +166,7 @@ def build(paths: Paths, *, n_bins: int = 20) -> dict[str, object]:
     summary = build_calibration_summary(table, n_bins=n_bins)
     write_table(summary, paths.result_table_dir, SUMMARY_NAME)
 
-    fig, axes = styled_new_figure(
+    fig, axes = new_figure(
         nrows=2,
         ncols=2,
         width="double",
@@ -238,9 +238,6 @@ def build(paths: Paths, *, n_bins: int = 20) -> dict[str, object]:
         "Randomized null-model $p$-value\n(probability of a score this high)"
     )
     axes[1, 1].set_xlabel("Detection score")
-
-    for ax, label in zip(axes.ravel(), "ABCD"):
-        panel_label(ax, label)
     fig.legend(
         handles=_legend_handles(),
         loc="outside lower center",
@@ -248,7 +245,8 @@ def build(paths: Paths, *, n_bins: int = 20) -> dict[str, object]:
         ncol=3,
         frameon=False,
     )
-    outputs = styled_save_figure(fig, paths, FIGURE_NAME, tight=False)
+    add_panel_labels(axes.ravel())
+    outputs = styled_save_figure(fig, paths, FIGURE_NAME)
     return {"figure": fig, "outputs": outputs, "summary": summary}
 
 

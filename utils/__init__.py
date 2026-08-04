@@ -35,10 +35,10 @@ from .style import (
     FIG_WIDTHS_IN,
     WIDTHS,
     add_panel_labels,
-    lighten,
     new_figure,
     save_figure,
     set_theme,
+    theme,
 )
 
 __all__ = [
@@ -53,7 +53,6 @@ __all__ = [
     "attach_policy_calendar",
     "clades_for_pango_lineages",
     "data",
-    "lighten",
     "lineage_clade_lookup",
     "lineage_to_clade_map",
     "load_analysis_columns",
@@ -71,6 +70,7 @@ __all__ = [
     "save_figure",
     "set_theme",
     "style",
+    "theme",
     "window_id_from_idx",
     "window_id_to_policy_era",
     "window_id_to_policy_era_map",

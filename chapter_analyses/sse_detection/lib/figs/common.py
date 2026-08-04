@@ -3,38 +3,36 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from dataclasses import dataclass
 from pathlib import Path
-import sys
-from typing import Any
 
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
-from matplotlib.colors import Normalize
-import pandas as pd
 import numpy as np
+import pandas as pd
+from matplotlib.axes import Axes
+from matplotlib.colors import Normalize
+from matplotlib.figure import Figure
 
 from ..sse.config import (
     BAYESIAN_OUTPUT_DIR,
     FIGURE_DIR,
     PROJECT_ROOT,
-    TABLE_DIR,
     SSE_OUTPUT_DIR,
+    TABLE_DIR,
 )
 
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils import add_panel_labels as styled_add_panel_labels  # noqa: E402
-from utils import new_figure as styled_new_figure  # noqa: E402, F401
-from utils import load_policy_calendar  # noqa: E402
-from utils import save_figure as _styled_save_figure  # noqa: E402
-from utils import CLADES as CLADES
-from utils import policy_era_labels  # noqa: E402
-from utils import policy_order  # noqa: E402
-
+from utils import (  # noqa: F401
+    CLADES,
+    load_policy_calendar,
+    policy_era_labels,
+    policy_order,
+)
+from utils.style import *
 
 DEFAULT_TABLE_DIR = SSE_OUTPUT_DIR
 DEFAULT_RESULT_TABLE_DIR = TABLE_DIR
@@ -76,10 +74,6 @@ class Paths:
     result_table_dir: Path = DEFAULT_RESULT_TABLE_DIR
 
 
-def add_panel_labels(*args: Any, **kwargs: Any) -> None:
-    styled_add_panel_labels(*args, **kwargs)
-
-
 def read_table(paths: Paths, name: str) -> pd.DataFrame:
     searched = []
     for directory in dict.fromkeys((paths.table_dir, paths.result_table_dir)):
@@ -103,33 +97,17 @@ def styled_save_figure(
     paths: Paths,
     name: str,
     *,
-    tight: bool = True,
+    width: WIDTHS = "double",
 ) -> dict[str, Path]:
     paths.figure_dir.mkdir(parents=True, exist_ok=True)
-    if tight and fig.get_layout_engine() is None:
-        fig.tight_layout()
-    width_in, height_in = fig.get_size_inches()
-    return _styled_save_figure(
+    return save_figure(
         fig,
         paths.figure_dir / name,
-        width="double",
-        width_in=float(width_in),
-        height_in=float(height_in),
+        width=width,
         save_pdf=True,
         save_png=True,
     )
 
-
-def panel_label(ax: Axes, label: str) -> None:
-    ax.text(
-        -0.08,
-        1.08,
-        label,
-        transform=ax.transAxes,
-        fontweight="bold",
-        va="top",
-        ha="left",
-    )
 
 def add_policy_bands(ax: Axes, window_coverage: pd.DataFrame) -> None:
     if "policy_era" not in window_coverage.columns:
@@ -150,6 +128,7 @@ def add_policy_bands(ax: Axes, window_coverage: pd.DataFrame) -> None:
             lw=0,
             zorder=0,
         )
+
 
 def sort_by_policy(df: pd.DataFrame, column: str) -> pd.DataFrame:
     order = {policy: idx for idx, policy in enumerate(POLICY_ORDER.get(column, []))}
@@ -197,6 +176,7 @@ def paths_from_args(args: argparse.Namespace) -> Paths:
         bayesian_result_dir=args.bayesian_result_dir,
         result_table_dir=args.result_table_dir,
     )
+
 
 def wilson(k: pd.Series, n: pd.Series) -> tuple[pd.Series, pd.Series]:
     """Calculate the 95% Wilson score interval for binomial proportions.

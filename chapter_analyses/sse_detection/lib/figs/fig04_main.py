@@ -11,8 +11,8 @@ from .common import (
     Paths,
     add_common_args,
     add_panel_labels,
+    new_figure,
     paths_from_args,
-    styled_new_figure,
     styled_save_figure,
 )
 from .forest import (
@@ -96,14 +96,13 @@ def build_mixing(paths: Paths) -> dict[str, object]:
     """Create the fixed-effect forest plot for mixing models."""
     mixing_logistic, mixing_linear = _load_mixing_tables(paths)
 
-    fig, axes = styled_new_figure(
+    fig, axes = new_figure(
         nrows=1,
         ncols=3,
         width="double",
         height_in=3.5,
         sharey=True,
     )
-    axes = list(axes)
 
     plot_mixing_forest(
         axes[0],
@@ -130,9 +129,9 @@ def build_mixing(paths: Paths) -> dict[str, object]:
         ax.set_title(label)
         ax.grid(axis="x", color="#E6E6E6", lw=0.6)
 
-    add_panel_labels(axes, x=-0.08, y=1.07)
+    add_panel_labels(axes)
     _finish_legend(fig, axes, ncol=4, y=-0.1)
-    outputs = styled_save_figure(fig, paths, FIGURE_NAME["mixing"], tight=False)
+    outputs = styled_save_figure(fig, paths, FIGURE_NAME["mixing"])
     return {
         "figure": fig,
         "outputs": outputs,
@@ -144,7 +143,7 @@ def build_composition(paths: Paths) -> dict[str, object]:
     """Create the fixed-effect forest plot for composition models."""
     composition_logistic, composition_linear = _load_composition_tables(paths)
 
-    fig, axes = styled_new_figure(
+    fig, axes = new_figure(
         nrows=3,
         ncols=2,
         width="double",
@@ -201,16 +200,16 @@ def build_composition(paths: Paths) -> dict[str, object]:
         exclude=OUTLIER_LABELS,
     )
 
-    flat_axes = list(axes.ravel())
+    flat_axes = axes.ravel()
     axes[0, 0].set_title("Sociodemographic")
     axes[0, 1].set_title("Geographic")
     _label_rows(axes[:, 0], tuple(label for _, label in COMPOSITION_OUTCOMES))
     for ax in flat_axes:
         ax.grid(axis="x", color="#E6E6E6", lw=0.6)
 
-    add_panel_labels(flat_axes, x=-0.08, y=1.1)
+    add_panel_labels(flat_axes)
     _finish_legend(fig, flat_axes, ncol=2, y=-0.05)
-    outputs = styled_save_figure(fig, paths, FIGURE_NAME["composition"], tight=False)
+    outputs = styled_save_figure(fig, paths, FIGURE_NAME["composition"])
     return {
         "figure": fig,
         "outputs": outputs,
