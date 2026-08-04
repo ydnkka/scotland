@@ -244,7 +244,7 @@ def policy_period_labels(*, paths: Paths | None = None) -> dict[str, str]:
 def policy_era_labels(*, paths: Paths | None = None) -> dict[str, str]:
     """Return a display-label mapping for policy eras."""
     return {
-        era: era.upper().replace("_", " ")
+        era: era.capitalize().replace("_", " ")
         for era in policy_order("policy_era", paths=paths)
     }
 

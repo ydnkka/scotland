@@ -78,7 +78,7 @@ python -m chapter_analyses.surveillance.policy_sequences_over_time
 python -m chapter_analyses.surveillance.policy_index_comparison
 
 # Chapter 4
-python -m chapter_analyses.genomic_networks.build_cluster_tables
+python -m chapter_analyses.genomic_networks.build_cluster_summaries
 python -m chapter_analyses.genomic_networks.build_mixing --all-windows --workers 4 --include-giants --giant-workers 1
 python -m chapter_analyses.genomic_networks.build_cluster_pairwise_distance_summary --all-windows
 python -m chapter_analyses.genomic_networks.build_sensitivity_tables

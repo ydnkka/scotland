@@ -206,6 +206,7 @@ def build(paths: Paths) -> None:
         axes["health_right"],
         health_right,
         title="Health board (continued)",
+        panel="E",
         x_max=health_x_max,
     )
 
@@ -223,13 +224,14 @@ def build(paths: Paths) -> None:
         Patch(
             facecolor=POLICY_COLORS.get(str(era), "#999999"),
             edgecolor=POLICY_COLORS.get(str(era), "#999999"),
-            label=POLICY_LABELS.get(str(era), str(era).upper().replace("_", " ")),
+            label=POLICY_LABELS.get(str(era), str(era).capitalize().replace("_", " ")),
         )
         for era in legend_columns
     ]
-    fig.supxlabel("Proportion of sequences by epidemic era", y=0.075)
+    axes["health_left"].set_xlabel("Proportion of sequences by epidemic era")
+    axes["health_right"].set_xlabel("Proportion of sequences by epidemic era")
     fig.legend(
-        title="Chronological epidemic era",
+        title="Epidemic era in chronological order",
         handles=handles,
         loc="outside upper center",
         # bbox_to_anchor=(0.5, -0.06),
@@ -251,7 +253,7 @@ def build(paths: Paths) -> None:
         ticks=[0, 25, 50, 75, 100],
         shrink=0.42,
         aspect=45,
-        pad=0.055,
+        # pad=0.05,
     )
     stringency_colorbar.set_label("Mean restriction stringency")
     styled_save_figure(fig, paths, FIGURE_NAME)

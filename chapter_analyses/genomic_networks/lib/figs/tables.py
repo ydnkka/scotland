@@ -21,7 +21,6 @@ from assortativity_analysis import (
 )
 from common import (
     ATTRIBUTE_ORDER,
-    POLICY_LABELS,
     Paths,
     add_common_args,
     paths_from_args,
@@ -40,8 +39,6 @@ SIMD_GROUP_LABELS = {
 TABLE_NAMES = {
     "cohort_objects": "tab_ch4_cohort_objects",
     "policy_denominators": "tab_ch4_policy_denominators",
-    "vaccination_context": "tab_ch4_vaccination_context",
-    "test_reason_by_policy_era": "tab_ch4_test_reason_by_policy_era",
     "cluster_period_summary": "tab_ch4_cluster_period_summary",
     "assortativity_summary": "tab_ch4_assortativity_summary",
     "variance_decomposition_summary": "tab_ch4_assortativity_variance_decomposition",
@@ -128,6 +125,16 @@ def latex_column_spec(column_spec: str | None, n_columns: int) -> str:
     return f"@{{}}{spec}@{{}}"
 
 
+def addlinespace_after_group_changes(values: pd.Series) -> set[int]:
+    addlinespace_after: set[int] = set()
+    previous_value: str | None = None
+    for row_idx, value in enumerate(values.astype(str)):
+        if previous_value is not None and value != previous_value:
+            addlinespace_after.add(row_idx - 1)
+        previous_value = value
+    return addlinespace_after
+
+
 def render_latex_table(
     *,
     caption: str,
@@ -206,11 +213,14 @@ def simd_appendix_table_tex(
     """Render a compact LaTeX table for the SIMD validation appendix."""
     group_name = SIMD_GROUP_LABELS.get(n_groups, f"{n_groups}-group")
     caption = caption or (
-        f"Summary of national SIMD {group_name} boundaries under equal-Data-Zone and population-weighted grouping. The table reports the number of Data Zones, total population, population share, and SIMD rank range in each group."
+        f"Comparison of national SIMD {group_name} boundaries under equal-Data-Zone "
+        "and population-weighted grouping. For each grouping method, the table reports "
+        "the number of Data Zones, total population, population share, and SIMD rank "
+        "range represented in each group."
     )
 
     short_caption = short_caption or (
-        f"SIMD {group_name} population-weighting summary."
+        f"SIMD {group_name} population-weighting comparison"
     )
 
     methods = ["equal_datazone", "population_weighted"]
@@ -455,7 +465,14 @@ def write_cohort_table(paths: Paths) -> None:
     write_latex_table(
         paths,
         TABLE_NAMES["cohort_objects"],
-        caption="Chapter 4 analysis cohort and window-cluster object counts",
+        caption=(
+            "Overview of the Scottish analysis cohort and derived "
+            "rolling-window cluster objects. The table reports unique sequence and "
+            "patient counts, the earliest and latest sample collection dates, the number of rolling windows, "
+            "window-level cluster counts by singleton status, and the observed "
+            "Nextclade clades and Pango lineages."
+        ),
+        short_caption="Analysis cohort and rolling-window cluster objects",
         label=TABLE_NAMES["cohort_objects"],
         columns=["Quantity", "Value"],
         rows=rows,
@@ -476,7 +493,7 @@ def write_policy_denominator_table(paths: Paths) -> None:
     for row in denominators.itertuples(index=False):
         rows.append(
             [
-                str(row.policy_era).upper().replace("_", " "),
+                str(row.policy_era).capitalize().replace("_", " "),
                 row.policy_period,
                 fmt_int(row.n_windows),
                 fmt_int(row.median_window_sequences),
@@ -491,8 +508,14 @@ def write_policy_denominator_table(paths: Paths) -> None:
     write_latex_table(
         paths,
         TABLE_NAMES["policy_denominators"],
-        caption="Rolling-window observation denominators by policy period. Rows are grouped by epidemic era; period codes are used throughout the text above. ``Median coverage'' is the median window-level percentage of positives that were sequenced.",
-        short_caption="Rolling-window observation denominators by policy period.",
+        caption=(
+            "Rolling-window observation denominators by epidemic era and policy period. "
+            "The table reports the number of windows and the median window-level counts "
+            "of sequenced genomes and positive tests. Sequencing coverage is the "
+            "percentage of positive tests represented by sequences, summarised by the "
+            "median and observed range across windows."
+        ),
+        short_caption="Observation denominators by policy period",
         label=TABLE_NAMES["policy_denominators"],
         columns=[
             "Epidemic era",
@@ -504,107 +527,10 @@ def write_policy_denominator_table(paths: Paths) -> None:
             "Coverage range",
         ],
         rows=rows,
-        column_spec="lrrrrr",
-    )
-
-
-def write_vaccination_context_table(paths: Paths) -> None:
-    vaccination = read_table(paths, "vaccination_context_by_policy")
-    vaccination = sort_by_policy(vaccination, column="policy_period")
-    rows = []
-    for row in vaccination.itertuples(index=False):
-        rows.append(
-            [
-                row.policy_period,
-                str(row.policy_era).upper().replace("_", " "),
-                fmt_int(row.n_sequences),
-                fmt_percent(row.prop_vaccinated),
-                fmt_percent(row.prop_booster),
-                fmt_float(row.median_dose_number_vaccinated, 1),
-                fmt_iqr(
-                    row.median_days_since_vaccination,
-                    row.q25_days_since_vaccination,
-                    row.q75_days_since_vaccination,
-                    0,
-                ),
-            ]
-        )
-    write_latex_table(
-        paths,
-        TABLE_NAMES["vaccination_context"],
-        caption="Vaccination context of sequenced records by policy period",
-        label=TABLE_NAMES["vaccination_context"],
-        columns=[
-            "Policy period",
-            "Epidemic era",
-            "Sequences",
-            "Vaccinated",
-            "Booster recorded",
-            "Median dose",
-            "Days since vaccination",
-        ],
-        rows=rows,
-        column_spec="lrrrrl",
-    )
-
-
-def write_test_reason_by_policy_era_table(paths: Paths) -> None:
-    summary = read_table(paths, "test_reason_by_policy_era").copy()
-    if summary.empty:
-        pivot = pd.DataFrame(columns=["test_reason"])
-    else:
-        summary["test_reason"] = (
-            summary["test_reason"].astype("string").fillna("missing")
-        )
-        summary["policy_era"] = summary["policy_era"].astype("string").fillna("missing")
-        pivot = summary.pivot_table(
-            index="test_reason",
-            columns="policy_era",
-            values="n_sequences",
-            aggfunc="sum",
-            fill_value=0,
-        )
-        era_order = list(POLICY_LABELS)
-        ordered_eras = list(era_order)
-        extra_eras = [era for era in pivot.columns if era not in era_order]
-        extra_eras = sorted(
-            extra_eras, key=lambda value: (str(value) == "missing", str(value))
-        )
-        pivot = pivot.reindex(columns=[*ordered_eras, *extra_eras], fill_value=0)
-        pivot = pivot.reset_index()
-        value_columns = [*ordered_eras, *extra_eras]
-        pivot["__total__"] = pivot[value_columns].sum(axis=1)
-        pivot = pivot.sort_values(
-            ["__total__", "test_reason"],
-            ascending=[False, True],
-            kind="mergesort",
-        ).drop(columns="__total__")
-
-    value_columns = [column for column in pivot.columns if column != "test_reason"]
-    rows = []
-    for row in pivot.itertuples(index=False):
-        rows.append(
-            [
-                str(row.test_reason).replace("_", " ").title(),
-                *[fmt_int(getattr(row, column)) for column in value_columns],
-            ]
-        )
-
-    columns = [
-        "Test reason",
-        *[
-            POLICY_LABELS.get(column, str(column).replace("_", " ").title())
-            for column in value_columns
-        ],
-    ]
-    write_latex_table(
-        paths,
-        TABLE_NAMES["test_reason_by_policy_era"],
-        caption="Unique-sequence test-reason counts by epidemic era",
-        label=TABLE_NAMES["test_reason_by_policy_era"],
-        columns=columns,
-        rows=rows,
-        column_spec="l" + "r" * len(value_columns),
+        column_spec="llrrrrr",
+        addlinespace_after=addlinespace_after_group_changes(
+            denominators["policy_era"]
+        ),
     )
 
 
@@ -615,40 +541,54 @@ def write_cluster_period_table(paths: Paths) -> None:
     for row in clusters.itertuples(index=False):
         rows.append(
             [
-                str(row.policy_era).upper().replace("_", " "),
+                str(row.policy_era).capitalize().replace("_", " "),
                 row.policy_period,
-                fmt_int(row.n_clusters),
-                fmt_int(row.n_singleton_clusters),
-                fmt_int(row.n_non_singleton_clusters),
-                fmt_float(row.median_non_singleton_cluster_size, 1),
-                fmt_float(row.p90_non_singleton_cluster_size, 1),
-                fmt_int(row.max_non_singleton_cluster_size),
-                fmt_float(row.median_non_singleton_duration_days, 1),
-                fmt_float(row.median_non_singleton_datazones, 1),
+                fmt_int(row.n_sequence_memberships),
+                f"{fmt_int(row.n_clusters)} ({fmt_int(row.n_non_singleton_clusters)})",
+                f"{fmt_float(row.median_non_singleton_cluster_size, 1)}; {fmt_float(row.p90_non_singleton_cluster_size, 1)}; {fmt_int(row.max_non_singleton_cluster_size)}",
+                f"{fmt_float(row.median_non_singleton_datazones, 1)}; {fmt_float(row.p90_non_singleton_datazones, 1)}; {fmt_int(row.max_non_singleton_datazones)}",
+                fmt_iqr(
+                    row.median_non_singleton_spatial_distance_km,
+                    row.q25_non_singleton_spatial_distance_km,
+                    row.q75_non_singleton_spatial_distance_km,
+                    digits=1,
+                ),
+                fmt_iqr(
+                    row.median_non_singleton_duration_days,
+                    row.q25_non_singleton_duration_days,
+                    row.q75_non_singleton_duration_days,
+                    digits=1,
+                ),
             ]
         )
     write_latex_table(
         paths,
         TABLE_NAMES["cluster_period_summary"],
         caption=(
-            "EpiLink cluster counts by policy period; size, duration, and "
-            "Data Zone summaries are restricted to non-singleton clusters"
+            "Summary of Scottish EpiLink clusters by epidemic era and policy period. "
+            "The table reports sequence memberships, total clusters and non-singleton "
+            "clusters, and, for non-singleton clusters only, the median, 90th percentile "
+            "and maximum cluster size and number of Data Zones represented, together "
+            "with the median and interquartile range for within-cluster spatial "
+            "distance and temporal span."
         ),
+        short_caption="Scottish EpiLink cluster summary by policy period",
         label=TABLE_NAMES["cluster_period_summary"],
         columns=[
             "Epidemic era",
             "Policy period",
-            "All clusters",
-            "Singletons",
-            "Non-singletons",
-            "Median size",
-            "P90 size",
-            "Max size",
-            "Median duration (days)",
-            "Median Data Zones",
+            "Sequence memberships",
+            "Clusters (non-singletons)",
+            "Cluster size: median; 90th percentile; max",
+            "Data Zones: median; 90th percentile; max",
+            "Spatial distance (km): median (IQR)",
+            "Temporal span (days): median (IQR)",
         ],
         rows=rows,
-        column_spec="lrrrrrrrr",
+        addlinespace_after=addlinespace_after_group_changes(
+            clusters["policy_era"]
+        ),
+        column_spec="llrrrrrr",
     )
 
 
@@ -682,9 +622,13 @@ def write_assortativity_summary_table(paths: Paths) -> None:
         paths,
         TABLE_NAMES["assortativity_summary"],
         caption=(
-            "Pooled assortativity summaries with overlap-based correlated GLS "
-            "confidence intervals"
+            "Pooled compatibility assortativity estimates across rolling windows. "
+            "For each attribute, the table reports the number of windows contributing "
+            "estimates, the median number of lineages, the overlap-adjusted GLS mean "
+            "assortativity coefficient with 95% confidence interval, and the median "
+            "window-level estimate with the 10th--90th percentile range."
         ),
+        short_caption="Pooled compatibility assortativity estimates",
         label=TABLE_NAMES["assortativity_summary"],
         columns=[
             "Attribute",
@@ -702,29 +646,67 @@ def write_assortativity_summary_table(paths: Paths) -> None:
 
 def write_variance_decomposition_summary_table(paths: Paths) -> None:
     summary = variance_decomposition_summary_table(paths)
-    rows = []
+    attribute_rows = {}
     for attribute in ATTRIBUTE_ORDER:
         group = summary.loc[summary["attribute_label"].eq(attribute)]
-        if group.empty:
-            continue
-        row = group.iloc[0]
+        if not group.empty:
+            attribute_rows[attribute] = group.iloc[0]
+
+    metrics: list[tuple[str, str, Callable[[Any], str]]] = [
+        ("Rows", "n", fmt_int),
+        ("Windows", "n_windows", fmt_int),
+        ("Lineages", "n_lineages", fmt_int),
+        (
+            "Additive model",
+            "additive_model_fraction",
+            lambda value: fmt_float(value, 3),
+        ),
+        (
+            "Adj. additive",
+            "adj_additive_model_fraction",
+            lambda value: fmt_float(value, 3),
+        ),
+        ("Residual", "residual_fraction", lambda value: fmt_float(value, 3)),
+        (
+            "Window alone",
+            "window_alone_fraction",
+            lambda value: fmt_float(value, 3),
+        ),
+        (
+            "Lineage alone",
+            "lineage_alone_fraction",
+            lambda value: fmt_float(value, 3),
+        ),
+        (
+            "Lineage | Window",
+            "lineage_given_window_fraction",
+            lambda value: fmt_float(value, 3),
+        ),
+        (
+            "Window | Lineage",
+            "window_given_lineage_fraction",
+            lambda value: fmt_float(value, 3),
+        ),
+        ("Weight cap", "weight_cap", lambda value: fmt_float(value, 2)),
+        ("Capped weights", "n_weights_capped", fmt_int),
+        ("Median boot SE", "median_boot_se", lambda value: fmt_float(value, 3)),
+        (
+            "Median CI width",
+            "median_ci_width",
+            lambda value: fmt_float(value, 3),
+        ),
+    ]
+
+    attributes = list(attribute_rows)
+    rows = []
+    for metric_label, column, formatter in metrics:
         rows.append(
             [
-                attribute,
-                fmt_int(row["n"]),
-                fmt_int(row["n_windows"]),
-                fmt_int(row["n_lineages"]),
-                fmt_float(row["additive_model_fraction"], 3),
-                fmt_float(row["adj_additive_model_fraction"], 3),
-                fmt_float(row["residual_fraction"], 3),
-                fmt_float(row["window_alone_fraction"], 3),
-                fmt_float(row["lineage_alone_fraction"], 3),
-                fmt_float(row["lineage_given_window_fraction"], 3),
-                fmt_float(row["window_given_lineage_fraction"], 3),
-                fmt_float(row["weight_cap"], 2),
-                fmt_int(row["n_weights_capped"]),
-                fmt_float(row["median_boot_se"], 3),
-                fmt_float(row["median_ci_width"], 3),
+                metric_label,
+                *[
+                    formatter(attribute_rows[attribute][column])
+                    for attribute in attributes
+                ],
             ]
         )
 
@@ -732,37 +714,24 @@ def write_variance_decomposition_summary_table(paths: Paths) -> None:
         paths,
         TABLE_NAMES["variance_decomposition_summary"],
         caption=(
-            "Variance decomposition of weighted assortativity at the 90th "
-            "percentile inverse-variance weight cap"
+            "Variance decomposition of weighted compatibility assortativity "
+            "estimates after applying the 90th percentile inverse-variance weight cap. "
+            "Attributes are shown as columns and decomposition quantities as rows. "
+            "Fraction rows are unitless; count and uncertainty rows are reported in "
+            "their native units."
         ),
+        short_caption="Variance decomposition of compatibility assortativity",
         label=TABLE_NAMES["variance_decomposition_summary"],
-        columns=[
-            "Attribute",
-            "Rows",
-            "Windows",
-            "Lineages",
-            "Additive model",
-            "Adj. additive",
-            "Residual",
-            "Window alone",
-            "Lineage alone",
-            "Lineage | Window",
-            "Window | Lineage",
-            "Weight cap",
-            "Capped weights",
-            "Median boot SE",
-            "Median CI width",
-        ],
+        columns=["Metric", *attributes],
         rows=rows,
-        column_spec="l" + "r" * 14,
+        column_spec="l" + "r" * len(attributes),
+        addlinespace_after={2, 9},
     )
 
 
 TABLE_WRITERS: tuple[tuple[str, Callable[[Paths], object]], ...] = (
     (TABLE_NAMES["cohort_objects"], write_cohort_table),
     (TABLE_NAMES["policy_denominators"], write_policy_denominator_table),
-    (TABLE_NAMES["vaccination_context"], write_vaccination_context_table),
-    (TABLE_NAMES["test_reason_by_policy_era"], write_test_reason_by_policy_era_table),
     (TABLE_NAMES["cluster_period_summary"], write_cluster_period_table),
     (TABLE_NAMES["assortativity_summary"], write_assortativity_summary_table),
     (

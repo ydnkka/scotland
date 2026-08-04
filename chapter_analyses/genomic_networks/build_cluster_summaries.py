@@ -11,13 +11,12 @@ import argparse
 import logging
 from pathlib import Path
 
-from .lib.cluster_pairwise_distances import (
-    build_cluster_pairwise_distance_summary,
-)
-from .lib.cluster_summary_rollups import (
+from .lib.cluster_distance_summary import (
     MIN_PAIRWISE_ROWS,
     build_cluster_pairwise_distance_overall_summary,
-    build_cluster_period_typical_summary,
+)
+from .lib.cluster_pairwise_distances import (
+    build_cluster_pairwise_distance_summary,
 )
 from .lib.clusters import (
     build_cluster_period_summary,
@@ -44,11 +43,7 @@ from .lib.windows import normalise_windows
 
 LOGGER = logging.getLogger(__name__)
 
-PAIRWISE_SUMMARY_NAME = "cluster_pairwise_distance_summary"
-PAIRWISE_OVERALL_SUMMARY_NAME = (
-    "cluster_pairwise_distance_overall_summary"
-)
-PERIOD_TYPICAL_SUMMARY_NAME = "cluster_period_typical_summary"
+PAIRWISE_SUMMARY_NAME = "cluster_pairwise_genetic_temporal_distance"
 
 
 def parse_args() -> argparse.Namespace:
@@ -58,10 +53,7 @@ def parse_args() -> argparse.Namespace:
         "--max-windows",
         type=int,
         default=None,
-        help=(
-            "Development cap on the number of main-analysis windows "
-            "after loading."
-        ),
+        help=("Development cap on the number of main-analysis windows after loading."),
     )
 
     parser.add_argument(
@@ -123,9 +115,7 @@ def load_main_data(max_windows: int | None = None):
     df = load_sequence_data()
 
     if max_windows is not None:
-        keep = sorted(
-            df["window_idx"].dropna().unique()
-        )[:max_windows]
+        keep = sorted(df["window_idx"].dropna().unique())[:max_windows]
         df = df.loc[df["window_idx"].isin(keep)].copy()
 
     LOGGER.info("Loaded %s sequence-window rows", f"{len(df):,}")
@@ -163,9 +153,7 @@ def main() -> int:
     df = load_main_data(args.max_windows)
 
     if args.reuse_input_tables:
-        LOGGER.info(
-            "Reading existing cluster_table and window_coverage"
-        )
+        LOGGER.info("Reading existing cluster_table and window_coverage")
 
         cluster_table = read_table(
             "cluster_table",
@@ -247,7 +235,7 @@ def main() -> int:
     if args.skip_pairwise_distances:
         LOGGER.info("Skipping pairwise-derived cluster summaries")
         return 0
-    
+
     if args.reuse_input_tables:
         LOGGER.info(
             "Reading existing %s",
@@ -259,46 +247,22 @@ def main() -> int:
         )
     else:
         LOGGER.info("Building pairwise distance summary")
-        pairwise_summary = (
-            build_cluster_pairwise_distance_summary(
-                windows=normalise_windows(args.windows),
-            )
+        pairwise_summary = build_cluster_pairwise_distance_summary(
+            windows=normalise_windows(args.windows),
         )
 
-        LOGGER.info(
-            "Writing %s (%s rows)",
-            PAIRWISE_SUMMARY_NAME,
-            f"{len(pairwise_summary):,}",
-        )
-
-        write_table(
-            pairwise_summary,
-            PAIRWISE_SUMMARY_NAME,
-            table_dir=args.table_dir,
-            formats=TABLE_OUTPUT_FORMATS,
-        )
-
-    pairwise_overall = (
-        build_cluster_pairwise_distance_overall_summary(
-            pairwise_summary,
-            min_pairwise_rows=MIN_PAIRWISE_ROWS,
-        )
-    )
-
-    period_typical = build_cluster_period_typical_summary(
-        cluster_period,
+    pairwise_overall = build_cluster_pairwise_distance_overall_summary(
         pairwise_summary,
-        window_coverage,
         min_pairwise_rows=MIN_PAIRWISE_ROWS,
     )
 
     pairwise_table_jobs = {
-        PAIRWISE_OVERALL_SUMMARY_NAME: (
-            pairwise_overall,
+        PAIRWISE_SUMMARY_NAME: (
+            pairwise_summary,
             TABLE_OUTPUT_FORMATS,
         ),
-        PERIOD_TYPICAL_SUMMARY_NAME: (
-            period_typical,
+        "cluster_pairwise_distance_summary": (
+            pairwise_overall,
             TABLE_OUTPUT_FORMATS,
         ),
     }

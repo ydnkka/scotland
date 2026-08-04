@@ -89,7 +89,7 @@ def build(paths: Paths) -> None:
     ax = axes[1, 0]
     ax.scatter(
         cluster_window["wn_prop_sequenced"],
-        cluster_window["max_cluster_size"],
+        cluster_window["max_non_singleton_cluster_size"],
         s=22,
         color="#1f4e79",
         alpha=0.75,
@@ -101,13 +101,13 @@ def build(paths: Paths) -> None:
     ax.set_ylabel("Maximum cluster size")
 
     ax = axes[1, 1]
-    spread = cluster_table[["cluster_size", "cluster_n_datazones"]].copy()
+    spread = cluster_table[["cluster_size", "median_pairwise_residential_distance_km"]].copy()
     spread = spread.replace([np.inf, -np.inf], np.nan).dropna()
     spread = spread.loc[
-        spread["cluster_size"].gt(1) & spread["cluster_n_datazones"].gt(0)
+        spread["cluster_size"].gt(1) & spread["median_pairwise_residential_distance_km"].gt(0)
     ]
     x = np.log10(spread["cluster_size"].to_numpy())
-    y = np.log10(spread["cluster_n_datazones"].to_numpy())
+    y = np.log10(spread["median_pairwise_residential_distance_km"].to_numpy())
     hb = ax.hexbin(x, y, gridsize=42, mincnt=1, cmap="viridis", bins="log")
     fig.colorbar(hb, ax=ax, label="Clusters")
     ticks = [0, 1, 2, 3]
@@ -116,7 +116,8 @@ def build(paths: Paths) -> None:
     ax.set_yticks(ticks)
     ax.set_yticklabels([f"{10**tick:g}" for tick in ticks])
     ax.set_xlabel("Non-singleton cluster size")
-    ax.set_ylabel("Observed Data Zones")
+    ax.set_ylabel("Median residential distance (km)")
+
     add_panel_labels(axes.ravel())
     styled_save_figure(fig, paths, FIGURE_NAME)
 

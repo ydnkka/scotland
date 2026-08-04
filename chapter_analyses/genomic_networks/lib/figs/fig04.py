@@ -76,7 +76,7 @@ def build(paths: Paths) -> None:
 
     x_labels = [
         fill(
-            POLICY_LABELS.get(str(era), str(era).replace("_", " ").upper()),
+            POLICY_LABELS.get(str(era), str(era).replace("_", " ").capitalize()),
             width=14,
         )
         for era in shares.columns

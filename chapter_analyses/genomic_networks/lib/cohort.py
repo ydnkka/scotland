@@ -36,7 +36,7 @@ def _attach_policy_calendar(df: pd.DataFrame, date_col: str) -> pd.DataFrame:
         raise KeyError(f"{date_col!r} is required for the policy-calendar join")
 
     lookup = load_daily_policy_data(
-        [ "policy_era", "period_code", "period_label", "period_order"]
+        ["policy_era", "period_code", "period_label", "period_order"]
     ).rename(
         columns={
             "date": "_policy_date",
@@ -66,58 +66,35 @@ def sequence_level_frame(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _metric_row(metric: str, value: Any) -> dict[str, Any]:
-    numeric_value = np.nan
-    if isinstance(value, (int, float, np.integer, np.floating)) and not pd.isna(value):
-        numeric_value = float(value)
     return {
         "metric": metric,
-        "value": "" if pd.isna(value) else str(value),
-        "numeric_value": numeric_value,
+        "value": str(value),
     }
 
 
 def build_cohort_summary(df: pd.DataFrame) -> pd.DataFrame:
     """Build high-level counts for the observed sequenced record."""
-    seq = sequence_level_frame(df)
+
+    dates = df["collection_date"]
+    clusters = df[["cluster_id", "cluster_size"]].drop_duplicates("cluster_id")
+    cluster_size = clusters["cluster_size"]
 
     rows = [
         _metric_row("sequence_window_rows", len(df)),
-        _metric_row("unique_sequences", seq["sequence_id"].nunique()),
+        _metric_row("unique_sequences", df["sequence_id"].nunique()),
+        _metric_row("unique_patients", df["patient_id"].nunique()),
+        _metric_row("windows", df["window_id"].nunique()),
+        _metric_row("clades", df["clade"].nunique()),
+        _metric_row("pango_lineages", df["pango_lineage"].nunique()),
+        _metric_row("first_collection_date", dates.min().date()),
+        _metric_row("last_collection_date", dates.max().date()),
+        _metric_row("clusters", clusters["cluster_id"].nunique()),
+        _metric_row("singleton_clusters", cluster_size.eq(1).sum()),
+        _metric_row(
+            "non_singleton_clusters",
+            cluster_size.gt(1).sum(),
+        ),
     ]
-
-    if "patient_id" in seq.columns:
-        rows.append(_metric_row("unique_patients", seq["patient_id"].nunique()))
-    if "collection_date" in seq.columns:
-        dates = pd.to_datetime(seq["collection_date"], errors="coerce")
-        rows.extend(
-            [
-                _metric_row("first_collection_date", dates.min().date()),
-                _metric_row("last_collection_date", dates.max().date()),
-            ]
-        )
-    if "window_id" in df.columns:
-        rows.append(_metric_row("windows", df["window_id"].nunique()))
-    if "cluster_id" in df.columns:
-        cluster_columns = ["cluster_id"]
-        if "cluster_size" in df.columns:
-            cluster_columns.append("cluster_size")
-        clusters = df[cluster_columns].drop_duplicates("cluster_id")
-        rows.append(_metric_row("clusters", clusters["cluster_id"].nunique()))
-        if "cluster_size" in clusters.columns:
-            cluster_size = pd.to_numeric(clusters["cluster_size"], errors="coerce")
-            rows.extend(
-                [
-                    _metric_row("singleton_clusters", cluster_size.eq(1).sum()),
-                    _metric_row(
-                        "non_singleton_clusters",
-                        cluster_size.gt(1).sum(),
-                    ),
-                ]
-            )
-    if "clade" in seq.columns:
-        rows.append(_metric_row("clades", seq["clade"].nunique()))
-    if "pango_lineage" in seq.columns:
-        rows.append(_metric_row("pango_lineages", seq["pango_lineage"].nunique()))
 
     return pd.DataFrame(rows)
 
