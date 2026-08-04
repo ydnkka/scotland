@@ -36,7 +36,7 @@ import pandas as pd
 from utils import load_pairwise_edges
 
 from .lib.config import (
-    DEFAULT_MIXING_ATTRIBUTES,
+    ASSORTATIVITY_ATTRIBUTES,
     INTERMEDIATE_DIR,
     PROJECT_ROOT,
     SPARSIFICATION_THRESHOLD,
@@ -51,6 +51,7 @@ from .lib.mixing import (
     build_mixing_for_edge_table,
     specs_by_name,
 )
+from .lib.windows import normalise_window
 
 LOGGER = logging.getLogger(__name__)
 
@@ -117,16 +118,6 @@ def _format_status_counts(statuses: dict[str, int]) -> str:
     )
 
 
-def _normalise_window(value: str) -> str:
-    value = str(value).strip()
-    upper = value.upper()
-    if upper.startswith("W") and upper[1:].isdigit():
-        return f"W{int(upper[1:]):03d}"
-    if upper.isdigit():
-        return f"W{int(upper):03d}"
-    return value
-
-
 def _pairwise_metadata_from_path(path: Path) -> PairwiseMetadata:
     # Stems are {window}_{lineage}_{count}; Pango lineages use dots, not
     # underscores, but join the middle fields so the parser is robust.
@@ -144,7 +135,7 @@ def _pairwise_metadata_from_path(path: Path) -> PairwiseMetadata:
         )
 
     return PairwiseMetadata(
-        window_id=_normalise_window(parts[0]),
+        window_id=normalise_window(parts[0]),
         pango_lineage=lineage,
         sequence_count=int(parts[-1]),
     )
@@ -557,7 +548,7 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help=(
             "Attribute names to process. Defaults to all: "
-            + ", ".join(spec.name for spec in DEFAULT_MIXING_ATTRIBUTES)
+            + ", ".join(spec.name for spec in ASSORTATIVITY_ATTRIBUTES)
         ),
     )
     parser.add_argument(
@@ -740,7 +731,7 @@ def main() -> int:
     if args.all_windows:
         windows = sorted(sequence_df["window_id"].dropna().unique())
     else:
-        windows = [_normalise_window(window) for window in args.windows]
+        windows = [normalise_window(window) for window in args.windows]
 
     pairwise_files = _select_pairwise_files(
         pairwise_dir,

@@ -9,9 +9,8 @@ See [TECHNICAL.md](TECHNICAL.md) for algorithms and table definitions.
 Run from the repository root:
 
 ```bash
-python -m chapter_analyses.genomic_networks.build_cluster_tables
+python -m chapter_analyses.genomic_networks.build_cluster_summaries
 python -m chapter_analyses.genomic_networks.build_mixing --all-windows --workers 4 --include-giants --giant-workers 1
-python -m chapter_analyses.genomic_networks.build_cluster_pairwise_distance_summary --all-windows
 python -m chapter_analyses.genomic_networks.build_sensitivity_tables
 python -m chapter_analyses.genomic_networks.build_simd_validation
 python -m chapter_analyses.genomic_networks.make_figures --skip-missing
@@ -21,7 +20,7 @@ Build `data/processed/sparsified_edge_counts_by_window_lineage.parquet` first wi
 
 ## Commands
 
-`build_cluster_tables` writes the core cohort, coverage, composition, test-reason, vaccination, and cluster tables. `--max-windows N` is a development cap. Its transition flags are deprecated no-ops.
+`build_cluster_summaries` writes the cohort, context, and cluster summary tables including within-cluster pairwise distance summaries, the overall pairwise-distance summary, and the combined period-level typical-summary table with duration plus genetic, temporal, and residential spatial distance. It processes all windows by default; use `--windows ...` or `--max-windows N` only for a pairwise-distance subset, `--reuse-input-tables` to refresh from existing cluster/pairwise inputs, or `--skip-pairwise-distances` for cluster-only outputs.
 
 `build_mixing` requires either `--all-windows` or `--windows ...`. Useful invocations:
 
@@ -38,8 +37,6 @@ python -m chapter_analyses.genomic_networks.build_mixing --all-windows --workers
 
 Files with at least 50,000,000 sparse edges, and files with unknown cost, are giant by default. Use `--include-giants` to process them in the separate `--giant-workers` pool. Same-stem intermediate chunks are reused unless `--force` is supplied; do not reuse them after changing attributes, threshold, missing-value handling, or jackknife settings.
 
-`build_cluster_pairwise_distance_summary` also requires `--all-windows` or `--windows`. It supports lineage, cluster-size, selection, resolution, QC, output, and development filters.
-
 `build_sensitivity_tables` builds Leiden and sparsification sensitivity families. Select one with `--only leiden` or `--only sparsification`. Row/file caps and partial row-group scans are for development and can change or approximate the estimand.
 
 `build_simd_validation` defaults to quintiles; `--n-groups` accepts 5, 10, or 20.
@@ -48,7 +45,7 @@ Files with at least 50,000,000 sparse edges, and files with unknown cost, are gi
 
 ## Layout
 
-- `lib/`: configuration, I/O, cohort, cluster, mixing, SIMD, figure, and table logic.
+- `lib/`: configuration, I/O, cohort, cluster-table, cluster-rollup, pairwise-distance, mixing, SIMD, figure, and table logic.
 - `build_*.py`: table-building entry points.
 - `make_figures.py`: saved-table figure and LaTeX orchestration.
 - `results/tables/`: final tables.

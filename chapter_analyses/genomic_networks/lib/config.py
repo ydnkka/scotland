@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-PACKAGE_DIR = PROJECT_ROOT / "chapter_analyses/genomic_networks"
-RESULTS_DIR = PACKAGE_DIR / "results"
+CHAPTER_DIR = PROJECT_ROOT / "chapter_analyses/genomic_networks"
+RESULTS_DIR = CHAPTER_DIR / "results"
 TABLES_DIR = RESULTS_DIR / "tables"
 FIGURES_DIR = RESULTS_DIR / "figures"
 INTERMEDIATE_DIR = RESULTS_DIR / "intermediate"
@@ -28,7 +28,7 @@ class AttributeSpec:
     ordered: bool = False
 
 
-DEFAULT_MIXING_ATTRIBUTES: tuple[AttributeSpec, ...] = (
+ASSORTATIVITY_ATTRIBUTES: tuple[AttributeSpec, ...] = (
     AttributeSpec("sex", "sex", "Sex"),
     AttributeSpec("age_band", "age_band", "Age band", ordered=True),
     AttributeSpec("age_group", "age_group", "Age group", ordered=True),
@@ -38,8 +38,7 @@ DEFAULT_MIXING_ATTRIBUTES: tuple[AttributeSpec, ...] = (
     AttributeSpec("health_board", "dz_health_board", "Health board"),
 )
 
-
-ANALYSIS_COLUMNS: tuple[str, ...] = (
+CLUSTER_COLUMNS: tuple[str, ...] = (
     "window_id",
     "window_idx",
     "wn_start_date",
@@ -48,34 +47,38 @@ ANALYSIS_COLUMNS: tuple[str, ...] = (
     "wn_no_sequences",
     "wn_positive_tests",
     "wn_prop_sequenced",
-    "sequence_id",
-    "patient_id",
+    "pango_lineage",
     "cluster_id",
     "cluster_size",
     "cluster_n_datazones",
     "cluster_start_date",
     "cluster_end_date",
     "cluster_duration_days",
+)
+
+ANALYSIS_COLUMNS: tuple[str, ...] = (
+    *CLUSTER_COLUMNS,
+    "sequence_id",
+    "patient_id",
     "collection_date",
-    "policy_period",
-    "policy_period_label",
-    "policy_era",
-    "datazone",
     "sex",
     "is_female",
     "age_band",
     "age_group",
-    "age_midpoint",
     "is_vaccinated",
     "vacc_dose_number",
     "vacc_booster",
     "days_since_vaccination",
     "test_reason",
     "is_reinfection",
-    "pango_lineage",
     "clade",
     "who_voc",
-    "nextclade_qc",
+    "policy_era",
+    "policy_period",
+    "policy_period_label",
+    "datazone",
+    "dz_xcoord",
+    "dz_ycoord",
     "dz_population",
     "dz_population_density",
     "dz_simd_quintile",

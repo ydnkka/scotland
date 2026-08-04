@@ -24,6 +24,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from utils import load_analysis_columns, load_pairwise_edges
 
+TABLE_OUTPUT_FORMATS = ("parquet", "csv")
 
 def ensure_results_dirs() -> None:
     """Create the standard Chapter 4 output directories."""

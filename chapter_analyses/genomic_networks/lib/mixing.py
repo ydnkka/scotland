@@ -13,7 +13,7 @@ from typing import Any, cast
 import numpy as np
 import pandas as pd
 
-from .config import DEFAULT_MIXING_ATTRIBUTES, AttributeSpec
+from .config import ASSORTATIVITY_ATTRIBUTES, AttributeSpec
 
 EdgeGroup = tuple[dict[str, Any], pd.DataFrame]
 BootstrapStatFn = Callable[[np.ndarray], float]
@@ -22,7 +22,7 @@ BootstrapStatFn = Callable[[np.ndarray], float]
 def specs_by_name(
     names: Sequence[str] | None,
     *,
-    specs: Iterable[AttributeSpec] = DEFAULT_MIXING_ATTRIBUTES,
+    specs: Iterable[AttributeSpec] = ASSORTATIVITY_ATTRIBUTES,
 ) -> tuple[AttributeSpec, ...]:
     """Return attribute specs matching ``names`` while preserving spec order."""
     available = tuple(specs)
@@ -526,7 +526,7 @@ def build_mixing_for_edge_table(
     edges: pd.DataFrame,
     nodes: pd.DataFrame,
     *,
-    attributes: Iterable[AttributeSpec] = DEFAULT_MIXING_ATTRIBUTES,
+    attributes: Iterable[AttributeSpec] = ASSORTATIVITY_ATTRIBUTES,
     node_id_col: str = "sequence_id",
     source_col: str = "id1",
     target_col: str = "id2",
@@ -685,9 +685,9 @@ def build_mixing_for_edge_table(
                     "attribute_label": spec.label,
                     **group_values,
                     "n_edges_observed": n_edges_observed,
-                    "n_edges_used": int(len(w_attr)),
+                    "n_edges_used": len(w_attr),
                     "edge_weight_total": edge_weight_total,
-                    "n_categories": int(len(completed_labels)),
+                    "n_categories": len(completed_labels),
                     "assortativity": float(point) if np.isfinite(point) else np.nan,
                     "observed_same_category_weight": observed_same,
                     "expected_same_category_weight": expected_same,

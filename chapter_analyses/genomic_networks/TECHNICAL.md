@@ -14,34 +14,34 @@ Main units:
 
 `load_chapter4_sequence_data()` loads the configured analysis columns, filters resolution/QC, attaches policy variables, and recomputes requested SIMD groups using population weights. Pairwise analysis reads `data/processed/pairwise_distances_dataset/*.parquet`.
 
-## Core tables
+## Cluster summaries
 
 Run:
 
 ```bash
-python -m chapter_analyses.genomic_networks.build_cluster_tables
+python -m chapter_analyses.genomic_networks.build_cluster_summaries
 ```
 
-The command loads data once and writes:
+The command centralises cluster-derived outputs:
 
-| Table | Unit and content |
-| --- | --- |
-| `cohort_summary` | Overall sequence-window, sequence, patient, date, window, total/singleton/non-singleton cluster, clade, and lineage counts |
-| `window_coverage` | Window dates, sequences, positive-test denominator, sequencing proportion, policy, and sequences per positive test |
-| `window_denominator_contrasts` | Policy-period medians/ranges of window denominators and coverage |
-| `clade_window_counts` | Clade counts by window |
-| `sequence_composition_by_policy` | Counts/proportions for configured categorical attributes, including `Missing` and small-cell flags |
-| `test_reason_by_policy_era` | Unique-sequence test-reason counts by epidemic era |
-| `vaccination_context_by_policy` | Unique-sequence vaccination categories by policy period |
-| `vaccination_window_context` | Within-window deduplicated vaccination categories |
-| `cluster_table` | One row per window-specific cluster with size, spread, duration, lineage/policy, and modal attributes |
-| `cluster_window_summary` | Total, singleton, and non-singleton cluster counts plus size, duration, spread, and rate summaries by window; duration and explicitly labelled non-singleton characteristics exclude singletons |
-| `cluster_period_summary` | Total, singleton, and non-singleton counts by policy period, with size, duration, and spread restricted to non-singleton clusters |
-| `cluster_attribute_composition` | Modal cluster attributes by policy period, split into total, singleton, and non-singleton counts and proportions with corresponding small-cell flags |
+| Table                                       | Unit and content                                                                                                                                                                                                            |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cohort_summary`                            | Overall sequence-window, sequence, patient, date, window, total/singleton/non-singleton cluster, clade, and lineage counts                                                                                                  |
+| `window_coverage`                           | Window dates, sequences, positive-test denominator, sequencing proportion, policy, and sequences per positive test                                                                                                          |
+| `window_denominator_contrasts`              | Policy-period medians/ranges of window denominators and coverage                                                                                                                                                            |
+| `sequence_composition_by_policy`            | Counts/proportions for configured categorical attributes, including `Missing` and small-cell flags                                                                                                                          |
+| `test_reason_by_policy_era`                 | Unique-sequence test-reason counts by epidemic era                                                                                                                                                                          |
+| `vaccination_window_context`                | Within-window deduplicated vaccination categories                                                                                                                                                                           |
+| `cluster_table`                             | One row per window-specific cluster with size, Data Zone spread, duration, residential centroid distance, lineage/policy, and modal attributes                                                                              |
+| `cluster_window_summary`                    | Total, singleton, and non-singleton cluster counts plus size, duration, Data Zone spread, spatial distance, and rate summaries by window; duration and explicitly labelled non-singleton characteristics exclude singletons |
+| `cluster_period_summary`                    | Total, singleton, and non-singleton counts by canonical policy period, with size, duration, Data Zone spread, and spatial distance restricted to non-singleton clusters                                                     |
+| `cluster_pairwise_distance_summary`         | Selected/eligible clusters and sequences, possible/observed pair counts, status, and quartile/IQR summaries for within-cluster SNP and temporal distance by window-lineage                                                  |
+| `cluster_pairwise_distance_overall_summary` | Overall unweighted and pair-count-weighted quartiles of window-lineage median SNP and temporal distance                                                                                                                     |
+| `cluster_period_typical_summary`            | One period-level table combining non-singleton cluster size, duration, spatial span, residential Data Zone spread, and within-cluster SNP, temporal, and spatial-distance quartiles                                         |
 
-All are CSV and parquet except `clade_window_counts` and `cluster_table`, which are parquet only.
+### Pairwise summarises
 
-Vaccination results describe sequenced cases; they do not estimate vaccine effectiveness.
+For each selected window-lineage group, the builder loads the physical pairwise file and summarises only pairs whose endpoints share a selected cluster. Genetic and temporal rollups keep rows with `status == "ok"` and at least 10 observed within-cluster pairwise rows by default. Spatial distance is based on pairwise Euclidean distances, in kilometres, between member residential Data Zone centroids (`dz_xcoord`, `dz_ycoord`) within a cluster. Cluster, window, or group caps are development options and alter the target population.
 
 ## Compatibility mixing
 
@@ -62,8 +62,8 @@ r = (trace(e) - sum(a * b)) / (1 - sum(a * b))
 Outputs:
 
 - `compatibility_mixing_matrix.parquet`: category-pair weights, counts, proportions, window, lineage, and pairwise stem;
-- `compatibility_assortativity.{csv,parquet}`: point estimates, same-category weights, contributing edges/categories, and uncertainty;
-- `compatibility_degree_assortativity.{csv,parquet}`: unweighted degree, compatibility-weighted degree, and strength assortativity plus topology summaries.
+- `compatibility_assortativity`: point estimates, same-category weights, contributing edges/categories, and uncertainty;
+- `compatibility_degree_assortativity`: unweighted degree, compatibility-weighted degree, and strength assortativity plus topology summaries.
 
 ### Vertex jackknife
 
@@ -97,20 +97,6 @@ results/intermediate/deg_assortativity/
 
 Existing complete chunks are reused unless `--force` is passed. Chunk filenames do not encode configuration, so settings must not be mixed in one intermediate set.
 
-## Pairwise-distance summary
-
-`build_cluster_pairwise_distance_summary.py` selects clusters at the requested resolution/QC and minimum observed cluster size (defaults: 0.3, good, 2). For each selected window-lineage group it loads the physical pairwise file and summarises only pairs whose endpoints share a selected cluster.
-
-`cluster_pairwise_distance_summary.{csv,parquet}` records selected/eligible clusters and sequences, possible/observed pair counts, status, and quartile/IQR summaries for SNP and temporal distance. Cluster or group caps alter the target population and are development options.
-
-After `cluster_period_summary`, `window_coverage`, and `cluster_pairwise_distance_summary` exist, run:
-
-```bash
-python -m chapter_analyses.genomic_networks.build_cluster_period_typical_summary
-```
-
-`cluster_period_typical_summary.{csv,parquet}` combines non-singleton cluster size, duration, residential Data Zone spread, and period-level within-cluster SNP-distance summaries. The genetic-distance columns join window-lineage pairwise summaries to `window_coverage`, keep rows with `status == "ok"` and at least 10 observed within-cluster pairwise rows, and report pair-count-weighted quartiles of the window-lineage median SNP distances by policy period.
-
 ## Sensitivity analyses
 
 `build_sensitivity_tables.py --only leiden` compares each available resolution with baseline 0.3. Window-level outputs include counts, size/singleton summaries, duration/spread, adjusted Rand index, and baseline differences. `--include-ami` adds exact adjusted mutual information.
@@ -126,21 +112,21 @@ It reports edge/weight retention, retained mean degree, scan coverage, partial-s
 Tables:
 
 ```text
-leiden_resolution_window_sensitivity.{csv,parquet}
-leiden_resolution_sensitivity_summary.{csv,parquet}
-sparsification_threshold_sensitivity.{csv,parquet}
-sparsification_threshold_sensitivity_summary.{csv,parquet}
+leiden_resolution_window_sensitivity
+leiden_resolution_sensitivity_summary
+sparsification_threshold_sensitivity
+sparsification_threshold_sensitivity_summary
 ```
 
 ## SIMD validation
 
 `build_simd_validation.py` compares stored, equal-Data-Zone, and population-weighted rank groups. It writes:
 
-- `simd_population_weighting_datazone_assignments.parquet`;
-- `simd_population_weighting_group_summary.{csv,parquet}`;
-- `simd_population_weighting_movement.{csv,parquet}`;
-- `simd_population_weighting_change_summary.{csv,parquet}`;
-- `simd_population_weighting_diagnostics.{csv,parquet}`.
+- `simd_population_weighting_datazone_assignments`;
+- `simd_population_weighting_group_summary`;
+- `simd_population_weighting_movement`;
+- `simd_population_weighting_change_summary`;
+- `simd_population_weighting_diagnostics`.
 
 ## Figures, disclosure, and checks
 

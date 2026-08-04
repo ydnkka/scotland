@@ -30,6 +30,7 @@ from .lib.config import (
     TABLES_DIR,
 )
 from .lib.io import ensure_results_dirs, write_table
+from .lib.windows import normalise_window
 
 LOGGER = logging.getLogger(__name__)
 
@@ -89,16 +90,6 @@ LEIDEN_COLUMNS = [
     "cluster_n_datazones",
     "cluster_duration_days",
 ]
-
-
-def _normalise_window(value: str | int) -> str:
-    text = str(value).strip()
-    upper = text.upper()
-    if upper.startswith("W") and upper[1:].isdigit():
-        return f"W{int(upper[1:]):03d}"
-    if upper.isdigit():
-        return f"W{int(upper):03d}"
-    return text
 
 
 def _float_key(value: float) -> float:
@@ -425,7 +416,7 @@ def _metadata_from_pairwise_path(path: Path) -> dict[str, object]:
             "Pairwise filename must look like {window}_{lineage}_{count}: "
             f"{path.name}"
         )
-    window_id = _normalise_window(parts[0])
+    window_id = normalise_window(parts[0])
     return {
         "window_id": window_id,
         "window_idx": int(window_id[1:]) if window_id[1:].isdigit() else np.nan,

@@ -187,24 +187,24 @@ def policy_descriptors(*, paths: Paths | None = None) -> pd.DataFrame:
     """Return the unique policy periods in chronological order."""
     policy = load_policy_calendar(
         [
+            "policy_era",
             "policy_period",
             "policy_period_label",
             "policy_period_start_date",
             "policy_period_end_date",
             "policy_period_order",
-            "policy_era",
         ],
         paths=paths,
     )
     return (
         policy[
             [
+                "policy_era",
                 "policy_period",
                 "policy_period_label",
                 "policy_period_start_date",
                 "policy_period_end_date",
                 "policy_period_order",
-                "policy_era",
             ]
         ]
         .drop_duplicates(subset=["policy_period"], keep="first")

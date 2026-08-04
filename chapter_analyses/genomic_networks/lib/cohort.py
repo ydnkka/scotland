@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from .config import (
-    DEFAULT_MIXING_ATTRIBUTES,
+    ASSORTATIVITY_ATTRIBUTES,
     DISCLOSURE_MIN_CELL,
     PROJECT_ROOT,
     AttributeSpec,
@@ -36,7 +36,7 @@ def _attach_policy_calendar(df: pd.DataFrame, date_col: str) -> pd.DataFrame:
         raise KeyError(f"{date_col!r} is required for the policy-calendar join")
 
     lookup = load_daily_policy_data(
-        ["period_code", "period_label", "policy_era", "period_order"]
+        [ "policy_era", "period_code", "period_label", "period_order"]
     ).rename(
         columns={
             "date": "_policy_date",
@@ -53,17 +53,6 @@ def _attach_policy_calendar(df: pd.DataFrame, date_col: str) -> pd.DataFrame:
         how="left",
         validate="many_to_one",
     ).drop(columns="_policy_date")
-
-
-def _policy_period_order() -> list[str]:
-    """Return policy codes in the ordering stored in the policy calendar."""
-    policy = load_daily_policy_data(["period_code", "period_order", "policy_era"])
-    return (
-        policy.drop_duplicates()
-        .sort_values("period_order")["period_code"]
-        .astype(str)
-        .tolist()
-    )
 
 
 def sequence_level_frame(df: pd.DataFrame) -> pd.DataFrame:
@@ -165,31 +154,6 @@ def build_window_coverage(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def build_clade_window_counts(df: pd.DataFrame) -> pd.DataFrame:
-    """Count observed sequences by window and clade."""
-    required = {"window_id", "window_idx", "sequence_id", "clade"}
-    missing = required - set(df.columns)
-    if missing:
-        raise KeyError(f"Missing clade-window columns: {sorted(missing)}")
-
-    work = df[["window_id", "window_idx", "sequence_id", "clade"]].drop_duplicates()
-    counts = (
-        work.groupby(["window_id", "window_idx", "clade"], dropna=False)["sequence_id"]
-        .nunique()
-        .rename("n_sequences")
-        .reset_index()
-    )
-    totals = (
-        counts.groupby(["window_id", "window_idx"], dropna=False)["n_sequences"]
-        .sum()
-        .rename("window_sequences")
-        .reset_index()
-    )
-    out = counts.merge(totals, on=["window_id", "window_idx"], how="left")
-    out["proportion"] = out["n_sequences"] / out["window_sequences"].replace(0, np.nan)
-    return out.sort_values(["window_idx", "clade"]).reset_index(drop=True)
-
-
 def _normalise_group_cols(group_cols: Sequence[str] | None) -> list[str]:
     return [col for col in (group_cols or []) if col]
 
@@ -197,8 +161,8 @@ def _normalise_group_cols(group_cols: Sequence[str] | None) -> list[str]:
 def build_sequence_composition(
     df: pd.DataFrame,
     *,
-    attributes: Iterable[AttributeSpec] = DEFAULT_MIXING_ATTRIBUTES,
-    group_cols: Sequence[str] | None = ("policy_period", "policy_era"),
+    attributes: Iterable[AttributeSpec] = ASSORTATIVITY_ATTRIBUTES,
+    group_cols: Sequence[str] | None = ("policy_era", "policy_period"),
     min_cell: int = DISCLOSURE_MIN_CELL,
 ) -> pd.DataFrame:
     """Build long sequence-composition tables for selected categorical variables."""
@@ -390,23 +354,6 @@ def _vaccination_summary_rows(
     return out
 
 
-def build_vaccination_context_by_policy(df: pd.DataFrame) -> pd.DataFrame:
-    """Summarise sequence-level vaccination context by policy period."""
-    seq = sequence_level_frame(df)
-    if "policy_period" not in seq.columns or "policy_era" not in seq.columns:
-        raise KeyError(
-            "'policy_period' and 'policy_era' are required in the persisted sequence metadata"
-        )
-
-    work = _vaccination_context_frame(seq)
-    out = _vaccination_summary_rows(work, ("policy_period", "policy_era"))
-    policy_order = {period: idx for idx, period in enumerate(_policy_period_order())}
-    out["_policy_sort"] = out["policy_period"].astype(str).map(policy_order).fillna(999)
-    return out.sort_values(["_policy_sort", "policy_period"]).drop(
-        columns="_policy_sort"
-    )
-
-
 def build_vaccination_window_context(df: pd.DataFrame) -> pd.DataFrame:
     """Summarise rolling-window vaccination context with one row per window."""
     required = {
@@ -454,7 +401,7 @@ def build_denominator_contrasts(window_coverage: pd.DataFrame) -> pd.DataFrame:
         raise KeyError(f"Missing denominator columns: {sorted(missing)}")
 
     out = (
-        window_coverage.groupby(["policy_period", "policy_era"], dropna=False)
+        window_coverage.groupby(["policy_era", "policy_period"], dropna=False)
         .agg(
             n_windows=("window_id", "nunique"),
             median_window_sequences=("wn_no_sequences", "median"),
