@@ -6,8 +6,11 @@ import argparse
 import sys
 from pathlib import Path
 
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.colors import TwoSlopeNorm
 from matplotlib.ticker import PercentFormatter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -26,6 +29,133 @@ from common import (
 
 FIGURE_NAME = "fig_ch4_cluster_landscape"
 
+WINDOW_CORRELATION_METRICS = (
+    "wn_no_sequences",
+    "wn_positive_tests",
+    "wn_prop_sequenced",
+)
+
+CLUSTER_CORRELATION_METRICS = (
+    "n_clusters",
+    "n_non_singleton_clusters",
+    "non_singleton_clusters_per_1000_sequences",
+    "median_non_singleton_cluster_size",
+    "p90_non_singleton_cluster_size",
+    "max_non_singleton_cluster_size",
+)
+
+CLUSTER_SIZE_METRICS = (
+    "median_non_singleton_cluster_size",
+    "p90_non_singleton_cluster_size",
+    "max_non_singleton_cluster_size",
+)
+
+CLUSTER_SPREAD_METRICS = (
+    "q25_non_singleton_duration_days",
+    "median_non_singleton_duration_days",
+    "q75_non_singleton_duration_days",
+    "median_non_singleton_datazones",
+    "p90_non_singleton_datazones",
+    "max_non_singleton_datazones",
+    "q25_non_singleton_spatial_distance_km",
+    "median_non_singleton_spatial_distance_km",
+    "q75_non_singleton_spatial_distance_km",
+)
+
+PLOT_LABELS = {
+    "wn_no_sequences": "Sequences",
+    "wn_positive_tests": "Positive tests",
+    "wn_prop_sequenced": "Seq. coverage",
+    "n_clusters": "All clusters",
+    "n_non_singleton_clusters": "Non-singleton\nclusters",
+    "non_singleton_clusters_per_1000_sequences": "Non-singleton\nclusters /\n1,000 seq.",
+    "median_non_singleton_cluster_size": "Median\ncluster size",
+    "p90_non_singleton_cluster_size": "90th pct.\ncluster size",
+    "max_non_singleton_cluster_size": "Maximum\ncluster size",
+    "q25_non_singleton_duration_days": "25th pct.\nduration",
+    "median_non_singleton_duration_days": "Median\nduration",
+    "q75_non_singleton_duration_days": "75th pct.\nduration",
+    "median_non_singleton_datazones": "Median\ndatazones",
+    "p90_non_singleton_datazones": "90th pct.\ndatazones",
+    "max_non_singleton_datazones": "Maximum\ndatazones",
+    "q25_non_singleton_spatial_distance_km": "25th pct.\ndistance",
+    "median_non_singleton_spatial_distance_km": "Median\ndistance",
+    "q75_non_singleton_spatial_distance_km": "75th pct.\ndistance",
+}
+
+
+def _correlation_matrix(
+    data: pd.DataFrame,
+    row_vars: tuple[str, ...],
+    col_vars: tuple[str, ...],
+) -> pd.DataFrame:
+    missing = [col for col in [*row_vars, *col_vars] if col not in data.columns]
+    if missing:
+        raise KeyError(f"Missing columns needed for correlation heatmap: {missing}")
+
+    columns = list(dict.fromkeys([*row_vars, *col_vars]))
+    numeric = data[columns].apply(pd.to_numeric, errors="coerce")
+    numeric = numeric.replace([np.inf, -np.inf], np.nan)
+    return numeric.corr(method="pearson").loc[list(row_vars), list(col_vars)]
+
+
+def _draw_correlation_heatmap(
+    ax,
+    correlations: pd.DataFrame,
+    *,
+    xlabel: str,
+    ylabel: str,
+):
+    values = correlations.to_numpy(dtype=float)
+    cmap = plt.get_cmap("RdBu_r").copy()
+    cmap.set_bad("#f2f2f2")
+    image = ax.imshow(
+        values,
+        aspect="auto",
+        cmap=cmap,
+        norm=TwoSlopeNorm(vmin=-1.0, vcenter=0.0, vmax=1.0),
+    )
+
+    ax.set_xticks(np.arange(correlations.shape[1]))
+    ax.set_xticklabels([PLOT_LABELS[col] for col in correlations.columns])
+    ax.set_yticks(np.arange(correlations.shape[0]))
+    ax.set_yticklabels([PLOT_LABELS[row] for row in correlations.index])
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    # x_rotation = 35 if correlations.shape[1] <= 6 else 55
+    # x_fontsize = 6.5 if correlations.shape[1] <= 6 else 6.0
+    plt.setp(
+        ax.get_xticklabels(),
+        rotation=90,
+        ha="right",
+        va="center",
+        rotation_mode="anchor",
+        # fontsize=x_fontsize,
+    )
+    ax.tick_params(axis="y")
+    ax.tick_params(axis="both", length=0)
+    ax.set_xticks(np.arange(-0.5, correlations.shape[1], 1), minor=True)
+    ax.set_yticks(np.arange(-0.5, correlations.shape[0], 1), minor=True)
+    ax.grid(which="minor", color="white", linewidth=1.0)
+    ax.tick_params(which="minor", bottom=False, left=False)
+
+    for row_idx in range(values.shape[0]):
+        for col_idx in range(values.shape[1]):
+            value = values[row_idx, col_idx]
+            if not np.isfinite(value):
+                continue
+            ax.text(
+                col_idx,
+                row_idx,
+                f"{value:.2f}",
+                ha="center",
+                va="center",
+                color="white" if abs(value) >= 0.65 else "#1f1f1f",
+                fontsize=6.5,
+            )
+
+    return image
+
 
 def build(paths: Paths) -> None:
     window_coverage = read_table(paths, "window_coverage")
@@ -34,8 +164,14 @@ def build(paths: Paths) -> None:
     window_coverage["wn_mid_date"] = pd.to_datetime(
         window_coverage["wn_mid_date"], errors="coerce"
     )
+    merge_cols = ["window_idx", "wn_mid_date"]
+    merge_cols.extend(
+        col
+        for col in WINDOW_CORRELATION_METRICS
+        if col not in cluster_window.columns and col in window_coverage.columns
+    )
     cluster_window = cluster_window.merge(
-        window_coverage[["window_idx", "wn_mid_date", "wn_prop_sequenced"]],
+        window_coverage[merge_cols],
         on="window_idx",
         how="left",
     )
@@ -46,10 +182,11 @@ def build(paths: Paths) -> None:
 
     fig, axes = new_figure(
         width="double",
-        height_in=6.7,
-        nrows=2,
+        height_in=8,
+        nrows=3,
         ncols=2,
         constrained_layout=True,
+        gridspec_kw={"height_ratios": [0.35, 0.35, 0.3]},
     )
     ax = axes[0, 0]
     ax.plot(sizes, ccdf_y, color="#1f4e79", lw=1.5)
@@ -85,6 +222,8 @@ def build(paths: Paths) -> None:
     ax.set_ylabel("Non-singleton cluster size")
     ax.legend(loc="upper left")
     date_axis(ax)
+    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+    ax.tick_params(axis="x")
 
     ax = axes[1, 0]
     ax.scatter(
@@ -117,6 +256,34 @@ def build(paths: Paths) -> None:
     ax.set_yticklabels([f"{10**tick:g}" for tick in ticks])
     ax.set_xlabel("Non-singleton cluster size")
     ax.set_ylabel("Median residential distance (km)")
+
+    ax = axes[2, 0]
+    window_cluster_corr = _correlation_matrix(
+        cluster_window,
+        WINDOW_CORRELATION_METRICS,
+        CLUSTER_CORRELATION_METRICS,
+    )
+    heatmap = _draw_correlation_heatmap(
+        ax,
+        window_cluster_corr,
+        xlabel="Cluster count and size summary",
+        ylabel="Window denominator",
+    )
+
+    ax = axes[2, 1]
+    cluster_spread_corr = _correlation_matrix(
+        cluster_window,
+        CLUSTER_SIZE_METRICS,
+        CLUSTER_SPREAD_METRICS,
+    )
+    _draw_correlation_heatmap(
+        ax,
+        cluster_spread_corr,
+        xlabel="Spatial and temporal summary",
+        ylabel="Cluster size summary",
+    )
+    cbar = fig.colorbar(heatmap, ax=axes[2, :], shrink=0.88, pad=0.02)
+    cbar.set_label("Pearson correlation coefficient")
 
     add_panel_labels(axes.ravel())
     styled_save_figure(fig, paths, FIGURE_NAME)

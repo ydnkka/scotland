@@ -40,9 +40,16 @@ TABLE_NAMES = {
     "cohort_objects": "tab_ch4_cohort_objects",
     "policy_denominators": "tab_ch4_policy_denominators",
     "cluster_period_summary": "tab_ch4_cluster_period_summary",
+    "cluster_pairwise_distance_summary": "tab_ch4_cluster_pairwise_distance_summary",
     "assortativity_summary": "tab_ch4_assortativity_summary",
     "variance_decomposition_summary": "tab_ch4_assortativity_variance_decomposition",
     "simd_population_weighting": "tab_ch4_simd_population_weighting",
+}
+ATTRIBUTE_COLUMN_LABELS = {
+    "SIMD quintile": "SIMD",
+    "Urban/rural class": "Urban/rural",
+    "Health board": "HB",
+    "Local authority": "LA",
 }
 
 
@@ -214,9 +221,9 @@ def simd_appendix_table_tex(
     group_name = SIMD_GROUP_LABELS.get(n_groups, f"{n_groups}-group")
     caption = caption or (
         f"Comparison of national SIMD {group_name} boundaries under equal-Data-Zone "
-        "and population-weighted grouping. For each grouping method, the table reports "
-        "the number of Data Zones, total population, population share, and SIMD rank "
-        "range represented in each group."
+        "and population-weighted grouping. Method names the grouping approach; group "
+        "is the SIMD group; zones are Data Zones; pop. is total population; share is "
+        "population share; and ranks is the SIMD rank range represented in each group."
     )
 
     short_caption = short_caption or (
@@ -257,12 +264,12 @@ def simd_appendix_table_tex(
         short_caption=short_caption,
         label=label,
         columns=[
-            "Grouping",
-            "SIMD group",
-            "Data zones",
-            "Population",
-            "Population share",
-            "SIMD rank range",
+            "Method",
+            "Group",
+            "Zones",
+            "Pop.",
+            "Share",
+            "Ranks",
         ],
         rows=rows,
         column_spec="lrrrrl",
@@ -474,7 +481,7 @@ def write_cohort_table(paths: Paths) -> None:
         ),
         short_caption="Analysis cohort and rolling-window cluster objects",
         label=TABLE_NAMES["cohort_objects"],
-        columns=["Quantity", "Value"],
+        columns=["Measure", "Value"],
         rows=rows,
         column_spec="lr",
     )
@@ -498,11 +505,7 @@ def write_policy_denominator_table(paths: Paths) -> None:
                 fmt_int(row.n_windows),
                 fmt_int(row.median_window_sequences),
                 fmt_int(row.median_window_positive_tests),
-                fmt_percent(row.median_window_prop_sequenced),
-                (
-                    f"{fmt_percent(row.min_window_prop_sequenced)}--"
-                    f"{fmt_percent(row.max_window_prop_sequenced)}"
-                ),
+                f"{fmt_percent(row.median_window_prop_sequenced)} ({fmt_percent(row.min_window_prop_sequenced)}--{fmt_percent(row.max_window_prop_sequenced)})",
             ]
         )
     write_latex_table(
@@ -510,27 +513,24 @@ def write_policy_denominator_table(paths: Paths) -> None:
         TABLE_NAMES["policy_denominators"],
         caption=(
             "Rolling-window observation denominators by epidemic era and policy period. "
-            "The table reports the number of windows and the median window-level counts "
-            "of sequenced genomes and positive tests. Sequencing coverage is the "
-            "percentage of positive tests represented by sequences, summarised by the "
-            "median and observed range across windows."
+            "Period is the policy period. The table reports the number of windows and "
+            "the median window-level counts of sequenced genomes and positive tests. "
+            "Coverage is the percentage of positive tests represented by sequences, "
+            "shown as the median with the observed minimum--maximum in parentheses."
         ),
         short_caption="Observation denominators by policy period",
         label=TABLE_NAMES["policy_denominators"],
         columns=[
             "Epidemic era",
-            "Policy period",
+            "Period",
             "Windows",
-            "Median sequences",
-            "Median positives",
-            "Median coverage",
-            "Coverage range",
+            "Genomes",
+            "Tests",
+            "Coverage",
         ],
         rows=rows,
-        column_spec="llrrrrr",
-        addlinespace_after=addlinespace_after_group_changes(
-            denominators["policy_era"]
-        ),
+        column_spec="llrrrl",
+        addlinespace_after=addlinespace_after_group_changes(denominators["policy_era"]),
     )
 
 
@@ -539,56 +539,130 @@ def write_cluster_period_table(paths: Paths) -> None:
     clusters = sort_by_policy(clusters, column="policy_period")
     rows = []
     for row in clusters.itertuples(index=False):
-        rows.append(
-            [
-                str(row.policy_era).capitalize().replace("_", " "),
-                row.policy_period,
-                fmt_int(row.n_sequence_memberships),
-                f"{fmt_int(row.n_clusters)} ({fmt_int(row.n_non_singleton_clusters)})",
-                f"{fmt_float(row.median_non_singleton_cluster_size, 1)}; {fmt_float(row.p90_non_singleton_cluster_size, 1)}; {fmt_int(row.max_non_singleton_cluster_size)}",
-                f"{fmt_float(row.median_non_singleton_datazones, 1)}; {fmt_float(row.p90_non_singleton_datazones, 1)}; {fmt_int(row.max_non_singleton_datazones)}",
+        cells = [
+            str(row.policy_era).capitalize().replace("_", " "),
+            row.policy_period,
+            fmt_int(row.n_sequence_memberships),
+            f"{fmt_int(row.n_clusters)} ({fmt_int(row.n_non_singleton_clusters)})",
+        ]
+        if fmt_int(row.n_non_singleton_clusters) != "0":
+            cells.append(
+                f"{fmt_float(row.median_non_singleton_cluster_size, 1)}; "
+                f"{fmt_float(row.p90_non_singleton_cluster_size, 1)}; "
+                f"{fmt_int(row.max_non_singleton_cluster_size)}"
+            )
+            cells.append(
+                f"{fmt_float(row.median_non_singleton_datazones, 1)}; "
+                f"{fmt_float(row.p90_non_singleton_datazones, 1)}; "
+                f"{fmt_int(row.max_non_singleton_datazones)}"
+            )
+            cells.append(
                 fmt_iqr(
                     row.median_non_singleton_spatial_distance_km,
                     row.q25_non_singleton_spatial_distance_km,
                     row.q75_non_singleton_spatial_distance_km,
                     digits=1,
-                ),
+                )
+            )
+            cells.append(
                 fmt_iqr(
                     row.median_non_singleton_duration_days,
                     row.q25_non_singleton_duration_days,
                     row.q75_non_singleton_duration_days,
                     digits=1,
-                ),
-            ]
-        )
+                )
+            )
+        else:
+            cells.extend(["NA"] * 4)
+        rows.append(cells)
     write_latex_table(
         paths,
         TABLE_NAMES["cluster_period_summary"],
         caption=(
             "Summary of Scottish EpiLink clusters by epidemic era and policy period. "
-            "The table reports sequence memberships, total clusters and non-singleton "
-            "clusters, and, for non-singleton clusters only, the median, 90th percentile "
-            "and maximum cluster size and number of Data Zones represented, together "
-            "with the median and interquartile range for within-cluster spatial "
-            "distance and temporal span."
+            "Period is the policy period. Members are sequence memberships. Clusters "
+            "gives total clusters with non-singleton clusters in parentheses. For "
+            "non-singleton clusters only, size and zones give the median, 90th "
+            "percentile and maximum cluster size and number of Data Zones represented; "
+            "reach and span give the median and interquartile range for within-cluster "
+            "spatial distance and temporal span."
         ),
         short_caption="Scottish EpiLink cluster summary by policy period",
         label=TABLE_NAMES["cluster_period_summary"],
         columns=[
             "Epidemic era",
-            "Policy period",
-            "Sequence memberships",
-            "Clusters (non-singletons)",
-            "Cluster size: median; 90th percentile; max",
-            "Data Zones: median; 90th percentile; max",
-            "Spatial distance (km): median (IQR)",
-            "Temporal span (days): median (IQR)",
+            "Period",
+            "Members",
+            "Clusters",
+            "Size",
+            "Zones",
+            "Reach (km)",
+            "Span (d)",
         ],
         rows=rows,
-        addlinespace_after=addlinespace_after_group_changes(
-            clusters["policy_era"]
-        ),
+        addlinespace_after=addlinespace_after_group_changes(clusters["policy_era"]),
         column_spec="llrrrrrr",
+    )
+
+
+def write_cluster_pairwise_distance_summary_table(paths: Paths) -> None:
+    summary = read_table(paths, "cluster_pairwise_distance_summary")
+    metric_labels = {
+        "snp_distance": "Genetic (SNPs)",
+        "temporal_distance": "Temporal (days)",
+    }
+    metric_order = {name: idx for idx, name in enumerate(metric_labels)}
+    weighting_labels = {
+        "unweighted": "Unweighted",
+        "pair_count_weighted": "Pair-weighted",
+    }
+    weighting_order = {name: idx for idx, name in enumerate(weighting_labels)}
+    summary = summary.copy()
+    summary["_metric_sort"] = summary["distance_metric"].map(metric_order).fillna(999)
+    summary["_weighting_sort"] = summary["weighting"].map(weighting_order).fillna(999)
+    summary = summary.sort_values(
+        ["_metric_sort", "_weighting_sort", "distance_metric", "weighting"],
+        kind="mergesort",
+    )
+
+    rows = []
+    for row in summary.itertuples(index=False):
+        rows.append(
+            [
+                metric_labels.get(str(row.distance_metric), str(row.distance_metric)),
+                weighting_labels.get(str(row.weighting), str(row.weighting)),
+                fmt_int(row.n_window_lineage_summaries),
+                fmt_int(row.n_windows),
+                fmt_int(row.n_pairwise_rows),
+                fmt_iqr(row.median, row.q25, row.q75, digits=1),
+            ]
+        )
+
+    write_latex_table(
+        paths,
+        TABLE_NAMES["cluster_pairwise_distance_summary"],
+        caption=(
+            "Overall within-cluster genetic and temporal distance summaries. "
+            "Metric distinguishes genetic distance in SNPs and temporal distance in "
+            "days. For each metric, the table reports unweighted and pair-weighted "
+            "quartiles of "
+            "window-lineage median within-cluster pairwise distances after retaining "
+            "summaries with at least ten observed within-cluster pairwise rows. "
+            "Pairs are within-cluster pairwise rows; median is reported with the "
+            "interquartile range in parentheses."
+        ),
+        short_caption="Within-cluster pairwise distance summaries",
+        label=TABLE_NAMES["cluster_pairwise_distance_summary"],
+        columns=[
+            "Metric",
+            "Weighting",
+            "Summaries",
+            "Windows",
+            "Pairs",
+            "Median",
+        ],
+        rows=rows,
+        column_spec="llrrrl",
     )
 
 
@@ -623,9 +697,10 @@ def write_assortativity_summary_table(paths: Paths) -> None:
         TABLE_NAMES["assortativity_summary"],
         caption=(
             "Pooled compatibility assortativity estimates across rolling windows. "
-            "For each attribute, the table reports the number of windows contributing "
-            "estimates, the median number of lineages, the overlap-adjusted GLS mean "
-            "assortativity coefficient with 95% confidence interval, and the median "
+            "For each attribute, windows is the number of rolling windows and est. is "
+            "the number with an estimable coefficient. Lineages is the median number "
+            "of lineages. Mean r is the overlap-adjusted GLS mean assortativity "
+            "coefficient with 95% confidence interval; window r is the median "
             "window-level estimate with the 10th--90th percentile range."
         ),
         short_caption="Pooled compatibility assortativity estimates",
@@ -633,11 +708,11 @@ def write_assortativity_summary_table(paths: Paths) -> None:
         columns=[
             "Attribute",
             "Windows",
-            "Estimated windows",
-            "Median lineages",
-            "GLS mean r",
+            "Est.",
+            "Lineages",
+            "Mean r",
             "95% CI",
-            "Window median (10--90%)",
+            "Window r",
         ],
         rows=rows,
         column_spec="lrrrrll",
@@ -717,12 +792,20 @@ def write_variance_decomposition_summary_table(paths: Paths) -> None:
             "Variance decomposition of weighted compatibility assortativity "
             "estimates after applying the 90th percentile inverse-variance weight cap. "
             "Attributes are shown as columns and decomposition quantities as rows. "
-            "Fraction rows are unitless; count and uncertainty rows are reported in "
-            "their native units."
+            "Short attribute labels are used where needed: SIMD denotes SIMD quintile, "
+            "Urban/rural denotes urban/rural class, HB denotes Health board, and LA "
+            "denotes Local authority. Fraction rows are unitless; count and "
+            "uncertainty rows are reported in their native units."
         ),
         short_caption="Variance decomposition of compatibility assortativity",
         label=TABLE_NAMES["variance_decomposition_summary"],
-        columns=["Metric", *attributes],
+        columns=[
+            "Metric",
+            *[
+                ATTRIBUTE_COLUMN_LABELS.get(attribute) or attribute
+                for attribute in attributes
+            ],
+        ],
         rows=rows,
         column_spec="l" + "r" * len(attributes),
         addlinespace_after={2, 9},
@@ -733,6 +816,10 @@ TABLE_WRITERS: tuple[tuple[str, Callable[[Paths], object]], ...] = (
     (TABLE_NAMES["cohort_objects"], write_cohort_table),
     (TABLE_NAMES["policy_denominators"], write_policy_denominator_table),
     (TABLE_NAMES["cluster_period_summary"], write_cluster_period_table),
+    (
+        TABLE_NAMES["cluster_pairwise_distance_summary"],
+        write_cluster_pairwise_distance_summary_table,
+    ),
     (TABLE_NAMES["assortativity_summary"], write_assortativity_summary_table),
     (
         TABLE_NAMES["variance_decomposition_summary"],

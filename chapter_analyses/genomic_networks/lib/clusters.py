@@ -300,16 +300,11 @@ def _aggregate_cluster_summary(
 
 def build_cluster_window_summary(cluster_table: pd.DataFrame) -> pd.DataFrame:
     """Summarise cluster-size and spread distributions by rolling window."""
-    required = {"window_id", "window_idx", "cluster_id", "cluster_size"}
-    missing = required - set(cluster_table.columns)
-    if missing:
-        raise KeyError(f"Missing window-cluster summary columns: {sorted(missing)}")
-
     work = _with_non_singleton_summary_values(cluster_table)
 
     out = _aggregate_cluster_summary(
         work,
-        group_columns=("window_id", "window_idx"),
+        group_columns=("window_id", "window_idx", "wn_no_sequences", "wn_positive_tests", "wn_prop_sequenced"),
     ).sort_values("window_idx")
 
     sequence_memberships = out["n_sequence_memberships"].replace(0, np.nan)
@@ -324,8 +319,6 @@ def build_cluster_window_summary(cluster_table: pd.DataFrame) -> pd.DataFrame:
 
 def build_cluster_period_summary(cluster_table: pd.DataFrame) -> pd.DataFrame:
     """Summarise cluster distributions by policy period where available."""
-    if "policy_period" not in cluster_table.columns:
-        raise KeyError("Missing policy_period column for period summary")
 
     work = _with_non_singleton_summary_values(cluster_table)
 
@@ -334,7 +327,9 @@ def build_cluster_period_summary(cluster_table: pd.DataFrame) -> pd.DataFrame:
         group_columns=("policy_era", "policy_period"),
         extra_aggregations={
             "n_windows": ("window_id", "nunique"),
+            "median_window_prop_sequenced": ("wn_prop_sequenced", "median")
         },
     )
+
 
     return sort_by_policy_period(out)

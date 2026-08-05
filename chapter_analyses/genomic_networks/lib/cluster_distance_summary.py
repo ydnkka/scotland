@@ -53,8 +53,8 @@ def _require_columns(
         raise KeyError(f"Missing {table_name} columns: {sorted(missing)}")
 
 
-def prepare_pairwise_distance_summary(
-    pairwise_distance_summary: pd.DataFrame,
+def prepare_pairwise_distances(
+    pairwise_distances: pd.DataFrame,
     *,
     min_pairwise_rows: int = MIN_PAIRWISE_ROWS,
     distance_columns: tuple[str, ...] = (
@@ -72,14 +72,14 @@ def prepare_pairwise_distance_summary(
         *distance_columns,
     }
     _require_columns(
-        pairwise_distance_summary,
+        pairwise_distances,
         required,
         table_name="cluster_pairwise_distance_summary",
     )
     if min_pairwise_rows < 1:
         raise ValueError("min_pairwise_rows must be at least 1.")
 
-    work = pairwise_distance_summary.copy()
+    work = pairwise_distances.copy()
     numeric_columns = ("window_idx", "n_pairwise_rows", *distance_columns)
     for col in numeric_columns:
         work[col] = numeric(work[col])
@@ -100,13 +100,13 @@ def prepare_pairwise_distance_summary(
 
 
 def build_cluster_pairwise_distance_overall_summary(
-    pairwise_distance_summary: pd.DataFrame,
+    pairwise_distances: pd.DataFrame,
     *,
     min_pairwise_rows: int = MIN_PAIRWISE_ROWS,
 ) -> pd.DataFrame:
     """Summarise typical group-level distances with and without pair weights."""
-    summary = prepare_pairwise_distance_summary(
-        pairwise_distance_summary,
+    summary = prepare_pairwise_distances(
+        pairwise_distances,
         min_pairwise_rows=min_pairwise_rows,
         require_non_empty=True,
     )
