@@ -1,4 +1,4 @@
-"""Build Chapter 4 observation-network LaTeX table fragments."""
+"""Build Chapter 4 LaTeX table fragments."""
 
 from __future__ import annotations
 
@@ -29,15 +29,12 @@ from common import (
     window_idx_from_id,
 )
 
-from chapter_analyses.genomic_networks.lib.config import TABLES_DIR
-
 SIMD_GROUP_LABELS = {
     5: "quintile",
     10: "decile",
     20: "vigintile",
 }
 TABLE_NAMES = {
-    "cohort_objects": "tab_ch4_cohort_objects",
     "policy_denominators": "tab_ch4_policy_denominators",
     "cluster_period_summary": "tab_ch4_cluster_period_summary",
     "cluster_pairwise_distance_summary": "tab_ch4_cluster_pairwise_distance_summary",
@@ -209,95 +206,6 @@ def write_latex_table(
     (paths.figure_dir / f"{name}.tex").write_text(content + "\n")
 
 
-def simd_appendix_table_tex(
-    group_summary: pd.DataFrame,
-    *,
-    n_groups: int = 5,
-    caption: str | None = None,
-    short_caption: str | None = None,
-    label: str = TABLE_NAMES["simd_population_weighting"],
-) -> str:
-    """Render a compact LaTeX table for the SIMD validation appendix."""
-    group_name = SIMD_GROUP_LABELS.get(n_groups, f"{n_groups}-group")
-    caption = caption or (
-        f"Comparison of national SIMD {group_name} boundaries under equal-Data-Zone "
-        "and population-weighted grouping. Method names the grouping approach; group "
-        "is the SIMD group; zones are Data Zones; pop. is total population; share is "
-        "population share; and ranks is the SIMD rank range represented in each group."
-    )
-
-    short_caption = short_caption or (
-        f"SIMD {group_name} population-weighting comparison"
-    )
-
-    methods = ["equal_datazone", "population_weighted"]
-    display = group_summary.loc[group_summary["grouping_method"].isin(methods)].copy()
-    method_order = {method: idx for idx, method in enumerate(methods)}
-    display["_method_sort"] = display["grouping_method"].map(method_order)
-    display = display.sort_values(["_method_sort", "simd_group"])
-    display["rank_range"] = (
-        display["first_simd_rank"].map(fmt_int)
-        + "--"
-        + display["last_simd_rank"].map(fmt_int)
-    )
-    rows = []
-    addlinespace_after: set[int] = set()
-    method_groups = list(display.groupby("_method_sort", sort=False))
-    for method_idx, (_, group) in enumerate(method_groups):
-        group = group.sort_values("simd_group")
-        for row_idx, row in enumerate(group.itertuples(index=False)):
-            rows.append(
-                [
-                    str(row.grouping_method_label) if row_idx == 0 else "",
-                    row.simd_group,
-                    fmt_int(row.n_datazones),
-                    fmt_int(row.total_population),
-                    fmt_percent_points(row.pct_population),
-                    str(row.rank_range),
-                ]
-            )
-        if method_idx < len(method_groups) - 1 and rows:
-            addlinespace_after.add(len(rows) - 1)
-
-    return render_latex_table(
-        caption=caption,
-        short_caption=short_caption,
-        label=label,
-        columns=[
-            "Method",
-            "Group",
-            "Zones",
-            "Pop.",
-            "Share",
-            "Ranks",
-        ],
-        rows=rows,
-        column_spec="lrrrrl",
-        addlinespace_after=addlinespace_after,
-    )
-
-
-def write_simd_appendix_table(
-    group_summary: pd.DataFrame,
-    *,
-    n_groups: int = 5,
-    path: Path | None = None,
-) -> Path:
-    """Write the SIMD validation LaTeX appendix table and return its path."""
-    path = path or TABLES_DIR / f"{TABLE_NAMES['simd_population_weighting']}.tex"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(simd_appendix_table_tex(group_summary, n_groups=n_groups))
-    return path
-
-
-def write_simd_population_weighting_table(paths: Paths) -> Path:
-    group_summary = read_table(paths, "simd_population_weighting_group_summary")
-    return write_simd_appendix_table(
-        group_summary,
-        path=paths.figure_dir / f"{TABLE_NAMES['simd_population_weighting']}.tex",
-    )
-
-
 def weighted_mean(values: pd.Series, weights: pd.Series) -> float:
     mask = values.notna() & weights.notna() & weights.gt(0)
     if not mask.any():
@@ -443,50 +351,6 @@ def variance_decomposition_summary_table(paths: Paths) -> pd.DataFrame:
         return variance_decomposition_summary(vd_long)
 
 
-def write_cohort_table(paths: Paths) -> None:
-    cohort = read_table(paths, "cohort_summary")
-    cohort_map = cohort.set_index("metric")["value"].to_dict()
-    rows = [
-        ["Unique sequences", fmt_int(cohort_map.get("unique_sequences"))],
-        ["Unique patients", fmt_int(cohort_map.get("unique_patients"))],
-        [
-            "Collection dates",
-            (
-                f"{cohort_map.get('first_collection_date')} to "
-                f"{cohort_map.get('last_collection_date')}"
-            ),
-        ],
-        ["Rolling windows", fmt_int(cohort_map.get("windows"))],
-        ["Window-level clusters (all)", fmt_int(cohort_map.get("clusters"))],
-        [
-            "Window-level singleton clusters",
-            fmt_int(cohort_map.get("singleton_clusters")),
-        ],
-        [
-            "Window-level non-singleton clusters",
-            fmt_int(cohort_map.get("non_singleton_clusters")),
-        ],
-        ["Nextclade clades", fmt_int(cohort_map.get("clades"))],
-        ["Pango lineages", fmt_int(cohort_map.get("pango_lineages"))],
-    ]
-    write_latex_table(
-        paths,
-        TABLE_NAMES["cohort_objects"],
-        caption=(
-            "Overview of the Scottish analysis cohort and derived "
-            "rolling-window cluster objects. The table reports unique sequence and "
-            "patient counts, the earliest and latest sample collection dates, the number of rolling windows, "
-            "window-level cluster counts by singleton status, and the observed "
-            "Nextclade clades and Pango lineages."
-        ),
-        short_caption="Analysis cohort and rolling-window cluster objects",
-        label=TABLE_NAMES["cohort_objects"],
-        columns=["Measure", "Value"],
-        rows=rows,
-        column_spec="lr",
-    )
-
-
 def write_policy_denominator_table(paths: Paths) -> None:
     denominators = read_table(paths, "window_denominator_contrasts")
     has_sequences = pd.to_numeric(
@@ -512,13 +376,14 @@ def write_policy_denominator_table(paths: Paths) -> None:
         paths,
         TABLE_NAMES["policy_denominators"],
         caption=(
-            "Rolling-window observation denominators by epidemic era and policy period. "
-            "Period is the policy period. The table reports the number of windows and "
-            "the median window-level counts of sequenced genomes and positive tests. "
-            "Coverage is the percentage of positive tests represented by sequences, "
-            "shown as the median with the observed minimum--maximum in parentheses."
+            "Rolling-window observation denominators stratified by epidemic era and "
+            "policy period. For each period, the table outlines the total number of "
+            "analytical windows alongside the median window-level counts of sequenced "
+            "genomes and positive PCR tests. Genomic sampling coverage (the percentage of "
+            "positive tests successfully sequenced) is reported as a median, with "
+            "absolute minimum and maximum extremes presented in parentheses."
         ),
-        short_caption="Observation denominators by policy period",
+        short_caption="Rolling-window observation denominators by policy period",
         label=TABLE_NAMES["policy_denominators"],
         columns=[
             "Epidemic era",
@@ -579,13 +444,13 @@ def write_cluster_period_table(paths: Paths) -> None:
         paths,
         TABLE_NAMES["cluster_period_summary"],
         caption=(
-            "Summary of Scottish EpiLink clusters by epidemic era and policy period. "
-            "Period is the policy period. Members are sequence memberships. Clusters "
-            "gives total clusters with non-singleton clusters in parentheses. For "
-            "non-singleton clusters only, size and zones give the median, 90th "
-            "percentile and maximum cluster size and number of Data Zones represented; "
-            "reach and span give the median and interquartile range for within-cluster "
-            "spatial distance and temporal span."
+            "Summary of Scottish EpiLink clusters stratified by epidemic era and policy "
+            "period. The table denotes sequence memberships and total distinct clusters, "
+            "with non-singleton cluster counts provided in parentheses. Further metrics "
+            "for non-singleton clusters summarize distributions (median; 90th percentile; "
+            "and maximum) for both cluster size and affected Data Zones. Spatial reach "
+            "(in kilometers) and temporal span (in days) are reported as medians alongside "
+            "their corresponding interquartile ranges."
         ),
         short_caption="Scottish EpiLink cluster summary by policy period",
         label=TABLE_NAMES["cluster_period_summary"],
@@ -642,14 +507,12 @@ def write_cluster_pairwise_distance_summary_table(paths: Paths) -> None:
         paths,
         TABLE_NAMES["cluster_pairwise_distance_summary"],
         caption=(
-            "Overall within-cluster genetic and temporal distance summaries. "
-            "Metric distinguishes genetic distance in SNPs and temporal distance in "
-            "days. For each metric, the table reports unweighted and pair-weighted "
-            "quartiles of "
-            "window-lineage median within-cluster pairwise distances after retaining "
-            "summaries with at least ten observed within-cluster pairwise rows. "
-            "Pairs are within-cluster pairwise rows; median is reported with the "
-            "interquartile range in parentheses."
+            "Distributions of within-cluster genetic (SNPs) and temporal (days) "
+            "distances. For each metric, the table contrasts unweighted and "
+            "pair-weighted quartiles of window-lineage median pairwise distances. "
+            "Analyses are restricted to summaries containing a minimum of ten observed "
+            "within-cluster pairs. Median pairwise distances are reported alongside "
+            "corresponding interquartile ranges enclosed in parentheses."
         ),
         short_caption="Within-cluster pairwise distance summaries",
         label=TABLE_NAMES["cluster_pairwise_distance_summary"],
@@ -696,12 +559,14 @@ def write_assortativity_summary_table(paths: Paths) -> None:
         paths,
         TABLE_NAMES["assortativity_summary"],
         caption=(
-            "Pooled compatibility assortativity estimates across rolling windows. "
-            "For each attribute, windows is the number of rolling windows and est. is "
-            "the number with an estimable coefficient. Lineages is the median number "
-            "of lineages. Mean r is the overlap-adjusted GLS mean assortativity "
-            "coefficient with 95% confidence interval; window r is the median "
-            "window-level estimate with the 10th--90th percentile range."
+            "Pooled compatibility assortativity estimates calculated across rolling windows. "
+            "For each attribute, the table reports the total number of windows, the subset "
+            "yielding an estimable coefficient, and the median number of lineages analyzed. "
+            "Mean r is the single overall pooled estimate: the GLS mean of the window-level "
+            "pooled assortativity estimates, adjusted for covariance induced by overlapping "
+            "rolling windows, with its 95% confidence interval. Window r is descriptive: "
+            "the median of the same window-level pooled estimates, followed by their "
+            "10th--90th percentile range."
         ),
         short_caption="Pooled compatibility assortativity estimates",
         label=TABLE_NAMES["assortativity_summary"],
@@ -789,13 +654,13 @@ def write_variance_decomposition_summary_table(paths: Paths) -> None:
         paths,
         TABLE_NAMES["variance_decomposition_summary"],
         caption=(
-            "Variance decomposition of weighted compatibility assortativity "
-            "estimates after applying the 90th percentile inverse-variance weight cap. "
-            "Attributes are shown as columns and decomposition quantities as rows. "
-            "Short attribute labels are used where needed: SIMD denotes SIMD quintile, "
-            "Urban/rural denotes urban/rural class, HB denotes Health board, and LA "
-            "denotes Local authority. Fraction rows are unitless; count and "
-            "uncertainty rows are reported in their native units."
+            "Variance decomposition of weighted compatibility assortativity estimates "
+            "following the application of a 90th percentile inverse-variance weight cap. "
+            "Target attributes are evaluated in columns using abbreviated labels (SIMD "
+            "denotes SIMD quintile; HB denotes Health board; LA denotes Local authority). "
+            "Variance components and fractional metrics are presented as unitless "
+            "proportions, whereas underlying count and measurement uncertainty summaries "
+            "are reported in their native units."
         ),
         short_caption="Variance decomposition of compatibility assortativity",
         label=TABLE_NAMES["variance_decomposition_summary"],
@@ -812,8 +677,69 @@ def write_variance_decomposition_summary_table(paths: Paths) -> None:
     )
 
 
+def write_simd_population_weighting_table(paths: Paths) -> None:
+    """Write the SIMD validation LaTeX appendix table."""
+    group_summary = read_table(paths, "simd_population_weighting_group_summary")
+    n_groups = 5
+    group_name = SIMD_GROUP_LABELS.get(n_groups, f"{n_groups}-group")
+    caption = (
+        f"Validation of national SIMD {group_name} boundaries comparing equal-Data-Zone "
+        "and population-weighted grouping methodologies. The table details the number of "
+        "Data Zones, total population counts, proportional population shares, and the "
+        "underlying SIMD rank ranges represented within each constructed group."
+    )
+    short_caption = f"SIMD {group_name} population-weighting validation"
+
+    methods = ["equal_datazone", "population_weighted"]
+    display = group_summary.loc[group_summary["grouping_method"].isin(methods)].copy()
+    method_order = {method: idx for idx, method in enumerate(methods)}
+    display["_method_sort"] = display["grouping_method"].map(method_order)
+    display = display.sort_values(["_method_sort", "simd_group"])
+    display["rank_range"] = (
+        display["first_simd_rank"].map(fmt_int)
+        + "--"
+        + display["last_simd_rank"].map(fmt_int)
+    )
+    rows = []
+    addlinespace_after: set[int] = set()
+    method_groups = list(display.groupby("_method_sort", sort=False))
+    for method_idx, (_, group) in enumerate(method_groups):
+        group = group.sort_values("simd_group")
+        for row_idx, row in enumerate(group.itertuples(index=False)):
+            rows.append(
+                [
+                    str(row.grouping_method_label) if row_idx == 0 else "",
+                    row.simd_group,
+                    fmt_int(row.n_datazones),
+                    fmt_int(row.total_population),
+                    fmt_percent_points(row.pct_population),
+                    str(row.rank_range),
+                ]
+            )
+        if method_idx < len(method_groups) - 1 and rows:
+            addlinespace_after.add(len(rows) - 1)
+
+    write_latex_table(
+        paths,
+        TABLE_NAMES["simd_population_weighting"],
+        caption=caption,
+        short_caption=short_caption,
+        label=TABLE_NAMES["simd_population_weighting"],
+        columns=[
+            "Method",
+            "Group",
+            "Zones",
+            "Pop.",
+            "Share",
+            "Ranks",
+        ],
+        rows=rows,
+        column_spec="lrrrrl",
+        addlinespace_after=addlinespace_after,
+    )
+
+
 TABLE_WRITERS: tuple[tuple[str, Callable[[Paths], object]], ...] = (
-    (TABLE_NAMES["cohort_objects"], write_cohort_table),
     (TABLE_NAMES["policy_denominators"], write_policy_denominator_table),
     (TABLE_NAMES["cluster_period_summary"], write_cluster_period_table),
     (
