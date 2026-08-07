@@ -21,6 +21,7 @@ from assortativity_analysis import (
 )
 from common import (
     ATTRIBUTE_ORDER,
+    POLICY_LABELS,
     Paths,
     add_common_args,
     paths_from_args,
@@ -35,6 +36,7 @@ SIMD_GROUP_LABELS = {
     20: "vigintile",
 }
 TABLE_NAMES = {
+    "sequence_composition_by_policy": "tab_ch4_sequence_composition_by_policy",
     "policy_denominators": "tab_ch4_policy_denominators",
     "cluster_period_summary": "tab_ch4_cluster_period_summary",
     "cluster_pairwise_distance_summary": "tab_ch4_cluster_pairwise_distance_summary",
@@ -47,6 +49,27 @@ ATTRIBUTE_COLUMN_LABELS = {
     "Urban/rural class": "Urban/rural",
     "Health board": "HB",
     "Local authority": "LA",
+}
+SEQUENCE_COMPOSITION_ATTRIBUTES = (
+    "sex",
+    "simd_quintile",
+    "age_group",
+    "urban_rural",
+    "health_board",
+)
+SEQUENCE_COMPOSITION_CATEGORY_LABELS = {
+    "simd_quintile": {
+        "1.0": "Q1",
+        "2.0": "Q2",
+        "3.0": "Q3",
+        "4.0": "Q4",
+        "5.0": "Q5",
+        "1": "Q1",
+        "2": "Q2",
+        "3": "Q3",
+        "4": "Q4",
+        "5": "Q5",
+    },
 }
 
 
@@ -118,6 +141,8 @@ def latex_escape(value: object) -> str:
         "}": r"\}",
         "~": r"\textasciitilde{}",
         "^": r"\textasciicircum{}",
+        "<": r"\textless{}",
+        ">": r"\textgreater{}",
     }
     return "".join(replacements.get(char, char) for char in text)
 
@@ -198,6 +223,110 @@ def write_latex_table(
         caption=caption,
         label=label,
         columns=columns,
+        rows=rows,
+        column_spec=column_spec,
+        addlinespace_after=addlinespace_after,
+        short_caption=short_caption,
+    )
+    (paths.figure_dir / f"{name}.tex").write_text(content + "\n")
+
+
+def latex_shortstack(value: object, *, words_per_line: int = 2) -> str:
+    words = str(value).split()
+    if not words:
+        return ""
+    lines = [
+        " ".join(words[idx : idx + words_per_line])
+        for idx in range(0, len(words), words_per_line)
+    ]
+    return r"\shortstack{" + r"\\".join(latex_escape(line) for line in lines) + "}"
+
+
+def render_latex_grouped_column_table(
+    *,
+    caption: str,
+    label: str,
+    row_columns: list[str],
+    column_groups: list[tuple[str, list[str]]],
+    rows: list[list[object]],
+    column_spec: str,
+    addlinespace_after: set[int] | None = None,
+    short_caption: str | None = None,
+    font_size: str = r"\scriptsize",
+    tabcolsep: str = "2.5pt",
+) -> str:
+    addlinespace_after = addlinespace_after or set()
+    n_columns = len(row_columns) + sum(len(periods) for _, periods in column_groups)
+    column_spec = latex_column_spec(column_spec, n_columns)
+
+    top_header = [f"\\textbf{{{latex_escape(column)}}}" for column in row_columns]
+    cmidrules = []
+    col_start = len(row_columns) + 1
+    for era, periods in column_groups:
+        top_header.append(
+            f"\\multicolumn{{{len(periods)}}}{{c}}{{\\textbf{{{latex_shortstack(era)}}}}}"
+        )
+        col_end = col_start + len(periods) - 1
+        cmidrules.append(f"\\cmidrule(lr){{{col_start}-{col_end}}}")
+        col_start = col_end + 1
+
+    period_header = [""] * len(row_columns)
+    for _, periods in column_groups:
+        period_header.extend(
+            f"\\textbf{{{latex_escape(period)}}}" for period in periods
+        )
+
+    body_lines = []
+    for row_idx, row in enumerate(rows):
+        if len(row) != n_columns:
+            raise ValueError(
+                f"Table row {row_idx} has {len(row)} cells; expected {n_columns}."
+            )
+        body_lines.append(
+            "    " + " & ".join(latex_escape(cell) for cell in row) + r" \\"
+        )
+        if row_idx in addlinespace_after and row_idx < len(rows) - 1:
+            body_lines.append(r"    \addlinespace[0.35em]")
+
+    lines = [
+        r"\begin{table}[htbp]",
+        r"\centering",
+        font_size,
+        f"\\setlength{{\\tabcolsep}}{{{tabcolsep}}}",
+        f"\\caption[{latex_escape(short_caption or caption)}]{{{latex_escape(caption)}}}\\label{{{label}}}",
+        f"\\begin{{thesistablebody}}{{{column_spec}}}",
+        r"\toprule",
+        " & ".join(top_header) + r" \\",
+        "".join(cmidrules),
+        " & ".join(period_header) + r" \\",
+        r"\midrule",
+        *body_lines,
+        r"\bottomrule",
+        r"\end{thesistablebody}",
+        r"\end{table}",
+    ]
+    return "\n".join(lines)
+
+
+def write_latex_grouped_column_table(
+    paths: Paths,
+    name: str,
+    *,
+    caption: str,
+    label: str,
+    row_columns: list[str],
+    column_groups: list[tuple[str, list[str]]],
+    rows: list[list[Any]],
+    column_spec: str,
+    addlinespace_after: set[int] | None = None,
+    short_caption: str | None = None,
+) -> None:
+    paths.figure_dir.mkdir(parents=True, exist_ok=True)
+    content = render_latex_grouped_column_table(
+        caption=caption,
+        label=label,
+        row_columns=row_columns,
+        column_groups=column_groups,
         rows=rows,
         column_spec=column_spec,
         addlinespace_after=addlinespace_after,
@@ -351,6 +480,140 @@ def variance_decomposition_summary_table(paths: Paths) -> pd.DataFrame:
         return variance_decomposition_summary(vd_long)
 
 
+def sequence_composition_category_order(
+    table: pd.DataFrame,
+    attribute: str,
+) -> list[str]:
+    work = table.loc[table["attribute"].eq(attribute)]
+    totals = work.groupby("category", observed=False)["n_sequences"].sum()
+    if totals.empty:
+        return []
+
+    if attribute == "sex":
+        preferred = ["Female", "Male"]
+        return [value for value in preferred if value in totals.index.astype(str)]
+
+    if attribute == "simd_quintile":
+        return sorted(totals.index.astype(str), key=lambda value: float(value))
+
+    if attribute == "age_group":
+        preferred = ["00-04", "05-14", "15-24", "25-64", "65-74", "75+"]
+        return [value for value in preferred if value in totals.index.astype(str)]
+
+    if attribute == "urban_rural":
+        preferred = [
+            "Large Urban Areas",
+            "Other Urban Areas",
+            "Accessible Small Towns",
+            "Remote Small Towns",
+            "Accessible Rural",
+            "Remote Rural",
+        ]
+        return [value for value in preferred if value in totals.index.astype(str)]
+
+    if attribute == "health_board":
+        return totals.sort_values(ascending=False).index.astype(str).tolist()
+
+    return totals.sort_values(ascending=False).index.astype(str).tolist()
+
+
+def display_sequence_category(attribute: str, category: object) -> str:
+    text = str(category)
+    return SEQUENCE_COMPOSITION_CATEGORY_LABELS.get(attribute, {}).get(text, text)
+
+
+def format_sequence_composition_cell(row: pd.Series | None) -> str:
+    if row is None:
+        return "0 (0.0%)"
+    n_sequences = pd.to_numeric(pd.Series([row["n_sequences"]]), errors="coerce").iloc[
+        0
+    ]
+    if pd.notna(n_sequences) and float(n_sequences) == 0:
+        return "0 (0.0%)"
+    if bool(row.get("small_cell", False)):
+        return "<5"
+    return f"{fmt_int(n_sequences)} ({fmt_percent(row['proportion'])})"
+
+
+def sequence_composition_policy_groups(
+    composition: pd.DataFrame,
+) -> tuple[pd.DataFrame, list[tuple[str, list[str]]]]:
+    periods = composition[["policy_era", "policy_period"]].drop_duplicates()
+    periods = sort_by_policy(periods, column="policy_period")
+
+    column_groups: list[tuple[str, list[str]]] = []
+    for era, group in periods.groupby("policy_era", sort=False, dropna=False):
+        label = POLICY_LABELS.get(str(era), str(era).capitalize().replace("_", " "))
+        column_groups.append((label, group["policy_period"].astype(str).tolist()))
+
+    return periods, column_groups
+
+
+def write_sequence_composition_by_policy_table(paths: Paths) -> None:
+    composition = read_table(paths, "sequence_composition_by_policy")
+    composition = composition.loc[
+        composition["attribute"].isin(SEQUENCE_COMPOSITION_ATTRIBUTES)
+    ].copy()
+    if composition.empty:
+        raise FileNotFoundError(
+            "sequence_composition_by_policy contains no figure attributes"
+        )
+
+    periods, column_groups = sequence_composition_policy_groups(composition)
+    period_codes = periods["policy_period"].astype(str).tolist()
+
+    lookup = {
+        (str(row["attribute"]), str(row["category"]), str(row["policy_period"])): row
+        for row in composition.to_dict(orient="records")
+    }
+
+    rows: list[list[Any]] = []
+    addlinespace_after: set[int] = set()
+    for attribute_idx, attribute in enumerate(SEQUENCE_COMPOSITION_ATTRIBUTES):
+        attr_rows = composition.loc[composition["attribute"].eq(attribute)]
+        if attr_rows.empty:
+            continue
+        attribute_label = str(attr_rows["attribute_label"].dropna().iloc[0])
+        categories = sequence_composition_category_order(composition, attribute)
+        for category_idx, category in enumerate(categories):
+            rows.append(
+                [
+                    attribute_label if category_idx == 0 else "",
+                    display_sequence_category(attribute, category),
+                    *[
+                        format_sequence_composition_cell(
+                            pd.Series(lookup.get((attribute, str(category), period)))
+                            if lookup.get((attribute, str(category), period))
+                            is not None
+                            else None
+                        )
+                        for period in period_codes
+                    ],
+                ]
+            )
+        if attribute_idx < len(SEQUENCE_COMPOSITION_ATTRIBUTES) - 1 and rows:
+            addlinespace_after.add(len(rows) - 1)
+
+    write_latex_grouped_column_table(
+        paths,
+        TABLE_NAMES["sequence_composition_by_policy"],
+        caption=(
+            "Sequence composition by epidemic era and policy period for demographic, socioeconomic, or geographic variables. "
+            "Columns are grouped by epidemic era, with policy-period codes shown as subcolumns. "
+            "Cells report the number and percentage of unique sequences in that policy "
+            "period with the corresponding attribute category. Counts from one to four are "
+            "suppressed and shown as <5."
+        ),
+        short_caption="Sequence composition by epidemic era and policy period",
+        label=TABLE_NAMES["sequence_composition_by_policy"],
+        row_columns=["Attribute", "Category"],
+        column_groups=column_groups,
+        rows=rows,
+        column_spec=f"ll*{{{len(period_codes)}}}{{r}}",
+        addlinespace_after=addlinespace_after,
+    )
+
+
 def write_policy_denominator_table(paths: Paths) -> None:
     denominators = read_table(paths, "window_denominator_contrasts")
     has_sequences = pd.to_numeric(
@@ -445,10 +708,10 @@ def write_cluster_period_table(paths: Paths) -> None:
         TABLE_NAMES["cluster_period_summary"],
         caption=(
             "Summary of Scottish EpiLink clusters stratified by epidemic era and policy "
-            "period. The table denotes sequence memberships and total distinct clusters, "
+            "period. The table reports sequence-window memberships and total distinct clusters, "
             "with non-singleton cluster counts provided in parentheses. Further metrics "
-            "for non-singleton clusters summarize distributions (median; 90th percentile; "
-            "and maximum) for both cluster size and affected Data Zones. Spatial reach "
+            "for non-singleton clusters summarise distributions (median; 90th percentile; "
+            "and maximum) for both cluster size and affected Data Zones. Residential reach "
             "(in kilometers) and temporal span (in days) are reported as medians alongside "
             "their corresponding interquartile ranges."
         ),
@@ -546,8 +809,10 @@ def write_assortativity_summary_table(paths: Paths) -> None:
                 fmt_int(row["n_windows"]),
                 fmt_int(row["n_estimated_windows"]),
                 fmt_float(row["median_n_lineages"], 1),
-                fmt_float(row[mean_col], 4),
-                fmt_ci(row[low_col], row[high_col], 4),
+                (
+                    f"{fmt_float(row[mean_col], 4)} "
+                    f"({fmt_ci(row[low_col], row[high_col], 4)})"
+                ),
                 (
                     f"{fmt_float(row['window_median'], 3)} "
                     f"({fmt_float(row['window_q10'], 3)}--"
@@ -575,9 +840,8 @@ def write_assortativity_summary_table(paths: Paths) -> None:
             "Windows",
             "Est.",
             "Lineages",
-            "Mean r",
-            "95% CI",
-            "Window r",
+            "Mean r (95% CI)",
+            "Window r (10th--90th)",
         ],
         rows=rows,
         column_spec="lrrrrll",
@@ -740,6 +1004,10 @@ def write_simd_population_weighting_table(paths: Paths) -> None:
 
 
 TABLE_WRITERS: tuple[tuple[str, Callable[[Paths], object]], ...] = (
+    (
+        TABLE_NAMES["sequence_composition_by_policy"],
+        write_sequence_composition_by_policy_table,
+    ),
     (TABLE_NAMES["policy_denominators"], write_policy_denominator_table),
     (TABLE_NAMES["cluster_period_summary"], write_cluster_period_table),
     (

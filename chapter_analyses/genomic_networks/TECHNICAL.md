@@ -50,9 +50,9 @@ Run a full build with:
 python -m chapter_analyses.genomic_networks.build_mixing --all-windows --workers 4 --include-giants --giant-workers 1
 ```
 
-Each task reads one pairwise parquet, retains `epilink_compatibility > threshold`, and joins endpoint attributes from the Chapter 4 sequence data. Default attributes are sex, age band, age group, SIMD quintile, urban/rural class, local authority, and Health Board. Pairs with a missing endpoint label are dropped unless `--missing-label` is supplied.
+Each task reads one pairwise parquet, retains `epilink_compatibility > threshold`, and joins endpoint attributes from the Chapter 4 sequence data. Default attributes are sex, age band, age group, SIMD quintile, urban/rural class, local authority, and Health Board. Pairs with a missing endpoint label are dropped attribute-by-attribute unless `--missing-label` is supplied. `n_edges_observed` is the retained compatibility-edge count before attribute missingness filtering; `n_edges_used` is the count used for that attribute after endpoint labels are checked. `--min-edges` keeps rows below the threshold but reports `NaN` estimates with `skipped_reason`.
 
-For each attribute, an undirected edge contributes its weight symmetrically to a category mixing matrix. With the matrix normalised to (e), row/column marginals (a,b), nominal assortativity is:
+For each attribute, an undirected edge contributes its weight symmetrically to a category mixing matrix. With the matrix normalised to `e` and row/column marginals `(a, b)`, nominal assortativity is:
 
 ```text
 r = (trace(e) - sum(a * b)) / (1 - sum(a * b))
@@ -60,27 +60,34 @@ r = (trace(e) - sum(a * b)) / (1 - sum(a * b))
 
 Outputs:
 
-- `compatibility_mixing_matrix.parquet`: category-pair weights, counts, proportions, window, lineage, and pairwise stem;
-- `compatibility_assortativity`: point estimates, same-category weights, contributing edges/categories, and uncertainty;
-- `compatibility_degree_assortativity`: unweighted degree, compatibility-weighted degree, and strength assortativity plus topology summaries.
+- `compatibility_mixing_matrix_bootstrap.parquet`: non-zero source/target category cells by attribute, window, lineage, and pairwise stem;
+- `compatibility_assortativity_bootstrap`: categorical assortativity point estimates, same-category observed/expected weights, edge counts, categories, and bootstrap uncertainty;
+- `compatibility_degree_assortativity_bootstrap`: unweighted degree, compatibility-weighted degree, and strength assortativity plus topology summaries; bootstrap uncertainty is reported for strength assortativity.
 
-### Vertex jackknife
+### Multiplier-bootstrap uncertainty
 
-Uncertainty removes labelled vertices rather than treating incident edges as independent.
+Assortativity uncertainty is estimated with an edge-weight multiplier bootstrap, not a vertex jackknife.
 
-- Up to 1,000 vertices: leave one vertex out.
-- Larger networks: deterministic balanced blocks, capped by `--jackknife-blocks` (default 1,000).
-- Requested block count: `min(cap, max(50, ceil(sqrt(n)), ceil(n/1000)))`.
-- At least five finite replicates are required; `--jackknife-blocks 0` disables uncertainty.
-
-For (K) finite replicate estimates (r_k):
+For each attribute within each window-lineage graph, the observed point estimate is computed once from the retained EpiLink weights. For each bootstrap replicate (b), the original edge weights (w_e) are perturbed by independent exponential multipliers:
 
 ```text
-SE = sqrt((K - 1) / K * sum((r_k - mean(r_k))^2))
-CI = observed r ± 1.96 * SE
+g_be ~ Exponential(1)
+w_be* = w_e * g_be
+r_b* = assortativity(w_be*)
 ```
 
-These intervals measure sensitivity to observed vertices/blocks, not a random-mixing null.
+The default is 500 replicates (`--bootstrap-replicates 500`), a 95% percentile interval (`--bootstrap-alpha 0.05`), and base seed 123 (`--bootstrap-seed 123`). Use `--bootstrap-replicates 0` to skip uncertainty while retaining point estimates. Finite bootstrap replicates are counted in `bootstrap_finite_replicates`; intervals and standard errors are `NaN` if no finite replicate estimates are available.
+
+For (K) finite bootstrap estimates (r_b*):
+
+```text
+SE = sample_sd(r_b*)
+CI = quantile(r_b*, alpha / 2), quantile(r_b*, 1 - alpha / 2)
+```
+
+For categorical assortativity, bootstrap replicates recompute the full weighted category matrix after the attribute-specific missing-label filter. For strength assortativity, each replicate recomputes node strengths from the perturbed weights before recomputing numeric assortativity. The unweighted degree and compatibility-weighted degree assortativity diagnostics are point estimates only.
+
+These intervals describe sensitivity of the edge-weighted statistic to perturbing the retained edge weights. They are not a random-mixing null, do not model unsequenced infections, and do not remove whole vertices or blocks; dependence from shared endpoints, repeated rolling-window sequences, and lineage/window reuse therefore remains an interpretation limit.
 
 ### Scheduling and restart behaviour
 
@@ -89,12 +96,12 @@ The sparse-edge manifest supplies `pairwise_stem` and `sparse_edges`; misses fal
 Each task writes same-stem parquets below:
 
 ```text
-results/intermediate/mixing_matrix/
-results/intermediate/comp_assortativity/
-results/intermediate/deg_assortativity/
+results/intermediate/mixing_matrix_bootstrap/
+results/intermediate/comp_assortativity_bootstrap/
+results/intermediate/deg_assortativity_bootstrap/
 ```
 
-Existing complete chunks are reused unless `--force` is passed. Chunk filenames do not encode configuration, so settings must not be mixed in one intermediate set.
+Existing complete chunks are reused unless `--force` is passed. Chunk filenames do not encode configuration, so settings must not be mixed in one intermediate set. This includes attributes, threshold, missing-label handling, bootstrap settings, minimum-edge filtering, and giant-file inclusion.
 
 ## Sensitivity analyses
 
@@ -133,7 +140,7 @@ sparsification_threshold_sensitivity_summary
 
 Counts below 5 are flagged only in publication-facing composition tables. Raw/internal outputs remain potentially disclosive. Mixing drops missing endpoint labels by default, whereas composition retains a `Missing` level.
 
-Before reporting, record input versions, filters, thresholds, resolutions, windows, attributes, jackknife settings, giant-file inclusion, and any caps/partial scans. Confirm pairwise stems, uncertainty completeness, SIMD diagnostics, disclosure flags, and figure/table provenance.
+Before reporting, record input versions, filters, thresholds, resolutions, windows, attributes, bootstrap settings, minimum-edge filtering, giant-file inclusion, and any caps/partial scans. Confirm pairwise stems, uncertainty completeness, SIMD diagnostics, disclosure flags, and figure/table provenance.
 
 ## Interpretation limits
 

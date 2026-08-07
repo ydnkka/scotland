@@ -9,6 +9,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.lines import Line2D
+from matplotlib.ticker import PercentFormatter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -85,6 +86,7 @@ def plot_variance_decomposition(paths: Paths, vd_long: pd.DataFrame) -> None:
         ax.set_ylabel("")
         ax.set_ylim(*ylim)
         ax.axvline(90, ls="--", color="black", alpha=0.6)
+        ax.xaxis.set_major_formatter(PercentFormatter(xmax=100, decimals=0))
 
     handles, labels = axes[1].get_legend_handles_labels()
     handles.append(Line2D([], [], ls="--", color="black", alpha=0.6))
@@ -107,7 +109,7 @@ def plot_variance_decomposition(paths: Paths, vd_long: pd.DataFrame) -> None:
         color="grey",
     )
 
-    fig.supxlabel("Winsorising percentile")
+    fig.supxlabel("Inverse-variance weight cap percentile")
     fig.supylabel("Fraction of variance explained")
     add_panel_labels(axes)
     styled_save_figure(fig, paths, FIGURE_NAME)

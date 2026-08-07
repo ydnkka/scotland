@@ -35,7 +35,9 @@ python -m chapter_analyses.genomic_networks.build_mixing --windows W080 W081 --w
 python -m chapter_analyses.genomic_networks.build_mixing --all-windows --workers 4
 ```
 
-Files with at least 50,000,000 sparse edges, and files with unknown cost, are giant by default. Use `--include-giants` to process them in the separate `--giant-workers` pool. Same-stem intermediate chunks are reused unless `--force` is supplied; do not reuse them after changing attributes, threshold, missing-value handling, or jackknife settings.
+Files with at least 50,000,000 sparse edges, and files with unknown cost, are giant by default. Use `--include-giants` to process them in the separate `--giant-workers` pool. Same-stem intermediate chunks are reused unless `--force` is supplied; do not reuse them after changing attributes, threshold, missing-value handling, bootstrap settings, or minimum-edge filtering.
+
+Assortativity uncertainty uses an edge-weight multiplier bootstrap by default (`--bootstrap-replicates 500`, `--bootstrap-alpha 0.05`, `--bootstrap-seed 123`). Use `--bootstrap-replicates 0` to skip uncertainty. `--min-edges` keeps below-threshold analyses in the output with `NaN` estimates and a `skipped_reason`.
 
 `build_sensitivity_tables` builds Leiden and sparsification sensitivity families. Select one with `--only leiden` or `--only sparsification`. Row/file caps and partial row-group scans are for development and can change or approximate the estimand.
 
@@ -49,7 +51,7 @@ Files with at least 50,000,000 sparse edges, and files with unknown cost, are gi
 - `build_*.py`: table-building entry points.
 - `make_figures.py`: saved-table figure and LaTeX orchestration.
 - `results/tables/`: final tables.
-- `results/intermediate/`: per-pairwise-file mixing, assortativity, and topology chunks.
+- `results/intermediate/`: per-pairwise-file bootstrap mixing, assortativity, and topology chunks.
 - `results/figures/`: figures and `.tex` fragments.
 
 Compatibility edges are EpiLink-weighted plausible links, not observed transmission. Rolling-window clusters are not persistent outbreak entities.
