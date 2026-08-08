@@ -469,6 +469,8 @@ def _dense_result_to_long_matrix(
         "attribute_label",
         "source_category",
         "target_category",
+        "edge_weight_proportion",
+        "edge_contributions",
     ]
 
     for source_category in matrix.index:
@@ -489,6 +491,8 @@ def _dense_result_to_long_matrix(
                     "attribute_label": attribute.label,
                     "source_category": str(source_category),
                     "target_category": str(target_category),
+                    "edge_weight_proportion": edge_weight_proportion,
+                    "edge_contributions": edge_contributions,
                 }
             )
 

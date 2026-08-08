@@ -2,22 +2,22 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from scipy import stats
 import statsmodels.formula.api as smf
+from scipy import optimize, stats
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from common import ATTRIBUTE_ORDER, Paths, read_table  # noqa: E402
-from utils.data import Paths as DataPaths  # noqa: E402
-from utils.policy import window_policy_lookup  # noqa: E402
+from common import ATTRIBUTE_ORDER, Paths, read_table
 
+from utils.data import Paths as DataPaths
+from utils.policy import window_policy_lookup
 
 MIN_POOL_EDGE_CONTRIBUTIONS = 35
 VARIANCE_WINDSORISE_VALUES = tuple(list(range(0, 100, 5)) + [99])
@@ -73,20 +73,54 @@ def _tau2_pm(y: np.ndarray, v: np.ndarray, tol: float = 1e-8, max_iter: int = 20
 
 
 def _tau2_reml(y: np.ndarray, v: np.ndarray, tol: float = 1e-8, max_iter: int = 500) -> float:
-    """REML via fixed-point iteration (Viechtbauer 2005)."""
-    tau2 = max(_tau2_dl(y, v), 0.0)
-    for _ in range(max_iter):
-        w = 1.0 / (v + tau2)
-        sw = w.sum()
-        mu = np.sum(w * y) / sw
-        num = np.sum(w**2 * ((y - mu) ** 2 - v)) + (1.0 / sw)
-        den = np.sum(w**2)
-        tau2_new = max(0.0, num / den)
-        if abs(tau2_new - tau2) < tol:
-            tau2 = tau2_new
+    """Estimate tau^2 by direct REML profile-likelihood optimisation."""
+    y = np.asarray(y, dtype=float)
+    v = np.asarray(v, dtype=float)
+
+    valid = np.isfinite(y) & np.isfinite(v) & (v > 0)
+    y = y[valid]
+    v = v[valid]
+    if len(y) < 2:
+        return 0.0
+
+    def objective(tau2: float) -> float:
+        sigma2 = v + tau2
+        if np.any(sigma2 <= 0):
+            return float("inf")
+
+        w = 1.0 / sigma2
+        sw = float(w.sum())
+        if not np.isfinite(sw) or sw <= 0:
+            return float("inf")
+
+        mu = float(np.sum(w * y) / sw)
+        q = float(np.sum(w * (y - mu) ** 2))
+        value = float(np.sum(np.log(sigma2)) + np.log(sw) + q)
+        return value if np.isfinite(value) else float("inf")
+
+    upper = max(float(np.var(y, ddof=1)), float(np.max(v)), 1e-10)
+    upper_value = objective(upper)
+    for _ in range(60):
+        next_upper = upper * 2.0
+        next_value = objective(next_upper)
+        if not np.isfinite(next_value) or next_value >= upper_value:
             break
-        tau2 = tau2_new
-    return tau2
+        upper = next_upper
+        upper_value = next_value
+
+    result = optimize.minimize_scalar(
+        objective,
+        bounds=(0.0, upper),
+        method="bounded",
+        options={"xatol": tol, "maxiter": max_iter},
+    )
+
+    candidates = [(0.0, objective(0.0))]
+    if result.success and np.isfinite(result.fun):
+        candidates.append((float(result.x), float(result.fun)))
+
+    tau2, _ = min(candidates, key=lambda item: item[1])
+    return 0.0 if tau2 < tol else float(max(0.0, tau2))
 
 
 _TAU2_ESTIMATORS = {"DL": _tau2_dl, "PM": _tau2_pm, "REML": _tau2_reml}
