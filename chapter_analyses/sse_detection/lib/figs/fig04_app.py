@@ -36,19 +36,87 @@ APP_OUTCOMES = (
 )
 APP_TERM_TYPES = ["continuous_adjuster", "random_intercept"]
 MIXING_SCALES = ["null_standardised", "observed"]
+VALUE_COLUMNS = ["plot_estimate", "plot_hdi95_low", "plot_hdi95_high"]
 
 
 def _load_mixing_table(paths: Paths) -> pd.DataFrame:
-    return _consolidated_table(paths, "mixing_linear_consolidated_results")
+    return pd.concat(
+        [
+            _consolidated_table(paths, "mixing_logistic_consolidated_results"),
+            _consolidated_table(paths, "mixing_linear_consolidated_results"),
+        ],
+        ignore_index=True,
+    )
 
 
 def _load_composition_table(paths: Paths) -> pd.DataFrame:
-    return _consolidated_table(paths, "composition_linear_consolidated_results")
+    return pd.concat(
+        [
+            _consolidated_table(paths, "composition_logistic_consolidated_results"),
+            _consolidated_table(paths, "composition_linear_consolidated_results"),
+        ],
+        ignore_index=True,
+    )
+
+
+def _complete_plot_rows(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    out[VALUE_COLUMNS] = out[VALUE_COLUMNS].apply(pd.to_numeric, errors="coerce")
+    return out.dropna(subset=["plot_label", "plot_variable_order", *VALUE_COLUMNS])
+
+
+def _mixing_label_order(df: pd.DataFrame) -> list[str]:
+    outcomes = [outcome for outcome, _ in APP_OUTCOMES]
+    work = df.loc[
+        df["outcome"].isin(outcomes)
+        & df["plot_term_type"].isin(APP_TERM_TYPES)
+        & df["plot_scale"].isin(MIXING_SCALES)
+    ].copy()
+    work = _complete_plot_rows(work)
+    labels = (
+        work[["plot_label", "plot_variable_order"]]
+        .drop_duplicates()
+        .assign(
+            plot_variable_order=lambda x: pd.to_numeric(
+                x["plot_variable_order"], errors="coerce"
+            )
+        )
+        .dropna(subset=["plot_variable_order"])
+        .sort_values(["plot_variable_order", "plot_label"])
+        .drop_duplicates(subset=["plot_label"])
+    )
+    return labels["plot_label"].astype(str).tolist()
+
+
+def _composition_label_order(df: pd.DataFrame) -> list[str]:
+    outcomes = [outcome for outcome, _ in APP_OUTCOMES]
+    work = df.loc[
+        df["outcome"].isin(outcomes)
+        & df["plot_term_type"].isin(APP_TERM_TYPES)
+        & ~df["plot_label"].isin(OUTLIER_LABELS)
+    ].copy()
+    work = _complete_plot_rows(work)
+    labels = (
+        work[["plot_label", "plot_panel", "plot_variable_order", "plot_level_order"]]
+        .drop_duplicates()
+        .assign(
+            plot_variable_order=lambda x: pd.to_numeric(
+                x["plot_variable_order"], errors="coerce"
+            )
+        )
+        .dropna(subset=["plot_variable_order"])
+        .sort_values(
+            ["plot_panel", "plot_variable_order", "plot_level_order", "plot_label"]
+        )
+        .drop_duplicates(subset=["plot_label"])
+    )
+    return labels["plot_label"].astype(str).tolist()
 
 
 def build_mixing(paths: Paths) -> dict[str, object]:
     """Create the appendix forest plot for mixing adjusters and random effects."""
     mixing_linear = _load_mixing_table(paths)
+    label_order = _mixing_label_order(mixing_linear)
 
     fig, axes = new_figure(
         nrows=1,
@@ -65,10 +133,12 @@ def build_mixing(paths: Paths) -> dict[str, object]:
             outcome=outcome,
             plot_scale=MIXING_SCALES,
             term_type=APP_TERM_TYPES,
+            label_order=label_order,
         )
         ax.set_title(label)
         ax.grid(axis="x", color="#E6E6E6", lw=0.6)
 
+    axes[0].set_xlabel("Multiplicative odds")
     add_panel_labels(axes)
     _finish_legend(fig, axes, ncol=4, y=0.01)
     outputs = styled_save_figure(fig, paths, FIGURE_NAME["mixing"])
@@ -84,6 +154,7 @@ def build_mixing(paths: Paths) -> dict[str, object]:
 def build_composition(paths: Paths) -> dict[str, object]:
     """Create the appendix forest plot for composition adjusters and random effects."""
     composition_linear = _load_composition_table(paths)
+    label_order = _composition_label_order(composition_linear)
 
     fig, axes = new_figure(
         nrows=1,
@@ -100,10 +171,13 @@ def build_composition(paths: Paths) -> dict[str, object]:
             outcome=outcome,
             term_type=APP_TERM_TYPES,
             exclude=OUTLIER_LABELS,
+            label_order=label_order,
         )
         ax.set_title(label)
         ax.grid(axis="x", color="#E6E6E6", lw=0.6)
 
+    axes[0].set_xscale("log")
+    axes[0].set_xlabel("Multiplicative odds (log scale)")
     add_panel_labels(axes)
     _finish_legend(fig, axes, ncol=2, y=0.015)
     outputs = styled_save_figure(fig, paths, FIGURE_NAME["composition"])

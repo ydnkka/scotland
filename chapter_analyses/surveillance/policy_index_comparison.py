@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import matplotlib.dates as mdates
 import numpy as np
@@ -14,20 +14,18 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from chapter_analyses.surveillance.lib.config import (  # noqa: E402
+from chapter_analyses.surveillance.lib.config import (
     FIGURES_DIR,
     POLICY_INDEX_FIGURE_NAME,
     TABLES_DIR,
 )
-from chapter_analyses.surveillance.lib.io import write_table  # noqa: E402
-
-from utils import (  # noqa: E402
+from chapter_analyses.surveillance.lib.io import write_table
+from utils import (
     add_panel_labels,
     load_daily_policy_data,
     new_figure,
     save_figure,
 )
-
 
 LOGGER = logging.getLogger(__name__)
 STRINGENCY_COLOR = "#2166ac"

@@ -7,6 +7,7 @@ rolling-window stride used by the notebooks.
 
 from __future__ import annotations
 
+import colorsys
 from collections.abc import Iterable
 from collections.abc import Iterable as IterableABC
 from dataclasses import dataclass
@@ -16,9 +17,11 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import yaml
+from matplotlib.colors import to_hex, to_rgb
 
 __all__ = [
     "CLADES",
+    "CLADES_DATA",
     "CLADE_PALETTE",
     "load_analysis_columns",
     "load_daily_policy_data",
@@ -69,36 +72,139 @@ SIMD_COMPUTED_GROUP_COLUMNS: set[str] = set(SIMD_GROUP_COLUMNS) - set(
     SIMD_BASE_GROUP_COLUMNS
 )
 
-CLADES: dict[str, str] = {
-    "20B": "20B",
-    "20A": "20A",
-    "20E": "20E (EU1)",
-    "20I": "20I (Alpha)",
-    "21K": "21K (Omicron)",
-    "21J": "21J (Delta)",
-    "21I": "21I (Delta)",
-    "21L": "21L (Omicron)",
-    "22B": "22B (Omicron)",
-    "22A": "22A (Omicron)",
-    "22C": "22C (Omicron)",
-    "22E": "22E (Omicron)",
+# Clade counts in the processed analysis dataset
+CLADES_DATA = pd.DataFrame(
+    [
+        ("21J", "Delta", 98_712),
+        ("21L", "Omicron", 96_878),
+        ("21K", "Omicron", 68_239),
+        ("20I", "Alpha", 27_129),
+        ("22B", "Omicron", 14_390),
+        ("20E", "Unknown", 6_404),
+        ("22A", "Omicron", 2_173),
+        ("22E", "Omicron", 2_051),
+        ("20B", "Unknown", 1_336),
+        ("22C", "Omicron", 1_234),
+        ("20A", "Unknown", 836),
+        ("21I", "Delta", 801),
+        ("recombinant", "Recombinant", 615),
+        ("22D", "Omicron", 519),
+        ("21A", "Delta", 264),
+        ("23C", "Omicron", 261),
+        ("23A", "Unknown", 232),
+        ("22F", "Unknown", 109),
+        ("20D", "Unknown", 43),
+        ("19B", "Unknown", 38),
+        ("20H", "Beta", 30),
+        ("21D", "Eta", 27),
+        ("20C", "Unknown", 21),
+        ("20J", "Gamma", 13),
+        ("23D", "Unknown", 3),
+        ("21M", "Omicron", 3),
+        ("20G", "Unknown", 2),
+        ("21H", "Mu", 1),
+        ("21B", "Kappa", 1),
+        ("19A", "Unknown", 1),
+    ],
+    columns=["clade", "who_voc", "count"],
+)
+
+CLADES = (
+    CLADES_DATA.assign(label=lambda x: x["clade"] + " (" + x["who_voc"] + ")")
+    .set_index("clade")["label"]
+    .to_dict()
+)
+
+CLADES["recombinant"] = "Recombinant"
+
+WHO_VOC_COLOURS: dict[str, str] = {
+    "Alpha": "#0072B2",
+    "Beta": "#D55E00",
+    "Gamma": "#009E73",
+    "Delta": "#CC79A7",
+    "Omicron": "#E69F00",
+    "Eta": "#56B4E9",
+    "Mu": "#F0E442",
+    "Kappa": "#882255",
+    "Recombinant": "#000000",
+    "Unknown": "#BBBBBB",
 }
 
-CLADE_PALETTE: dict[str, str] = {
-    "20A": "#4477AA",
-    "20B": "#66CCEE",
-    "20E (EU1)": "#EE6677",
-    "20I (Alpha)": "#117733",
-    "21I (Delta)": "#AA3377",
-    "21J (Delta)": "#CCBB44",
-    "21K (Omicron)": "#63A227",
-    "21L (Omicron)": "#BBBBBB",
-    "22A (Omicron)": "#777777",
-    "22B (Omicron)": "#EE7733",
-    "22C (Omicron)": "#882255",
-    "22E (Omicron)": "#332288",
-    "Other": "#DDDDDD",
+WHO_VOC_COLOURS = {
+    voc: WHO_VOC_COLOURS[voc]
+    for voc in CLADES_DATA["who_voc"].unique()
+    if voc in WHO_VOC_COLOURS
 }
+
+
+def adjust_lightness(
+    hex_colour: str,
+    amount: float,
+) -> str:
+    """
+    amount < 1  -> darker
+    amount = 1  -> unchanged
+    amount > 1  -> lighter
+    """
+
+    r, g, b = to_rgb(hex_colour)
+
+    h, l, s = colorsys.rgb_to_hls(r, g, b)
+
+    if amount < 1:
+        l *= amount
+    else:
+        l += (1 - l) * (amount - 1)
+
+    l = np.clip(l, 0, 1)
+
+    return to_hex(colorsys.hls_to_rgb(h, l, s))
+
+
+def generate_clade_palette(
+    df: pd.DataFrame,
+) -> dict[str, str]:
+
+    palette = {}
+
+    for voc, group in df.groupby("who_voc", sort=False):
+        base_colour = WHO_VOC_COLOURS[str(voc)]
+
+        # Log abundance prevents very rare clades from
+        # becoming visually indistinguishable.
+        log_count = np.log10(group["count"].clip(lower=1))
+
+        if log_count.max() == log_count.min():
+            intensity = np.full(
+                len(group),
+                0.80,
+            )
+
+        else:
+            scaled = (log_count - log_count.min()) / (log_count.max() - log_count.min())
+
+            # High abundance = darker
+            # Low abundance  = lighter
+            intensity = 1.35 - 0.65 * scaled
+
+        for clade, value in zip(
+            group["clade"],
+            intensity,
+        ):
+            palette[clade] = adjust_lightness(
+                base_colour,
+                float(value),
+            )
+
+    return palette
+
+
+CLADE_PALETTE = generate_clade_palette(CLADES_DATA)
+
+
+CLADES_DATA["label"] = CLADES_DATA["clade"].map(CLADES)
+
+CLADES_DATA["colour"] = CLADES_DATA["clade"].map(CLADE_PALETTE)
 
 
 def repo_root(start: Path | None = None) -> Path:
@@ -123,7 +229,7 @@ class Paths:
     policy: Path
 
     @classmethod
-    def from_config(cls, root: Path | None = None) -> "Paths":
+    def from_config(cls, root: Path | None = None) -> Paths:
         root = root or repo_root()
 
         with open(root / "config.yaml") as f:
@@ -212,7 +318,8 @@ def _normalise_clades(
         return None
 
     display_to_raw = {display: raw for raw, display in CLADES.items()}
-    return [display_to_raw.get(value, value) for value in values]
+    # Ensure returned items are strings to satisfy the declared return type
+    return [str(display_to_raw.get(value, value)) for value in values]
 
 
 def _normalise_window_ids(
@@ -471,7 +578,7 @@ def load_analysis_columns(
     ----------
     columns:
         Names of columns to read. ``sequence_id``, ``collection_date``, and
-        ``pango_lineage`` are added automatically. ``resolution`` is 
+        ``pango_lineage`` are added automatically. ``resolution`` is
         also added automatically when filtering is used.
     all_cols:
         If True, ignore ``columns`` and read all columns.

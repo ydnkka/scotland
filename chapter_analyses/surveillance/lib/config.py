@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 PACKAGE_DIR = PROJECT_ROOT / "chapter_analyses/surveillance"
 RESULTS_DIR = PACKAGE_DIR / "results"

@@ -1077,6 +1077,8 @@ def _add_plot_columns(
     out["plot_estimate"] = out.get(estimate_col, pd.NA)
     out["plot_hdi95_low"] = out.get(lower_col, pd.NA)
     out["plot_hdi95_high"] = out.get(upper_col, pd.NA)
+    if family == "logistic":
+        _set_multiplicative_odds_plot_values(out)
     out["plot_reference_value"] = 1.0 if family == "logistic" else 0.0
 
     for column in _plot_metadata_columns(domain):
@@ -1296,6 +1298,23 @@ def _plot_effect_columns(family: Family) -> tuple[str, str, str]:
     if family == "logistic":
         return "OR_mean", "OR_hdi95_lb", "OR_hdi95_ub"
     return "mean", "hdi95_lb", "hdi95_ub"
+
+
+def _set_multiplicative_odds_plot_values(out: pd.DataFrame) -> None:
+    """Use exponentiated log-scale summaries for logistic random-effect plots."""
+    mask = out["parameter_type"].isin(
+        {"intercept", "random_intercept", "random_effect_sd"}
+    )
+    if not mask.any():
+        return
+    for source, target in (
+        ("mean", "plot_estimate"),
+        ("hdi95_lb", "plot_hdi95_low"),
+        ("hdi95_ub", "plot_hdi95_high"),
+    ):
+        out.loc[mask, target] = np.exp(
+            pd.to_numeric(out.loc[mask, source], errors="coerce")
+        )
 
 
 def _plot_model_kind(model_set: Any) -> Any:

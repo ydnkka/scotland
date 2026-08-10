@@ -4,6 +4,7 @@ from . import data, latex_tables, policy, style
 from .data import (
     CLADE_PALETTE,
     CLADES,
+    CLADES_DATA,
     PRIMARY_RESOLUTION,
     load_analysis_columns,
     load_daily_policy_data,
@@ -55,6 +56,7 @@ from .style import (
 
 __all__ = [
     "CLADES",
+    "CLADES_DATA",
     "CLADE_PALETTE",
     "CONTEXTS",
     "DEFAULT_HEIGHT_IN",

@@ -19,26 +19,25 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from chapter_analyses.surveillance.lib.config import (  # noqa: E402
+from chapter_analyses.surveillance.lib.config import (
     DAILY_SMOOTH_WINDOW,
     FIGURE_NAME,
     FIGURES_DIR,
     SEQUENCE_WINDOW_STRIDE,
     TABLES_DIR,
 )
-from chapter_analyses.surveillance.lib.io import write_table  # noqa: E402
-
-from utils import (  # noqa: E402
-    CLADES,
+from chapter_analyses.surveillance.lib.io import write_table
+from utils import (
     CLADE_PALETTE,
+    CLADES,
+    add_panel_labels,
     attach_policy_calendar,
-    set_theme,
     load_analysis_columns,
     load_policy_calendar,
-    add_panel_labels,
     new_figure,
-    save_figure,
     policy_era_labels,
+    save_figure,
+    set_theme,
 )
 
 POLICY_STRINGENCY_CMAP = plt.get_cmap("RdYlGn_r")
@@ -47,6 +46,9 @@ POLICY_STRINGENCY_NORM = colors.Normalize(
     vmax=100,
 )
 LOGGER = logging.getLogger(__name__)
+OTHER_CLADE_LABEL = "Other"
+OTHER_CLADE_COLOUR = "white"
+FALLBACK_CLADE_COLOUR = "#999999"
 
 
 POLICY_ERA_LABELS = policy_era_labels()
@@ -102,6 +104,123 @@ POLICY_ERAS = (
     .reset_index()
     .sort_values("era_order", ignore_index=True)
 )
+
+
+def _clade_palette_for_plot() -> dict[str, str]:
+    """Return a palette accepting raw clade IDs and display labels."""
+    palette = dict(CLADE_PALETTE)
+    palette.update(
+        {
+            CLADES.get(clade, clade): colour
+            for clade, colour in CLADE_PALETTE.items()
+        }
+    )
+    palette[OTHER_CLADE_LABEL] = OTHER_CLADE_COLOUR
+    return palette
+
+
+def _ordered_clade_groups(observed_groups: pd.Index) -> list:
+    """Order observed clade groups using the shared raw-clade palette order."""
+    observed = {group for group in observed_groups if pd.notna(group)}
+    clade_order = []
+
+    for raw_clade in CLADE_PALETTE:
+        for group in dict.fromkeys([raw_clade, CLADES.get(raw_clade, raw_clade)]):
+            if group in observed and group not in clade_order:
+                clade_order.append(group)
+
+    remaining = sorted(
+        observed - set(clade_order) - {OTHER_CLADE_LABEL},
+        key=str,
+    )
+    clade_order.extend(remaining)
+
+    if OTHER_CLADE_LABEL in observed:
+        clade_order.append(OTHER_CLADE_LABEL)
+
+    return clade_order
+
+
+def _legend_items_by_first_appearance(
+    stack_handles: list,
+    clade_order: list,
+    first_appearance: pd.Series,
+) -> tuple[list, list]:
+    """Return stackplot legend items ordered by first observed collection date."""
+    legend_items = []
+    for position, (handle, clade) in enumerate(zip(stack_handles, clade_order)):
+        if clade == OTHER_CLADE_LABEL:
+            continue
+
+        first_date = first_appearance.get(clade, pd.Timestamp.max)
+        if pd.isna(first_date):
+            first_date = pd.Timestamp.max
+
+        legend_items.append((first_date, position, handle, clade))
+
+    legend_items.sort(key=lambda item: (item[0], item[1]))
+    return [item[2] for item in legend_items], [item[3] for item in legend_items]
+
+
+def _overall_clade_proportions(
+    df: pd.DataFrame,
+    *,
+    clade_col: str,
+    sequence_col: str,
+    clade_order: list,
+) -> pd.Series:
+    """Return overall unique-sequence proportions by clade group."""
+    counts = (
+        df.groupby(clade_col, sort=False)[sequence_col]
+        .nunique()
+        .reindex(clade_order, fill_value=0)
+    )
+    total = counts.sum()
+    if total == 0:
+        return counts.astype(float)
+
+    return counts / total
+
+
+def _add_overall_clade_stackbar(
+    ax: Axes,
+    proportions: pd.Series,
+    *,
+    clade_order: list,
+    clade_palette: dict[str, str],
+) -> Axes:
+    """Add a thin side panel showing overall clade composition."""
+    bar_ax = ax.inset_axes((1.015, 0.0, 0.03, 1.0), transform=ax.transAxes)
+    bar_ax.set_facecolor("white")
+
+    bottom = 0.0
+    for clade in clade_order:
+        proportion = float(proportions.get(clade, 0.0))
+        if proportion <= 0:
+            continue
+
+        bar_ax.bar(
+            0,
+            proportion,
+            bottom=bottom,
+            width=0.9,
+            color=clade_palette.get(clade, FALLBACK_CLADE_COLOUR),
+            edgecolor="white",
+            linewidth=0.35,
+        )
+        bottom += proportion
+
+    bar_ax.set_ylim(0, 1)
+    bar_ax.set_xlim(-0.5, 0.5)
+    bar_ax.set_xticks([])
+    bar_ax.set_yticks([])
+    bar_ax.set_title("Overall", pad=2, fontsize=plt.rcParams["font.size"] * 0.8)
+    for spine in bar_ax.spines.values():
+        spine.set_visible(True)
+        spine.set_color("#666666")
+        spine.set_linewidth(0.4)
+
+    return bar_ax
 
 
 def build_daily_sequence_counts(
@@ -384,7 +503,10 @@ def add_policy_stringency_colorbar(
             try:
                 outline.set_lw(0.4)
             except Exception:
-                pass
+                LOGGER.debug(
+                    "Could not set colorbar outline linewidth",
+                    exc_info=True,
+                )
     return cax
 
 
@@ -545,7 +667,7 @@ def plot_lineage_frequency_and_overtakes(
         .fillna(0)
         .sort_index()
     )
-    clade_order = [clade for clade in CLADE_PALETTE if clade in clade_freq.columns]
+    clade_order = _ordered_clade_groups(pd.Index(clade_freq.columns))
 
     clade_freq = clade_freq.reindex(columns=clade_order)
 
@@ -584,9 +706,9 @@ def plot_lineage_frequency_and_overtakes(
     )
 
     ax.set_facecolor("white")
+    clade_palette = _clade_palette_for_plot()
     stack_colors = [
-        "white" if clade == "Other" else CLADE_PALETTE.get(clade, "#999999")
-        for clade in clade_order
+        clade_palette.get(clade, FALLBACK_CLADE_COLOUR) for clade in clade_order
     ]
     stack_handles = ax.stackplot(
         plot_freq.index,
@@ -611,10 +733,25 @@ def plot_lineage_frequency_and_overtakes(
 
     configure_date_axis(ax, dd[date_col])
 
-    legend_handles = [
-        handle for handle, clade in zip(stack_handles, clade_order) if clade != "Other"
-    ]
-    legend_labels = [clade for clade in clade_order if clade != "Other"]
+    first_appearance = dd.groupby(clade_col, sort=False)[date_col].min()
+    overall_proportions = _overall_clade_proportions(
+        dd,
+        clade_col=clade_col,
+        sequence_col=sequence_col,
+        clade_order=clade_order,
+    )
+    _add_overall_clade_stackbar(
+        ax,
+        overall_proportions,
+        clade_order=clade_order,
+        clade_palette=clade_palette,
+    )
+
+    legend_handles, legend_labels = _legend_items_by_first_appearance(
+        stack_handles,
+        clade_order,
+        first_appearance,
+    )
     if legend_ax is not None:
         legend_ax.axis("off")
         legend_ax.legend(
@@ -712,9 +849,9 @@ def main() -> int:
     fig.legend(
         legend_handles,
         legend_labels,
-        ncol=4,
+        ncol=5,
         loc="lower center",
-        bbox_to_anchor=(0.5, -0.05),
+        bbox_to_anchor=(0.5, -0.12),
         bbox_transform=fig.transFigure,
         frameon=False,
         columnspacing=2,

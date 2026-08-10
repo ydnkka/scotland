@@ -44,6 +44,7 @@ def plot_mixing_forest(
     model_kinds: str | tuple[str, str] | None = None,
     offset: float = 0.16,
     exclude: list[str] | None = None,
+    label_order: Sequence[str] | None = None,
 ):
     """
     Forest plot for consolidated mixing results.
@@ -171,18 +172,27 @@ def plot_mixing_forest(
             )
 
     # plot_variable_order is a group order, not a unique y-position.
-    tick_df = (
-        df[["plot_label", "plot_variable_order"]]
-        .drop_duplicates()
-        .assign(
-            plot_variable_order=lambda x: pd.to_numeric(
-                x["plot_variable_order"], errors="coerce"
+    if label_order is None:
+        tick_df = (
+            df[["plot_label", "plot_variable_order"]]
+            .drop_duplicates()
+            .assign(
+                plot_variable_order=lambda x: pd.to_numeric(
+                    x["plot_variable_order"], errors="coerce"
+                )
             )
+            .dropna(subset=["plot_variable_order"])
+            .sort_values(["plot_variable_order", "plot_label"])
+            .reset_index(drop=True)
         )
-        .dropna(subset=["plot_variable_order"])
-        .sort_values(["plot_variable_order", "plot_label"])
-        .reset_index(drop=True)
-    )
+    else:
+        labels = list(dict.fromkeys(str(label) for label in label_order))
+        extras = [
+            label
+            for label in sorted(df["plot_label"].dropna().astype(str).unique())
+            if label not in labels
+        ]
+        tick_df = pd.DataFrame({"plot_label": [*labels, *extras]})
 
     if tick_df.empty:
         raise ValueError("No valid plot labels/order values remain.")
@@ -294,6 +304,7 @@ def plot_composition_forest(
     label_col: str = "plot_label",
     offset: float = 0.16,
     exclude: list[str] | None = None,
+    label_order: Sequence[str] | None = None,
 ):
     df = df.copy()
 
@@ -308,11 +319,11 @@ def plot_composition_forest(
         "plot_variable",
         "plot_panel",
         "plot_variable_order",
+        "plot_estimate",
+        "plot_hdi95_low",
+        "plot_hdi95_high",
         "plot_reference_value",
         label_col,
-        "mean",
-        "hdi95_lb",
-        "hdi95_ub",
     }
     missing = sorted(required - set(df.columns))
     if missing:
@@ -361,22 +372,12 @@ def plot_composition_forest(
     reference = float(reference_values[0]) if len(reference_values) else 0.0
     logistic_scale = np.isclose(reference, 1.0)
 
-    # Use log-scale posterior columns for logistic OR plotting to avoid
-    # rounded OR_hdi columns where OR_mean can fall outside rounded HDI bounds.
-    for col in ["mean", "hdi95_lb", "hdi95_ub"]:
+    value_cols = ["plot_estimate", "plot_hdi95_low", "plot_hdi95_high"]
+    for col in value_cols:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    if logistic_scale:
-        df["_estimate"] = np.exp(df["mean"])
-        df["_low"] = np.exp(df["hdi95_lb"])
-        df["_high"] = np.exp(df["hdi95_ub"])
-    else:
-        df["_estimate"] = df["mean"]
-        df["_low"] = df["hdi95_lb"]
-        df["_high"] = df["hdi95_ub"]
-
     df = df.dropna(
-        subset=[label_col, "plot_variable_order", "_estimate", "_low", "_high"]
+        subset=[label_col, "plot_variable_order", *value_cols]
     ).copy()
 
     if df.empty:
@@ -399,27 +400,36 @@ def plot_composition_forest(
                 "Filter more specifically, or use label_col='plot_contrast_label'."
             )
 
-    sort_cols = ["plot_panel", "plot_variable_order"]
-    if "plot_level_order" in df.columns:
-        sort_cols.append("plot_level_order")
-    sort_cols.append(label_col)
+    if label_order is None:
+        sort_cols = ["plot_panel", "plot_variable_order"]
+        if "plot_level_order" in df.columns:
+            sort_cols.append("plot_level_order")
+        sort_cols.append(label_col)
 
-    tick_cols = [label_col, "plot_panel", "plot_variable_order"]
-    if "plot_level_order" in df.columns:
-        tick_cols.append("plot_level_order")
+        tick_cols = [label_col, "plot_panel", "plot_variable_order"]
+        if "plot_level_order" in df.columns:
+            tick_cols.append("plot_level_order")
 
-    tick_df = (
-        df[tick_cols]
-        .drop_duplicates()
-        .assign(
-            plot_variable_order=lambda x: pd.to_numeric(
-                x["plot_variable_order"], errors="coerce"
+        tick_df = (
+            df[tick_cols]
+            .drop_duplicates()
+            .assign(
+                plot_variable_order=lambda x: pd.to_numeric(
+                    x["plot_variable_order"], errors="coerce"
+                )
             )
+            .dropna(subset=["plot_variable_order"])
+            .sort_values(sort_cols)
+            .reset_index(drop=True)
         )
-        .dropna(subset=["plot_variable_order"])
-        .sort_values(sort_cols)
-        .reset_index(drop=True)
-    )
+    else:
+        labels = list(dict.fromkeys(str(label) for label in label_order))
+        extras = [
+            label
+            for label in sorted(df[label_col].dropna().astype(str).unique())
+            if label not in labels
+        ]
+        tick_df = pd.DataFrame({label_col: [*labels, *extras]})
 
     n_rows = len(tick_df)
     tick_df["_y"] = list(range(n_rows - 1, -1, -1))
@@ -441,15 +451,15 @@ def plot_composition_forest(
             continue
 
         y = sub[label_col].map(label_to_y).astype(float) + shifts[i]
-        lower_err = sub["_estimate"] - sub["_low"]
-        upper_err = sub["_high"] - sub["_estimate"]
+        lower_err = sub["plot_estimate"] - sub["plot_hdi95_low"]
+        upper_err = sub["plot_hdi95_high"] - sub["plot_estimate"]
 
         # Tiny negatives can still happen from floating point only.
         lower_err = lower_err.clip(lower=0)
         upper_err = upper_err.clip(lower=0)
 
         ax.errorbar(
-            x=sub["_estimate"],
+            x=sub["plot_estimate"],
             y=y,
             xerr=[lower_err, upper_err],
             fmt=markers[i % len(markers)],
