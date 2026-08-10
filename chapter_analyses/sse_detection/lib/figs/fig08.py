@@ -1,14 +1,14 @@
-"""Build Chapter 5 Figure 8: transition graph diagnostics and selection flow."""
+"""Build Chapter 5 Figure 8: transition graph diagnostics and role counts."""
 
 from __future__ import annotations
 
 import argparse
-from textwrap import fill
 
 import numpy as np
 import pandas as pd
+from matplotlib.colors import to_rgb
+from matplotlib.patches import Rectangle
 
-from ..sse.config import MIN_CLUSTER_SIZE
 from ..sse.io import write_table
 from .common import (
     Paths,
@@ -38,28 +38,46 @@ PREFERRED_ROLES = [
     "Other",
 ]
 
+INCOMING_LABELS = ["No incoming", "One incoming", "Multiple incoming"]
+OUTGOING_LABELS = ["No outgoing", "One outgoing", "Multiple outgoing"]
+ROLE_GRID = [
+    ("Isolated", 0, 0),
+    ("Source", 0, 1),
+    ("Branching source", 0, 2),
+    ("Sink", 1, 0),
+    ("Linear continuation", 1, 1),
+    ("Internal branching", 1, 2),
+    ("Merging sink", 2, 0),
+    ("Internal merging", 2, 1),
+    ("Merge and branch", 2, 2),
+]
 
-def build_selection_funnel(nodes: pd.DataFrame) -> pd.DataFrame:
-    tier = nodes["candidate_tier"]
-    rows = [
-        ("All transition-network clusters", len(nodes)),
-        (
-            f"Size eligible (cluster size ≥ {MIN_CLUSTER_SIZE})",
-            int(nodes["sse_tested"].fillna(False).sum()),
-        ),
-        (
-            "Background or low information",
-            int(tier.eq("background_or_low_information").sum()),
-        ),
-        ("Possible review", int(tier.eq("possible_review").sum())),
-        ("High-priority local burst", int(tier.eq("high_priority_burst").sum())),
-        ("High-priority onward burden", int(tier.eq("high_priority_burden").sum())),
-        ("High priority on both axes", int(tier.eq("high_priority_both_axes").sum())),
-    ]
-    out = pd.DataFrame(rows, columns=["stage", "n"])
-    out["order"] = np.arange(len(out))
-    out["pct_all"] = out["n"] / len(nodes)
-    return out
+
+def _degree_mask(degree: pd.Series, level: int) -> pd.Series:
+    if level == 0:
+        return degree.eq(0)
+    if level == 1:
+        return degree.eq(1)
+    return degree.gt(1)
+
+
+def build_role_count_grid(nodes: pd.DataFrame) -> pd.DataFrame:
+    in_degree = pd.to_numeric(nodes["in_degree"], errors="coerce").fillna(0)
+    out_degree = pd.to_numeric(nodes["out_degree"], errors="coerce").fillna(0)
+    rows = []
+    for role, row, col in ROLE_GRID:
+        mask = _degree_mask(in_degree, row) & _degree_mask(out_degree, col)
+        rows.append(
+            {
+                "incoming": INCOMING_LABELS[row],
+                "outgoing": OUTGOING_LABELS[col],
+                "role_group": role,
+                "row": row,
+                "col": col,
+                "n": int(mask.sum()),
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 def build_transition_context(
@@ -144,40 +162,63 @@ def draw_component_size_distribution(ax, components: pd.DataFrame) -> None:
     ax.set_ylabel("Pr(component size >= x)")
 
 
-def draw_selection_funnel(ax, table: pd.DataFrame) -> None:
-    colors = [
-        "#4C78A8",
-        "#72A0C1",
-        "#B8B8B8",
-        "#E6AB02",
-        "#D55E00",
-        "#0072B2",
-        "#7B3294",
-    ]
-    y = np.arange(len(table))[::-1]
-    bars = ax.barh(y, table["n"], color=colors)
-    ax.set_xscale("log")
-    ax.set_yticks(y, [fill(stage, width=18) for stage in table["stage"]])
-    ax.set_xlabel("Clusters (log scale)")
-    for bar, value in zip(bars, table["n"]):
-        label_x = max(value, 0.8) * 1.12 if value > 0 else 35
-        ax.text(
-            label_x,
-            bar.get_y() + bar.get_height() / 2,
-            f"{int(value):,}",
-            va="center",
+def _contrast_text_color(color: str) -> str:
+    red, green, blue = to_rgb(color)
+    luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
+    return "#ffffff" if luminance < 0.48 else "#222222"
+
+
+def draw_role_count_grid(ax, table: pd.DataFrame) -> None:
+    for row in table.itertuples(index=False):
+        y0 = 2 - row.row
+        color = ROLE_COLORS.get(row.role_group, "#bab0ac")
+        ax.add_patch(
+            Rectangle(
+                (row.col + 0.03, y0 + 0.04),
+                0.94,
+                0.86,
+                facecolor=color,
+                edgecolor="white",
+                lw=1.0,
+                zorder=0,
+            )
         )
+        ax.text(
+            row.col + 0.50,
+            y0 + 0.47,
+            f"{int(row.n):,}",
+            ha="center",
+            va="center",
+            color=_contrast_text_color(color),
+            fontweight="bold",
+            fontsize=11,
+        )
+
+    for col, label in enumerate(OUTGOING_LABELS):
+        ax.text(
+            col + 0.5,
+            3.06,
+            label.replace(" ", "\n"),
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            linespacing=0.9,
+        )
+    for row, label in enumerate(INCOMING_LABELS):
+        ax.text(-0.08, 2.47 - row, label, ha="right", va="center", fontsize=9)
+
+    ax.set_xlim(-0.48, 3.02)
+    ax.set_ylim(-0.03, 3.34)
+    ax.set_axis_off()
 
 
 def build(paths: Paths) -> dict[str, object]:
     transition_window = read_table(paths, "transition_window_summary")
     transition_nodes = read_table(paths, "transition_node_table")
     components = read_table(paths, "transition_component_summary")
-    clusters = read_table(paths, "cluster_table")
 
-    table = build_selection_funnel(clusters)
+    table = build_role_count_grid(transition_nodes)
     write_table(table, paths.result_table_dir, f"tab_{FILE_NAME}")
-    table = table.sort_values("order")
 
     window, policy_context, role_pivot = build_transition_context(
         transition_window, transition_nodes
@@ -186,15 +227,15 @@ def build(paths: Paths) -> dict[str, object]:
     fig, axes = new_figure(
         nrows=2,
         ncols=2,
-        width="double", 
-        height_in=6, 
-        constrained_layout=True
+        width="double",
+        height_in=6,
+        constrained_layout=True,
     )
 
     draw_transition_counts(axes[0, 0], window, policy_context)
     draw_component_size_distribution(axes[0, 1], components)
     draw_role_distribution(axes[1, 0], role_pivot, policy_context)
-    draw_selection_funnel(axes[1, 1], table)
+    draw_role_count_grid(axes[1, 1], table)
 
     add_panel_labels(axes.ravel())
     outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}")

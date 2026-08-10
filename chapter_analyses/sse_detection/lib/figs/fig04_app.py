@@ -30,6 +30,7 @@ FIGURE_NAME = {
     "composition": "fig_ch5_random_effects_composition",
 }
 APP_OUTCOMES = (
+    ("candidate", "Candidate status"),
     ("burst_score", "Burst score"),
     ("burden_score", "Burden score"),
 )
@@ -51,7 +52,7 @@ def build_mixing(paths: Paths) -> dict[str, object]:
 
     fig, axes = new_figure(
         nrows=1,
-        ncols=2,
+        ncols=3,
         width="double",
         height_in=8,
         sharey=True,
@@ -86,7 +87,7 @@ def build_composition(paths: Paths) -> dict[str, object]:
 
     fig, axes = new_figure(
         nrows=1,
-        ncols=2,
+        ncols=3,
         width="double",
         height_in=8,
         sharey=True,

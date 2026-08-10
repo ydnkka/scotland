@@ -1,6 +1,6 @@
 """Shared utilities for Scotland clustering chapters."""
 
-from . import data, policy, style
+from . import data, latex_tables, policy, style
 from .data import (
     CLADE_PALETTE,
     CLADES,
@@ -10,6 +10,18 @@ from .data import (
     load_datazone_info,
     load_pairwise_edges,
     pango_lineages_for_clades,
+)
+from .latex_tables import (
+    addlinespace_after_group_changes,
+    latex_column_spec,
+    latex_escape,
+    latex_shortstack,
+    render_latex_grouped_column_table,
+    render_latex_longtable,
+    render_latex_table,
+    write_latex_grouped_column_table,
+    write_latex_longtable,
+    write_latex_table,
 )
 from .policy import (
     attach_policy_calendar,
@@ -50,9 +62,14 @@ __all__ = [
     "PRIMARY_RESOLUTION",
     "WIDTHS",
     "add_panel_labels",
+    "addlinespace_after_group_changes",
     "attach_policy_calendar",
     "clades_for_pango_lineages",
     "data",
+    "latex_column_spec",
+    "latex_escape",
+    "latex_shortstack",
+    "latex_tables",
     "lineage_clade_lookup",
     "lineage_to_clade_map",
     "load_analysis_columns",
@@ -67,6 +84,9 @@ __all__ = [
     "policy_era_labels",
     "policy_order",
     "policy_period_labels",
+    "render_latex_grouped_column_table",
+    "render_latex_longtable",
+    "render_latex_table",
     "save_figure",
     "set_theme",
     "style",
@@ -78,4 +98,7 @@ __all__ = [
     "window_id_to_policy_period_map",
     "window_idx_from_id",
     "window_policy_lookup",
+    "write_latex_grouped_column_table",
+    "write_latex_longtable",
+    "write_latex_table",
 ]
