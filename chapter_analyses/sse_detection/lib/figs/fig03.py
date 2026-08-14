@@ -1,15 +1,21 @@
-"""Build descriptive SSE composition differences and score associations."""
+"""Build descriptive SSE sequence-composition differences."""
 
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
-from pathlib import Path
+import math
+import re
+import textwrap
+from typing import Any
 
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
+from matplotlib.patches import Patch
 
 from ..model.prep import COMPOSITION_SPECS
+from ..sse.detection import load_sequence_data
+from ..sse.io import HIGH_PRIORITY_CANDIDATE_TIERS, load_sse_outputs
 from .common import (
     Paths,
     add_common_args,
@@ -20,258 +26,359 @@ from .common import (
 )
 
 FIGURE_NAME = "fig_ch5_sse_composition_descriptive"
-POINT_COLOR = "#2F6690"
-CI_COLOR = "#2F6690"
-BOOTSTRAP_SEED = 42
+CANDIDATE_HIGHER_COLOR = "#2F6690"
+BACKGROUND_HIGHER_COLOR = "#B75D69"
+ZERO_COLOR = "#555555"
+
+CATEGORY_ORDER = {
+    "sex": ["Female", "Male"],
+    "age_group": ["00-04", "05-14", "15-24", "25-64", "65-74", "75+"],
+    "dz_simd_quintile": ["Q1", "Q2", "Q3", "Q4", "Q5"],
+    "dz_urban_rural_class": [
+        "Large Urban Areas",
+        "Other Urban Areas",
+        "Accessible Small Towns",
+        "Remote Small Towns",
+        "Accessible Rural",
+        "Remote Rural",
+    ],
+}
 
 
-@dataclass(frozen=True)
-class Estimate:
-    value: float
-    low: float
-    high: float
+def _composition_column(name: str) -> str:
+    matches = [
+        str(spec["column"])
+        for spec in COMPOSITION_SPECS
+        if spec["name"] == name
+    ]
+    if len(matches) != 1:
+        raise KeyError(f"Expected one composition spec named {name!r}")
+    return matches[0]
 
 
-def _percentile_interval(values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    return tuple(np.nanpercentile(values, [2.5, 97.5], axis=0))
+SEX_COLUMN = _composition_column("sex")
+AGE_COLUMN = _composition_column("age_group")
+SIMD_COLUMN = _composition_column("simd_quintile")
+URBAN_RURAL_COLUMN = _composition_column("urban_rural_class")
+HEALTH_BOARD_COLUMN = _composition_column("health_board")
 
 
-def _column_correlations(values: np.ndarray, outcome: np.ndarray) -> np.ndarray:
-    """Pearson correlations between every values column and one outcome."""
-    centered_values = values - values.mean(axis=0)
-    centered_outcome = outcome - outcome.mean()
-    numerator = np.sum(centered_values * centered_outcome[:, None], axis=0)
-    denominator = np.sqrt(
-        np.sum(centered_values**2, axis=0) * np.sum(centered_outcome**2)
-    )
-    return np.divide(
-        numerator,
-        denominator,
-        out=np.full(values.shape[1], np.nan),
-        where=denominator > 0,
-    )
+def _category_text(value: Any) -> str:
+    if pd.isna(value):
+        return "Missing"
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    text = str(value)
+    if re.fullmatch(r"\d+\.0", text):
+        return text[:-2]
+    return text
 
 
-def _bootstrap_estimates(
-    table: pd.DataFrame,
-    level_columns: list[str],
+def _display_category(column: str, value: Any) -> str:
+    text = _category_text(value)
+    if column == SIMD_COLUMN and text in {"1", "2", "3", "4", "5"}:
+        return f"Q{text}"
+    return text
+
+
+def _wrap_labels(labels: pd.Index | list[object], width: int) -> list[str]:
+    return [textwrap.fill(str(label), width=width) for label in labels]
+
+
+def _ordered_categories(
+    data: pd.DataFrame,
+    column: str,
     *,
-    n_bootstrap: int,
-    random_state: int,
-) -> tuple[list[Estimate], list[Estimate], list[Estimate], dict[str, int]]:
-    rng = np.random.default_rng(random_state)
-    values = table[level_columns].to_numpy(dtype=float)
-    candidate = table["sse_status"].eq("candidate").to_numpy()
-    background = table["sse_status"].eq("background").to_numpy()
-    candidate_values = values[candidate]
-    background_values = values[background]
+    sort_by_total: bool = False,
+) -> list[str]:
+    categories = data[column].map(lambda value: _display_category(column, value))
+    totals = categories.value_counts(sort=False)
+    if totals.empty:
+        return []
+    if sort_by_total:
+        return totals.sort_values(ascending=False).index.astype(str).tolist()
+    if column in CATEGORY_ORDER:
+        ordered = [value for value in CATEGORY_ORDER[column] if value in totals.index]
+        extras = sorted(
+            [str(value) for value in totals.index if value not in set(ordered)]
+        )
+        return [*ordered, *extras]
 
-    observed_difference = (
-        np.nanmean(candidate_values, axis=0)
-        - np.nanmean(background_values, axis=0)
-    ) * 100
-    difference_draws = np.empty((n_bootstrap, len(level_columns)))
-    for draw in range(n_bootstrap):
-        sampled_candidate = candidate_values[
-            rng.integers(0, len(candidate_values), len(candidate_values))
-        ]
-        sampled_background = background_values[
-            rng.integers(0, len(background_values), len(background_values))
-        ]
-        difference_draws[draw] = (
-            np.nanmean(sampled_candidate, axis=0)
-            - np.nanmean(sampled_background, axis=0)
-        ) * 100
-    difference_low, difference_high = _percentile_interval(difference_draws)
+    def key(value: object) -> tuple[int, object]:
+        text = str(value)
+        match = re.search(r"\d+", text)
+        if match:
+            return (0, int(match.group()))
+        return (1, text)
 
-    correlations: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray, int]] = {}
-    for score_column in ("burst_score", "burden_score"):
-        valid = table[score_column].notna().to_numpy() & np.isfinite(values).all(axis=1)
-        score_values = values[valid]
-        outcome = table.loc[valid, score_column].to_numpy(dtype=float)
-        observed = _column_correlations(score_values, outcome)
-        draws = np.empty((n_bootstrap, len(level_columns)))
-        for draw in range(n_bootstrap):
-            sampled = rng.integers(0, len(outcome), len(outcome))
-            draws[draw] = _column_correlations(
-                score_values[sampled], outcome[sampled]
-            )
-        low, high = _percentile_interval(draws)
-        correlations[score_column] = (observed, low, high, len(outcome))
+    return sorted(totals.index.astype(str).tolist(), key=key)
 
-    def pack(value: np.ndarray, low: np.ndarray, high: np.ndarray) -> list[Estimate]:
-        return [Estimate(*map(float, triplet)) for triplet in zip(value, low, high)]
 
-    burst = correlations["burst_score"]
-    burden = correlations["burden_score"]
-    sample_sizes = {
-        "candidate": int(candidate.sum()),
-        "background": int(background.sum()),
-        "burst": burst[3],
-        "burden": burden[3],
+def _eligible_sequence_data(paths: Paths) -> tuple[pd.DataFrame, dict[str, int]]:
+    sse_outputs = load_sse_outputs(paths.table_dir)
+    cluster = sse_outputs.cluster_table.copy()
+    required_cluster = {"cluster_id", "cluster_size", "candidate_tier"}
+    missing_cluster = required_cluster.difference(cluster.columns)
+    if missing_cluster:
+        raise KeyError(f"cluster_table is missing columns: {sorted(missing_cluster)}")
+
+    cluster["candidate"] = cluster["candidate_tier"].isin(HIGH_PRIORITY_CANDIDATE_TIERS)
+    candidate_sizes = cluster.loc[cluster["candidate"], "cluster_size"].dropna()
+    if candidate_sizes.empty:
+        raise ValueError("No high-priority candidate nodes were found.")
+    min_candidate_size = int(candidate_sizes.min())
+
+    sequence = load_sequence_data()
+    composition_columns = [str(spec["column"]) for spec in COMPOSITION_SPECS]
+    required_sequence = {"cluster_id", *composition_columns}
+    missing_sequence = required_sequence.difference(sequence.columns)
+    if missing_sequence:
+        raise KeyError(f"sequence data is missing columns: {sorted(missing_sequence)}")
+
+    eligible_nodes = cluster.loc[
+        cluster["cluster_size"].ge(min_candidate_size),
+        ["cluster_id", "candidate"],
+    ]
+    data = sequence.merge(
+        eligible_nodes,
+        on="cluster_id",
+        how="inner",
+        validate="many_to_one",
+    )
+    if data.empty:
+        raise ValueError("No eligible sequence rows found for composition plotting.")
+    if data["candidate"].nunique() != 2:
+        raise ValueError(
+            "Eligible sequence rows must include candidates and background."
+        )
+
+    counts = data["candidate"].value_counts().to_dict()
+    summary = {
+        "candidate": int(counts.get(True, 0)),
+        "background": int(counts.get(False, 0)),
+        "min_candidate_size": min_candidate_size,
     }
-    return (
-        pack(observed_difference, difference_low, difference_high),
-        pack(*burst[:3]),
-        pack(*burden[:3]),
-        sample_sizes,
-    )
+    return data, summary
 
 
-def _load_tables(composition_dir: Path) -> list[tuple[str, pd.DataFrame, list[str]]]:
-    loaded = []
-    metadata_columns = {"cluster_id", "sse_status", "burst_score", "burden_score"}
-    for spec in COMPOSITION_SPECS:
-        variable = str(spec["column"])
-        path = composition_dir / f"cluster_composition_{variable}.parquet"
-        if not path.exists():
-            raise FileNotFoundError(f"Missing table: {path}")
-        table = pd.read_parquet(path)
-        missing = metadata_columns.difference(table.columns)
-        if missing:
-            raise KeyError(f"{path.name} is missing columns: {sorted(missing)}")
-        level_columns = [col for col in table.columns if col not in metadata_columns]
-        loaded.append((str(spec["label"]), table, level_columns))
-    return loaded
-
-
-def _draw_estimates(ax, estimates: list[Estimate], y: np.ndarray) -> None:
-    values = np.asarray([estimate.value for estimate in estimates])
-    low = np.asarray([estimate.low for estimate in estimates])
-    high = np.asarray([estimate.high for estimate in estimates])
-    ax.errorbar(
-        values,
-        y,
-        xerr=np.vstack((values - low, high - values)),
-        fmt="o",
-        color=POINT_COLOR,
-        ecolor=CI_COLOR,
-        markersize=3.8,
-        elinewidth=0.9,
-        capsize=1.8,
-        zorder=3,
-    )
-
-
-def build(
-    paths: Paths,
+def composition_difference_table(
+    data: pd.DataFrame,
+    column: str,
     *,
-    n_bootstrap: int = 1000,
-    random_state: int = BOOTSTRAP_SEED,
-) -> dict[str, object]:
-    """Create the three-panel descriptive composition figure."""
-    if n_bootstrap < 1:
-        raise ValueError("n_bootstrap must be at least 1")
-    tables = _load_tables(paths.result_table_dir)
+    sort_by_total: bool = False,
+) -> pd.DataFrame:
+    """Return candidate-minus-background composition differences.
 
-    row_labels: list[str] = []
-    differences: list[Estimate] = []
-    burst_associations: list[Estimate] = []
-    burden_associations: list[Estimate] = []
-    group_boundaries: list[float | int] = []
-    group_ranges: list[tuple[str, int, int]] = []
-    sample_sizes: dict[str, int] | None = None
+    Differences are measured in percentage points.
+    """
+    work = data[[column, "candidate"]].copy()
+    work["category"] = work[column].map(lambda value: _display_category(column, value))
+    counts = pd.crosstab(work["category"], work["candidate"])
+    counts = counts.reindex(columns=[False, True], fill_value=0)
+    totals = counts.sum(axis=0).replace(0, np.nan)
+    shares = counts.divide(totals, axis=1).fillna(0)
 
-    for table_idx, (variable_label, table, level_columns) in enumerate(tables):
-        group_start = len(row_labels)
-        diff, burst, burden, sizes = _bootstrap_estimates(
-            table,
-            level_columns,
-            n_bootstrap=n_bootstrap,
-            random_state=random_state + table_idx,
-        )
-        row_labels.extend(str(level) for level in level_columns)
-        group_ranges.append((variable_label, group_start, len(row_labels)))
-        differences.extend(diff)
-        burst_associations.extend(burst)
-        burden_associations.extend(burden)
-        if table_idx < len(tables) - 1:
-            group_boundaries.append(len(row_labels) - 0.5)
-        if sample_sizes is None:
-            sample_sizes = sizes
-        elif sample_sizes != sizes:
-            raise ValueError("Composition tables do not have consistent sample sizes")
+    out = pd.DataFrame(
+        {
+            "background_n": counts[False].astype(int),
+            "candidate_n": counts[True].astype(int),
+            "background_share": shares[False],
+            "candidate_share": shares[True],
+        }
+    )
+    out["difference_pp"] = (
+        out["candidate_share"] - out["background_share"]
+    ) * 100
+    ordered = _ordered_categories(data, column, sort_by_total=sort_by_total)
+    return out.reindex(ordered).dropna(how="all")
 
-    assert sample_sizes is not None
-    y = np.arange(len(row_labels))[::-1]
-    fig, axes = new_figure(
+
+def _symmetric_x_limit(tables: list[pd.DataFrame]) -> float:
+    absolute_differences = [
+        float(table["difference_pp"].abs().max(skipna=True))
+        for table in tables
+        if not table.empty
+    ]
+    if not absolute_differences:
+        return 1.0
+    max_abs = max(absolute_differences)
+    if not np.isfinite(max_abs) or max_abs == 0:
+        return 1.0
+    padded = max_abs * 1.15
+    step = 5 if padded > 5 else 1
+    return float(math.ceil(padded / step) * step)
+
+
+def plot_difference_bars(
+    ax: Axes,
+    differences: pd.DataFrame,
+    *,
+    title: str,
+    panel: str | None = None,
+    wrap_width: int = 15,
+    x_limit: float | None = None,
+) -> None:
+    y_positions = np.arange(len(differences.index))
+    values = differences["difference_pp"].to_numpy(dtype=float)
+    colors = np.where(values >= 0, CANDIDATE_HIGHER_COLOR, BACKGROUND_HIGHER_COLOR)
+    ax.barh(
+        y_positions,
+        values,
+        height=0.72,
+        color=colors,
+        edgecolor="white",
+        linewidth=0.25,
+    )
+    ax.axvline(0, color=ZERO_COLOR, linewidth=0.8, zorder=1)
+    ax.set_title(title)
+    ax.set_yticks(y_positions)
+    ax.set_yticklabels(_wrap_labels(differences.index, wrap_width))
+    ax.invert_yaxis()
+    ax.grid(axis="x", color="#d9d9d9", lw=0.5, alpha=0.8)
+    ax.set_axisbelow(True)
+    if x_limit is not None:
+        ax.set_xlim(-x_limit, x_limit)
+    if panel:
+        add_panel_labels(ax, label=panel)
+
+
+def build(paths: Paths) -> dict[str, object]:
+    """Create the six-panel candidate-background sequence composition figure."""
+    data, sample_sizes = _eligible_sequence_data(paths)
+
+    sex = composition_difference_table(data, SEX_COLUMN)
+    age_group = composition_difference_table(data, AGE_COLUMN)
+    simd = composition_difference_table(data, SIMD_COLUMN)
+    urban_rural = composition_difference_table(data, URBAN_RURAL_COLUMN)
+    health_board = composition_difference_table(
+        data,
+        HEALTH_BOARD_COLUMN,
+        sort_by_total=True,
+    )
+    health_split = math.ceil(len(health_board) / 2)
+    health_left = health_board.iloc[:health_split]
+    health_right = health_board.iloc[health_split:]
+    x_limit = _symmetric_x_limit(
+        [sex, age_group, simd, urban_rural, health_left, health_right]
+    )
+
+    fig, grid = new_figure(
+        nrows=3,
+        ncols=2,
         width="double",
-        height_in=max(8.0, 0.25 * len(row_labels) + 1.5),
-        nrows=1,
-        ncols=3,
+        height_in=8,
         constrained_layout=True,
-        sharey=True,
-        gridspec_kw={"width_ratios": [1.15, 1, 1]},
+        gridspec_kw={"height_ratios": [0.2, 0.4, 0.5]},
+        sharex=True,
+    )
+    axes = {
+        "sex": grid[0, 0],
+        "simd": grid[0, 1],
+        "age_group": grid[1, 0],
+        "urban_rural": grid[1, 1],
+        "health_left": grid[2, 0],
+        "health_right": grid[2, 1],
+    }
+
+    plot_difference_bars(
+        axes["sex"],
+        sex,
+        title="Sex",
+        panel="A",
+        wrap_width=14,
+        x_limit=x_limit,
+    )
+    plot_difference_bars(
+        axes["simd"],
+        simd,
+        title="SIMD quintile",
+        panel="B",
+        x_limit=x_limit,
+    )
+    plot_difference_bars(
+        axes["age_group"],
+        age_group,
+        title="Age group",
+        panel="C",
+        x_limit=x_limit,
+    )
+    plot_difference_bars(
+        axes["urban_rural"],
+        urban_rural,
+        title="Urban/rural class",
+        panel="D",
+        x_limit=x_limit,
+    )
+    plot_difference_bars(
+        axes["health_left"],
+        health_left,
+        title="Health board",
+        panel="E",
+        x_limit=x_limit,
+    )
+    plot_difference_bars(
+        axes["health_right"],
+        health_right,
+        title="Health board (continued)",
+        panel="E",
+        x_limit=x_limit,
     )
 
-    panel_data = (differences, burst_associations, burden_associations)
-    titles = (
-        "Candidate − background",
-        "Burst score",
-        "Burden score",
-    )
-    xlabels = (
-        "Mean difference (percentage points)",
-        "Correlation ($r$)",
-        "Correlation ($r$)",
-    )
-    subtitles = (
-        f"n = {sample_sizes['candidate']:,} vs {sample_sizes['background']:,}",
-        f"n = {sample_sizes['burst']:,}",
-        f"n = {sample_sizes['burden']:,}",
+    xlabel = "Percentage points difference"
+    axes["health_left"].set_xlabel(xlabel)
+    axes["health_right"].set_xlabel(xlabel)
+    fig.legend(
+        handles=[
+            Patch(
+                facecolor=CANDIDATE_HIGHER_COLOR,
+                edgecolor=CANDIDATE_HIGHER_COLOR,
+                label="Candidate higher",
+            ),
+            Patch(
+                facecolor=BACKGROUND_HIGHER_COLOR,
+                edgecolor=BACKGROUND_HIGHER_COLOR,
+                label="Background higher",
+            ),
+        ],
+        loc="outside upper center",
+        ncol=2,
+        columnspacing=1.5,
+        handlelength=1.5,
+        frameon=False,
     )
 
-    for index, (ax, estimates, title, xlabel, subtitle) in enumerate(
-        zip(axes, panel_data, titles, xlabels, subtitles)
-    ):
-        _draw_estimates(ax, estimates, y)
-        ax.axvline(0, color="#555555", linestyle="--", linewidth=0.8, zorder=1)
-        ax.set_title(f"{title}\n{subtitle}")
-        ax.set_xlabel(xlabel)
-        ax.set_ylim(-1, len(row_labels))
-        ax.grid(axis="x", color="#E5E5E5", linewidth=0.6, zorder=0)
-        for boundary in group_boundaries:
-            ax.axhline(
-                len(row_labels) - 1 - boundary,
-                color="#D0D0D0",
-                linewidth=0.7,
-                zorder=0,
-            )
-
-    axes[0].set_yticks(y)
-    axes[0].set_yticklabels(row_labels)
-    axes[0].tick_params(axis="y", length=0)
-    for variable_label, start, stop in group_ranges:
-        top = len(row_labels) - 1 - start
-        bottom = len(row_labels) - stop
-        axes[0].text(
-            -0.82,
-            (top + bottom) / 2,
-            variable_label,
-            transform=axes[0].get_yaxis_transform(),
-            rotation=90,
-            ha="center",
-            va="center",
-            color="#333333",
-            clip_on=False,
-        )
-    add_panel_labels(axes)
+    plot_data = pd.concat(
+        {
+            "sex": sex,
+            "simd": simd,
+            "age_group": age_group,
+            "urban_rural": urban_rural,
+            "health_board": health_board,
+        },
+        names=["panel", "category"],
+    ).reset_index()
     outputs = styled_save_figure(fig, paths, FIGURE_NAME)
-    return {"figure": fig, "outputs": outputs}
+    return {
+        "figure": fig,
+        "outputs": outputs,
+        "plot_data": plot_data,
+        "sample_sizes": sample_sizes,
+    }
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_args(parser)
-    parser.add_argument("--n-bootstrap", type=int, default=1000)
-    parser.add_argument("--random-state", type=int, default=BOOTSTRAP_SEED)
+    parser.add_argument("--n-bootstrap", type=int, default=None, help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--random-state",
+        type=int,
+        default=None,
+        help=argparse.SUPPRESS,
+    )
     args = parser.parse_args()
     paths = paths_from_args(args)
-    build(
-        paths,
-        n_bootstrap=args.n_bootstrap,
-        random_state=args.random_state,
-    )
+    build(paths)
     print(f"Wrote {FIGURE_NAME} to {paths.figure_dir}")
     return 0
 

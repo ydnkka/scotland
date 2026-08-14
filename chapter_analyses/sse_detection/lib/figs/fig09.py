@@ -1,107 +1,216 @@
-"""Build Chapter 5 Figure 9: candidate rates by epidemic context."""
+"""Build Chapter 5 Figure 9: entropy-tertile profiles among candidates."""
 
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
+from matplotlib.patches import Patch
+from matplotlib.ticker import PercentFormatter
 
-from ..sse.io import write_table
+from ..sse.io import HIGH_PRIORITY_CANDIDATE_TIERS, write_table
 from .common import (
-    CLADES,
-    HIGH_PRIORITY,
-    POLICY_LABELS,
-    POLICY_ORDER,
     Paths,
     add_common_args,
-    add_panel_labels,
     new_figure,
     paths_from_args,
     read_table,
-    sort_by_policy,
     styled_save_figure,
-    wilson,
 )
 
-FILE_NAME = "ch5_candidate_context_rates"
+FILE_NAME = "ch5_entropy_tertile_profiles"
 
-EPOCHS = [
-    ("Epidemic era", "policy_era"),
-    ("Policy period", "policy_period"),
-    ("Clade", "clade"),
-]
+TERTILE_ORDER = (
+    "more_homogeneous",
+    "as_expected",
+    "more_mixed",
+)
+TERTILE_LABELS = {
+    "more_homogeneous": "More homogeneous",
+    "as_expected": "As expected",
+    "more_mixed": "More mixed",
+}
+TERTILE_ABBREVIATIONS = {
+    "more_homogeneous": "H",
+    "as_expected": "E",
+    "more_mixed": "M",
+}
+TERTILE_COLORS = {
+    "more_homogeneous": "#1B9E77",
+    "as_expected": "#BDBDBD",
+    "more_mixed": "#D95F02",
+}
 
-FACTOR = 100
+
+@dataclass(frozen=True)
+class MixingFeature:
+    prefix: str
+    label: str
 
 
-def build_group_rates(nodes: pd.DataFrame) -> pd.DataFrame:
-    tested = nodes.loc[nodes["sse_tested"].fillna(False)].copy()
-    tested["clade"] = tested["clade"].map(CLADES).fillna("Other")
-    tested["candidate"] = tested["candidate_tier"].isin(HIGH_PRIORITY)
-    rows = []
-    for dimension, column in EPOCHS:
-        for value, group in tested.groupby(column, dropna=False, observed=True):
-            n, k = len(group), int(group["candidate"].sum())
-            rows.append(
-                {
-                    "dimension": dimension,
-                    column: str(value),
-                    "eligible_n": n,
-                    "candidate_n": k,
-                }
+MIXING_FEATURES = (
+    MixingFeature("sex", "Sex"),
+    MixingFeature("age", "Age group"),
+    MixingFeature("simd", "SIMD quintile"),
+    MixingFeature("urban_rural", "Urban/rural class"),
+    MixingFeature("health_board", "Health board"),
+    MixingFeature("local_authority", "Local authority"),
+)
+ENTROPY_KINDS = (
+    ("obs", "Observed"),
+    ("z", "Null-adjusted"),
+)
+
+
+def _bar_label(feature: MixingFeature, kind_label: str) -> str:
+    return f"{feature.label} ({kind_label})"
+
+
+def _candidate_nodes(nodes: pd.DataFrame) -> pd.DataFrame:
+    if "candidate_tier" not in nodes.columns:
+        raise KeyError("cluster_table is missing 'candidate_tier'")
+    candidates = nodes.loc[nodes["candidate_tier"].isin(HIGH_PRIORITY_CANDIDATE_TIERS)].copy()
+    if candidates.empty:
+        raise ValueError("No detector candidates found for entropy-tertile profiles.")
+    sort_columns = [
+        column
+        for column in ("wn_mid_date", "candidate_tier", "cluster_size")
+        if column in candidates.columns
+    ]
+    if sort_columns:
+        candidates = candidates.sort_values(sort_columns)
+    return candidates
+
+
+def build_entropy_tertile_profiles(nodes: pd.DataFrame) -> pd.DataFrame:
+    """Build profile proportions for observed and null-adjusted entropy tertiles."""
+    candidates = _candidate_nodes(nodes)
+    rows: list[dict[str, object]] = []
+    missing_columns: list[str] = []
+    columns_with_missing_values: list[str] = []
+
+    for feature in MIXING_FEATURES:
+        for kind, kind_label in ENTROPY_KINDS:
+            column = f"{feature.prefix}_entropy_{kind}_tertile"
+            if column not in candidates.columns:
+                missing_columns.append(column)
+                continue
+            values = candidates[column].astype("string")
+            if values.isna().any():
+                columns_with_missing_values.append(column)
+                values = values.dropna()
+            counts = values.value_counts().reindex(TERTILE_ORDER, fill_value=0)
+            total = int(counts.sum())
+            for tertile, n in counts.items():
+                rows.append(
+                    {
+                        "bar_label": _bar_label(feature, kind_label),
+                        "feature": feature.prefix,
+                        "feature_label": feature.label,
+                        "kind": kind,
+                        "kind_label": kind_label,
+                        "tertile": tertile,
+                        "tertile_label": TERTILE_LABELS[str(tertile)],
+                        "candidate_n": int(n),
+                        "candidate_total": total,
+                        "proportion": n / total if total else np.nan,
+                    }
+                )
+
+    if missing_columns:
+        raise KeyError(
+            "cluster_table is missing entropy tertile columns: "
+            + ", ".join(missing_columns)
+        )
+    if columns_with_missing_values:
+        raise ValueError(
+            "Unexpected missing entropy tertile values in: "
+            + ", ".join(columns_with_missing_values)
+        )
+    return pd.DataFrame(rows)
+
+
+def _bar_order() -> list[str]:
+    return [
+        _bar_label(feature, kind_label)
+        for feature in MIXING_FEATURES
+        for _, kind_label in ENTROPY_KINDS
+    ]
+
+
+def draw_entropy_tertile_profiles(ax: Axes, table: pd.DataFrame) -> None:
+    y_positions = np.arange(len(_bar_order()))
+    for y, bar_label in zip(y_positions, _bar_order()):
+        data = table.loc[table["bar_label"].eq(bar_label)]
+        left = 0.0
+        for tertile in TERTILE_ORDER:
+            row = data.loc[data["tertile"].eq(tertile)]
+            if row.empty:
+                continue
+            width = float(row["proportion"].iloc[0])
+            ax.barh(
+                y,
+                width,
+                left=left,
+                height=0.72,
+                color=TERTILE_COLORS[tertile],
+                edgecolor="white",
+                linewidth=0.45,
             )
-    out = pd.DataFrame(rows)
-    out["candidate_rate"] = out["candidate_n"] / out["eligible_n"]
-    out["ci95_low"], out["ci95_high"] = wilson(out["candidate_n"], out["eligible_n"])
-    return out
+            if width >= 0.055:
+                ax.text(
+                    left + width / 2,
+                    float(y),
+                    f"{TERTILE_ABBREVIATIONS[tertile]}: {width:.0%}",
+                    ha="center",
+                    va="center",
+                    fontsize=7,
+                    linespacing=0.85,
+                )
+            left += width
+
+    ax.set_yticks(y_positions, _bar_order())
+    ax.set_xlim(0, 1)
+    ax.xaxis.set_major_formatter(PercentFormatter(1.0))
+    ax.set_xlabel("Proportion of detector candidates")
+    ax.invert_yaxis()
+    ax.grid(axis="x", color="#d9d9d9", lw=0.5, alpha=0.8)
+    ax.set_axisbelow(True)
+    ax.tick_params(axis="y", length=0)
+    ax.legend(
+        handles=[
+            Patch(
+                facecolor=TERTILE_COLORS[tertile],
+                edgecolor=TERTILE_COLORS[tertile],
+                label=TERTILE_LABELS[tertile],
+            )
+            for tertile in TERTILE_ORDER
+        ],
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.10),
+        ncol=len(TERTILE_ORDER),
+        columnspacing=1.35,
+        handlelength=1.5,
+        frameon=False,
+    )
 
 
 def build(paths: Paths) -> dict[str, object]:
     nodes = read_table(paths, "cluster_table")
-    table = build_group_rates(nodes)
+    table = build_entropy_tertile_profiles(nodes)
     write_table(table, paths.result_table_dir, f"tab_{FILE_NAME}")
-    fig, axes = new_figure(
+
+    fig, ax = new_figure(
         width="double",
-        height_in=6.2,
-        nrows=1,
-        ncols=3,
+        height_in=6.3,
         constrained_layout=True,
     )
-    for ax, (dimension, column) in zip(axes, EPOCHS):
-        data = table.loc[table["dimension"].eq(dimension)].copy()
-        if column in POLICY_ORDER:
-            data = sort_by_policy(data, column)
-        else:
-            data = data.sort_values(column, ignore_index=True)
-        if column == "policy_era":
-            data[column] = data[column].map(POLICY_LABELS)
-        rate = (FACTOR * data["candidate_rate"]).to_numpy(dtype=float)
-        y = np.arange(len(data))
-        # Clip tiny negative values introduced by floating-point roundoff.
-        xerr = np.vstack(
-            (
-                np.maximum(rate - FACTOR * data["ci95_low"].to_numpy(dtype=float), 0.0),
-                np.maximum(
-                    FACTOR * data["ci95_high"].to_numpy(dtype=float) - rate, 0.0
-                ),
-            )
-        )
-        ax.errorbar(
-            rate,
-            y,
-            xerr=xerr,
-            fmt="o",
-            color="#2F6690",
-            capsize=2,
-        )
-
-        ax.set_yticks(y, data[column], rotation=0)
-        ax.set_title(f"{dimension}")
-    fig.supxlabel(f"Candidates per {FACTOR} eligible clusters")
-    add_panel_labels(axes)
+    draw_entropy_tertile_profiles(ax, table)
     outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}")
-    return {"figure": fig, "outputs": outputs}
+    return {"figure": fig, "outputs": outputs, "plot_data": table}
 
 
 def main() -> int:
