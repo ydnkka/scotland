@@ -214,6 +214,7 @@ def render_latex_grouped_column_table(
     short_caption: str | None = None,
     font_size: str = r"\scriptsize",
     tabcolsep: str = "2.5pt",
+    landscape: bool = False,
 ) -> str:
     addlinespace_after = addlinespace_after or set()
     n_columns = len(row_columns) + sum(len(periods) for _, periods in column_groups)
@@ -236,30 +237,37 @@ def render_latex_grouped_column_table(
             f"\\textbf{{{latex_escape(period)}}}" for period in periods
         )
 
-    lines = [
-        r"\begin{table}[htbp]",
-        r"\centering",
-        font_size,
-        f"\\setlength{{\\tabcolsep}}{{{tabcolsep}}}",
-        (
-            f"\\caption[{latex_escape(short_caption or caption)}]"
-            f"{{{latex_escape(caption)}}}\\label{{{label}}}"
-        ),
-        f"\\begin{{thesistablebody}}{{{column_spec}}}",
-        r"\toprule",
-        " & ".join(top_header) + r" \\",
-        "".join(cmidrules),
-        " & ".join(period_header) + r" \\",
-        r"\midrule",
-        *_body_lines(
-            rows,
-            expected_columns=n_columns,
-            addlinespace_after=addlinespace_after,
-        ),
-        r"\bottomrule",
-        r"\end{thesistablebody}",
-        r"\end{table}",
-    ]
+    lines = []
+    if landscape:
+        lines.append(r"\begin{landscape}")
+    lines.extend(
+        [
+            r"\begin{table}[htbp]",
+            r"\centering",
+            font_size,
+            f"\\setlength{{\\tabcolsep}}{{{tabcolsep}}}",
+            (
+                f"\\caption[{latex_escape(short_caption or caption)}]"
+                f"{{{latex_escape(caption)}}}\\label{{{label}}}"
+            ),
+            f"\\begin{{thesistablebody}}{{{column_spec}}}",
+            r"\toprule",
+            " & ".join(top_header) + r" \\",
+            "".join(cmidrules),
+            " & ".join(period_header) + r" \\",
+            r"\midrule",
+            *_body_lines(
+                rows,
+                expected_columns=n_columns,
+                addlinespace_after=addlinespace_after,
+            ),
+            r"\bottomrule",
+            r"\end{thesistablebody}",
+            r"\end{table}",
+        ]
+    )
+    if landscape:
+        lines.append(r"\end{landscape}")
     return "\n".join(lines)
 
 

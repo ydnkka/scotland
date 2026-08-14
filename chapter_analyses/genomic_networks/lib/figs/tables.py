@@ -410,6 +410,7 @@ def write_sequence_composition_by_policy_table(paths: Paths) -> None:
         rows=rows,
         column_spec=f"ll*{{{len(period_codes)}}}{{r}}",
         addlinespace_after=addlinespace_after,
+        landscape=True,
     )
 
 
