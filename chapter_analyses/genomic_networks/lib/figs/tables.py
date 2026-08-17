@@ -475,13 +475,13 @@ def write_cluster_period_table(paths: Paths) -> None:
         ]
         if fmt_int(row.n_non_singleton_clusters) != "0":
             cells.append(
-                f"{fmt_float(row.median_non_singleton_cluster_size, 1)}; "
-                f"{fmt_float(row.p90_non_singleton_cluster_size, 1)}; "
+                f"{fmt_float(row.median_non_singleton_cluster_size, 0)}; "
+                f"{fmt_float(row.p90_non_singleton_cluster_size, 0)}; "
                 f"{fmt_int(row.max_non_singleton_cluster_size)}"
             )
             cells.append(
-                f"{fmt_float(row.median_non_singleton_datazones, 1)}; "
-                f"{fmt_float(row.p90_non_singleton_datazones, 1)}; "
+                f"{fmt_float(row.median_non_singleton_datazones, 0)}; "
+                f"{fmt_float(row.p90_non_singleton_datazones, 0)}; "
                 f"{fmt_int(row.max_non_singleton_datazones)}"
             )
             cells.append(
