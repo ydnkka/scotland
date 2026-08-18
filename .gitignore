@@ -17,6 +17,10 @@ data/**
 !data/**/
 !data/**/.gitkeep
 !data/processed/DATASET_DESCRIPTION.md
+!analyses/**/results/
+analyses/**/results/**
+!analyses/**/results/**/
+!analyses/**/results/**/.gitkeep
 !/results/
 !/results/__init__.py
 !/results/README.md
