@@ -64,10 +64,10 @@ python -m analyses.sse_detection.lib.sse.detection
 # Build wide cluster-composition tables
 python -m analyses.sse_detection.build_composition_tables
 
-# Rebuild available detector figures and Bayesian result tables
+# Rebuild detector/Bayesian figures
 python -m results.make_figures --domain sse_detection --skip-missing
 
-# Rebuild Bayesian result tables only
+# Rebuild Bayesian LaTeX table fragments and CSV/parquet companions
 python -m results.make_tables --domain sse_detection --skip-missing
 ```
 
@@ -77,9 +77,9 @@ The detector has no CLI options; its settings are constants in `lib/sse/config.p
 
 - `lib/sse/`: data loading, transition graph, composition entropy, feature assembly, scoring, and diagnostics.
 - `lib/model/`: Bayesian preparation, fitting, and CLI orchestration.
-- `lib/figs/`: individual figure and result-table builders.
+- `lib/figs/`: individual figure builders and publication table builders.
 - `results/sse_outputs/`: authoritative detector cluster/edge tables and graph summaries.
-- `results/tables/`: composition/source tables.
+- `results/tables/`: composition/source tables and generated CSV/parquet companions.
 - `../../results/figures/`: project-level detector and Bayesian figures.
 - `../../results/tables/`: project-level publication `.tex` table fragments.
 - `results/bayesian_outputs/`: fitted model summaries, diagnostics, metadata, logs, and optional inference data.

@@ -45,12 +45,15 @@ Assortativity uncertainty uses an edge-weight multiplier bootstrap by default (`
 `build_simd_validation` defaults to quintiles; `--n-groups` accepts 5, 10, or 20.
 
 The project-level `results.make_figures` and `results.make_tables` commands read
-saved analysis-local tables. Without `--skip-missing`, a missing required table
-fails the run.
+saved analysis-local tables. Figures are written to the root `results/figures/`
+directory, and LaTeX table fragments are written to the root `results/tables/`
+directory. CSV/parquet tables remain in this analysis package. Without
+`--skip-missing`, a missing required table fails the run.
 
 ## Layout
 
-- `lib/`: configuration, I/O, cohort, cluster-table, cluster-rollup, pairwise-distance, mixing, SIMD, figure, and table logic.
+- `lib/`: configuration, I/O, cohort, cluster-table, cluster-rollup, pairwise-distance, mixing, SIMD, and plotting support.
+- `lib/figs/`: individual publication figure builders and LaTeX table builders.
 - `build_*.py`: table-building entry points.
 - `results/tables/`: analysis-local source and intermediate tables.
 - `results/intermediate/`: per-pairwise-file bootstrap mixing, assortativity, and topology chunks.

@@ -1,8 +1,8 @@
 # Scotland SARS-CoV-2 Data Integration and Clustering Pipeline
 
-The pipeline prepares linked metadata, groups sequences by overlapping time window and Pango lineage, computes TN93 distances, scores EpiLink compatibility, applies Leiden clustering, and consolidates the results.
+The pipeline prepares linked metadata, groups sequences by overlapping time window and Pango lineage, computes TN93 distances, scores EpiLink compatibility, applies Leiden clustering, and consolidates the results. The EpiLink scorer comes from [ydnkka/epilink](https://github.com/ydnkka/epilink); use its [`evaluation` branch](https://github.com/ydnkka/epilink/tree/evaluation) for the version associated with this analysis.
 
-All configured paths are relative to the repository root unless absolute. Run commands from that root.
+All configured paths are relative to the repository root unless absolute. Run commands from that root. The repository tracks `data/**/.gitkeep` placeholders and `data/processed/DATASET_DESCRIPTION.md`; raw and generated data files remain ignored.
 
 ## Execution
 
@@ -120,7 +120,7 @@ Existing parquets are skipped unless `--force` is used. An EpiLink exception is 
 
 `epilink_wrapper.py` creates one EpiLink instance per process with default SARS-CoV-2 epidemic and inference target parameters.
 
-The EpiLink seed is a code constant (`RNG_SEED`), not read from `config.yaml`.
+The EpiLink seed is a code constant (`RNG_SEED = 42`), not read from `config.yaml`.
 
 ### 04 and clustering: Leiden assignments
 

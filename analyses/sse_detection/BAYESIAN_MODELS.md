@@ -124,13 +124,15 @@ If a multi-core PyMC fit fails with the handled EOF/end-of-file condition, the f
 
 ## Outputs
 
-Default root:
+Default analysis-local output root:
 
 ```text
 analyses/sse_detection/results/bayesian_outputs/
 ```
 
-Root files include `eligibility_summary.csv`, `<domain>_selected_model_grid.csv`, `saved_model_manifest.csv`, `last_saved_model_manifest.csv`, and family-specific manifests.
+Top-level files in that directory include `eligibility_summary.csv`,
+`<domain>_selected_model_grid.csv`, `saved_model_manifest.csv`,
+`last_saved_model_manifest.csv`, and family-specific manifests.
 
 Each `logistic/` or `linear/` directory contains `run_config.csv`, `model_grid.csv`, `fit_frame_summary.csv`, domain-specific grid/summary files, and a manifest. Linear paths include the outcome; logistic paths do not:
 
@@ -145,7 +147,9 @@ Consolidate saved summaries, metadata, fit-frame counts, and headline diagnostic
 python -m analyses.sse_detection.combine_bayesian_results
 ```
 
-The default output directory is `results/bayesian_outputs/consolidated_tables/`. It writes four CSV/parquet table pairs:
+The default consolidation output directory is
+`analyses/sse_detection/results/bayesian_outputs/consolidated_tables/`. It
+writes four CSV/parquet table pairs:
 
 ```text
 mixing_logistic_consolidated_results

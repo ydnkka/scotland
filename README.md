@@ -2,7 +2,7 @@
 
 This repository links Scottish SARS-CoV-2 sequence metadata to rolling-window genetic compatibility, Leiden clusters, descriptive surveillance, compatibility-network analysis, and superspreading-compatible candidate characterisation.
 
-EpiLink edges and cluster transitions are compatibility and continuity signals, not observed transmission events.
+EpiLink edges and cluster transitions are compatibility and continuity signals, not observed transmission events. The EpiLink project is maintained at [ydnkka/epilink](https://github.com/ydnkka/epilink); use its [`evaluation` branch](https://github.com/ydnkka/epilink/tree/evaluation) for the version associated with this analysis.
 
 ## Workflow
 
@@ -25,6 +25,7 @@ raw sequence and linked metadata
 - `analyses/surveillance/`: policy timeline and lineage surveillance.
 - `analyses/genomic_networks/`: cohort, cluster, mixing, topology, and sensitivity analyses.
 - `analyses/sse_detection/`: transition graph, detector, figures, and Bayesian models.
+- `results/`: central publication figure and LaTeX-table builders.
 - `data/`: local raw and processed data; excluded from version control.
 
 Detailed documentation:
@@ -34,7 +35,8 @@ Detailed documentation:
 - [Output analyses](analyses/README.md)
 - [Surveillance](analyses/surveillance/README.md) ([technical reference](analyses/surveillance/TECHNICAL.md))
 - [Genomic networks](analyses/genomic_networks/README.md) ([technical reference](analyses/genomic_networks/TECHNICAL.md))
-- [SSE detection](analyses/sse_detection/README.md) ([technical reference](analyses/sse_detection/TECHNICAL.md), [rationale](analyses/sse_detection/DETECTION_RATIONALE.md), [Bayesian models](analyses/sse_detection/BAYESIAN_MODELS.md))
+- [SSE detection](analyses/sse_detection/README.md) ([technical reference](analyses/sse_detection/TECHNICAL.md), [rationale](analyses/sse_detection/README.md#detection-rationale), [Bayesian models](analyses/sse_detection/BAYESIAN_MODELS.md))
+- [Publication results](results/README.md)
 
 ## Environment
 
@@ -73,10 +75,9 @@ See [method/PIPELINE.md](method/PIPELINE.md) for inputs, outputs, restart behavi
 ## Analysis entry points
 
 ```bash
-# Analysis-local table/intermediate builders
+# Analysis-local table and intermediate builders
 python -m analyses.genomic_networks.build_cluster_summaries
 python -m analyses.genomic_networks.build_mixing --all-windows --workers 4 --include-giants --giant-workers 1
-python -m analyses.genomic_networks.build_cluster_pairwise_distance_summary --all-windows
 python -m analyses.genomic_networks.build_sensitivity_tables
 python -m analyses.genomic_networks.build_simd_validation
 python -m analyses.sse_detection.lib.sse.detection
@@ -84,7 +85,7 @@ python -m analyses.sse_detection.build_composition_tables
 python -m analyses.sse_detection.lib.model.mixing
 python -m analyses.sse_detection.lib.model.composition
 
-# Publication figures and tables
+# Publication figures and LaTeX table fragments
 python -m results.make_figures --skip-missing
 python -m results.make_tables --skip-missing
 ```
@@ -98,9 +99,9 @@ python -m results.make_figures surveillance:policy_sequences_over_time
 python -m results.make_tables genomic_networks:tab_policy_denominators
 ```
 
-Analysis-local outputs are written below each package's `results/` directory.
-Publication figures and tables are written to the project-level `results/`
-directory.
+Analysis-local CSV/parquet outputs are written below each package's `results/`
+directory. Project-level publication figures are written to `results/figures/`,
+and project-level LaTeX table fragments are written to `results/tables/`.
 
 ## Governance and reproducibility
 

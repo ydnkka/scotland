@@ -11,6 +11,12 @@
 **/figures
 **/tables
 **/results
+!data/
+data/**
+!data/.gitkeep
+!data/**/
+!data/**/.gitkeep
+!data/processed/DATASET_DESCRIPTION.md
 !/results/
 !/results/__init__.py
 !/results/README.md
