@@ -11,14 +11,18 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 from collections.abc import Iterable as IterableABC
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
 
 from .data import CLADES, Paths, pango_lineages_for_clades
 
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+
 __all__ = [
+    "add_policy_bands",
     "attach_policy_calendar",
     "clades_for_pango_lineages",
     "lineage_clade_lookup",
@@ -275,6 +279,147 @@ def attach_policy_calendar(
         validate="many_to_one",
     )
     return merged.drop(columns="_policy_date")
+
+
+def _policy_era_colours(
+    *,
+    paths: Paths | None = None,
+    cmap_name: str = "RdYlGn_r",
+    vmin: float = 1,
+    vmax: float = 100,
+) -> dict[str, object]:
+    """Return policy-era colours keyed by era code."""
+    from matplotlib import colors
+    import matplotlib.pyplot as plt
+
+    policy = load_policy_calendar(
+        ["policy_era", "stringency_index"],
+        paths=paths,
+    )
+    stringency = (
+        policy.groupby("policy_era", sort=False, observed=True)["stringency_index"]
+        .mean()
+        .dropna()
+    )
+    cmap = plt.get_cmap(cmap_name)
+    norm = colors.Normalize(vmin=vmin, vmax=vmax)
+    return {str(era): cmap(norm(float(value))) for era, value in stringency.items()}
+
+
+def _policy_band_spans_from_frame(
+    policy_data: pd.DataFrame,
+    *,
+    date_col: str,
+    policy_col: str,
+    half_window: pd.Timedelta | str | None,
+) -> list[tuple[str, pd.Timestamp, pd.Timestamp]]:
+    """Return policy-era spans from rolling-window coverage metadata."""
+    if date_col not in policy_data.columns or policy_col not in policy_data.columns:
+        return []
+
+    work = policy_data[[date_col, policy_col]].dropna().copy()
+    if work.empty:
+        return []
+
+    work[date_col] = pd.to_datetime(work[date_col], errors="coerce")
+    work = work.dropna(subset=[date_col, policy_col]).sort_values(date_col)
+    if work.empty:
+        return []
+
+    padding = pd.Timedelta(0) if half_window is None else pd.Timedelta(half_window)
+    spans = []
+    for era, group in work.groupby(policy_col, sort=False, observed=True):
+        spans.append(
+            (
+                str(era),
+                group[date_col].min() - padding,
+                group[date_col].max() + padding,
+            )
+        )
+    return spans
+
+
+def _policy_band_spans_from_dates(
+    dates: pd.Series | Iterable[Any],
+    *,
+    paths: Paths | None = None,
+) -> list[tuple[str, pd.Timestamp, pd.Timestamp]]:
+    """Return clipped policy-era spans covering a date series."""
+    date_values = pd.to_datetime(pd.Series(dates), errors="coerce").dropna()
+    if date_values.empty:
+        return []
+
+    plot_start = date_values.min().normalize()
+    plot_end = date_values.max().normalize()
+    policy = load_policy_calendar(
+        ["policy_era"],
+        start_date=plot_start,
+        end_date=plot_end,
+        paths=paths,
+    )
+    if policy.empty:
+        return []
+
+    policy["_era_segment"] = (
+        policy["policy_era"].ne(policy["policy_era"].shift()).cumsum()
+    )
+    spans = []
+    for (_, era), group in policy.groupby(
+        ["_era_segment", "policy_era"],
+        sort=False,
+        observed=True,
+    ):
+        spans.append(
+            (
+                str(era),
+                group["date"].min(),
+                group["date"].max() + pd.Timedelta(days=1),
+            )
+        )
+    return spans
+
+
+def add_policy_bands(
+    ax: "Axes",
+    policy_data: pd.DataFrame | pd.Series | Iterable[Any],
+    *,
+    date_col: str = "wn_mid_date",
+    policy_col: str = "policy_era",
+    half_window: pd.Timedelta | str | None = pd.Timedelta(days=7),
+    alpha: float = 0.18,
+    zorder: int = 0,
+    paths: Paths | None = None,
+    fallback_color: str = "#f0f0f0",
+) -> None:
+    """Shade policy eras behind a time-series axis.
+
+    ``policy_data`` may be window metadata containing ``date_col`` and
+    ``policy_col`` or a plain series/iterable of dates. Window metadata is
+    padded by ``half_window`` on each side to match rolling-window figures.
+    """
+    if isinstance(policy_data, pd.DataFrame):
+        spans = _policy_band_spans_from_frame(
+            policy_data,
+            date_col=date_col,
+            policy_col=policy_col,
+            half_window=half_window,
+        )
+    else:
+        spans = _policy_band_spans_from_dates(policy_data, paths=paths)
+
+    if not spans:
+        return
+
+    colours = _policy_era_colours(paths=paths)
+    for era, start, end in spans:
+        ax.axvspan(
+            start,
+            end,
+            color=colours.get(str(era), fallback_color),
+            alpha=alpha,
+            lw=0,
+            zorder=zorder,
+        )
 
 
 def window_idx_from_id(value: Any | pd.Series) -> Any:

@@ -22,19 +22,19 @@ raw sequence and linked metadata
 - `config.yaml`: method paths and parameters.
 - `method/`: preprocessing, pairwise scoring, clustering, consolidation, and batch helpers.
 - `utils/`: shared data, policy, mapping, and plotting helpers.
-- `chapter_analyses/surveillance/`: policy timeline and lineage surveillance.
-- `chapter_analyses/genomic_networks/`: cohort, cluster, mixing, topology, and sensitivity analyses.
-- `chapter_analyses/sse_detection/`: transition graph, detector, figures, and Bayesian models.
+- `analyses/surveillance/`: policy timeline and lineage surveillance.
+- `analyses/genomic_networks/`: cohort, cluster, mixing, topology, and sensitivity analyses.
+- `analyses/sse_detection/`: transition graph, detector, figures, and Bayesian models.
 - `data/`: local raw and processed data; excluded from version control.
 
 Detailed documentation:
 
 - [Clustering pipeline](method/PIPELINE.md)
 - [Pipeline output](data/processed/DATASET_DESCRIPTION.md)
-- [Output analyses](chapter_analyses/README.md)
-- [Surveillance](chapter_analyses/surveillance/README.md) ([technical reference](chapter_analyses/surveillance/TECHNICAL.md))
-- [Genomic networks](chapter_analyses/genomic_networks/README.md) ([technical reference](chapter_analyses/genomic_networks/TECHNICAL.md))
-- [SSE detection](chapter_analyses/sse_detection/README.md) ([technical reference](chapter_analyses/sse_detection/TECHNICAL.md), [rationale](chapter_analyses/sse_detection/DETECTION_RATIONALE.md), [Bayesian models](chapter_analyses/sse_detection/BAYESIAN_MODELS.md))
+- [Output analyses](analyses/README.md)
+- [Surveillance](analyses/surveillance/README.md) ([technical reference](analyses/surveillance/TECHNICAL.md))
+- [Genomic networks](analyses/genomic_networks/README.md) ([technical reference](analyses/genomic_networks/TECHNICAL.md))
+- [SSE detection](analyses/sse_detection/README.md) ([technical reference](analyses/sse_detection/TECHNICAL.md), [rationale](analyses/sse_detection/DETECTION_RATIONALE.md), [Bayesian models](analyses/sse_detection/BAYESIAN_MODELS.md))
 
 ## Environment
 
@@ -74,23 +74,23 @@ See [method/PIPELINE.md](method/PIPELINE.md) for inputs, outputs, restart behavi
 
 ```bash
 # Surveillance
-python -m chapter_analyses.surveillance.policy_sequences_over_time
-python -m chapter_analyses.surveillance.policy_index_comparison
+python -m analyses.surveillance.policy_sequences_over_time
+python -m analyses.surveillance.policy_index_comparison
 
 # Genomic networks
-python -m chapter_analyses.genomic_networks.build_cluster_summaries
-python -m chapter_analyses.genomic_networks.build_mixing --all-windows --workers 4 --include-giants --giant-workers 1
-python -m chapter_analyses.genomic_networks.build_cluster_pairwise_distance_summary --all-windows
-python -m chapter_analyses.genomic_networks.build_sensitivity_tables
-python -m chapter_analyses.genomic_networks.build_simd_validation
-python -m chapter_analyses.genomic_networks.make_figures --skip-missing
+python -m analyses.genomic_networks.build_cluster_summaries
+python -m analyses.genomic_networks.build_mixing --all-windows --workers 4 --include-giants --giant-workers 1
+python -m analyses.genomic_networks.build_cluster_pairwise_distance_summary --all-windows
+python -m analyses.genomic_networks.build_sensitivity_tables
+python -m analyses.genomic_networks.build_simd_validation
+python -m analyses.genomic_networks.make_figures --skip-missing
 
 # SSE detection
-python -m chapter_analyses.sse_detection.lib.sse.detection
-python -m chapter_analyses.sse_detection.build_composition_tables
-python -m chapter_analyses.sse_detection.lib.model.mixing
-python -m chapter_analyses.sse_detection.lib.model.composition
-python -m chapter_analyses.sse_detection.make_figures --skip-missing
+python -m analyses.sse_detection.lib.sse.detection
+python -m analyses.sse_detection.build_composition_tables
+python -m analyses.sse_detection.lib.model.mixing
+python -m analyses.sse_detection.lib.model.composition
+python -m analyses.sse_detection.make_figures --skip-missing
 ```
 
 Generated analysis outputs are written below each package's `results/` directory and are excluded from version control.

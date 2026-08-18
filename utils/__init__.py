@@ -25,6 +25,7 @@ from .latex_tables import (
     write_latex_table,
 )
 from .policy import (
+    add_policy_bands,
     attach_policy_calendar,
     clades_for_pango_lineages,
     lineage_clade_lookup,
@@ -63,6 +64,7 @@ __all__ = [
     "FIG_WIDTHS_IN",
     "PRIMARY_RESOLUTION",
     "WIDTHS",
+    "add_policy_bands",
     "add_panel_labels",
     "addlinespace_after_group_changes",
     "attach_policy_calendar",
