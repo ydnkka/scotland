@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 PACKAGE_DIR = PROJECT_ROOT / "analyses/genomic_networks"
 RESULTS_DIR = PACKAGE_DIR / "results"
 TABLES_DIR = RESULTS_DIR / "tables"
-FIGURES_DIR = RESULTS_DIR / "figures"
+FIGURES_DIR = PROJECT_ROOT / "results/figures"
 INTERMEDIATE_DIR = RESULTS_DIR / "intermediate"
 
 ANALYSIS_RESOLUTION = 0.3

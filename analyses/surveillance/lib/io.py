@@ -5,12 +5,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from .config import FIGURES_DIR, TABLES_DIR
+from .config import TABLES_DIR
 
 
 def ensure_results_dirs() -> None:
     """Create the standard surveillance output directories."""
-    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
     TABLES_DIR.mkdir(parents=True, exist_ok=True)
 
 

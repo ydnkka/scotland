@@ -136,7 +136,10 @@ sparsification_threshold_sensitivity_summary
 
 ## Figures, disclosure, and checks
 
-`make_figures.py` reads saved result tables and writes current genomic-network figures plus LaTeX fragments under `results/figures/`; it does not rescan source data.
+`python -m results.make_figures --domain genomic_networks` and
+`python -m results.make_tables --domain genomic_networks` read saved
+analysis-local tables and write project-level figures/LaTeX fragments under
+`results/figures/` and `results/tables/`; they do not rescan source data.
 
 Counts below 5 are flagged only in publication-facing composition tables. Raw/internal outputs remain potentially disclosive. Mixing drops missing endpoint labels by default, whereas composition retains a `Missing` level.
 

@@ -15,7 +15,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.ticker import PercentFormatter
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_PROJECT_ROOT = Path(__file__).resolve().parents[4]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
@@ -304,6 +304,96 @@ def compute_sequencing_proportion(
         sampling_df["plot_prop_cases_sequenced"] = sampling_df["prop_cases_sequenced"]
 
     return sampling_df
+
+
+def compute_lineage_frequency_tables(
+    df: pd.DataFrame,
+    *,
+    date_col: str = "collection_date",
+    clade_col: str = "variant",
+    sequence_col: str = "sequence_id",
+    time_freq: str = "W",
+    smooth_window: int | None = 3,
+    min_sequences_per_period: int = 1,
+) -> tuple[
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    list,
+]:
+    """Return clade frequency, count, and dominance tables for plotting/reporting."""
+    dd = df.copy()
+
+    required_cols = {date_col, clade_col, sequence_col}
+    missing_cols = required_cols - set(dd.columns)
+    if missing_cols:
+        raise ValueError(f"Missing required columns: {missing_cols}")
+
+    dd = dd.dropna(subset=[date_col, clade_col])
+
+    if time_freq == "MS":
+        dd["time_period"] = dd[date_col].dt.to_period("M").dt.start_time
+    else:
+        dd["time_period"] = dd[date_col].dt.to_period(time_freq).dt.start_time
+
+    counts = (
+        dd.groupby(["time_period", clade_col])[sequence_col]
+        .nunique()
+        .reset_index(name="n")
+    )
+
+    totals = counts.groupby("time_period")["n"].sum().reset_index(name="total")
+
+    counts = counts.merge(totals, on="time_period")
+    counts["frequency"] = counts["n"] / counts["total"]
+    counts = counts[counts["total"] >= min_sequences_per_period]
+
+    clade_freq = (
+        counts.pivot(index="time_period", columns=clade_col, values="frequency")
+        .fillna(0)
+        .sort_index()
+    )
+    clade_order = _ordered_clade_groups(pd.Index(clade_freq.columns))
+
+    clade_freq = clade_freq.reindex(columns=clade_order)
+
+    if clade_freq.empty or not clade_order:
+        raise ValueError("No sequences matched the selected clade groups.")
+
+    clade_counts = (
+        counts.pivot(index="time_period", columns=clade_col, values="n")
+        .fillna(0)
+        .astype(int)
+        .sort_index()
+        .reindex(columns=clade_order, fill_value=0)
+    )
+    clade_counts.insert(0, "total_sequences", clade_counts.sum(axis=1))
+
+    if smooth_window is not None:
+        plot_freq = clade_freq.rolling(window=smooth_window, min_periods=1).mean()
+    else:
+        plot_freq = clade_freq.copy()
+
+    dominance_df = pd.DataFrame(
+        {
+            "time_period": plot_freq.index,
+            "dominant_clade": plot_freq.idxmax(axis=1).values,
+            "dominant_frequency": plot_freq.max(axis=1).values,
+        }
+    )
+    dominance_df["previous_dominant_clade"] = dominance_df["dominant_clade"].shift()
+
+    overtakes = (
+        dominance_df[
+            dominance_df["dominant_clade"] != dominance_df["previous_dominant_clade"]
+        ]
+        .dropna(subset=["previous_dominant_clade"])
+        .copy()
+    )
+
+    return clade_freq, plot_freq, clade_counts, dominance_df, overtakes, clade_order
 
 
 def configure_date_axis(ax: Axes, dates: pd.Series):
@@ -639,72 +729,23 @@ def plot_lineage_frequency_and_overtakes(
         Periods where the dominant clade group changed.
     """
     dd = df.copy()
-
-    required_cols = {date_col, clade_col, sequence_col}
-    missing_cols = required_cols - set(dd.columns)
-    if missing_cols:
-        raise ValueError(f"Missing required columns: {missing_cols}")
-
     dd = dd.dropna(subset=[date_col, clade_col])
 
-    if time_freq == "MS":
-        dd["time_period"] = dd[date_col].dt.to_period("M").dt.start_time
-    else:
-        dd["time_period"] = dd[date_col].dt.to_period(time_freq).dt.start_time
-
-    counts = (
-        dd.groupby(["time_period", clade_col])[sequence_col]
-        .nunique()
-        .reset_index(name="n")
-    )
-
-    totals = counts.groupby("time_period")["n"].sum().reset_index(name="total")
-
-    counts = counts.merge(totals, on="time_period")
-    counts["frequency"] = counts["n"] / counts["total"]
-    counts = counts[counts["total"] >= min_sequences_per_period]
-
-    clade_freq = (
-        counts.pivot(index="time_period", columns=clade_col, values="frequency")
-        .fillna(0)
-        .sort_index()
-    )
-    clade_order = _ordered_clade_groups(pd.Index(clade_freq.columns))
-
-    clade_freq = clade_freq.reindex(columns=clade_order)
-
-    if clade_freq.empty or not clade_order:
-        raise ValueError("No sequences matched the selected clade groups.")
-
-    clade_counts = (
-        counts.pivot(index="time_period", columns=clade_col, values="n")
-        .fillna(0)
-        .astype(int)
-        .sort_index()
-        .reindex(columns=clade_order, fill_value=0)
-    )
-    clade_counts.insert(0, "total_sequences", clade_counts.sum(axis=1))
-
-    if smooth_window is not None:
-        plot_freq = clade_freq.rolling(window=smooth_window, min_periods=1).mean()
-    else:
-        plot_freq = clade_freq.copy()
-
-    dominance_df = pd.DataFrame(
-        {
-            "time_period": plot_freq.index,
-            "dominant_clade": plot_freq.idxmax(axis=1).values,
-            "dominant_frequency": plot_freq.max(axis=1).values,
-        }
-    )
-    dominance_df["previous_dominant_clade"] = dominance_df["dominant_clade"].shift()
-
-    overtakes = (
-        dominance_df[
-            dominance_df["dominant_clade"] != dominance_df["previous_dominant_clade"]
-        ]
-        .dropna(subset=["previous_dominant_clade"])
-        .copy()
+    (
+        clade_freq,
+        plot_freq,
+        clade_counts,
+        dominance_df,
+        overtakes,
+        clade_order,
+    ) = compute_lineage_frequency_tables(
+        dd,
+        date_col=date_col,
+        clade_col=clade_col,
+        sequence_col=sequence_col,
+        time_freq=time_freq,
+        smooth_window=smooth_window,
+        min_sequences_per_period=min_sequences_per_period,
     )
 
     ax.set_facecolor("white")
@@ -778,27 +819,26 @@ def plot_lineage_frequency_and_overtakes(
     )
 
 
-def main() -> int:
-    """Load processed metadata and write policy/clade surveillance outputs."""
-    # ---- Configuration (previously command-line arguments) ------------------
-    smooth_window = DAILY_SMOOTH_WINDOW
-    window_stride = SEQUENCE_WINDOW_STRIDE
-    figure_dir = FIGURES_DIR
-    table_dir = TABLES_DIR
-    log_level = "INFO"
-    # -------------------------------------------------------------------------
-
-    logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
-    logging.getLogger("fontTools").setLevel(logging.WARNING)
+def build(
+    *,
+    figure_dir: Path = FIGURES_DIR,
+    table_dir: Path = TABLES_DIR,
+    smooth_window: int = DAILY_SMOOTH_WINDOW,
+    window_stride: int = SEQUENCE_WINDOW_STRIDE,
+    write_tables: bool = True,
+    write_figure: bool = True,
+) -> dict[str, object]:
+    """Build the sequence surveillance figure and/or companion tables."""
     if smooth_window < 1:
         raise SystemExit("smooth_window must be at least 1.")
     if window_stride < 1:
         raise SystemExit("window_stride must be at least 1.")
 
-    set_theme(context="paper")
-    out_dir = figure_dir
-    out_dir.mkdir(parents=True, exist_ok=True)
-    table_dir.mkdir(parents=True, exist_ok=True)
+    if write_figure:
+        set_theme(context="paper")
+        figure_dir.mkdir(parents=True, exist_ok=True)
+    if write_tables:
+        table_dir.mkdir(parents=True, exist_ok=True)
 
     LOGGER.info("Loading surveillance sequence data")
     sequences = load_analysis_columns(
@@ -813,53 +853,78 @@ def main() -> int:
 
     sampling_df = compute_sequencing_proportion(sequences)
 
-    fig, axes = new_figure(
-        width="double",
-        height_in=7,
-        nrows=3,
-        ncols=1,
-        gridspec_kw={"height_ratios": [0.15, 2.5, 2.5], "hspace": 0.25},
-    )
+    saved_figures: dict[str, Path] = {}
+    if write_figure:
+        fig, axes = new_figure(
+            width="double",
+            height_in=7,
+            nrows=3,
+            ncols=1,
+            gridspec_kw={"height_ratios": [0.15, 2.5, 2.5], "hspace": 0.25},
+        )
 
-    axes = axes.ravel()
+        axes = axes.ravel()
 
-    ax_policy = axes[0]
-    ax_top = axes[1]
-    ax_bottom = axes[2]
+        ax_policy = axes[0]
+        ax_top = axes[1]
+        ax_bottom = axes[2]
 
-    add_policy_strip(ax_policy, timeline["collection_date"])
-    plot_sequences_with_policy(timeline, sampling_df, ax=ax_top, show_xlabel=False)
-    ax_top.tick_params(axis="x", labelbottom=False)
+        add_policy_strip(ax_policy, timeline["collection_date"])
+        plot_sequences_with_policy(timeline, sampling_df, ax=ax_top, show_xlabel=False)
+        ax_top.tick_params(axis="x", labelbottom=False)
 
-    (
-        clade_freq,
-        plot_freq,
-        clade_counts,
-        dominance_df,
-        overtakes,
-        legend_handles,
-        legend_labels,
-    ) = plot_lineage_frequency_and_overtakes(
-        sequences,
-        ax=ax_bottom,
-        clade_col="variant",
-    )
+        (
+            clade_freq,
+            plot_freq,
+            clade_counts,
+            dominance_df,
+            overtakes,
+            legend_handles,
+            legend_labels,
+        ) = plot_lineage_frequency_and_overtakes(
+            sequences,
+            ax=ax_bottom,
+            clade_col="variant",
+        )
 
-    place_policy_strip_flush(ax_policy, ax_top)
-    add_policy_stringency_colorbar(fig, ax_policy)
+        place_policy_strip_flush(ax_policy, ax_top)
+        add_policy_stringency_colorbar(fig, ax_policy)
 
-    fig.legend(
-        legend_handles,
-        legend_labels,
-        ncol=5,
-        loc="lower center",
-        bbox_to_anchor=(0.5, -0.12),
-        bbox_transform=fig.transFigure,
-        frameon=False,
-        columnspacing=2,
-        handlelength=1.5,
-        borderaxespad=0.0,
-    )
+        fig.legend(
+            legend_handles,
+            legend_labels,
+            ncol=5,
+            loc="lower center",
+            bbox_to_anchor=(0.5, -0.12),
+            bbox_transform=fig.transFigure,
+            frameon=False,
+            columnspacing=2,
+            handlelength=1.5,
+            borderaxespad=0.0,
+        )
+
+        fig.align_ylabels([ax_top, ax_bottom])
+        add_panel_labels([ax_top, ax_bottom], x=-0.1, y=1.1)
+
+        saved_figures = save_figure(
+            fig,
+            figure_dir / FIGURE_NAME,
+            width="double",
+            save_png=True,
+            save_pdf=True,
+        )
+    else:
+        (
+            clade_freq,
+            plot_freq,
+            clade_counts,
+            dominance_df,
+            overtakes,
+            _clade_order,
+        ) = compute_lineage_frequency_tables(
+            sequences,
+            clade_col="variant",
+        )
 
     tables = {
         "clade_frequency_by_period": clade_freq,
@@ -869,21 +934,22 @@ def main() -> int:
         "clade_overtake_events": overtakes,
         "sequencing_proportion_by_period": sampling_df,
     }
-    for name, table in tables.items():
-        LOGGER.info("Writing %s (%s rows)", name, f"{len(table):,}")
-        write_table(table, name, table_dir=table_dir)
+    saved_tables: dict[str, dict[str, Path]] = {}
+    if write_tables:
+        for name, table in tables.items():
+            LOGGER.info("Writing %s (%s rows)", name, f"{len(table):,}")
+            saved_tables[name] = write_table(table, name, table_dir=table_dir)
 
-    fig.align_ylabels([ax_top, ax_bottom])
-    add_panel_labels([ax_top, ax_bottom], x=-0.1, y=1.1)
+    if write_figure:
+        LOGGER.info("Wrote surveillance outputs under %s", figure_dir.parent)
+    return {"figures": saved_figures, "tables": saved_tables}
 
-    _ = save_figure(
-        fig,
-        out_dir / FIGURE_NAME,
-        width="double",
-        save_png=True,
-        save_pdf=True,
-    )
-    LOGGER.info("Wrote surveillance outputs under %s", out_dir.parent)
+
+def main() -> int:
+    """Load processed metadata and write policy/clade surveillance outputs."""
+    logging.basicConfig(level="INFO", format="%(levelname)s: %(message)s")
+    logging.getLogger("fontTools").setLevel(logging.WARNING)
+    build()
     return 0
 
 

@@ -9,11 +9,13 @@ See [TECHNICAL.md](TECHNICAL.md) for definitions and output contracts.
 Run from the repository root:
 
 ```bash
-python -m analyses.surveillance.policy_sequences_over_time
-python -m analyses.surveillance.policy_index_comparison
+python -m results.make_figures --domain surveillance
+python -m results.make_tables --domain surveillance
 ```
 
-The timeline command accepts `--smooth-window`, `--window-stride`, `--figure-dir`, `--table-dir`, and `--log-level`. The policy comparison accepts date, region, and output-directory overrides; use `--help` for the live interface.
+The individual figure builders live in `lib/figs/fig01.py` and
+`lib/figs/fig02.py`. Project-level publication outputs are built through the
+root `results` commands.
 
 ## Outputs
 
@@ -21,11 +23,11 @@ The timeline command accepts `--smooth-window`, `--window-stride`, `--figure-dir
 
 `policy_index_comparison` writes `policy_indices_daily` and `policy_index_correlation` as CSV/parquet, plus `policy_index_comparison.{png,pdf}`.
 
-Default locations are:
+Default output locations are:
 
 ```text
 analyses/surveillance/results/tables/
-analyses/surveillance/results/figures/
+results/figures/
 ```
 
 Policy-period, window-policy, and lineage/clade lookup helpers live in the shared `utils` package and work from the processed daily policy calendar produced by the pipeline.

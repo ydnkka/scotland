@@ -4,8 +4,11 @@ Importable analysis packages built from `data/processed/scotland_clustering_anal
 
 | Package | Scope | Main entry point |
 | --- | --- | --- |
-| [`surveillance`](surveillance/README.md) | Policy timeline, sequence counts, lineage replacement, and sequencing coverage | `python -m analyses.surveillance.policy_sequences_over_time` |
-| [`genomic_networks`](genomic_networks/README.md) | Cohort, clusters, compatibility mixing/topology, and sensitivity analyses | `python -m analyses.genomic_networks.build_cluster_tables` |
+| [`surveillance`](surveillance/README.md) | Policy timeline, sequence counts, lineage replacement, and sequencing coverage | `python -m results.make_figures --domain surveillance` |
+| [`genomic_networks`](genomic_networks/README.md) | Cohort, clusters, compatibility mixing/topology, and sensitivity analyses | `python -m analyses.genomic_networks.build_cluster_summaries` |
 | [`sse_detection`](sse_detection/README.md) | Transition graph, candidate detector, composition, and Bayesian characterisation | `python -m analyses.sse_detection.lib.sse.detection` |
 
-Run modules from the repository root. Each package writes generated artifacts to its own `results/` directory.
+Run modules from the repository root. Analysis packages keep source/intermediate
+tables under their own `results/` directories; project-level publication figures
+and tables are built with `python -m results.make_figures` and
+`python -m results.make_tables`.

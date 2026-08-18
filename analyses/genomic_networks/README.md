@@ -13,7 +13,8 @@ python -m analyses.genomic_networks.build_cluster_summaries
 python -m analyses.genomic_networks.build_mixing --all-windows --workers 4 --include-giants --giant-workers 1
 python -m analyses.genomic_networks.build_sensitivity_tables
 python -m analyses.genomic_networks.build_simd_validation
-python -m analyses.genomic_networks.make_figures --skip-missing
+python -m results.make_figures --domain genomic_networks --skip-missing
+python -m results.make_tables --domain genomic_networks --skip-missing
 ```
 
 Build `data/processed/sparsified_edge_counts_by_window_lineage.parquet` first with `python3 method/build_sparsified_edge_manifest.py` for edge-aware mixing scheduling.
@@ -43,15 +44,17 @@ Assortativity uncertainty uses an edge-weight multiplier bootstrap by default (`
 
 `build_simd_validation` defaults to quintiles; `--n-groups` accepts 5, 10, or 20.
 
-`make_figures` reads saved tables. Without `--skip-missing`, a missing required table fails the run.
+The project-level `results.make_figures` and `results.make_tables` commands read
+saved analysis-local tables. Without `--skip-missing`, a missing required table
+fails the run.
 
 ## Layout
 
 - `lib/`: configuration, I/O, cohort, cluster-table, cluster-rollup, pairwise-distance, mixing, SIMD, figure, and table logic.
 - `build_*.py`: table-building entry points.
-- `make_figures.py`: saved-table figure and LaTeX orchestration.
-- `results/tables/`: final tables.
+- `results/tables/`: analysis-local source and intermediate tables.
 - `results/intermediate/`: per-pairwise-file bootstrap mixing, assortativity, and topology chunks.
-- `results/figures/`: figures and `.tex` fragments.
+- `../../results/figures/`: project-level figures.
+- `../../results/tables/`: project-level LaTeX table fragments.
 
 Compatibility edges are EpiLink-weighted plausible links, not observed transmission. Rolling-window clusters are not persistent outbreak entities.

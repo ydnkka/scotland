@@ -5,7 +5,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 PACKAGE_DIR = PROJECT_ROOT / "analyses/surveillance"
 RESULTS_DIR = PACKAGE_DIR / "results"
-FIGURES_DIR = RESULTS_DIR / "figures"
+FIGURES_DIR = PROJECT_ROOT / "results/figures"
 TABLES_DIR = RESULTS_DIR / "tables"
 
 DAILY_SMOOTH_WINDOW = 7

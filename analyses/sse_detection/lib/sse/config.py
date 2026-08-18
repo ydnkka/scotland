@@ -10,7 +10,7 @@ PACKAGE_DIR = PROJECT_ROOT / "analyses/sse_detection"
 RESULTS_DIR = PACKAGE_DIR / "results"
 SSE_OUTPUT_DIR = RESULTS_DIR / "sse_outputs"
 BAYESIAN_OUTPUT_DIR = RESULTS_DIR / "bayesian_outputs"
-FIGURE_DIR = RESULTS_DIR / "figures"
+FIGURE_DIR = PROJECT_ROOT / "results/figures"
 TABLE_DIR = RESULTS_DIR / "tables"
 
 TRANSITION_WINDOW_STRIDE = 2

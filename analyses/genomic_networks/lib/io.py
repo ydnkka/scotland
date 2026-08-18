@@ -11,7 +11,6 @@ import pandas as pd
 from .config import (
     ANALYSIS_COLUMNS,
     ANALYSIS_RESOLUTION,
-    FIGURES_DIR,
     INTERMEDIATE_DIR,
     PROJECT_ROOT,
     RESULTS_DIR,
@@ -28,7 +27,7 @@ TABLE_OUTPUT_FORMATS = ("parquet", "csv")
 
 def ensure_results_dirs() -> None:
     """Create the standard genomic-network output directories."""
-    for path in (RESULTS_DIR, TABLES_DIR, FIGURES_DIR, INTERMEDIATE_DIR):
+    for path in (RESULTS_DIR, TABLES_DIR, INTERMEDIATE_DIR):
         path.mkdir(parents=True, exist_ok=True)
 
 

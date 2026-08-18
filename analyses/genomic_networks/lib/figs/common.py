@@ -28,7 +28,7 @@ from utils import (  # noqa: F401
 from utils.style import *
 
 DEFAULT_TABLE_DIR = PROJECT_ROOT / "analyses/genomic_networks/results/tables"
-FIGURE_DIR = PROJECT_ROOT / "analyses/genomic_networks/results/figures"
+FIGURE_DIR = PROJECT_ROOT / "results/figures"
 
 _POLICY_DAILY = load_policy_calendar()
 POLICY_ORDER = {

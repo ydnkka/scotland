@@ -10,7 +10,7 @@ import matplotlib.dates as mdates
 import numpy as np
 import pandas as pd
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_PROJECT_ROOT = Path(__file__).resolve().parents[4]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
@@ -30,6 +30,7 @@ from utils import (
 LOGGER = logging.getLogger(__name__)
 STRINGENCY_COLOR = "#2166ac"
 CONTAINMENT_COLOR = "#b2182b"
+FIGURE_NAME = POLICY_INDEX_FIGURE_NAME
 
 
 def load_policy_indices(
@@ -185,18 +186,21 @@ def build_figure(daily: pd.DataFrame, summary: pd.DataFrame):
     return fig
 
 
-def main() -> int:
-    # ---- Configuration (previously command-line arguments) ------------------
+def build(
+    *,
+    figure_dir: Path = FIGURES_DIR,
+    table_dir: Path = TABLES_DIR,
+    start_date: str | pd.Timestamp | None = None,
+    end_date: str | pd.Timestamp | None = None,
+    write_tables: bool = True,
+    write_figure: bool = True,
+) -> dict[str, object]:
+    """Build the policy-index figure and/or its companion tables."""
     policy_dates = load_daily_policy_data(["date"])["date"]
-    start_date = str(policy_dates.min().date())
-    end_date = str(policy_dates.max().date())
-    figure_dir = FIGURES_DIR
-    table_dir = TABLES_DIR
-    log_level = "INFO"
-    # -------------------------------------------------------------------------
-
-    logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
-    logging.getLogger("fontTools").setLevel(logging.WARNING)
+    if start_date is None:
+        start_date = str(policy_dates.min().date())
+    if end_date is None:
+        end_date = str(policy_dates.max().date())
 
     daily = load_policy_indices(
         start_date=start_date,
@@ -210,17 +214,41 @@ def main() -> int:
         summary.loc[0, "spearman_rho"],
     )
 
-    write_table(daily, "policy_indices_daily", table_dir=table_dir)
-    write_table(summary, "policy_index_correlation", table_dir=table_dir)
-    fig = build_figure(daily, summary)
-    saved = save_figure(
-        fig,
-        figure_dir / POLICY_INDEX_FIGURE_NAME,
-        width="double",
-        save_png=True,
-        save_pdf=True,
-    )
-    LOGGER.info("Wrote policy-index figure: %s", ", ".join(map(str, saved.values())))
+    outputs: dict[str, object] = {"tables": {}, "figures": {}}
+    if write_tables:
+        outputs["tables"] = {
+            "policy_indices_daily": write_table(
+                daily,
+                "policy_indices_daily",
+                table_dir=table_dir,
+            ),
+            "policy_index_correlation": write_table(
+                summary,
+                "policy_index_correlation",
+                table_dir=table_dir,
+            ),
+        }
+    if write_figure:
+        fig = build_figure(daily, summary)
+        saved = save_figure(
+            fig,
+            figure_dir / POLICY_INDEX_FIGURE_NAME,
+            width="double",
+            save_png=True,
+            save_pdf=True,
+        )
+        outputs["figures"] = saved
+        LOGGER.info(
+            "Wrote policy-index figure: %s",
+            ", ".join(map(str, saved.values())),
+        )
+    return outputs
+
+
+def main() -> int:
+    logging.basicConfig(level="INFO", format="%(levelname)s: %(message)s")
+    logging.getLogger("fontTools").setLevel(logging.WARNING)
+    build()
     return 0
 
 

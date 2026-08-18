@@ -65,10 +65,10 @@ python -m analyses.sse_detection.lib.sse.detection
 python -m analyses.sse_detection.build_composition_tables
 
 # Rebuild available detector figures and Bayesian result tables
-python -m analyses.sse_detection.make_figures --skip-missing
+python -m results.make_figures --domain sse_detection --skip-missing
 
 # Rebuild Bayesian result tables only
-python -m analyses.sse_detection.make_tables
+python -m results.make_tables --domain sse_detection --skip-missing
 ```
 
 The detector has no CLI options; its settings are constants in `lib/sse/config.py`. Bayesian fitting commands are listed in [BAYESIAN_MODELS.md](BAYESIAN_MODELS.md).
@@ -77,8 +77,9 @@ The detector has no CLI options; its settings are constants in `lib/sse/config.p
 
 - `lib/sse/`: data loading, transition graph, composition entropy, feature assembly, scoring, and diagnostics.
 - `lib/model/`: Bayesian preparation, fitting, and CLI orchestration.
-- `lib/figs/` and `lib/figures.py`: figure and result-table builders.
+- `lib/figs/`: individual figure and result-table builders.
 - `results/sse_outputs/`: authoritative detector cluster/edge tables and graph summaries.
-- `results/tables/`: composition and publication tables.
-- `results/figures/`: detector and Bayesian figures.
+- `results/tables/`: composition/source tables.
+- `../../results/figures/`: project-level detector and Bayesian figures.
+- `../../results/tables/`: project-level publication `.tex` table fragments.
 - `results/bayesian_outputs/`: fitted model summaries, diagnostics, metadata, logs, and optional inference data.

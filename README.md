@@ -73,27 +73,34 @@ See [method/PIPELINE.md](method/PIPELINE.md) for inputs, outputs, restart behavi
 ## Analysis entry points
 
 ```bash
-# Surveillance
-python -m analyses.surveillance.policy_sequences_over_time
-python -m analyses.surveillance.policy_index_comparison
-
-# Genomic networks
+# Analysis-local table/intermediate builders
 python -m analyses.genomic_networks.build_cluster_summaries
 python -m analyses.genomic_networks.build_mixing --all-windows --workers 4 --include-giants --giant-workers 1
 python -m analyses.genomic_networks.build_cluster_pairwise_distance_summary --all-windows
 python -m analyses.genomic_networks.build_sensitivity_tables
 python -m analyses.genomic_networks.build_simd_validation
-python -m analyses.genomic_networks.make_figures --skip-missing
-
-# SSE detection
 python -m analyses.sse_detection.lib.sse.detection
 python -m analyses.sse_detection.build_composition_tables
 python -m analyses.sse_detection.lib.model.mixing
 python -m analyses.sse_detection.lib.model.composition
-python -m analyses.sse_detection.make_figures --skip-missing
+
+# Publication figures and tables
+python -m results.make_figures --skip-missing
+python -m results.make_tables --skip-missing
 ```
 
-Generated analysis outputs are written below each package's `results/` directory and are excluded from version control.
+Use `python -m results.make_figures --list` or `python -m results.make_tables --list`
+to inspect available builders. Individual builders can be selected by fully
+qualified name, for example:
+
+```bash
+python -m results.make_figures surveillance:policy_sequences_over_time
+python -m results.make_tables genomic_networks:tab_policy_denominators
+```
+
+Analysis-local outputs are written below each package's `results/` directory.
+Publication figures and tables are written to the project-level `results/`
+directory.
 
 ## Governance and reproducibility
 

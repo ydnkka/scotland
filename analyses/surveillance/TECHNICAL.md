@@ -2,7 +2,11 @@
 
 ## Scope and inputs
 
-`policy_sequences_over_time.py` loads `sequence_id`, `collection_date`, `clade`, and `wn_prop_sequenced` through `utils.load_analysis_columns(...)`. It applies no Nextclade QC filter and, by default, retains every third sorted analysis window (`--window-stride 3`). Retained windows are renumbered by the shared loader. Unmatched clades are labelled `Other`.
+`lib/figs/fig01.py` builds the sequence-over-time figure. It loads
+`sequence_id`, `collection_date`, `clade`, and `wn_prop_sequenced` through
+`utils.load_analysis_columns(...)`. It applies no Nextclade QC filter and, by
+default, retains every third sorted analysis window. Retained windows are
+renumbered by the shared loader. Unmatched clades are labelled `Other`.
 
 Results describe observed sequenced records; the package does not fit causal or transmission models.
 
@@ -21,11 +25,16 @@ Because rolling-window rows repeat sequences, the loader stride and deduplicatio
 
 The shared policy helpers read the processed daily calendar at `data/processed/scotland_policy.parquet`, normalise the policy-period columns to `policy_period`, `policy_period_label`, `policy_period_order`, and `policy_era`, and expose the same date-indexed information used by the figure code. The parquet is produced upstream by `method/01_prep_metadata.py`, so a stale or missing policy build still fails when the pipeline is rebuilt.
 
-`policy_index_comparison.py` inner-joins the two daily series, restricts them to the configured dates, and reports complete-day Pearson correlation, Spearman correlation, an ordinary linear slope/intercept, and Pearson (r^2). It intentionally omits independence-based p-values because adjacent daily policy values are serially dependent.
+`lib/figs/fig02.py` inner-joins the two daily policy-index series, restricts
+them to the configured dates, and reports complete-day Pearson correlation,
+Spearman correlation, an ordinary linear slope/intercept, and Pearson (r^2). It
+intentionally omits independence-based p-values because adjacent daily policy
+values are serially dependent.
 
 ## Output contract
 
-Tables are index-free CSV and parquet files under `results/tables/`:
+When built through the project-level `results` commands, tables are index-free
+CSV and parquet files under `analyses/surveillance/results/tables/`:
 
 - `clade_frequency_by_period`: unsmoothed weekly frequencies;
 - `clade_frequency_by_period_smoothed`: plotted trailing means;
@@ -34,7 +43,7 @@ Tables are index-free CSV and parquet files under `results/tables/`:
 - `sequencing_proportion_by_period`: observed and plotted coverage;
 - `policy_indices_daily` and `policy_index_correlation`.
 
-Figures are PNG and PDF only under `results/figures/`.
+Figures are PNG and PDF only under project-level `results/figures/`.
 
 ## Checks and limits
 
