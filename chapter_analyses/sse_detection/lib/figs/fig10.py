@@ -1,4 +1,4 @@
-"""Build Chapter 5 Figure 10: detector-threshold robustness."""
+"""Build the detector-threshold robustness figure."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from .common import (
     styled_save_figure,
 )
 
-FILE_NAME = "ch5_threshold_robustness"
+FILE_NAME = "threshold_robustness"
 
 
 def build_threshold_robustness(nodes: pd.DataFrame) -> pd.DataFrame:

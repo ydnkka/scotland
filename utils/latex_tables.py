@@ -1,4 +1,4 @@
-"""Shared LaTeX table writers using the thesis table environments."""
+"""Shared LaTeX table writers using the project table environments."""
 
 from __future__ import annotations
 
@@ -130,7 +130,7 @@ def render_latex_longtable(
     dense: bool = True,
     tiny: bool = False,
 ) -> str:
-    """Render a thesis-style longtable that can span pages."""
+    """Render a dense longtable that can span pages."""
     addlinespace_after = addlinespace_after or set()
     column_count = len(columns)
     column_spec = latex_column_spec(column_spec, column_count)

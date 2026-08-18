@@ -1,4 +1,4 @@
-"""Regenerate Chapter 4 figures and LaTeX tables from saved result tables."""
+"""Regenerate genomic-network figures and LaTeX tables from saved result tables."""
 
 from __future__ import annotations
 

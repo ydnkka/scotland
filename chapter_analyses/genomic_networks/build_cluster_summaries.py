@@ -1,4 +1,4 @@
-"""Build all Chapter 4 cohort, context, and cluster summary tables.
+"""Build all genomic-network cohort, context, and cluster summary tables.
 
 Run from the Scotland repository root:
 

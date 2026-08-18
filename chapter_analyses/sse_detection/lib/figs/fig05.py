@@ -1,4 +1,4 @@
-"""Build Chapter 5 Figure 5: high-priority candidates over time."""
+"""Build the high-priority candidates over time figure."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from .common import (
     wilson,
 )
 
-FILE_NAME = "ch5_candidate_timeline"
+FILE_NAME = "candidate_timeline"
 
 
 def build_candidate_timeline(nodes: pd.DataFrame) -> pd.DataFrame:

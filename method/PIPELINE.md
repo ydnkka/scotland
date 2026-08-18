@@ -146,7 +146,7 @@ The SIMD join is inner and can remove sequences whose Data Zones are absent afte
 
 ## Optional sparse-edge manifest
 
-Chapter 4 uses an edge-count manifest to schedule very large pairwise files:
+The genomic-network analysis uses an edge-count manifest to schedule very large pairwise files:
 
 ```bash
 python3 method/build_sparsified_edge_manifest.py

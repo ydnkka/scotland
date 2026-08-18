@@ -1,7 +1,7 @@
 """Within-cluster pairwise distance summaries.
 
 For each selected rolling-window/Pango-lineage group, this module finds
-non-singleton clusters at the Chapter 4 default Leiden resolution, combines the
+non-singleton clusters at the genomic-network default Leiden resolution, combines the
 selected cluster members, loads the corresponding physical pairwise parquet
 file, and summarises SNP and temporal pairwise distances.
 """

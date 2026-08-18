@@ -5,7 +5,7 @@ window set, for example:
 
     python -m chapter_analyses.genomic_networks.build_mixing --windows W080 W081
 
-For the full Chapter 4 run:
+For the full genomic-network run:
 
     python -m chapter_analyses.genomic_networks.build_mixing --all-windows --workers 4 \
         --include-giants --giant-workers 1

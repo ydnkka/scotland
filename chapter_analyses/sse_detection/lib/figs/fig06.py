@@ -1,4 +1,4 @@
-"""Build Chapter 5 Figure 6: score landscape and selection funnel."""
+"""Build the score landscape and selection funnel figure."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from .common import (
     styled_save_figure,
 )
 
-FILE_NAME = "ch5_score_landscape"
+FILE_NAME = "score_landscape"
 CANDIDATE_COLORS = {
     "possible_review": "#E6AB02",
     "high_priority_burst": "#D55E00",
@@ -139,8 +139,8 @@ def draw_score_landscape(ax, table: pd.DataFrame) -> None:
         ax.get_xlim()[0], strip_y, "Burden N/A", va="center", ha="left", color="#555555"
     )
 
-    ax.set_xlabel("Local burst calibrated score")
-    ax.set_ylabel("Onward burden calibrated score")
+    ax.set_xlabel("Calibrated local-burst score")
+    ax.set_ylabel("Calibrated onward-burden score")
     ax.legend(loc="center left")
 
 

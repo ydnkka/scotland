@@ -1,4 +1,4 @@
-"""Build Chapter 4 Figure 6: vaccination context in the observed cohort."""
+"""Build the vaccination context figure for the observed cohort."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ from common import (
     styled_save_figure,
 )
 
-FIGURE_NAME = "fig_ch4_vaccination_context"
+FIGURE_NAME = "fig_vaccination_context"
 MIN_DAYS_SERIES_COUNT = 20
 
 DOSE_GROUPS = (

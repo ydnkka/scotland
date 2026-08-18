@@ -1,4 +1,4 @@
-"""Build Chapter 5 Figure 8: transition graph diagnostics and role counts."""
+"""Build the transition-graph diagnostics and role counts figure."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from .common import (
 )
 from .fig01 import CLUSTER_ROLE_GROUPS, ROLE_COLORS
 
-FILE_NAME = "ch5_transition_graph_characteristics"
+FILE_NAME = "transition_graph_characteristics"
 
 PREFERRED_ROLES = [
     "Isolated",

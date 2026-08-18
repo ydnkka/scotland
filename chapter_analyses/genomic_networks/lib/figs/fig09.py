@@ -1,4 +1,4 @@
-"""Build Chapter 4 Supplementary Figure 2: compatibility topology diagnostics."""
+"""Build the compatibility topology diagnostics figure."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ from common import (
     window_idx_from_id,
 )
 
-FIGURE_NAME = "fig_ch4_compatibility_topology"
+FIGURE_NAME = "fig_compatibility_topology"
 
 
 def _date_values(values: pd.Series) -> np.ndarray:

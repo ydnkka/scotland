@@ -27,11 +27,11 @@ OUTCOMES = (
     ("linear", "burden_score", "Burden score"),
 )
 TABLE_NAMES = {
-    "model_specifications": "tab_ch5_bayesian_model_specifications",
-    "model_diagnostics": "tab_ch5_bayesian_model_diagnostics",
-    "fixed_effects_main": "tab_ch5_bayesian_fixed_effects_main",
-    "fixed_effects_full": "tab_app_ch5_bayesian_fixed_effects_full",
-    "random_effects": "tab_app_ch5_bayesian_random_effect_sds",
+    "model_specifications": "tab_bayesian_model_specifications",
+    "model_diagnostics": "tab_bayesian_model_diagnostics",
+    "fixed_effects_main": "tab_bayesian_fixed_effects_main",
+    "fixed_effects_full": "tab_app_bayesian_fixed_effects_full",
+    "random_effects": "tab_app_bayesian_random_effect_sds",
 }
 SUMMARY_TABLE_STEMS = {
     "diagnostics": "summary_table_1_diagnostics",
@@ -156,7 +156,7 @@ def _format_direction(row: pd.Series) -> str:
     return f"P({direction}) = {probability}"
 
 
-def _sort_for_thesis(
+def _sort_for_report(
     table: pd.DataFrame,
     *,
     extra_columns: list[str] | None = None,
@@ -586,14 +586,14 @@ def build_model_sample_specification_table(
             "Formula": models["formula"],
         }
     )
-    return _sort_for_thesis(out)
+    return _sort_for_report(out)
 
 
 def build_model_diagnostics_table(
     result_dir: Path = BAYESIAN_OUTPUT_DIR,
 ) -> pd.DataFrame:
     """Return the all-domain diagnostic summary table."""
-    return _sort_for_thesis(_read_summary_table(result_dir, "diagnostics"))
+    return _sort_for_report(_read_summary_table(result_dir, "diagnostics"))
 
 
 def build_fixed_effects_main_table(
@@ -608,14 +608,14 @@ def build_fixed_effects_main_table(
         | (table["Domain"].eq("Mixing") & scale.eq("Null Standardised"))
     )
     out = table.loc[focal & interpretation_model].copy()
-    return _sort_for_thesis(out, extra_columns=["Parameter"])
+    return _sort_for_report(out, extra_columns=["Parameter"])
 
 
 def build_fixed_effects_full_table(
     result_dir: Path = BAYESIAN_OUTPUT_DIR,
 ) -> pd.DataFrame:
-    """Return the complete thesis estimate summary table."""
-    return _sort_for_thesis(
+    """Return the complete estimate summary table."""
+    return _sort_for_report(
         _read_summary_table(result_dir, "estimates"),
         extra_columns=["Parameter"],
     )
@@ -623,7 +623,7 @@ def build_fixed_effects_full_table(
 
 def build_random_effects_table(result_dir: Path = BAYESIAN_OUTPUT_DIR) -> pd.DataFrame:
     """Return random-effect and residual-SD summaries."""
-    return _sort_for_thesis(
+    return _sort_for_report(
         _read_summary_table(result_dir, "random_effects"),
         extra_columns=["Grouping Factor", "Parameter"],
     )
@@ -662,7 +662,7 @@ def write_model_sample_specification_table(paths: Paths) -> dict[str, Path]:
             "All specifications include varying intercepts for policy period and clade."
         ),
         short_caption="Bayesian characterisation fitted samples and model specifications.",
-        label="tab:ch5_bayesian_model_specifications",
+        label="tab:bayesian_model_specifications",
         columns=[
             "Domain",
             "Family",
@@ -714,7 +714,7 @@ def write_model_diagnostics_table(paths: Paths) -> dict[str, Path]:
             "Bayesian characterisation sampling diagnostics across composition "
             "and mixing models."
         ),
-        label="tab:ch5_bayesian_model_diagnostics",
+        label="tab:bayesian_model_diagnostics",
         columns=[
             "Domain",
             "Family",
@@ -771,7 +771,7 @@ def write_fixed_effects_main_table(paths: Paths) -> dict[str, Path]:
             "highest-density intervals."
         ),
         short_caption="Focal fixed-effect estimates from expanded Bayesian models.",
-        label="tab:ch5_bayesian_fixed_effects_main",
+        label="tab:bayesian_fixed_effects_main",
         columns=[
             "Domain",
             "Family",
@@ -826,12 +826,12 @@ def write_fixed_effects_full_table(paths: Paths) -> dict[str, Path]:
         tex_path,
         caption=(
             "Complete Bayesian characterisation estimate summary. This table "
-            "contains all rows from thesis summary table 2, including intercepts, "
+            "contains all rows from summary table 2, including intercepts, "
             "focal fixed effects, continuous adjusters, and random-intercept "
             "level summaries."
         ),
         short_caption="Complete Bayesian characterisation estimate summary.",
-        label="tab:app_ch5_bayesian_fixed_effects_full",
+        label="tab:app_bayesian_fixed_effects_full",
         columns=[
             "Domain; family",
             "Outcome",
@@ -894,7 +894,7 @@ def write_random_effects_table(paths: Paths) -> dict[str, Path]:
             "for random-effect standard deviations only."
         ),
         short_caption="Bayesian random-effect and residual standard deviations.",
-        label="tab:app_ch5_bayesian_random_effect_sds",
+        label="tab:app_bayesian_random_effect_sds",
         columns=[
             "Domain",
             "Family",

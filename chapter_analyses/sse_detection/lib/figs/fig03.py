@@ -25,7 +25,7 @@ from .common import (
     styled_save_figure,
 )
 
-FIGURE_NAME = "fig_ch5_sse_composition_descriptive"
+FIGURE_NAME = "fig_sse_composition_descriptive"
 CANDIDATE_HIGHER_COLOR = "#2F6690"
 BACKGROUND_HIGHER_COLOR = "#B75D69"
 ZERO_COLOR = "#555555"

@@ -1,4 +1,4 @@
-"""Build Chapter 4 Figure 1: sequence composition by policy period."""
+"""Build the sequence composition by policy period figure."""
 
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ from common import (
     styled_save_figure,
 )
 
-FIGURE_NAME = "fig_ch4_sequence_composition_by_policy"
+FIGURE_NAME = "fig_sequence_composition_by_policy"
 
 
 def ordered_sequence_categories(

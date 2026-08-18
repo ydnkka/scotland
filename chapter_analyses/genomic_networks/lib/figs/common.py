@@ -1,4 +1,4 @@
-"""Shared plumbing for Chapter 4 observation-network artifacts."""
+"""Shared plumbing for genomic-network artifacts."""
 
 from __future__ import annotations
 

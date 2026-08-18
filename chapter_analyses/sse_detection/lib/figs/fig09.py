@@ -1,4 +1,4 @@
-"""Build Chapter 5 Figure 9: entropy-tertile profiles among candidates."""
+"""Build the entropy-tertile profiles among candidates figure."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from .common import (
     styled_save_figure,
 )
 
-FILE_NAME = "ch5_entropy_tertile_profiles"
+FILE_NAME = "entropy_tertile_profiles"
 
 TERTILE_ORDER = (
     "more_homogeneous",

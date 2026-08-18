@@ -1,10 +1,10 @@
 # SSE Detection
 
-Chapter 5 code for an alternate-window cluster-transition graph, a demographic-blind superspreading-compatible signal detector, composition summaries, and Bayesian characterisation.
+Code for an alternate-window cluster-transition graph, a demographic-blind superspreading-compatible signal detector, composition summaries, and Bayesian characterisation.
 
 Candidates are graph-derived priorities for review, not confirmed superspreading events or transmission chains.
 
-Chapter 4 owns the underlying window-specific clusters and compatibility networks; this package owns their temporal continuity and downstream characterisation.
+The genomic-network package owns the underlying window-specific clusters and compatibility networks; this package owns their temporal continuity and downstream characterisation.
 
 ## Detection Rationale
 

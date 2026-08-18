@@ -1,4 +1,4 @@
-"""Build Chapter 5 Figure 1: graph-role schematic."""
+"""Build the transition-graph role schematic."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from .common import (
     styled_save_figure,
 )
 
-FIGURE_NAME = "fig_ch5_transition_graph_roles"
+FIGURE_NAME = "fig_transition_graph_roles"
 
 
 CLUSTER_ROLE_GROUPS = {

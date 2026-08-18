@@ -26,8 +26,8 @@ from .forest import (
 )
 
 FIGURE_NAME = {
-    "mixing": "fig_ch5_random_effects_mixing",
-    "composition": "fig_ch5_random_effects_composition",
+    "mixing": "fig_random_effects_mixing",
+    "composition": "fig_random_effects_composition",
 }
 APP_OUTCOMES = (
     ("candidate", "Candidate status"),

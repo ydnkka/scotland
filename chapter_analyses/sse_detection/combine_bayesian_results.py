@@ -9,7 +9,7 @@ summary, metadata, and headline diagnostics. It writes four consolidated tables:
 - composition logistic
 - composition linear
 
-It also writes three thesis-facing summary tables for diagnostics, directional
+It also writes three report-facing summary tables for diagnostics, directional
 estimates, and directionless variance components.
 
 Run from the repository root::
@@ -391,13 +391,13 @@ def write_consolidated_tables(
     return outputs
 
 
-THESIS_TABLE_STEMS: dict[str, str] = {
+REPORT_TABLE_STEMS: dict[str, str] = {
     "diagnostics": "summary_table_1_diagnostics",
     "estimates": "summary_table_2_estimates",
     "random_effects": "summary_table_3_random_effect_sds",
 }
 
-THESIS_COLUMN_LABELS: dict[str, str] = {
+REPORT_COLUMN_LABELS: dict[str, str] = {
     "domain": "Domain",
     "family": "Family",
     "outcome": "Outcome",
@@ -428,33 +428,33 @@ THESIS_COLUMN_LABELS: dict[str, str] = {
 }
 
 
-def build_thesis_summary_tables(
+def build_report_summary_tables(
     tables: dict[tuple[Domain, Family], pd.DataFrame],
 ) -> dict[str, pd.DataFrame]:
-    """Build thesis-facing summary tables from the consolidated outputs."""
+    """Build report-facing summary tables from the consolidated outputs."""
     return {
-        "diagnostics": _build_thesis_diagnostics_summary(tables),
-        "estimates": _build_thesis_estimate_summary(tables),
-        "random_effects": _build_thesis_random_effects_summary(tables),
+        "diagnostics": _build_report_diagnostics_summary(tables),
+        "estimates": _build_report_estimate_summary(tables),
+        "random_effects": _build_report_random_effects_summary(tables),
     }
 
 
-def write_thesis_summary_tables(
+def write_report_summary_tables(
     tables: dict[tuple[Domain, Family], pd.DataFrame],
     output_dir: Path | str,
     *,
     write_parquet: bool = True,
 ) -> dict[str, dict[str, Path]]:
-    """Write the three thesis-facing summary tables."""
+    """Write the three report-facing summary tables."""
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-    summaries = build_thesis_summary_tables(tables)
+    summaries = build_report_summary_tables(tables)
     outputs: dict[str, dict[str, Path]] = {}
     for name, summary in summaries.items():
         if summary.empty:
             continue
 
-        stem = THESIS_TABLE_STEMS[name]
+        stem = REPORT_TABLE_STEMS[name]
         csv_path = output_path / f"{stem}.csv"
         atomic_write_csv(summary, csv_path, index=False)
         paths = {"csv": csv_path}
@@ -466,7 +466,7 @@ def write_thesis_summary_tables(
     return outputs
 
 
-def _build_thesis_diagnostics_summary(
+def _build_report_diagnostics_summary(
     tables: dict[tuple[Domain, Family], pd.DataFrame],
 ) -> pd.DataFrame:
     parts: list[pd.DataFrame] = []
@@ -492,8 +492,8 @@ def _build_thesis_diagnostics_summary(
         sub = table.loc[:, model_columns + available_metrics].drop_duplicates()
         sub.insert(0, "family", family)
         sub.insert(0, "domain", domain)
-        sub["scale"] = sub.apply(_thesis_scale_label, axis=1)
-        sub["model"] = sub.apply(_thesis_model_label, axis=1)
+        sub["scale"] = sub.apply(_report_scale_label, axis=1)
+        sub["model"] = sub.apply(_report_model_label, axis=1)
         parts.append(sub)
 
     if not parts:
@@ -515,13 +515,13 @@ def _build_thesis_diagnostics_summary(
         *metric_columns,
     ]
     columns = [column for column in columns if column in summary]
-    return _finalise_thesis_table(summary.loc[:, columns], columns).sort_values(
+    return _finalise_report_table(summary.loc[:, columns], columns).sort_values(
         ["Domain", "Family", "Outcome", "Scale", "Model"],
         ignore_index=True,
     )
 
 
-def _build_thesis_estimate_summary(
+def _build_report_estimate_summary(
     tables: dict[tuple[Domain, Family], pd.DataFrame],
 ) -> pd.DataFrame:
     parts: list[pd.DataFrame] = []
@@ -534,8 +534,8 @@ def _build_thesis_estimate_summary(
         if sub.empty:
             continue
 
-        out = _base_thesis_rows(sub, domain=domain, family=family)
-        out["parameter"] = sub.apply(_thesis_parameter_label, axis=1)
+        out = _base_report_rows(sub, domain=domain, family=family)
+        out["parameter"] = sub.apply(_report_parameter_label, axis=1)
         out["term_type"] = sub["plot_term_type"].map(_pretty_value)
         out["effect_scale"] = sub.apply(
             lambda row: _effect_scale_label(family, row["parameter_type"]), # type: ignore  # noqa: B023
@@ -575,13 +575,13 @@ def _build_thesis_estimate_summary(
         "diagnostic_status",
     ]
     summary = pd.concat(parts, ignore_index=True)
-    return _finalise_thesis_table(summary.loc[:, columns], columns).sort_values(
+    return _finalise_report_table(summary.loc[:, columns], columns).sort_values(
         ["Domain", "Family", "Outcome", "Scale", "Model", "Term Type", "Parameter"],
         ignore_index=True,
     )
 
 
-def _build_thesis_random_effects_summary(
+def _build_report_random_effects_summary(
     tables: dict[tuple[Domain, Family], pd.DataFrame],
 ) -> pd.DataFrame:
     parts: list[pd.DataFrame] = []
@@ -594,10 +594,10 @@ def _build_thesis_random_effects_summary(
         if sub.empty:
             continue
 
-        out = _base_thesis_rows(sub, domain=domain, family=family)
+        out = _base_report_rows(sub, domain=domain, family=family)
         out["component_type"] = sub["parameter_type"].map(_pretty_value)
         out["grouping_factor"] = sub.apply(_grouping_factor_label, axis=1)
-        out["parameter"] = sub.apply(_thesis_parameter_label, axis=1)
+        out["parameter"] = sub.apply(_report_parameter_label, axis=1)
         out["effect_scale"] = sub.apply(
             lambda row: _effect_scale_label(family, row["parameter_type"]), # type: ignore  # noqa: B023
             axis=1,
@@ -660,7 +660,7 @@ def _build_thesis_random_effects_summary(
         "diagnostic_status",
     ]
     summary = pd.concat(parts, ignore_index=True)
-    return _finalise_thesis_table(summary.loc[:, columns], columns).sort_values(
+    return _finalise_report_table(summary.loc[:, columns], columns).sort_values(
         [
             "Domain",
             "Family",
@@ -675,7 +675,7 @@ def _build_thesis_random_effects_summary(
     )
 
 
-def _base_thesis_rows(
+def _base_report_rows(
     frame: pd.DataFrame, *, domain: Domain, family: Family
 ) -> pd.DataFrame:
     return pd.DataFrame(
@@ -683,8 +683,8 @@ def _base_thesis_rows(
             "domain": _pretty_value(domain),
             "family": _pretty_value(family),
             "outcome": frame["outcome"].map(_pretty_value),
-            "scale": frame.apply(_thesis_scale_label, axis=1),
-            "model": frame.apply(_thesis_model_label, axis=1),
+            "scale": frame.apply(_report_scale_label, axis=1),
+            "model": frame.apply(_report_model_label, axis=1),
         },
         index=frame.index,
     )
@@ -782,7 +782,7 @@ def _grouping_factor_label(row: pd.Series) -> str:
     return _pretty_value(label or variable)
 
 
-def _thesis_parameter_label(row: pd.Series) -> str:
+def _report_parameter_label(row: pd.Series) -> str:
     if str(row.get("plot_term_type", "")) == "categorical_contrast":
         contrast_label = row.get("plot_contrast_label")
         if _has_value(contrast_label):
@@ -819,7 +819,7 @@ def _pretty_parameter_label(value: object) -> str:
     return text
 
 
-def _thesis_model_label(row: pd.Series) -> str:
+def _report_model_label(row: pd.Series) -> str:
     model_kind = row.get("plot_model_kind")
     if _has_value(model_kind):
         return _pretty_value(model_kind)
@@ -832,7 +832,7 @@ def _thesis_model_label(row: pd.Series) -> str:
     return _pretty_value(model_set)
 
 
-def _thesis_scale_label(row: pd.Series) -> str:
+def _report_scale_label(row: pd.Series) -> str:
     scale = row.get("plot_scale", "")
     return "" if not _has_value(scale) else _pretty_value(scale)
 
@@ -878,10 +878,10 @@ def _pretty_value(value: object) -> str:
     return text
 
 
-def _finalise_thesis_table(table: pd.DataFrame, columns: Sequence[str]) -> pd.DataFrame:
+def _finalise_report_table(table: pd.DataFrame, columns: Sequence[str]) -> pd.DataFrame:
     out = table.copy()
     out = out.rename(
-        columns={column: THESIS_COLUMN_LABELS[column] for column in columns}
+        columns={column: REPORT_COLUMN_LABELS[column] for column in columns}
     )
     for column in out.columns:
         if pd.api.types.is_object_dtype(out[column]) or pd.api.types.is_string_dtype(
@@ -1573,7 +1573,7 @@ def _ordered_columns(
 
 
 def main() -> int:
-    """Build all consolidated and thesis-facing Bayesian result tables."""
+    """Build all consolidated and report-facing Bayesian result tables."""
     result_dir = BAYESIAN_OUTPUT_DIR.resolve()
     if not result_dir.exists():
         raise FileNotFoundError(f"Missing Bayesian output directory: {result_dir}")
@@ -1590,7 +1590,7 @@ def main() -> int:
         output_dir,
         write_parquet=True,
     )
-    summary_outputs = write_thesis_summary_tables(
+    summary_outputs = write_report_summary_tables(
         tables,
         output_dir,
         write_parquet=True,
@@ -1602,7 +1602,7 @@ def main() -> int:
             f"{len(table.columns):,} columns -> {paths['csv']}"
         )
     for name, paths in summary_outputs.items():
-        print(f"Wrote thesis {name} summary -> {paths['csv']}")
+        print(f"Wrote report {name} summary -> {paths['csv']}")
     if not missing.empty:
         print(
             f"Skipped {len(missing):,} model(s) with incomplete outputs. "

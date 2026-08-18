@@ -1,4 +1,4 @@
-"""Figure orchestration for Chapter 4 thesis artifacts.
+"""Figure orchestration for genomic-network artifacts.
 
 The plotting implementations live in :mod:`chapter_analyses.genomic_networks.lib.figs`.
 This module keeps a stable programmatic entry point for rebuilding the full
@@ -82,7 +82,7 @@ def _iter_builders(
     if missing:
         available = ", ".join(by_name)
         raise KeyError(
-            f"Unknown Chapter 4 {kind} builder(s): {', '.join(missing)}. "
+            f"Unknown genomic-network {kind} builder(s): {', '.join(missing)}. "
             f"Available builders: {available}"
         )
     return tuple(by_name[name] for name in requested)

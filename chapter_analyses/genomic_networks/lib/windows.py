@@ -1,4 +1,4 @@
-"""Rolling-window identifier helpers for Chapter 4 analyses."""
+"""Rolling-window identifier helpers for genomic-network analyses."""
 
 from __future__ import annotations
 

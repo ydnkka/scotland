@@ -1,6 +1,6 @@
 # Genomic Surveillance and Compatibility Networks
 
-Chapter 4 code for cohort description, window-specific clusters, EpiLink compatibility networks, mixing, topology, and sensitivity analysis. Candidate labels and temporal transitions belong to [`../sse_detection`](../sse_detection/README.md).
+Code for cohort description, window-specific clusters, EpiLink compatibility networks, mixing, topology, and sensitivity analysis. Candidate labels and temporal transitions belong to [`../sse_detection`](../sse_detection/README.md).
 
 See [TECHNICAL.md](TECHNICAL.md) for algorithms and table definitions.
 

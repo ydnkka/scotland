@@ -1,4 +1,4 @@
-"""SIMD population-weighting validation tables for Chapter 4 appendices."""
+"""SIMD population-weighting validation tables."""
 
 from __future__ import annotations
 

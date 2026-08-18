@@ -23,8 +23,8 @@ raw sequence and linked metadata
 - `method/`: preprocessing, pairwise scoring, clustering, consolidation, and batch helpers.
 - `utils/`: shared data, policy, mapping, and plotting helpers.
 - `chapter_analyses/surveillance/`: policy timeline and lineage surveillance.
-- `chapter_analyses/genomic_networks/`: Chapter 4 cohort, cluster, mixing, topology, and sensitivity analyses.
-- `chapter_analyses/sse_detection/`: Chapter 5 transition graph, detector, figures, and Bayesian models.
+- `chapter_analyses/genomic_networks/`: cohort, cluster, mixing, topology, and sensitivity analyses.
+- `chapter_analyses/sse_detection/`: transition graph, detector, figures, and Bayesian models.
 - `data/`: local raw and processed data; excluded from version control.
 
 Detailed documentation:
@@ -48,7 +48,7 @@ python -m pip install -r requirements.txt
 
 ## Clustering pipeline
 
-The configured defaults are 3-week windows stepped weekly, groups of at least 2 sequences, a 29,903-base alignment, Leiden resolutions 0.1-0.8, seed 42, and compatibility sparsification at 0.001. Chapter 4 separately fixes its primary Leiden resolution at 0.3.
+The configured defaults are 3-week windows stepped weekly, groups of at least 2 sequences, a 29,903-base alignment, Leiden resolutions 0.1-0.8, seed 42, and compatibility sparsification at 0.001. The genomic-network analysis separately fixes its primary Leiden resolution at 0.3.
 
 Run the method stages in order:
 
@@ -62,7 +62,7 @@ python3 method/04_gen_cluster_commands.py
 python3 method/05_consolidate.py
 ```
 
-The shared downstream input is `data/processed/scotland_clustering_analysis_dataset.parquet`. Build the optional sparse-edge scheduling manifest before a full Chapter 4 mixing run:
+The shared downstream input is `data/processed/scotland_clustering_analysis_dataset.parquet`. Build the optional sparse-edge scheduling manifest before a full genomic-network mixing run:
 
 ```bash
 python3 method/build_sparsified_edge_manifest.py
@@ -77,7 +77,7 @@ See [method/PIPELINE.md](method/PIPELINE.md) for inputs, outputs, restart behavi
 python -m chapter_analyses.surveillance.policy_sequences_over_time
 python -m chapter_analyses.surveillance.policy_index_comparison
 
-# Chapter 4
+# Genomic networks
 python -m chapter_analyses.genomic_networks.build_cluster_summaries
 python -m chapter_analyses.genomic_networks.build_mixing --all-windows --workers 4 --include-giants --giant-workers 1
 python -m chapter_analyses.genomic_networks.build_cluster_pairwise_distance_summary --all-windows
@@ -85,7 +85,7 @@ python -m chapter_analyses.genomic_networks.build_sensitivity_tables
 python -m chapter_analyses.genomic_networks.build_simd_validation
 python -m chapter_analyses.genomic_networks.make_figures --skip-missing
 
-# Chapter 5
+# SSE detection
 python -m chapter_analyses.sse_detection.lib.sse.detection
 python -m chapter_analyses.sse_detection.build_composition_tables
 python -m chapter_analyses.sse_detection.lib.model.mixing

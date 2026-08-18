@@ -1,10 +1,10 @@
 # Bayesian SSE Detection Results: Findings Reference
 
-This document summarises the consolidated Bayesian model results for the SSE detection chapter. It is intended as a working reference for writing the thesis results section, not as final thesis prose.
+This document summarises the consolidated Bayesian model results for the SSE detection analysis. It is intended as a working reference for writing the results section, not as final prose.
 
 ## Source Tables
 
-The results below are based on the thesis-facing summary tables in:
+The results below are based on the report-facing summary tables in:
 
 ```text
 chapter_analyses/sse_detection/results/bayesian_outputs/consolidated_tables/
@@ -92,7 +92,7 @@ The composition linear models need a caveat:
 - Composition burst-score primary and expanded models: `Warning`.
 - Warnings are driven by lower ESS and `Max Rhat` up to 1.02, not divergences.
 
-Thesis implication: report composition linear findings, but phrase them more cautiously than mixing and composition logistic findings.
+Reporting implication: report composition linear findings, but phrase them more cautiously than mixing and composition logistic findings.
 
 ## 2. Health Board And Geographic Structure
 
@@ -114,7 +114,7 @@ Expanded observed health-board entropy:
 | Burst score | beta 0.014 | 0.011 to 0.017 | Positive, P = 1.000 |
 | Burden score | beta 0.006 | 0.001 to 0.011 | Positive, P = 0.993 |
 
-Thesis interpretation: null-standardised health-board entropy captures whether health-board mixing exceeds the size/window null expectation and should be the main inferential contrast. Observed geographic mixing captures absolute heterogeneity and is associated with higher candidate detection and burst/burden signal, so it should be presented as a companion result rather than collapsed with the null-standardised scale.
+Interpretation: null-standardised health-board entropy captures whether health-board mixing exceeds the size/window null expectation and should be the main inferential contrast. Observed geographic mixing captures absolute heterogeneity and is associated with higher candidate detection and burst/burden signal, so it should be presented as a companion result rather than collapsed with the null-standardised scale.
 
 ### 2.2 Composition: Health Board Contrasts
 
@@ -157,7 +157,7 @@ Burden score is lower for most boards relative to Greater Glasgow and Clyde:
 - Lothian: beta -0.024, P(negative) = 1.000.
 - Ayrshire and Arran: beta -0.019, P(negative) = 1.000.
 
-Thesis interpretation: health board is one of the clearest sources of structured variation. Candidate odds, burst score, and burden score do not all move in the same direction, suggesting that different detection summaries capture different aspects of geographic signal.
+Interpretation: health board is one of the clearest sources of structured variation. Candidate odds, burst score, and burden score do not all move in the same direction, suggesting that different detection summaries capture different aspects of geographic signal.
 
 ## 3. Socioeconomic And Urban/Rural Structure
 
@@ -199,7 +199,7 @@ Expanded observed urban/rural entropy:
 | Burst score | beta 0.009 | 0.007 to 0.012 | Positive, P = 1.000 |
 | Burden score | beta -0.007 | -0.012 to -0.002 | Negative, P = 0.997 |
 
-Thesis interpretation: urban/rural mixing is the clearest case where the main null-standardised scale and the observed absolute-heterogeneity scale tell a similar story.
+Interpretation: urban/rural mixing is the clearest case where the main null-standardised scale and the observed absolute-heterogeneity scale tell a similar story.
 
 ### 3.3 Composition: SIMD Contrasts
 
@@ -223,7 +223,7 @@ For burden score:
 - SIMD Q5: beta -0.0085, P(negative) = 0.999.
 - SIMD Q3 and Q4 are weak.
 
-Thesis interpretation: the strongest SIMD signal is at the mixing-entropy level rather than as a simple monotonic composition contrast.
+Interpretation: the strongest SIMD signal is at the mixing-entropy level rather than as a simple monotonic composition contrast.
 
 ### 3.4 Composition: Urban/Rural Contrasts
 
@@ -253,7 +253,7 @@ For burden score, the strongest reductions are remote rural and remote town:
 - Accessible town is moderately negative: P(negative) = 0.932.
 - Accessible rural is weaker: P(negative) = 0.893.
 
-Thesis interpretation: samples from less urban settings generally show lower candidate odds and lower burst/burden scores relative to large urban areas. This is one of the more coherent composition findings.
+Interpretation: samples from less urban settings generally show lower candidate odds and lower burst/burden scores relative to large urban areas. This is one of the more coherent composition findings.
 
 ## 4. Demographic Structure
 
@@ -275,7 +275,7 @@ Expanded observed age entropy:
 | Burst score | beta 0.022 | 0.020 to 0.025 | Positive, P = 1.000 |
 | Burden score | beta -0.013 | -0.018 to -0.008 | Negative, P = 1.000 |
 
-Thesis interpretation: absolute age heterogeneity is higher in candidate and high-burst clusters, but age mixing above the within-window, size-matched null expectation is associated with lower candidate odds and lower burst score.
+Interpretation: absolute age heterogeneity is higher in candidate and high-burst clusters, but age mixing above the within-window, size-matched null expectation is associated with lower candidate odds and lower burst score.
 
 ### 4.2 Mixing: Sex Entropy
 
@@ -295,7 +295,7 @@ Expanded observed sex entropy:
 | Burst score | beta 0.016 | 0.013 to 0.019 | Positive, P = 1.000 |
 | Burden score | beta -0.013 | -0.019 to -0.007 | Negative, P = 1.000 |
 
-Thesis interpretation: sex mixing should be presented carefully because the absolute and null-standardised contrasts point in different directions for candidate odds and burst score.
+Interpretation: sex mixing should be presented carefully because the absolute and null-standardised contrasts point in different directions for candidate odds and burst score.
 
 ### 4.3 Composition: Sex
 
@@ -309,7 +309,7 @@ Expanded Female vs Male:
 | Burst score | beta -0.0057 | -0.0080 to -0.0034 | Negative, P = 1.000 |
 | Burden score | beta -0.0056 | -0.0091 to -0.0022 | Negative, P = 1.000 |
 
-Thesis interpretation: sex composition has a consistent but modest association with all three detection outcomes.
+Interpretation: sex composition has a consistent but modest association with all three detection outcomes.
 
 ### 4.4 Composition: Age Group
 
@@ -337,7 +337,7 @@ Relative to age 25-64:
   - Burst score: beta -0.015, P(negative) = 1.000.
   - Burden score: beta -0.029, P(negative) = 1.000.
 
-Thesis interpretation: age composition is one of the most consistent demographic predictors. The 15-24 group stands out as higher signal, while children and older age groups are generally lower signal.
+Interpretation: age composition is one of the most consistent demographic predictors. The 15-24 group stands out as higher signal, while children and older age groups are generally lower signal.
 
 ## 5. Surveillance Context
 
@@ -361,7 +361,7 @@ Mixing models:
 - Null-standardised burden score is positive: beta 0.015, P(positive) = 0.995.
 - Null-standardised burst score is negative: beta -0.018, P(negative) = 1.000.
 
-Thesis interpretation: recent sequencing intensity is positively associated with candidate detection, especially in composition models and observed mixing logistic models. Linear mixing associations vary by outcome and scale.
+Interpretation: recent sequencing intensity is positively associated with candidate detection, especially in composition models and observed mixing logistic models. Linear mixing associations vary by outcome and scale.
 
 ### 5.2 Cumulative Incidence
 
@@ -382,7 +382,7 @@ Mixing models:
 - Null-standardised burst score is positive: beta 0.022, P(positive) = 0.998.
 - Candidate odds are weak or uncertain in the mixing models.
 
-Thesis interpretation: after accounting for composition and other covariates, cumulative incidence is generally associated with lower candidate odds and lower linear scores. This may indicate that the strongest detection signal is not simply a function of accumulated incidence.
+Interpretation: after accounting for composition and other covariates, cumulative incidence is generally associated with lower candidate odds and lower linear scores. This may indicate that the strongest detection signal is not simply a function of accumulated incidence.
 
 ### 5.3 Cumulative Sequencing Proportion
 
@@ -400,7 +400,7 @@ Mixing models:
 - Burden score is weak to moderately negative.
 - Observed burst score is moderately positive: P(positive) = 0.959.
 
-Thesis interpretation: cumulative sequencing proportion is less central than recent window sequencing proportion.
+Interpretation: cumulative sequencing proportion is less central than recent window sequencing proportion.
 
 ## 6. Policy Period Effects
 
@@ -453,7 +453,7 @@ Observed mixing burst score:
 
 There is little strong evidence for policy-period residual structure in mixing candidate odds or burden score.
 
-Thesis interpretation: policy period explains important residual temporal variation in composition models, particularly for candidate odds, but is more secondary in the mixing models.
+Interpretation: policy period explains important residual temporal variation in composition models, particularly for candidate odds, but is more secondary in the mixing models.
 
 ## 7. Clade Effects
 
@@ -482,7 +482,7 @@ Lower candidate odds:
 - 22C: multiplicative odds 0.088, P(lower) = 0.980.
 - 20E: multiplicative odds 0.298, P(lower) = 0.977.
 
-Thesis interpretation: candidate detection is highly lineage-structured after covariate adjustment.
+Interpretation: candidate detection is highly lineage-structured after covariate adjustment.
 
 ### 7.2 Composition Linear Outcomes
 
@@ -518,7 +518,7 @@ Mixing linear burst score has smaller and less coherent clade deviations:
 - Observed burst score is positive for 20I.
 - Observed burst score is negative for 21K, 21L, and 22C.
 
-Thesis interpretation: clade effects are central for composition candidate detection and composition linear scores, but less central for mixing candidate detection.
+Interpretation: clade effects are central for composition candidate detection and composition linear scores, but less central for mixing candidate detection.
 
 ## 8. Directionless Variance Components
 
@@ -548,7 +548,7 @@ Composition linear burden score:
 - Approximate random-effect variance share: clade 78%, policy period 22%.
 - Residual SD: 0.278.
 
-Thesis interpretation: lineage explains more residual heterogeneity than policy period in the composition models.
+Interpretation: lineage explains more residual heterogeneity than policy period in the composition models.
 
 ### 8.2 Mixing Models
 
@@ -578,7 +578,7 @@ Mixing linear burst score:
 - Observed scale: policy-period SD 0.053 vs clade SD 0.048.
 - Null-standardised scale: policy-period SD 0.031 vs clade SD 0.019.
 
-Thesis interpretation: clade heterogeneity is larger for candidate odds and burden score, while policy-period heterogeneity is relatively more important for burst score in the mixing models.
+Interpretation: clade heterogeneity is larger for candidate odds and burden score, while policy-period heterogeneity is relatively more important for burst score in the mixing models.
 
 ## 9. Primary vs Expanded Models
 
@@ -594,7 +594,7 @@ Across the main results, the broad findings are stable:
 
 The most important caveat is not instability between primary and expanded models; it is the diagnostics warning in the composition linear models.
 
-## 10. Suggested Results Structure For The Thesis
+## 10. Suggested Results Structure
 
 Recommended ordering:
 
@@ -634,7 +634,7 @@ Appendix or supplementary material:
 
 Direction probabilities should mainly appear in tables and prose. They do not need to be plotted as a primary visual result. The primary plots should show estimates and 95% HDIs.
 
-## 12. Draft Thesis-Level Summary
+## 12. Draft Results Summary
 
 The Bayesian SSE detection models indicate that detection signal is structured by both the composition and mixing of sampled populations. The main mixing models use null-standardised entropy, which compares each cluster with a within-window, cluster-size matched expectation. These models show that several attributes have detection associations that differ from their absolute observed-entropy associations, especially age, SIMD, sex, and health board. Observed entropy remains useful as a companion scale: higher observed age, SIMD, urban/rural, and health-board mixing were associated with higher candidate odds and higher burst scores, although burden-score effects sometimes moved in the opposite direction.
 
@@ -646,4 +646,4 @@ Surveillance context also mattered. Recent sequencing intensity was positively a
 
 Residual temporal and lineage structure remained after fixed-effect adjustment. Policy-period effects were clearest in the composition candidate model, with higher residual candidate odds in F5, P3, and T1, and lower odds in FE, L0, L2, L21, PR, and SL. Clade effects were especially pronounced, with several later clades showing much higher residual candidate odds and some earlier or recombinant clades showing lower odds. Random-effect SDs further support this: clade heterogeneity exceeded policy-period heterogeneity in composition models and in most mixing models.
 
-Overall, the results support a thesis narrative in which SSE detection is shaped jointly by demographic composition, socioeconomic and geographic structure, surveillance intensity, epidemic timing, and viral lineage. The strongest evidence comes from diagnostically clean mixing models and composition logistic models. Composition linear results are useful but should be interpreted with caution because several of those models have diagnostic warnings.
+Overall, the results support a narrative in which SSE detection is shaped jointly by demographic composition, socioeconomic and geographic structure, surveillance intensity, epidemic timing, and viral lineage. The strongest evidence comes from diagnostically clean mixing models and composition logistic models. Composition linear results are useful but should be interpreted with caution because several of those models have diagnostic warnings.

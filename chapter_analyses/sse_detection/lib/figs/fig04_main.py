@@ -21,8 +21,8 @@ from .forest import (
 )
 
 FIGURE_NAME = {
-    "mixing": "fig_ch5_fixed_effects_mixing",
-    "composition": "fig_ch5_fixed_effects_composition",
+    "mixing": "fig_fixed_effects_mixing",
+    "composition": "fig_fixed_effects_composition",
 }
 OUTLIER_LABELS = ["Orkney", "Western Isles"]
 MIXING_OUTCOMES = (

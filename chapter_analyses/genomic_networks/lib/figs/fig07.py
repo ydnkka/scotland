@@ -1,4 +1,4 @@
-"""Build Chapter 4 Figure 3: pooled compatibility assortativity over time."""
+"""Build the pooled compatibility assortativity over time figure."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ from common import (
 
 from chapter_analyses.genomic_networks.lib.io import write_table
 
-FIGURE_NAME = "fig_ch4_assortativity_pooled_window"
+FIGURE_NAME = "fig_assortativity_pooled_window"
 
 
 def _date_values(values: pd.Series) -> np.ndarray:

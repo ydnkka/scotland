@@ -1,4 +1,4 @@
-"""Build Chapter 4 Supplementary Figure 3: SIMD population-weighting validation."""
+"""Build the SIMD population-weighting validation figure."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from common import (
     styled_save_figure,
 )
 
-FIGURE_NAME = "fig_ch4_simd_population_weighting"
+FIGURE_NAME = "fig_simd_population_weighting"
 
 
 def build(paths: Paths) -> None:

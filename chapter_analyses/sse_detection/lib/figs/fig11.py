@@ -1,4 +1,4 @@
-"""Build Chapter 5 Figure 11: stratified null-model calibration."""
+"""Build the stratified null-model calibration figure."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from .common import (
     styled_save_figure,
 )
 
-FILE_NAME = "ch5_stratified_calibration"
+FILE_NAME = "stratified_calibration"
 
 
 def build_stratified_calibration(nodes: pd.DataFrame) -> pd.DataFrame:

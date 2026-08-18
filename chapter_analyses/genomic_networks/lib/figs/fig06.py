@@ -1,4 +1,4 @@
-"""Build Chapter 4 Supplementary Figure 1: parameter sensitivity summary."""
+"""Build the parameter sensitivity summary figure."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ from chapter_analyses.genomic_networks.lib.config import (
 )
 
 BASELINE_THRESHOLD = SPARSIFICATION_THRESHOLD
-FIGURE_NAME = "fig_ch4_parameter_sensitivity"
+FIGURE_NAME = "fig_parameter_sensitivity"
 LEIDEN_SUMMARY_TABLE = "leiden_resolution_sensitivity_summary"
 SPARSIFICATION_SUMMARY_TABLE = "sparsification_threshold_sensitivity_summary"
 

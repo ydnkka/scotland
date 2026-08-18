@@ -1,4 +1,4 @@
-"""Input/output helpers for Chapter 4 analysis products."""
+"""Input/output helpers for genomic-network analysis products."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ from utils import load_analysis_columns, load_pairwise_edges
 TABLE_OUTPUT_FORMATS = ("parquet", "csv")
 
 def ensure_results_dirs() -> None:
-    """Create the standard Chapter 4 output directories."""
+    """Create the standard genomic-network output directories."""
     for path in (RESULTS_DIR, TABLES_DIR, FIGURES_DIR, INTERMEDIATE_DIR):
         path.mkdir(parents=True, exist_ok=True)
 
@@ -41,12 +41,12 @@ def load_sequence_data(
     renumber_windows: bool = True,
     weighted_simd: bool = True,
 ) -> pd.DataFrame:
-    """Load sequence-window rows for Chapter 4.
+    """Load sequence-window rows for genomic-network analysis.
 
     The defaults match the intended main analysis: good-QC genomes at Leiden
     resolution 0.3 with population-weighted SIMD groups. Policy fields are
     persisted in the analysis dataset. Passing ``window_stride=2`` gives the
-    alternate-window graph input used by the Chapter 5 detector.
+    alternate-window graph input used by the SSE detector.
     """
     return load_analysis_columns(
         columns or ANALYSIS_COLUMNS,
@@ -123,7 +123,7 @@ def write_table(
 
 
 def read_table(name: str, *, table_dir: Path = TABLES_DIR) -> pd.DataFrame:
-    """Read a standard Chapter 4 output table, preferring parquet."""
+    """Read a standard genomic-network output table, preferring parquet."""
     parquet_path = table_path(name, suffix=".parquet", table_dir=table_dir)
     if parquet_path.exists():
         return pd.read_parquet(parquet_path)

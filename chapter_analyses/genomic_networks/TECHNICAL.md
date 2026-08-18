@@ -1,8 +1,8 @@
-# Chapter 4 Genomic Surveillance and Compatibility Networks: Technical Reference
+# Genomic Surveillance and Compatibility Networks: Technical Reference
 
 ## Analysis contract
 
-The production defaults in `lib/config.py` are good Nextclade QC, Leiden resolution 0.3, compatibility threshold 0.001, population-weighted SIMD groups, and small-cell flagging for counts 1–4. These Chapter 4 constants are separate from `config.yaml` even where the values match.
+The production defaults in `lib/config.py` are good Nextclade QC, Leiden resolution 0.3, compatibility threshold 0.001, population-weighted SIMD groups, and small-cell flagging for counts 1–4. These genomic-network constants are separate from `config.yaml` even where the values match.
 
 Main units:
 
@@ -12,7 +12,7 @@ Main units:
 - compatibility network: one physical `(window_id, pango_lineage)` pairwise parquet;
 - Data Zone: unit for SIMD validation.
 
-`load_chapter4_sequence_data()` loads the configured analysis columns, filters resolution/QC, attaches policy variables, and recomputes requested SIMD groups using population weights. Pairwise analysis reads `data/processed/pairwise_distances_dataset/*.parquet`.
+`load_sequence_data()` loads the configured analysis columns, filters resolution/QC, attaches policy variables, and recomputes requested SIMD groups using population weights. Pairwise analysis reads `data/processed/pairwise_distances_dataset/*.parquet`.
 
 ## Cluster summaries
 
@@ -50,7 +50,7 @@ Run a full build with:
 python -m chapter_analyses.genomic_networks.build_mixing --all-windows --workers 4 --include-giants --giant-workers 1
 ```
 
-Each task reads one pairwise parquet, retains `epilink_compatibility > threshold`, and joins endpoint attributes from the Chapter 4 sequence data. Default attributes are sex, age band, age group, SIMD quintile, urban/rural class, local authority, and Health Board. Pairs with a missing endpoint label are dropped attribute-by-attribute unless `--missing-label` is supplied. `n_edges_observed` is the retained compatibility-edge count before attribute missingness filtering; `n_edges_used` is the count used for that attribute after endpoint labels are checked. `--min-edges` keeps rows below the threshold but reports `NaN` estimates with `skipped_reason`.
+Each task reads one pairwise parquet, retains `epilink_compatibility > threshold`, and joins endpoint attributes from the genomic-network sequence data. Default attributes are sex, age band, age group, SIMD quintile, urban/rural class, local authority, and Health Board. Pairs with a missing endpoint label are dropped attribute-by-attribute unless `--missing-label` is supplied. `n_edges_observed` is the retained compatibility-edge count before attribute missingness filtering; `n_edges_used` is the count used for that attribute after endpoint labels are checked. `--min-edges` keeps rows below the threshold but reports `NaN` estimates with `skipped_reason`.
 
 For each attribute, an undirected edge contributes its weight symmetrically to a category mixing matrix. With the matrix normalised to `e` and row/column marginals `(a, b)`, nominal assortativity is:
 
@@ -136,7 +136,7 @@ sparsification_threshold_sensitivity_summary
 
 ## Figures, disclosure, and checks
 
-`make_figures.py` reads saved result tables and writes current Chapter 4 figures plus LaTeX fragments under `results/figures/`; it does not rescan source data.
+`make_figures.py` reads saved result tables and writes current genomic-network figures plus LaTeX fragments under `results/figures/`; it does not rescan source data.
 
 Counts below 5 are flagged only in publication-facing composition tables. Raw/internal outputs remain potentially disclosive. Mixing drops missing endpoint labels by default, whereas composition retains a `Missing` level.
 
@@ -149,4 +149,4 @@ Before reporting, record input versions, filters, thresholds, resolutions, windo
 - Compatibility edges are not transmission links.
 - Clustering depends on sparsification and Leiden resolution.
 - Assortativity depends on network/category prevalence and missingness.
-- Window-specific clusters are not persistent outbreaks; temporal continuity is analysed separately in Chapter 5.
+- Window-specific clusters are not persistent outbreaks; temporal continuity is analysed separately by SSE detection.

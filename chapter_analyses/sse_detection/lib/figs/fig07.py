@@ -1,4 +1,4 @@
-"""Build Chapter 5 Figure 7: representative candidate trajectories."""
+"""Build the representative candidate trajectories figure."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from .common import (
     styled_save_figure,
 )
 
-FILE_NAME = "ch5_candidate_exemplars"
+FILE_NAME = "candidate_exemplars"
 COLORS = {
     "background_or_low_information": "#B8B8B8",
     "possible_review": "#E6AB02",

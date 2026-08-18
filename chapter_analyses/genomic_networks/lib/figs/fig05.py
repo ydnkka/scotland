@@ -1,4 +1,4 @@
-"""Build Chapter 4 Figure 2: window-level EpiLink cluster landscape."""
+"""Build the window-level EpiLink cluster landscape figure."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ from common import (
     styled_save_figure,
 )
 
-FIGURE_NAME = "fig_ch4_cluster_landscape"
+FIGURE_NAME = "fig_cluster_landscape"
 
 WINDOW_CORRELATION_METRICS = (
     "wn_no_sequences",

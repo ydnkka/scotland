@@ -1,4 +1,4 @@
-"""Shared assortativity analysis helpers for Chapter 4 figures and tables."""
+"""Shared assortativity analysis helpers for genomic-network figures and tables."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Build Chapter 4 Figure 10: test-reason composition by epidemic era."""
+"""Build the test-reason composition by epidemic era figure."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ from common import (
     styled_save_figure,
 )
 
-FIGURE_NAME = "fig_ch4_test_reason_by_policy_era"
+FIGURE_NAME = "fig_test_reason_by_policy_era"
 
 
 def _format_count(value: float) -> str:

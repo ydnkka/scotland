@@ -1,4 +1,4 @@
-"""Configuration constants for Chapter 4 observation/network analyses."""
+"""Configuration constants for genomic-network analyses."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ DISCLOSURE_MIN_CELL = 5
 
 @dataclass(frozen=True)
 class AttributeSpec:
-    """Description of a categorical variable used in Chapter 4 mixing tables."""
+    """Description of a categorical variable used in genomic-network mixing tables."""
 
     name: str
     column: str

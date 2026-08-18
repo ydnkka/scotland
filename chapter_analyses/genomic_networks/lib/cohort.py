@@ -1,4 +1,4 @@
-"""Observed cohort, denominator, and coverage summaries for Chapter 4."""
+"""Observed cohort, denominator, and coverage summaries for genomic-network analysis."""
 
 from __future__ import annotations
 

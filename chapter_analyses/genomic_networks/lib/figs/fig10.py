@@ -1,4 +1,4 @@
-"""Build Chapter 4 supplementary topology-denominator correlation heatmap."""
+"""Build the topology-denominator correlation heatmap."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from common import (
     window_idx_from_id,
 )
 
-FIGURE_NAME = "fig_ch4_compatibility_topology_correlations"
+FIGURE_NAME = "fig_compatibility_topology_correlations"
 
 WINDOW_DENOMINATOR_METRICS = (
     "wn_no_sequences",

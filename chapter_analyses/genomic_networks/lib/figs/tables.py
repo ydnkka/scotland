@@ -1,4 +1,4 @@
-"""Build Chapter 4 LaTeX table fragments."""
+"""Build genomic-network LaTeX table fragments."""
 
 from __future__ import annotations
 
@@ -42,13 +42,16 @@ SIMD_GROUP_LABELS = {
     20: "vigintile",
 }
 TABLE_NAMES = {
-    "sequence_composition_by_policy": "tab_ch4_sequence_composition_by_policy",
-    "policy_denominators": "tab_ch4_policy_denominators",
-    "cluster_period_summary": "tab_ch4_cluster_period_summary",
-    "cluster_pairwise_distance_summary": "tab_ch4_cluster_pairwise_distance_summary",
-    "assortativity_summary": "tab_ch4_assortativity_summary",
-    "variance_decomposition_summary": "tab_ch4_assortativity_variance_decomposition",
-    "simd_population_weighting": "tab_ch4_simd_population_weighting",
+    "sequence_composition_by_policy": "tab_sequence_composition_by_policy",
+    "policy_denominators": "tab_policy_denominators",
+    "cluster_period_summary": "tab_cluster_period_summary",
+    "cluster_pairwise_distance_summary": "tab_cluster_pairwise_distance_summary",
+    "assortativity_summary": "tab_assortativity_summary",
+    "variance_decomposition_summary": "tab_assortativity_variance_decomposition",
+    "simd_population_weighting": "tab_simd_population_weighting",
+}
+TABLE_LABELS = {
+    key: f"tab:{value.removeprefix('tab_')}" for key, value in TABLE_NAMES.items()
 }
 ATTRIBUTE_COLUMN_LABELS = {
     "SIMD quintile": "SIMD",
@@ -404,7 +407,7 @@ def write_sequence_composition_by_policy_table(paths: Paths) -> None:
             "suppressed and shown as <5."
         ),
         short_caption="Sequence composition by epidemic era and policy period",
-        label=TABLE_NAMES["sequence_composition_by_policy"],
+        label=TABLE_LABELS["sequence_composition_by_policy"],
         row_columns=["Attribute", "Category"],
         column_groups=column_groups,
         rows=rows,
@@ -447,7 +450,7 @@ def write_policy_denominator_table(paths: Paths) -> None:
             "absolute minimum and maximum extremes presented in parentheses."
         ),
         short_caption="Rolling-window observation denominators by policy period",
-        label=TABLE_NAMES["policy_denominators"],
+        label=TABLE_LABELS["policy_denominators"],
         columns=[
             "Epidemic era",
             "Period",
@@ -516,7 +519,7 @@ def write_cluster_period_table(paths: Paths) -> None:
             "their corresponding interquartile ranges."
         ),
         short_caption="Scottish EpiLink cluster summary by policy period",
-        label=TABLE_NAMES["cluster_period_summary"],
+        label=TABLE_LABELS["cluster_period_summary"],
         columns=[
             "Epidemic era",
             "Period",
@@ -578,7 +581,7 @@ def write_cluster_pairwise_distance_summary_table(paths: Paths) -> None:
             "corresponding interquartile ranges enclosed in parentheses."
         ),
         short_caption="Within-cluster pairwise distance summaries",
-        label=TABLE_NAMES["cluster_pairwise_distance_summary"],
+        label=TABLE_LABELS["cluster_pairwise_distance_summary"],
         columns=[
             "Metric",
             "Weighting",
@@ -634,7 +637,7 @@ def write_assortativity_summary_table(paths: Paths) -> None:
             "10th--90th percentile range."
         ),
         short_caption="Pooled compatibility assortativity estimates",
-        label=TABLE_NAMES["assortativity_summary"],
+        label=TABLE_LABELS["assortativity_summary"],
         columns=[
             "Attribute",
             "Windows",
@@ -727,7 +730,7 @@ def write_variance_decomposition_summary_table(paths: Paths) -> None:
             "are reported in their native units."
         ),
         short_caption="Variance decomposition of compatibility assortativity",
-        label=TABLE_NAMES["variance_decomposition_summary"],
+        label=TABLE_LABELS["variance_decomposition_summary"],
         columns=[
             "Metric",
             *[
@@ -788,7 +791,7 @@ def write_simd_population_weighting_table(paths: Paths) -> None:
         TABLE_NAMES["simd_population_weighting"],
         caption=caption,
         short_caption=short_caption,
-        label=TABLE_NAMES["simd_population_weighting"],
+        label=TABLE_LABELS["simd_population_weighting"],
         columns=[
             "Method",
             "Group",
@@ -844,7 +847,7 @@ def main() -> int:
     args = parser.parse_args()
     paths = paths_from_args(args)
     write_tables(paths)
-    print(f"Wrote Chapter 4 LaTeX tables to {paths.figure_dir}")
+    print(f"Wrote genomic-network LaTeX tables to {paths.figure_dir}")
     return 0
 
 

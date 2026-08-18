@@ -1,4 +1,4 @@
-"""Build Chapter 4 Supplementary Figure 5: assortativity variance decomposition."""
+"""Build the assortativity variance decomposition figure."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ from common import (
 
 from chapter_analyses.genomic_networks.lib.io import write_table
 
-FIGURE_NAME = "fig_ch4_assortativity_variance_decomposition"
+FIGURE_NAME = "fig_assortativity_variance_decomposition"
 
 
 def plot_variance_decomposition(paths: Paths, vd_long: pd.DataFrame) -> None:

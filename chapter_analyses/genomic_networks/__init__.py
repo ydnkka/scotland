@@ -1,1 +1,1 @@
-"""Chapter 4 genomic surveillance and compatibility-network analysis."""
+"""Genomic surveillance and compatibility-network analysis."""

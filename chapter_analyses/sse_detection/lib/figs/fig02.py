@@ -20,8 +20,8 @@ from .common import (
     styled_save_figure,
 )
 
-FIGURE_NAME = "fig_ch5_sse_score_null_calibration"
-SUMMARY_NAME = "tab_ch5_null_calibration_summary"
+FIGURE_NAME = "fig_sse_score_null_calibration"
+SUMMARY_NAME = "tab_null_calibration_summary"
 
 CANDIDATE_COLOR = "#C44E52"
 BACKGROUND_COLOR = "#B0B0B0"

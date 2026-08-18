@@ -1,4 +1,4 @@
-"""Reusable Chapter 4 genomic surveillance and network-analysis code."""
+"""Reusable genomic surveillance and network-analysis code."""
 
 from .config import (
     ANALYSIS_COLUMNS,
