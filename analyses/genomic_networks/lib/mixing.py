@@ -165,10 +165,10 @@ def complete_mixing_matrix(
     if matrix.shape[0] != len(group_labels):
         raise ValueError("`matrix` shape does not match length of `group_labels`.")
 
-    if len(pd.Index(group_labels)) != len(pd.Index(group_labels).unique()):
+    if len(set(group_labels)) != len(list(group_labels)):
         raise ValueError("`group_labels` contains duplicates.")
 
-    if len(pd.Index(all_categories)) != len(pd.Index(all_categories).unique()):
+    if len(set(all_categories)) != len(list(all_categories)):
         raise ValueError("`all_categories` contains duplicates.")
 
     extra_labels = set(group_labels) - set(all_categories)
