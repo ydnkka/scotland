@@ -91,7 +91,7 @@ def fmt_int(value: Any) -> str:
         return str(value)
     if value_float.is_integer():
         return f"{int(value_float):,}"
-    return f"{value_float:,.1f}"
+    return f"{value_float:,.0f}"
 
 
 def fmt_percent(value: Any) -> str:
