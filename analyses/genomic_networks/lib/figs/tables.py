@@ -433,8 +433,8 @@ def write_policy_denominator_table(paths: Paths) -> None:
                 str(row.policy_era).capitalize().replace("_", " "),
                 row.policy_period,
                 fmt_int(row.n_windows),
-                fmt_int(row.median_window_sequences),
                 fmt_int(row.median_window_positive_tests),
+                fmt_int(row.median_window_sequences),
                 f"{fmt_percent(row.median_window_prop_sequenced)} ({fmt_percent(row.min_window_prop_sequenced)}--{fmt_percent(row.max_window_prop_sequenced)})",
             ]
         )
@@ -444,9 +444,9 @@ def write_policy_denominator_table(paths: Paths) -> None:
         caption=(
             "Rolling-window observation denominators stratified by epidemic era and "
             "policy period. For each period, the table outlines the total number of "
-            "analytical windows alongside the median window-level counts of sequenced "
-            "genomes and positive PCR tests. Genomic sampling coverage (the percentage of "
-            "positive tests successfully sequenced) is reported as a median, with "
+            "analytical windows alongside the median window-level counts of confirmed positive "
+            "tests and sequenced genomes. Sequencing coverage (the percentage of "
+            "confirmed positive tests successfully sequenced) is reported as a median, with "
             "absolute minimum and maximum extremes presented in parentheses."
         ),
         short_caption="Rolling-window observation denominators by policy period",
@@ -455,8 +455,8 @@ def write_policy_denominator_table(paths: Paths) -> None:
             "Epidemic era",
             "Period",
             "Windows",
-            "Genomes",
             "Tests",
+            "Genomes",
             "Coverage",
         ],
         rows=rows,
@@ -721,13 +721,11 @@ def write_variance_decomposition_summary_table(paths: Paths) -> None:
         paths,
         TABLE_NAMES["variance_decomposition_summary"],
         caption=(
-            "Variance decomposition of weighted compatibility assortativity estimates "
-            "following the application of a 90th percentile inverse-variance weight cap. "
-            "Target attributes are evaluated in columns using abbreviated labels (SIMD "
-            "denotes SIMD quintile; HB denotes Health board; LA denotes Local authority). "
-            "Variance components and fractional metrics are presented as unitless "
-            "proportions, whereas underlying count and measurement uncertainty summaries "
-            "are reported in their native units."
+            "Variance decomposition of weighted compatibility assortativity estimates after "
+            "applying a 90th percentile inverse-variance weight cap. "
+            "SIMD, population-weighted SIMD quintile; HB, health board; "
+            "LA, local authority. Variance components and fractions are unitless proportions; "
+            "counts and uncertainty summaries retain their native units."
         ),
         short_caption="Variance decomposition of compatibility assortativity",
         label=TABLE_LABELS["variance_decomposition_summary"],

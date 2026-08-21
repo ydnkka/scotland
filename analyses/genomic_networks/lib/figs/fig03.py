@@ -92,27 +92,41 @@ def _plot_window_counts(ax: Axes, window: pd.DataFrame) -> None:
 def _plot_window_proportions(ax: Axes, window: pd.DataFrame) -> None:
     add_policy_bands(ax, window)
     x = pd.to_datetime(window["wn_mid_date"], errors="coerce")
-    vaccinated = ax.plot(
+    any_prior_dose = ax.plot(
         x,
         window["prop_vaccinated"],
-        color="#1f4e79",
+        color="#2f2f2f",
+        lw=1.55,
+        label="Any prior dose",
+    )[0]
+    one_dose = ax.plot(
+        x,
+        window["prop_one_dose"],
+        color=DOSE_COLORS["One dose"],
         lw=1.35,
-        label="Vaccinated",
+        label="One dose",
+    )[0]
+    two_doses = ax.plot(
+        x,
+        window["prop_two_doses"],
+        color=DOSE_COLORS["Two doses"],
+        lw=1.35,
+        label="Two doses",
     )[0]
     booster = ax.plot(
         x,
-        window["prop_booster"],
-        color="#8e3b8a",
+        window["prop_booster_or_three_plus"],
+        color=DOSE_COLORS["Booster/3+ doses"],
         lw=1.35,
-        label="Booster recorded",
+        label="Booster/3+ doses",
     )[0]
-    ax.set_title("Vaccinated and booster share")
+    ax.set_title("Dose-group shares")
     ax.set_ylabel("Share of sequences")
     ax.set_ylim(0, 1)
     ax.yaxis.set_major_formatter(PercentFormatter(1.0))
     ax.legend(
-        [vaccinated, booster],
-        ["Vaccinated", "Booster recorded"],
+        [any_prior_dose, one_dose, two_doses, booster],
+        ["Any prior dose", "One dose", "Two doses", "Booster/3+ doses"],
         loc="upper left",
     )
     date_axis(ax)
@@ -200,6 +214,7 @@ def build(paths: Paths) -> None:
         handlelength=1.5,
         frameon=False,
     )
+    fig.supxlabel("Window midpoint date")
     
     add_panel_labels(axes)
     styled_save_figure(fig, paths, FIGURE_NAME)

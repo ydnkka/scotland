@@ -117,13 +117,14 @@ def plot_pooled_window_meta(
         ax.set_xlabel("")
         ax.set_ylabel("")
         date_axis(ax)
-        ax.set_ylabel("Pooled window assortativity")
 
     for ax in axes[len(attributes) :]:
         ax.remove()
 
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="upper center", ncol=2, bbox_to_anchor=(0.5, 1.075))
+    fig.supxlabel("Window midpoint date")
+    fig.supylabel("Pooled window assortativity")
     add_panel_labels(axes)
     styled_save_figure(fig, paths, FIGURE_NAME)
 
