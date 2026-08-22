@@ -143,7 +143,7 @@ def component_maps(graph: nx.DiGraph) -> tuple[dict[object, str], dict[str, int]
     """Return deterministic weak-component ids and sizes for graph nodes."""
     components = sorted(
         nx.weakly_connected_components(graph),
-        key=lambda nodes: (-len(nodes), sorted(nodes)[0]),  # noqa: FURB192
+        key=lambda nodes: (-len(nodes), min(nodes)[0]),  
     )
     node_to_component = {
         node: f"CC{idx:05d}"
