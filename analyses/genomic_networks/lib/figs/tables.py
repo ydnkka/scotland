@@ -478,21 +478,21 @@ def write_cluster_period_table(paths: Paths) -> None:
         ]
         if fmt_int(row.n_non_singleton_clusters) != "0":
             cells.append(
-                f"{fmt_float(row.median_non_singleton_cluster_size, 0)}; "
-                f"{fmt_float(row.p90_non_singleton_cluster_size, 0)}; "
-                f"{fmt_int(row.max_non_singleton_cluster_size)}"
+                f"{fmt_float(row.median_non_singleton_cluster_size, 0)} "
+                f"({fmt_float(row.p90_non_singleton_cluster_size, 0)}; "
+                f"{fmt_int(row.max_non_singleton_cluster_size)})"
             )
             cells.append(
-                f"{fmt_float(row.median_non_singleton_datazones, 0)}; "
-                f"{fmt_float(row.p90_non_singleton_datazones, 0)}; "
-                f"{fmt_int(row.max_non_singleton_datazones)}"
+                f"{fmt_float(row.median_non_singleton_datazones, 0)} "
+                f"({fmt_float(row.p90_non_singleton_datazones, 0)}; "
+                f"{fmt_int(row.max_non_singleton_datazones)})"
             )
             cells.append(
                 fmt_iqr(
                     row.median_non_singleton_spatial_distance_km,
                     row.q25_non_singleton_spatial_distance_km,
                     row.q75_non_singleton_spatial_distance_km,
-                    digits=1,
+                    digits=0,
                 )
             )
             cells.append(
@@ -500,7 +500,7 @@ def write_cluster_period_table(paths: Paths) -> None:
                     row.median_non_singleton_duration_days,
                     row.q25_non_singleton_duration_days,
                     row.q75_non_singleton_duration_days,
-                    digits=1,
+                    digits=0,
                 )
             )
         else:
@@ -513,8 +513,8 @@ def write_cluster_period_table(paths: Paths) -> None:
             "Summary of Scottish EpiLink clusters stratified by epidemic era and policy "
             "period. The table reports sequence-window memberships and total distinct clusters, "
             "with non-singleton cluster counts provided in parentheses. Further metrics "
-            "for non-singleton clusters summarise distributions (median; 90th percentile; "
-            "and maximum) for both cluster size and affected Data Zones. Residential reach "
+            "for non-singleton clusters summarise distributions [median (90th percentile; "
+            "maximum)] for both cluster size and affected Data Zones. Residential spatial distance "
             "(in kilometers) and temporal span (in days) are reported as medians alongside "
             "their corresponding interquartile ranges."
         ),
@@ -527,8 +527,8 @@ def write_cluster_period_table(paths: Paths) -> None:
             "Clusters",
             "Size",
             "Zones",
-            "Reach (km)",
-            "Span (d)",
+            "Spatial (km)",
+            "Span (days)",
         ],
         rows=rows,
         addlinespace_after=addlinespace_after_group_changes(clusters["policy_era"]),
