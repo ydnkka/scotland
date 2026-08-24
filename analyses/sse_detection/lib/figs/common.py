@@ -88,9 +88,10 @@ def read_table(paths: Paths, name: str) -> pd.DataFrame:
 
 
 def latex_table_path(paths: Paths, name: str) -> Path:
-    """Return a LaTeX table-fragment path under the figure directory."""
-    paths.figure_dir.mkdir(parents=True, exist_ok=True)
-    return paths.figure_dir / f"{name}.tex"
+    """Return a LaTeX table-fragment path under the results table directory."""
+    table_dir = paths.figure_dir.parent / "tables"
+    table_dir.mkdir(parents=True, exist_ok=True)
+    return table_dir / f"{name}.tex"
 
 
 def styled_save_figure(

@@ -36,6 +36,7 @@ from analyses.sse_detection.lib.figs import (
     fig09 as sse_fig09,
     fig10 as sse_fig10,
     fig11 as sse_fig11,
+    fig12 as sse_fig12,
     tables as sse_tables,
 )
 from analyses.sse_detection.lib.figs.common import (
@@ -223,6 +224,7 @@ def figure_builders() -> tuple[ArtifactBuilder, ...]:
         _sse_figure_builder(sse_fig09.FILE_NAME, sse_fig09.build),
         _sse_figure_builder(sse_fig10.FILE_NAME, sse_fig10.build),
         _sse_figure_builder(sse_fig11.FILE_NAME, sse_fig11.build),
+        _sse_figure_builder(sse_fig12.FILE_NAME, sse_fig12.build),
     )
 
 

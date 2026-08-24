@@ -1,4 +1,4 @@
-"""Build the entropy-tertile profiles among candidates figure."""
+"""Build candidate-background entropy-tertile profile differences."""
 
 from __future__ import annotations
 
@@ -9,12 +9,13 @@ import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.patches import Patch
-from matplotlib.ticker import PercentFormatter
+from matplotlib.ticker import FuncFormatter
 
 from ..sse.io import HIGH_PRIORITY_CANDIDATE_TIERS, write_table
 from .common import (
     Paths,
     add_common_args,
+    add_panel_labels,
     new_figure,
     paths_from_args,
     read_table,
@@ -69,25 +70,43 @@ def _bar_label(feature: MixingFeature, kind_label: str) -> str:
     return f"{feature.label} ({kind_label})"
 
 
-def _candidate_nodes(nodes: pd.DataFrame) -> pd.DataFrame:
+def _eligible_nodes(nodes: pd.DataFrame) -> pd.DataFrame:
     if "candidate_tier" not in nodes.columns:
         raise KeyError("cluster_table is missing 'candidate_tier'")
-    candidates = nodes.loc[nodes["candidate_tier"].isin(HIGH_PRIORITY_CANDIDATE_TIERS)].copy()
-    if candidates.empty:
+    if "cluster_size" not in nodes.columns:
+        raise KeyError("cluster_table is missing 'cluster_size'")
+
+    eligible = nodes.copy()
+    eligible["candidate"] = eligible["candidate_tier"].isin(
+        HIGH_PRIORITY_CANDIDATE_TIERS
+    )
+    candidate_sizes = eligible.loc[eligible["candidate"], "cluster_size"].dropna()
+    if candidate_sizes.empty:
         raise ValueError("No detector candidates found for entropy-tertile profiles.")
+    min_candidate_size = int(candidate_sizes.min())
+    eligible = eligible.loc[eligible["cluster_size"].ge(min_candidate_size)].copy()
+    if eligible["candidate"].nunique() != 2:
+        raise ValueError(
+            "Eligible cluster rows must include candidates and background."
+        )
+    eligible["sse_status"] = np.where(
+        eligible["candidate"], "candidate", "background"
+    )
+    eligible["min_candidate_size"] = min_candidate_size
+
     sort_columns = [
         column
         for column in ("wn_mid_date", "candidate_tier", "cluster_size")
-        if column in candidates.columns
+        if column in eligible.columns
     ]
     if sort_columns:
-        candidates = candidates.sort_values(sort_columns)
-    return candidates
+        eligible = eligible.sort_values(sort_columns)
+    return eligible
 
 
 def build_entropy_tertile_profiles(nodes: pd.DataFrame) -> pd.DataFrame:
-    """Build profile proportions for observed and null-adjusted entropy tertiles."""
-    candidates = _candidate_nodes(nodes)
+    """Build candidate-background entropy-tertile profile differences."""
+    eligible = _eligible_nodes(nodes)
     rows: list[dict[str, object]] = []
     missing_columns: list[str] = []
     columns_with_missing_values: list[str] = []
@@ -95,16 +114,36 @@ def build_entropy_tertile_profiles(nodes: pd.DataFrame) -> pd.DataFrame:
     for feature in MIXING_FEATURES:
         for kind, kind_label in ENTROPY_KINDS:
             column = f"{feature.prefix}_entropy_{kind}_tertile"
-            if column not in candidates.columns:
+            if column not in eligible.columns:
                 missing_columns.append(column)
                 continue
-            values = candidates[column].astype("string")
+            values = eligible[column].astype("string")
             if values.isna().any():
                 columns_with_missing_values.append(column)
-                values = values.dropna()
-            counts = values.value_counts().reindex(TERTILE_ORDER, fill_value=0)
-            total = int(counts.sum())
-            for tertile, n in counts.items():
+                continue
+
+            work = pd.DataFrame(
+                {
+                    "candidate": eligible["candidate"].to_numpy(),
+                    "tertile": values.astype(str).to_numpy(),
+                }
+            )
+            counts = pd.crosstab(work["candidate"], work["tertile"]).reindex(
+                index=[False, True],
+                columns=TERTILE_ORDER,
+                fill_value=0,
+            )
+            background_total = counts.loc[False].sum()
+            candidate_total = counts.loc[True].sum()
+            for tertile in TERTILE_ORDER:
+                background_n = counts.loc[False, tertile]
+                candidate_n = counts.loc[True, tertile]
+                background_proportion = (
+                    background_n / background_total if background_total else np.nan
+                )
+                candidate_proportion = (
+                    candidate_n / candidate_total if candidate_total else np.nan
+                )
                 rows.append(
                     {
                         "bar_label": _bar_label(feature, kind_label),
@@ -114,9 +153,21 @@ def build_entropy_tertile_profiles(nodes: pd.DataFrame) -> pd.DataFrame:
                         "kind_label": kind_label,
                         "tertile": tertile,
                         "tertile_label": TERTILE_LABELS[str(tertile)],
-                        "candidate_n": int(n),
-                        "candidate_total": total,
-                        "proportion": n / total if total else np.nan,
+                        "background_n": background_n,
+                        "candidate_n": candidate_n,
+                        "background_total": background_total,
+                        "candidate_total": candidate_total,
+                        "background_proportion": background_proportion,
+                        "candidate_proportion": candidate_proportion,
+                        "difference": candidate_proportion - background_proportion,
+                        "difference_pp": (
+                            candidate_proportion - background_proportion
+                        )
+                        * 100,
+                        "eligible_total": background_total + candidate_total,
+                        "min_candidate_size": int(
+                            eligible["min_candidate_size"].iloc[0]
+                        ),
                     }
                 )
 
@@ -133,64 +184,102 @@ def build_entropy_tertile_profiles(nodes: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def _bar_order() -> list[str]:
+def _feature_order() -> list[str]:
+    return [feature.label for feature in MIXING_FEATURES]
+
+
+def _symmetric_x_limit(table: pd.DataFrame) -> float:
+    max_abs = float(table["difference_pp"].abs().max(skipna=True))
+    if not np.isfinite(max_abs) or max_abs == 0:
+        return 1.0
+    padded = max_abs * 1.15
+    step = 5 if padded > 5 else 1
+    return float(np.ceil(padded / step) * step)
+
+
+def _legend_handles() -> list[Patch]:
     return [
-        _bar_label(feature, kind_label)
-        for feature in MIXING_FEATURES
-        for _, kind_label in ENTROPY_KINDS
+        Patch(
+            facecolor=TERTILE_COLORS[tertile],
+            edgecolor=TERTILE_COLORS[tertile],
+            label=f"{TERTILE_LABELS[tertile]}",
+        )
+        for tertile in TERTILE_ORDER
     ]
 
 
-def draw_entropy_tertile_profiles(ax: Axes, table: pd.DataFrame) -> None:
-    y_positions = np.arange(len(_bar_order()))
-    for y, bar_label in zip(y_positions, _bar_order()):
-        data = table.loc[table["bar_label"].eq(bar_label)]
-        left = 0.0
+def _draw_kind_profile(
+    ax: Axes,
+    table: pd.DataFrame,
+    *,
+    kind: str,
+    kind_label: str,
+    x_limit: float,
+    show_y_labels: bool,
+) -> None:
+    y_positions = np.arange(len(MIXING_FEATURES))
+    offsets = {
+        "more_homogeneous": -0.24,
+        "as_expected": 0.0,
+        "more_mixed": 0.24,
+    }
+
+    for y, feature in zip(y_positions, MIXING_FEATURES):
+        data = table.loc[
+            table["feature"].eq(feature.prefix) & table["kind"].eq(kind)
+        ]
         for tertile in TERTILE_ORDER:
             row = data.loc[data["tertile"].eq(tertile)]
             if row.empty:
                 continue
-            width = float(row["proportion"].iloc[0])
+            difference = float(row["difference_pp"].iloc[0])
             ax.barh(
-                y,
-                width,
-                left=left,
-                height=0.72,
+                y + offsets[tertile],
+                difference,
+                height=0.21,
                 color=TERTILE_COLORS[tertile],
                 edgecolor="white",
                 linewidth=0.45,
             )
-            if width >= 0.055:
-                ax.text(
-                    left + width / 2,
-                    float(y),
-                    f"{TERTILE_ABBREVIATIONS[tertile]}: {width:.0%}",
-                    ha="center",
-                    va="center",
-                    fontsize=7,
-                    linespacing=0.85,
-                )
-            left += width
 
-    ax.set_yticks(y_positions, _bar_order())
-    ax.set_xlim(0, 1)
-    ax.xaxis.set_major_formatter(PercentFormatter(1.0))
-    ax.set_xlabel("Proportion of detector candidates")
-    ax.invert_yaxis()
+    ax.set_title(kind_label)
+    ax.set_yticks(y_positions)
+    if show_y_labels:
+        ax.set_yticklabels(_feature_order())
+    else:
+        ax.tick_params(axis="y", labelleft=False)
+    ax.set_xlim(-x_limit, x_limit)
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.0f}"))
+    ax.axvline(0, color="#555555", lw=0.8)
     ax.grid(axis="x", color="#d9d9d9", lw=0.5, alpha=0.8)
     ax.set_axisbelow(True)
     ax.tick_params(axis="y", length=0)
-    ax.legend(
-        handles=[
-            Patch(
-                facecolor=TERTILE_COLORS[tertile],
-                edgecolor=TERTILE_COLORS[tertile],
-                label=TERTILE_LABELS[tertile],
-            )
-            for tertile in TERTILE_ORDER
-        ],
-        loc="upper center",
-        bbox_to_anchor=(0.5, -0.10),
+
+
+def draw_entropy_tertile_profiles(axes, table: pd.DataFrame) -> None:
+    """Draw candidate-minus-background tertile differences in entropy columns."""
+    axes = np.asarray(axes).ravel()
+    if len(axes) != len(ENTROPY_KINDS):
+        raise ValueError(f"Expected {len(ENTROPY_KINDS)} axes, got {len(axes)}")
+
+    x_limit = _symmetric_x_limit(table)
+    for index, (ax, (kind, kind_label)) in enumerate(zip(axes, ENTROPY_KINDS)):
+        _draw_kind_profile(
+            ax,
+            table,
+            kind=kind,
+            kind_label=kind_label,
+            x_limit=x_limit,
+            show_y_labels=index == 0,
+        )
+        ax.set_xlabel("Percentage points\n(candidate minus background share)")
+
+    axes[0].invert_yaxis()
+
+    axes[0].figure.legend(
+        handles=_legend_handles(),
+        loc="lower center",
+        bbox_to_anchor=(0.55, 0.05),
         ncol=len(TERTILE_ORDER),
         columnspacing=1.35,
         handlelength=1.5,
@@ -203,12 +292,21 @@ def build(paths: Paths) -> dict[str, object]:
     table = build_entropy_tertile_profiles(nodes)
     write_table(table, paths.result_table_dir, f"tab_{FILE_NAME}")
 
-    fig, ax = new_figure(
+    fig, axes = new_figure(
+        ncols=2,
         width="double",
-        height_in=6.3,
-        constrained_layout=True,
+        height_in=4.8,
+        sharey=True,
     )
-    draw_entropy_tertile_profiles(ax, table)
+    draw_entropy_tertile_profiles(axes, table)
+    fig.subplots_adjust(
+        left=0.20,
+        right=0.98,
+        top=0.86,
+        bottom=0.24,
+        wspace=0.08,
+    )
+    add_panel_labels(axes)
     outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}")
     return {"figure": fig, "outputs": outputs, "plot_data": table}
 

@@ -147,7 +147,7 @@ def build_composition(paths: Paths) -> dict[str, object]:
         nrows=3,
         ncols=2,
         width="double",
-        height_in=7,
+        height_in=8,
         constrained_layout=True,
     )
 
