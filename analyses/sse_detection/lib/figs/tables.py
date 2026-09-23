@@ -772,17 +772,11 @@ def write_model_sample_specification_table(paths: Paths) -> dict[str, Path]:
     write_latex_table(
         tex_path,
         caption=(
-            "Bayesian characterisation fitted samples and model specifications. "
-            "Fitted outcome gives candidate count and rate for logistic models, "
-            "and posterior-outcome mean and standard deviation for Gaussian models. "
-            "Primary predictors vary by domain: composition models use sex, age "
-            "group, SIMD quintile, urban/rural class, and health-board categorical "
-            "contrasts; mixing models use sex, age-group, SIMD, urban/rural, and "
-            "health-board entropy predictors. Additional fixed effects vary by "
-            "model: primary models include none, while expanded models include "
-            "window sequencing proportion, cumulative incidence, and cumulative "
-            "sequencing proportion. "
-            "All specifications include varying intercepts for policy period and clade."
+            "Fitted samples for the association models. Candidate outcomes give "
+            "CSC counts and percentages; score outcomes give observed means and "
+            "standard deviations. Expanded models add the three standardised "
+            "surveillance measures to the primary predictors. All models include "
+            "policy-period and clade varying intercepts."
         ),
         short_caption="Bayesian characterisation fitted samples and model specifications.",
         label="tab:bayesian_model_specifications",
@@ -797,9 +791,9 @@ def write_model_sample_specification_table(paths: Paths) -> dict[str, Path]:
         ],
         rows=rows,
         column_spec=(
-            r"P{0.105\linewidth}P{0.080\linewidth}P{0.110\linewidth}"
-            r"P{0.230\linewidth}P{0.095\linewidth}P{0.105\linewidth}"
-            r"P{0.150\linewidth}"
+            r"P{0.127\linewidth}P{0.080\linewidth}P{0.103\linewidth}"
+            r"P{0.195\linewidth}P{0.110\linewidth}P{0.105\linewidth}"
+            r"P{0.155\linewidth}"
         ),
     )
     return {

@@ -30,14 +30,14 @@ TERTILE_ORDER = (
     "more_mixed",
 )
 TERTILE_LABELS = {
-    "more_homogeneous": "More homogeneous",
-    "as_expected": "As expected",
-    "more_mixed": "More mixed",
+    "more_homogeneous": "Lower tertile",
+    "as_expected": "Middle tertile",
+    "more_mixed": "Upper tertile",
 }
 TERTILE_ABBREVIATIONS = {
-    "more_homogeneous": "H",
-    "as_expected": "E",
-    "more_mixed": "M",
+    "more_homogeneous": "L",
+    "as_expected": "M",
+    "more_mixed": "U",
 }
 TERTILE_COLORS = {
     "more_homogeneous": "#1B9E77",
@@ -62,7 +62,7 @@ MIXING_FEATURES = (
 )
 ENTROPY_KINDS = (
     ("obs", "Observed"),
-    ("z", "Null-adjusted"),
+    ("z", "Null-standardised"),
 )
 
 
