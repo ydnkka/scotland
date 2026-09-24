@@ -828,8 +828,19 @@ def write_model_diagnostics_table(paths: Paths) -> dict[str, Path]:
     write_latex_longtable(
         tex_path,
         caption=(
-            "Bayesian characterisation sampling diagnostics across composition "
-            "and mixing models."
+            "Sampling diagnostics for all 18 Bayesian characterisation models. "
+            "Candidate denotes CSC status. OK indicates that all specified sampling "
+            "criteria were met; Warning indicates at least one failed criterion. "
+            "Div. counts post-tuning divergent transitions; BFMI is Bayesian "
+            "fraction of missing information, Rhat is $\\widehat R$, and ESS is "
+            "effective sample size. Definitions and thresholds are given in "
+            "Table~\\ref{tab:app_bayes_diagnostic_guide}; model specifications are "
+            "defined in Table~\\ref{tab:ch6_model_terminology}."
+        ),
+        caption_is_latex=True,
+        short_caption=(
+            "Bayesian characterisation sampling diagnostics across composition and "
+            "mixing models."
         ),
         label="tab:bayesian_model_diagnostics",
         columns=[
@@ -883,10 +894,18 @@ def write_fixed_effects_main_table(paths: Paths) -> dict[str, Path]:
     write_latex_longtable(
         tex_path,
         caption=(
-            "Focal fixed-effect estimates from expanded Bayesian "
-            "characterisation models. Values are posterior means with 95 percent "
-            "highest-density intervals."
+            "Focal fixed-effect estimates from expanded Bayesian characterisation "
+            "models. Values are posterior means with 95\\% HDIs. Logistic estimates "
+            "are CSC odds ratios; linear estimates are mean score differences. "
+            "Mixing estimates correspond to a one-unit increase in "
+            "null-standardised entropy; composition estimates compare each category "
+            "with the stated reference group. All models include policy-period and "
+            "clade varying intercepts and the three standardised surveillance "
+            "measures. Direction gives the posterior probability of the indicated "
+            "association; diagnostic criteria are defined in "
+            "Table~\\ref{tab:app_bayes_diagnostic_guide}."
         ),
+        caption_is_latex=True,
         short_caption="Focal fixed-effect estimates from expanded Bayesian models.",
         label="tab:bayesian_fixed_effects_main",
         columns=[
@@ -937,12 +956,13 @@ def write_fixed_effects_intercepts_table(paths: Paths) -> dict[str, Path]:
         tex_path,
         caption=(
             "Intercept estimates from primary and expanded Bayesian "
-            "characterisation models. Values are posterior means with 95 percent "
-            "highest-density intervals. Candidate-model intercepts are odds "
-            "(not odds ratios); burst-score and burden-score intercepts are "
-            "beta coefficients. Mixing intercepts are shown separately for "
-            "observed and null-standardised entropy specifications; composition "
-            "intercepts are unscaled and shown once per outcome."
+            "characterisation models. Values are posterior means with 95% HDIs. CSC "
+            "intercepts are baseline odds; local-burst and onward-burden intercepts "
+            "are expected scores. These baselines correspond to zero continuous "
+            "predictors and group deviations, with categorical predictors at their "
+            "reference levels. Mixing intercepts are shown separately for observed "
+            "and null-standardised entropy specifications; composition intercepts "
+            "are shown once per outcome."
         ),
         short_caption=(
             "Intercept estimates from primary and expanded Bayesian models."

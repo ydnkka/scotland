@@ -125,12 +125,21 @@ def render_latex_longtable(
     rows: list[list[Any]],
     column_spec: str | None = None,
     short_caption: str | None = None,
+    caption_is_latex: bool = False,
     addlinespace_after: set[int] | None = None,
     landscape: bool = True,
     dense: bool = True,
     tiny: bool = False,
 ) -> str:
-    """Render a dense longtable that can span pages."""
+    """Render a dense longtable that can span pages.
+
+    Set caption_is_latex for authored LaTeX captions containing math or
+    cross-references. An explicit short_caption is always treated as plain text.
+    """
+    rendered_caption = caption if caption_is_latex else latex_escape(caption)
+    rendered_short_caption = (
+        latex_escape(short_caption) if short_caption else rendered_caption
+    )
     addlinespace_after = addlinespace_after or set()
     column_count = len(columns)
     column_spec = latex_column_spec(column_spec, column_count)
@@ -155,8 +164,8 @@ def render_latex_longtable(
     lines.extend(
         [
             f"\\begin{{longtable}}{{{column_spec}}}",
-            f"    \\caption[{latex_escape(short_caption or caption)}]"
-            f"{{{latex_escape(caption)}}}\\label{{{label}}} " + r"\\",
+            f"    \\caption[{rendered_short_caption}]"
+            f"{{{rendered_caption}}}\\label{{{label}}} " + r"\\",
             r"    \toprule",
             f"    {header} " + r"\\",
             r"    \midrule",
