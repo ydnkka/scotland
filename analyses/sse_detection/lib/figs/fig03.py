@@ -324,7 +324,7 @@ def build(paths: Paths) -> dict[str, object]:
         x_limit=x_limit,
     )
 
-    xlabel = "Percentage points difference"
+    xlabel = "Percentage points\n(candidates minus background)"
     axes["health_left"].set_xlabel(xlabel)
     axes["health_right"].set_xlabel(xlabel)
     fig.legend(

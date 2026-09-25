@@ -272,7 +272,7 @@ def draw_entropy_tertile_profiles(axes, table: pd.DataFrame) -> None:
             x_limit=x_limit,
             show_y_labels=index == 0,
         )
-        ax.set_xlabel("Percentage points\n(candidate minus background share)")
+        ax.set_xlabel("Percentage points\n(candidates minus background)")
 
     axes[0].invert_yaxis()
 
