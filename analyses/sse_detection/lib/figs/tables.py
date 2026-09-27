@@ -957,9 +957,9 @@ def write_fixed_effects_intercepts_table(paths: Paths) -> dict[str, Path]:
         caption=(
             "Intercept estimates from primary and expanded Bayesian "
             "characterisation models. Values are posterior means with 95% HDIs. CSC "
-            "intercepts are baseline odds; local-burst and onward-burden intercepts "
-            "are expected scores. These baselines correspond to zero continuous "
-            "predictors and group deviations, with categorical predictors at their "
+            "intercepts are baseline odds; intercepts for the local burst and onward "
+            "burden models are expected scores. These baselines correspond to zero "
+            "continuous predictors and group deviations, with categorical predictors at their "
             "reference levels. Mixing intercepts are shown separately for observed "
             "and null-standardised entropy specifications; composition intercepts "
             "are shown once per outcome."
