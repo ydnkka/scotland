@@ -16,12 +16,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[4]
 if __package__ in {None, ""} and str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from utils.display_labels import URBAN_RURAL_CLASS_LABEL, normalise_attribute_label
+
 
 MIXING_FEATURE_LABELS: dict[str, str] = {
     "sex_entropy": "Sex",
     "age_entropy": "Age",
     "simd_entropy": "SIMD",
-    "urban_rural_entropy": "Urban/rural",
+    "urban_rural_entropy": URBAN_RURAL_CLASS_LABEL,
     "health_board_entropy": "Health board",
 }
 DEFAULT_MIXING_FEATURE_ORDER: tuple[str, ...] = (
@@ -279,7 +281,7 @@ def plot_mixing_forest(
 
     ax.axvline(reference, color="red", linestyle="--", alpha=0.7, linewidth=1)
     ax.set_yticks(tick_df["_y"])
-    ax.set_yticklabels(tick_df["plot_label"])
+    ax.set_yticklabels(tick_df["plot_label"].map(normalise_attribute_label))
     ax.set_ylim(-0.5 - offset, n_rows - 0.5 + offset)
 
     if reference == 1.0:
@@ -474,7 +476,7 @@ def plot_composition_forest(
     ax.axvline(reference, color="red", linestyle="--", alpha=0.7, linewidth=1)
 
     ax.set_yticks(tick_df["_y"])
-    ax.set_yticklabels(tick_df[label_col])
+    ax.set_yticklabels(tick_df[label_col].map(normalise_attribute_label))
     ax.set_ylim(-0.5 - offset, n_rows - 0.5 + offset)
 
     if logistic_scale:

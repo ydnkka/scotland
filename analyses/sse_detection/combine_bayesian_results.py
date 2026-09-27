@@ -27,6 +27,8 @@ from typing import Any, Literal
 import numpy as np
 import pandas as pd
 
+from utils.display_labels import URBAN_RURAL_CLASS_LABEL, normalise_attribute_label
+
 from .lib.concurrent_io import (
     atomic_write_csv,
     atomic_write_parquet,
@@ -43,7 +45,7 @@ MIXING_FEATURE_LABELS: dict[str, str] = {
     "sex_entropy": "Sex",
     "age_entropy": "Age",
     "simd_entropy": "SIMD",
-    "urban_rural_entropy": "Urban/rural",
+    "urban_rural_entropy": URBAN_RURAL_CLASS_LABEL,
     "health_board_entropy": "Health board",
 }
 DEFAULT_MIXING_FEATURE_ORDER: tuple[str, ...] = (
@@ -57,8 +59,8 @@ COMPOSITION_VARIABLE_LABELS: dict[str, str] = {
     "sex": "Sex",
     "age_group": "Age group",
     "dz_simd_quintile": "SIMD",
-    "urban_rural_class": "Urban/rural",
-    "dz_urban_rural_class": "Urban/rural",
+    "urban_rural_class": URBAN_RURAL_CLASS_LABEL,
+    "dz_urban_rural_class": URBAN_RURAL_CLASS_LABEL,
     "health_board": "Health board",
     "dz_health_board": "Health board",
 }
@@ -779,7 +781,7 @@ def _grouping_factor_label(row: pd.Series) -> str:
             "clade": "Clade",
         }.get(variable)
     )
-    return _pretty_value(label or variable)
+    return normalise_attribute_label(_pretty_value(label or variable))
 
 
 def _report_parameter_label(row: pd.Series) -> str:
@@ -803,8 +805,6 @@ def _pretty_parameter_label(value: object) -> str:
         "Health board:": "Health Board:",
         "Policy period:": "Policy Period:",
         "Policy period SD": "Policy Period SD",
-        "Urban/rural:": "Urban/Rural:",
-        "Urban/rural": "Urban/Rural",
         "Accessible rural": "Accessible Rural",
         "Accessible town": "Accessible Town",
         "Large urban": "Large Urban",
@@ -816,7 +816,7 @@ def _pretty_parameter_label(value: object) -> str:
     }
     for old, new in replacements.items():
         text = text.replace(old, new)
-    return text
+    return normalise_attribute_label(text)
 
 
 def _report_model_label(row: pd.Series) -> str:

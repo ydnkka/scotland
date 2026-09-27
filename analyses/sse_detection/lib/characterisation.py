@@ -9,6 +9,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from utils.display_labels import URBAN_RURAL_CLASS_LABEL
+
 from .sse.io import HIGH_PRIORITY_CANDIDATE_TIERS
 
 SIZE_BANDS = ("6-9", "10-19", "20-49", "50-99", "100+")
@@ -16,7 +18,7 @@ ATTRIBUTES = (
     ("sex", "sex", "Sex"),
     ("age", "age_group", "Age group"),
     ("simd", "dz_simd_quintile", "SIMD quintile"),
-    ("urban_rural", "dz_urban_rural_class", "Settlement type"),
+    ("urban_rural", "dz_urban_rural_class", URBAN_RURAL_CLASS_LABEL),
     ("health_board", "dz_health_board", "Health board"),
 )
 ENTROPY_ATTRIBUTES = (*ATTRIBUTES, ("local_authority", "dz_local_authority", "Local authority"))

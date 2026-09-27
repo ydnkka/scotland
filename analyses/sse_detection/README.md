@@ -87,6 +87,13 @@ MPLBACKEND=Agg python -m results.make_tables sse_detection:ch6_size_profiles
 python -m unittest analyses.sse_detection.test_characterisation -q
 ```
 
+To update presentation labels from the existing aggregate tables, use
+`python -m analyses.sse_detection.lib.figs.size_profiles --from-saved-tables`.
+Add `--tables-only` to render the LaTeX tables, and `--figure-dir` to select a
+temporary output location. This mode reads the saved `tab_ch6_*` tables without
+rebuilding or overwriting the aggregates. Figures and publication tables use
+the attribute name "Urban/rural class"; data columns retain their existing names.
+
 `lib/characterisation.py` provides aggregate calculations and reconciliation
 checks. `lib/figs/size_profiles.py` writes eight PDF/PNG figures, four LaTeX
 tables, and five aggregate CSV/parquet tables named `tab_ch6_*`. These source

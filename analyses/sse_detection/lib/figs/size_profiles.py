@@ -77,6 +77,16 @@ def prepare(paths: Paths) -> dict[str, pd.DataFrame]:
     return tables
 
 
+def load_saved_summaries(paths: Paths) -> dict[str, pd.DataFrame]:
+    """Load existing aggregates for presentation-only rendering."""
+    names = (
+        "size_summary", "size_cumulative", "composition", "composition_contrasts", "entropy"
+    )
+    tables = {name: read_table(paths, f"tab_ch6_{name}") for name in names}
+    validate_summaries(tables, scotland_baseline=True)
+    return tables
+
+
 def _finish(fig, paths, name):
     outputs = styled_save_figure(fig, paths, name)
     plt.close(fig)
@@ -320,8 +330,9 @@ def plot_route_entropy(tables, paths):
     return _finish(fig, paths, "fig_app_ch6_route_entropy")
 
 
-def build_figures(paths: Paths):
-    tables = prepare(paths)
+def build_figures(paths: Paths, *, tables=None):
+    if tables is None:
+        tables = prepare(paths)
     outputs = [
         plot_cumulative(tables, paths),
         plot_composition(tables, paths),
@@ -387,8 +398,9 @@ def _table(
     path.write_text("\n".join(lines) + "\n")
 
 
-def build_tables(paths: Paths):
-    tables = prepare(paths)
+def build_tables(paths: Paths, *, tables=None):
+    if tables is None:
+        tables = prepare(paths)
     # The central table builder passes its publication table directory as figure_dir.
     directory = paths.figure_dir
     size = tables["size_summary"]
@@ -482,7 +494,7 @@ def build_tables(paths: Paths):
                 )
     _table(
         directory / "tab_app_ch6_size_composition.tex",
-        "Composition within size bands: percentage of non-missing sequence records in each category, and CSC-minus-background difference in percentage points (pp). Denominators are the record counts in Table~\\ref{tab:ch6_size_overview}; all five attributes are complete in the primary dataset. Categories are grouped in the order sex, age, SIMD, settlement type, and health board.",
+        "Composition within size bands: percentage of sequence records in each category, and CSC-minus-background difference in percentage points (pp). Denominators are the record counts in Table~\\ref{tab:ch6_size_overview}; all five attributes are complete in the primary dataset. Categories are grouped in the order sex, age, SIMD, urban/rural class, and health board.",
         "tab:app_ch6_size_composition",
         ["Category", "Size band", "CSC (%)", "Background (%)", "Difference (pp)"],
         rows,
@@ -495,17 +507,22 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_args(parser)
     parser.add_argument("--tables-only", action="store_true")
+    parser.add_argument(
+        "--from-saved-tables", action="store_true",
+        help="Render existing tab_ch6_* aggregates without rebuilding or writing them.",
+    )
     args = parser.parse_args()
     paths = paths_from_args(args)
+    tables = load_saved_summaries(paths) if args.from_saved_tables else None
     if args.tables_only:
         paths = Paths(
             table_dir=paths.table_dir,
             figure_dir=paths.figure_dir.parent / "tables",
             result_table_dir=paths.result_table_dir,
         )
-        build_tables(paths)
+        build_tables(paths, tables=tables)
     else:
-        build_figures(paths)
+        build_figures(paths, tables=tables)
 
 
 if __name__ == "__main__":

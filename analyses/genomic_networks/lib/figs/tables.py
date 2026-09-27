@@ -55,7 +55,7 @@ TABLE_LABELS = {
 }
 ATTRIBUTE_COLUMN_LABELS = {
     "SIMD quintile": "SIMD",
-    "Urban/rural class": "Urban/rural",
+    "Urban/rural class": "Urban/rural class",
     "Health board": "HB",
     "Local authority": "LA",
 }

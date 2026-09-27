@@ -11,6 +11,8 @@ from typing import Any, cast
 import numpy as np
 import pandas as pd
 
+from utils.display_labels import normalise_attribute_label
+
 from utils import (
     write_latex_grouped_column_table,
     write_latex_longtable,
@@ -82,7 +84,14 @@ def _read_summary_table(result_dir: Path, table: str) -> pd.DataFrame:
     path = _consolidated_table_dir(result_dir) / f"{SUMMARY_TABLE_STEMS[table]}.csv"
     if not path.exists():
         raise FileNotFoundError(f"Missing table: {path}")
-    return pd.read_csv(path)
+    frame = pd.read_csv(path)
+    for column in ("Parameter", "Grouping Factor"):
+        if column in frame:
+            frame[column] = frame[column].map(
+                lambda value: normalise_attribute_label(value)
+                if isinstance(value, str) else value
+            )
+    return frame
 
 
 def _read_consolidated_results(result_dir: Path) -> pd.DataFrame:
