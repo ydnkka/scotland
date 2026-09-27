@@ -361,6 +361,64 @@ def build_one(paths: Paths, spec: CompositionFigureSpec) -> dict[str, object]:
     }
 
 
+def build_consolidated(paths: Paths) -> dict[str, dict[str, object]]:
+    """Render a two-page overview from saved cluster proportions only.
+
+    Reuse the original drawing functions so category order, boxplot statistics,
+    colours and mean contrasts are identical to the individual figures. No
+    analysis or companion tables are written by this presentation-only builder.
+    """
+    pages = (
+        ("demographic", COMPOSITION_FIGURES[:4], 8.8, [3.0, 6.5, 5.5, 8.5]),
+        ("health_board", COMPOSITION_FIGURES[4:], 6.8, [1.0]),
+    )
+    results = {}
+    for name, specs, height, ratios in pages:
+        fig, axes = new_figure(
+            nrows=len(specs), ncols=2, width="double", height_in=height,
+            font_scale=1.2, squeeze=False,
+            gridspec_kw={"width_ratios": [1.55, 1.0], "height_ratios": ratios},
+        )
+        summaries = {}
+        counts = None
+        for row, spec in enumerate(specs):
+            long = build_composition_long(read_table(paths, spec.table_name), spec)
+            summary = summarise_composition(long)
+            summaries[spec.name] = summary
+            current_counts = long.groupby("sse_status", observed=True)["cluster_id"].nunique()
+            if counts is not None and not counts.equals(current_counts):
+                raise ValueError("Composition attributes have different cluster counts")
+            counts = current_counts
+            draw_composition_profile(axes[row], long, summary, spec)
+            axes[row, 0].get_legend().remove()
+            letter = chr(ord("A") + row) if name == "demographic" else "E"
+            axes[row, 0].set_title("")
+            axes[row, 0].set_title(f"({letter}) {spec.label}", loc="left", fontweight="bold")
+            axes[row, 1].set_title("")
+            axes[row, 1].xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}"))
+            for ax in axes[row]:
+                ax.set_xlabel("")
+            if row == len(specs) - 1:
+                axes[row, 0].set_xlabel("Within-cluster proportion")
+                axes[row, 1].set_xlabel("CSC minus background (pp)")
+        handles = _status_handles()
+        legend_labels = [
+            f"{('CSC' if status == 'candidate' else 'Background')} (n = {counts[status]:,})"
+            for status in STATUS_ORDER
+        ]
+        fig.legend(handles, legend_labels, loc="lower center", ncol=2,
+                   bbox_to_anchor=(0.60, 0.005), frameon=False)
+        fig.subplots_adjust(left=0.27, right=0.98, top=0.92, bottom=0.13,
+                            hspace=0.58, wspace=0.22)
+        fig.text(0.47, 0.985, "Cluster-level distributions", ha="center", va="top")
+        fig.text(0.86, 0.985, "Mean difference", ha="center", va="top")
+        outputs = styled_save_figure(fig, paths, f"fig_cluster_composition_overview_{name}")
+        results[f"overview_{name}"] = {
+            "figure": fig, "outputs": outputs, "plot_data": summaries,
+        }
+    return results
+
+
 def _selected_specs(
     variable_names: Sequence[str] | None,
 ) -> tuple[CompositionFigureSpec, ...]:
@@ -395,12 +453,19 @@ def build(
     variables: Sequence[str] | None = None,
 ) -> dict[str, dict[str, object]]:
     """Create all configured cluster-level composition figures."""
-    return {spec.name: build_one(paths, spec) for spec in _selected_specs(variables)}
+    results = {spec.name: build_one(paths, spec) for spec in _selected_specs(variables)}
+    if not variables:
+        results.update(build_consolidated(paths))
+    return results
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     add_common_args(parser)
+    parser.add_argument(
+        "--combined-only", action="store_true",
+        help="Render the two-page composition overview without writing summary tables.",
+    )
     parser.add_argument(
         "--variables",
         nargs="+",
@@ -411,7 +476,9 @@ def main() -> int:
     )
     args = parser.parse_args()
     paths = paths_from_args(args)
-    results = build(paths, variables=args.variables)
+    if args.combined_only and args.variables:
+        parser.error("--combined-only includes all five attributes; omit --variables")
+    results = build_consolidated(paths) if args.combined_only else build(paths, variables=args.variables)
     for name, result in results.items():
         outputs = result["outputs"]
         print(f"Wrote {name}: {outputs['pdf']}")
