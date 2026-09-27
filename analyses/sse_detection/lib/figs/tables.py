@@ -1036,7 +1036,7 @@ def write_fixed_effects_full_table(paths: Paths) -> dict[str, Path]:
             "P(-)",
             "Direction",
             "Band",
-            "Diagnostic",
+            "Status",
         ],
         rows=rows,
         column_spec=(

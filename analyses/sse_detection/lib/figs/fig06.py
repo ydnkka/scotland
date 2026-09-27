@@ -139,8 +139,8 @@ def draw_score_landscape(ax, table: pd.DataFrame) -> None:
         ax.get_xlim()[0], strip_y, "Burden N/A", va="center", ha="left", color="#555555"
     )
 
-    ax.set_xlabel("Calibrated local-burst score")
-    ax.set_ylabel("Calibrated onward-burden score")
+    ax.set_xlabel("Calibrated local burst score")
+    ax.set_ylabel("Calibrated onward burden score")
     ax.legend(loc="center left")
 
 

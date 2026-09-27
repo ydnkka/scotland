@@ -68,7 +68,7 @@ def _legend_handles() -> list[Line2D]:
             color="black",
             lw=0.8,
             linestyle="--",
-            label="Uniform expectation",
+            label="Uniform reference",
         ),
     ]
 
@@ -199,8 +199,8 @@ def build(paths: Paths, *, n_bins: int = 20) -> dict[str, object]:
             linewidth=0.8,
         )
         if row == 0:
-            calibration_ax.set_title("Null-model calibration")
-        calibration_ax.set_ylabel(f"{label}\nNumber of nodes")
+            calibration_ax.set_title("Permutation reference")
+        calibration_ax.set_ylabel(f"{label}\nNumber of clusters")
         calibration_ax.tick_params(axis="x", labelbottom=True)
         distribution_ax = axes[row, 1]
         score_arrays = [
@@ -235,7 +235,7 @@ def build(paths: Paths, *, n_bins: int = 20) -> dict[str, object]:
         distribution_ax.tick_params(axis="x", labelbottom=True)
 
     axes[1, 0].set_xlabel(
-        "Randomized null-model $p$-value\n(probability of a score this high)"
+        "Randomised upper-tail permutation $p$-value"
     )
     axes[1, 1].set_xlabel("Detection score")
     fig.legend(

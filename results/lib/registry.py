@@ -11,43 +11,98 @@ from typing import Any, Literal
 from analyses.genomic_networks.lib.config import TABLES_DIR as GENOMIC_TABLES_DIR
 from analyses.genomic_networks.lib.figs import (
     fig01 as genomic_fig01,
+)
+from analyses.genomic_networks.lib.figs import (
     fig02 as genomic_fig02,
+)
+from analyses.genomic_networks.lib.figs import (
     fig03 as genomic_fig03,
+)
+from analyses.genomic_networks.lib.figs import (
     fig04 as genomic_fig04,
+)
+from analyses.genomic_networks.lib.figs import (
     fig05 as genomic_fig05,
+)
+from analyses.genomic_networks.lib.figs import (
     fig06 as genomic_fig06,
+)
+from analyses.genomic_networks.lib.figs import (
     fig07 as genomic_fig07,
+)
+from analyses.genomic_networks.lib.figs import (
     fig08 as genomic_fig08,
+)
+from analyses.genomic_networks.lib.figs import (
     fig09 as genomic_fig09,
+)
+from analyses.genomic_networks.lib.figs import (
     fig10 as genomic_fig10,
+)
+from analyses.genomic_networks.lib.figs import (
     tables as genomic_tables,
 )
 from analyses.genomic_networks.lib.figs.common import Paths as GenomicPaths
 from analyses.sse_detection.lib.figs import (
     fig01 as sse_fig01,
+)
+from analyses.sse_detection.lib.figs import (
     fig02 as sse_fig02,
+)
+from analyses.sse_detection.lib.figs import (
     fig03 as sse_fig03,
+)
+from analyses.sse_detection.lib.figs import (
     fig04_app as sse_fig04_app,
+)
+from analyses.sse_detection.lib.figs import (
     fig04_main as sse_fig04_main,
+)
+from analyses.sse_detection.lib.figs import (
     fig05 as sse_fig05,
+)
+from analyses.sse_detection.lib.figs import (
     fig06 as sse_fig06,
+)
+from analyses.sse_detection.lib.figs import (
     fig07 as sse_fig07,
+)
+from analyses.sse_detection.lib.figs import (
     fig08 as sse_fig08,
+)
+from analyses.sse_detection.lib.figs import (
     fig09 as sse_fig09,
+)
+from analyses.sse_detection.lib.figs import (
     fig10 as sse_fig10,
+)
+from analyses.sse_detection.lib.figs import (
     fig11 as sse_fig11,
+)
+from analyses.sse_detection.lib.figs import (
     fig12 as sse_fig12,
+)
+from analyses.sse_detection.lib.figs import (
+    size_profiles as sse_size_profiles,
+)
+from analyses.sse_detection.lib.figs import (
     tables as sse_tables,
 )
 from analyses.sse_detection.lib.figs.common import (
     DEFAULT_RESULT_TABLE_DIR as SSE_RESULT_TABLE_DIR,
+)
+from analyses.sse_detection.lib.figs.common import (
     DEFAULT_TABLE_DIR as SSE_TABLE_DIR,
+)
+from analyses.sse_detection.lib.figs.common import (
     Paths as SSEPaths,
 )
 from analyses.sse_detection.lib.sse.config import BAYESIAN_OUTPUT_DIR
 from analyses.surveillance.lib.config import TABLES_DIR as SURVEILLANCE_TABLES_DIR
 from analyses.surveillance.lib.figs import (
     fig01 as surveillance_fig01,
+)
+from analyses.surveillance.lib.figs import (
     fig02 as surveillance_fig02,
 )
 
@@ -225,12 +280,18 @@ def figure_builders() -> tuple[ArtifactBuilder, ...]:
         _sse_figure_builder(sse_fig10.FILE_NAME, sse_fig10.build),
         _sse_figure_builder(sse_fig11.FILE_NAME, sse_fig11.build),
         _sse_figure_builder(sse_fig12.FILE_NAME, sse_fig12.build),
+        _sse_figure_builder(
+            sse_size_profiles.BUILDER_NAME, sse_size_profiles.build_figures
+        ),
     )
 
 
 def table_builders() -> tuple[ArtifactBuilder, ...]:
     """Return all top-level table builders in build order."""
     return (
+        _sse_table_builder(
+            sse_size_profiles.BUILDER_NAME, sse_size_profiles.build_tables
+        ),
         _surveillance_table_builder(
             surveillance_fig01.FIGURE_NAME,
             surveillance_fig01.build,
@@ -302,9 +363,7 @@ def select_builders(
         matches = [builder for builder in filtered if builder.name == name]
         if not matches:
             available = ", ".join(builder.key for builder in filtered)
-            raise KeyError(
-                f"Unknown builder {name!r}. Available builders: {available}"
-            )
+            raise KeyError(f"Unknown builder {name!r}. Available builders: {available}")
         if len(matches) > 1:
             options = ", ".join(builder.key for builder in matches)
             raise KeyError(

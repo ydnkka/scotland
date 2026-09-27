@@ -85,7 +85,7 @@ def build(paths: Paths) -> dict[str, object]:
                 color="black",
                 ls="--",
                 lw=0.8,
-                label="Uniform expectation",
+                label="Uniform reference",
             )
             for stratum, group in data.groupby("stratum", sort=False):
                 group = group.sort_values("threshold")
@@ -99,7 +99,7 @@ def build(paths: Paths) -> dict[str, object]:
                 loc="upper left", frameon=True, facecolor="#ffffff7b", edgecolor="#ffffff7b"
             )
 
-    fig.supxlabel("Randomized null-model p-value")
+    fig.supxlabel("Randomised upper-tail permutation p-value")
     fig.supylabel("Empirical cumulative proportion")
     add_panel_labels(axes.ravel())
     outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}")

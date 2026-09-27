@@ -73,6 +73,30 @@ python -m results.make_tables --domain sse_detection --skip-missing
 
 The detector has no CLI options; its settings are constants in `lib/sse/config.py`. Bayesian fitting commands are listed in [BAYESIAN_MODELS.md](BAYESIAN_MODELS.md).
 
+## Chapter 6 descriptive size analyses
+
+These builders reuse saved detector scores, labels, and entropy values. They do
+not fit Bayesian models or recalibrate the detector. They compare cluster and
+record weighting, the fixed size bands 6–9, 10–19, 20–49, 50–99, and 100+,
+screening routes, saved-p cutoffs 0.01/0.025/0.05/0.10, and restrictions to
+primary-labelled clusters of size at least 10 or 20.
+
+```bash
+MPLBACKEND=Agg python -m results.make_figures sse_detection:ch6_size_profiles
+MPLBACKEND=Agg python -m results.make_tables sse_detection:ch6_size_profiles
+python -m unittest analyses.sse_detection.test_characterisation -q
+```
+
+`lib/characterisation.py` provides aggregate calculations and reconciliation
+checks. `lib/figs/size_profiles.py` writes eight PDF/PNG figures, four LaTeX
+tables, and five aggregate CSV/parquet tables named `tab_ch6_*`. These source
+tables include category percentages, differences under both weighting schemes,
+entropy quartiles, and missing-value denominators. No identifiers are exported.
+Burden-only and both-axis comparisons use burden-eligible background clusters.
+Intervals in the entropy figures are IQRs, not confidence intervals. These are
+unadjusted descriptions; small differences and size overlap do not validate
+the screen against confirmed superspreading events.
+
 ## Layout
 
 - `lib/sse/`: data loading, transition graph, composition entropy, feature assembly, scoring, and diagnostics.

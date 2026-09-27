@@ -130,7 +130,7 @@ def draw_transition_counts(ax, window: pd.DataFrame, policy_context: pd.DataFram
         window["wn_mid_date"], window["n_out_edges"], color="#d95f02", lw=1.3
     )[0]
     ax.set_ylabel("Count")
-    ax.legend([nodes_line, edges_line], ["Nodes", "Outgoing edges"], loc="upper left")
+    ax.legend([nodes_line, edges_line], ["Clusters", "Outgoing links"], loc="upper left")
     date_axis(ax)
 
 
@@ -146,7 +146,7 @@ def draw_role_distribution(
         colors=colors,
         linewidth=0,
     )
-    ax.set_ylabel("Nodes")
+    ax.set_ylabel("Clusters")
     ax.legend(loc="upper left")
     date_axis(ax)
 
@@ -158,7 +158,7 @@ def draw_component_size_distribution(ax, components: pd.DataFrame) -> None:
         ax.plot(comp_sizes, ccdf, color="#1f4e79", lw=1.4)
         ax.set_xscale("log")
         ax.set_yscale("log")
-    ax.set_xlabel("Weak-component size (nodes)")
+    ax.set_xlabel("Weak-component size (clusters)")
     ax.set_ylabel("Pr(component size >= x)")
 
 
