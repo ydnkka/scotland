@@ -9,102 +9,75 @@ from pathlib import Path
 from typing import Any, Literal
 
 from analyses.genomic_networks.lib.config import TABLES_DIR as GENOMIC_TABLES_DIR
-from analyses.genomic_networks.lib.figs import (
-    fig01 as genomic_fig01,
-)
-from analyses.genomic_networks.lib.figs import (
-    fig02 as genomic_fig02,
-)
-from analyses.genomic_networks.lib.figs import (
-    fig03 as genomic_fig03,
-)
-from analyses.genomic_networks.lib.figs import (
-    fig04 as genomic_fig04,
-)
-from analyses.genomic_networks.lib.figs import (
-    fig05 as genomic_fig05,
-)
-from analyses.genomic_networks.lib.figs import (
-    fig06 as genomic_fig06,
-)
-from analyses.genomic_networks.lib.figs import (
-    fig07 as genomic_fig07,
-)
-from analyses.genomic_networks.lib.figs import (
-    fig08 as genomic_fig08,
-)
-from analyses.genomic_networks.lib.figs import (
-    fig09 as genomic_fig09,
-)
-from analyses.genomic_networks.lib.figs import (
-    fig10 as genomic_fig10,
-)
-from analyses.genomic_networks.lib.figs import (
-    tables as genomic_tables,
-)
+from analyses.genomic_networks.lib.figs import fig01 as genomic_fig01
+from analyses.genomic_networks.lib.figs import fig02 as genomic_fig02
+from analyses.genomic_networks.lib.figs import fig03 as genomic_fig03
+from analyses.genomic_networks.lib.figs import fig04 as genomic_fig04
+from analyses.genomic_networks.lib.figs import fig05 as genomic_fig05
+from analyses.genomic_networks.lib.figs import fig06 as genomic_fig06
+from analyses.genomic_networks.lib.figs import fig07 as genomic_fig07
+from analyses.genomic_networks.lib.figs import fig08 as genomic_fig08
+from analyses.genomic_networks.lib.figs import fig09 as genomic_fig09
+from analyses.genomic_networks.lib.figs import fig10 as genomic_fig10
+from analyses.genomic_networks.lib.figs import tab01 as genomic_tab01
+from analyses.genomic_networks.lib.figs import tab02 as genomic_tab02
+from analyses.genomic_networks.lib.figs import tab03 as genomic_tab03
+from analyses.genomic_networks.lib.figs import tab04 as genomic_tab04
+from analyses.genomic_networks.lib.figs import tab05 as genomic_tab05
+from analyses.genomic_networks.lib.figs import tab06 as genomic_tab06
+from analyses.genomic_networks.lib.figs import tab07 as genomic_tab07
 from analyses.genomic_networks.lib.figs.common import Paths as GenomicPaths
-from analyses.sse_detection.lib.figs import (
-    fig01 as sse_fig01,
-)
-from analyses.sse_detection.lib.figs import (
-    fig02 as sse_fig02,
-)
-from analyses.sse_detection.lib.figs import (
-    fig03 as sse_fig03,
-)
-from analyses.sse_detection.lib.figs import (
-    fig04_app as sse_fig04_app,
-)
-from analyses.sse_detection.lib.figs import (
-    fig04_main as sse_fig04_main,
-)
-from analyses.sse_detection.lib.figs import (
-    fig05 as sse_fig05,
-)
-from analyses.sse_detection.lib.figs import (
-    fig06 as sse_fig06,
-)
-from analyses.sse_detection.lib.figs import (
-    fig07 as sse_fig07,
-)
-from analyses.sse_detection.lib.figs import (
-    fig08 as sse_fig08,
-)
-from analyses.sse_detection.lib.figs import (
-    fig09 as sse_fig09,
-)
-from analyses.sse_detection.lib.figs import (
-    fig10 as sse_fig10,
-)
-from analyses.sse_detection.lib.figs import (
-    fig11 as sse_fig11,
-)
-from analyses.sse_detection.lib.figs import (
-    fig12 as sse_fig12,
-)
-from analyses.sse_detection.lib.figs import (
-    size_profiles as sse_size_profiles,
-)
-from analyses.sse_detection.lib.figs import (
-    tables as sse_tables,
-)
+from analyses.sse_detection.lib.figs import fig01 as sse_fig01
+from analyses.sse_detection.lib.figs import fig02 as sse_fig02
+from analyses.sse_detection.lib.figs import fig03 as sse_fig03
+from analyses.sse_detection.lib.figs import fig04 as sse_fig04
+from analyses.sse_detection.lib.figs import fig05 as sse_fig05
+from analyses.sse_detection.lib.figs import fig06 as sse_fig06
+from analyses.sse_detection.lib.figs import fig07 as sse_fig07
+from analyses.sse_detection.lib.figs import fig08 as sse_fig08
+from analyses.sse_detection.lib.figs import fig09 as sse_fig09
+from analyses.sse_detection.lib.figs import fig10 as sse_fig10
+from analyses.sse_detection.lib.figs import fig11 as sse_fig11
+from analyses.sse_detection.lib.figs import fig13 as sse_fig13
+from analyses.sse_detection.lib.figs import fig14 as sse_fig14
+from analyses.sse_detection.lib.figs import fig15 as sse_fig15
+from analyses.sse_detection.lib.figs import fig20 as sse_fig20
+from analyses.sse_detection.lib.figs import fig21 as sse_fig21
+from analyses.sse_detection.lib.figs import fig22 as sse_fig22
+from analyses.sse_detection.lib.figs import fig23 as sse_fig23
+from analyses.sse_detection.lib.figs import fig24 as sse_fig24
+from analyses.sse_detection.lib.figs import fig25 as sse_fig25
+from analyses.sse_detection.lib.figs import fig26 as sse_fig26
+from analyses.sse_detection.lib.figs import fig27 as sse_fig27
+from analyses.sse_detection.lib.figs import fig28 as sse_fig28
+from analyses.sse_detection.lib.figs import fig29 as sse_fig29
+from analyses.sse_detection.lib.figs import tab01 as sse_tab01
+from analyses.sse_detection.lib.figs import tab02 as sse_tab02
+from analyses.sse_detection.lib.figs import tab03 as sse_tab03
+from analyses.sse_detection.lib.figs import tab04 as sse_tab04
+from analyses.sse_detection.lib.figs import tab05 as sse_tab05
+from analyses.sse_detection.lib.figs import tab06 as sse_tab06
+from analyses.sse_detection.lib.figs import tab07 as sse_tab07
+from analyses.sse_detection.lib.figs import tab08 as sse_tab08
+from analyses.sse_detection.lib.figs import tab09 as sse_tab09
+from analyses.sse_detection.lib.figs import tab10 as sse_tab10
 from analyses.sse_detection.lib.figs.common import (
     DEFAULT_RESULT_TABLE_DIR as SSE_RESULT_TABLE_DIR,
 )
-from analyses.sse_detection.lib.figs.common import (
-    DEFAULT_TABLE_DIR as SSE_TABLE_DIR,
-)
-from analyses.sse_detection.lib.figs.common import (
-    Paths as SSEPaths,
-)
+from analyses.sse_detection.lib.figs.common import DEFAULT_TABLE_DIR as SSE_TABLE_DIR
+from analyses.sse_detection.lib.figs.common import Paths as SSEPaths
 from analyses.sse_detection.lib.sse.config import BAYESIAN_OUTPUT_DIR
 from analyses.surveillance.lib.config import TABLES_DIR as SURVEILLANCE_TABLES_DIR
-from analyses.surveillance.lib.figs import (
-    fig01 as surveillance_fig01,
-)
-from analyses.surveillance.lib.figs import (
-    fig02 as surveillance_fig02,
-)
+from analyses.surveillance.lib.figs import fig01 as surveillance_fig01
+from analyses.surveillance.lib.figs import fig02 as surveillance_fig02
+from analyses.surveillance.lib.figs import tab01 as surveillance_tab01
+from analyses.surveillance.lib.figs import tab02 as surveillance_tab02
+from analyses.surveillance.lib.figs import tab03 as surveillance_tab03
+from analyses.surveillance.lib.figs import tab04 as surveillance_tab04
+from analyses.surveillance.lib.figs import tab05 as surveillance_tab05
+from analyses.surveillance.lib.figs import tab06 as surveillance_tab06
+from analyses.surveillance.lib.figs import tab07 as surveillance_tab07
+from analyses.surveillance.lib.figs import tab08 as surveillance_tab08
 
 from .config import FIGURES_DIR, TABLES_DIR
 
@@ -149,9 +122,6 @@ def _surveillance_figure_builder(
     def build(context: BuildContext) -> Any:
         return build_func(
             figure_dir=context.figure_dir,
-            table_dir=SURVEILLANCE_TABLES_DIR,
-            write_figure=True,
-            write_tables=False,
         )
 
     return ArtifactBuilder("surveillance", name, "figure", build)
@@ -163,10 +133,7 @@ def _surveillance_table_builder(
 ) -> ArtifactBuilder:
     def build(context: BuildContext) -> Any:
         return build_func(
-            figure_dir=context.figure_dir,
             table_dir=SURVEILLANCE_TABLES_DIR,
-            write_figure=False,
-            write_tables=True,
         )
 
     return ArtifactBuilder("surveillance", name, "table", build)
@@ -193,7 +160,8 @@ def _genomic_table_builder(
     def build(context: BuildContext) -> Any:
         paths = GenomicPaths(
             table_dir=GENOMIC_TABLES_DIR,
-            figure_dir=context.table_dir,
+            figure_dir=context.figure_dir,
+            publication_table_dir=context.table_dir,
         )
         return build_func(paths)
 
@@ -223,7 +191,8 @@ def _sse_table_builder(
     def build(context: BuildContext) -> Any:
         paths = SSEPaths(
             table_dir=SSE_TABLE_DIR,
-            figure_dir=context.table_dir,
+            figure_dir=context.figure_dir,
+            publication_table_dir=context.table_dir,
             bayesian_result_dir=BAYESIAN_OUTPUT_DIR,
             result_table_dir=SSE_RESULT_TABLE_DIR,
         )
@@ -233,81 +202,95 @@ def _sse_table_builder(
 
 
 def figure_builders() -> tuple[ArtifactBuilder, ...]:
-    """Return all top-level figure builders in build order."""
+    """Return each individual figure builder in build order."""
     return (
         _surveillance_figure_builder(
-            surveillance_fig01.FIGURE_NAME,
-            surveillance_fig01.build,
+            surveillance_fig01.FIGURE_NAME, surveillance_fig01.build
         ),
         _surveillance_figure_builder(
-            surveillance_fig02.FIGURE_NAME,
-            surveillance_fig02.build,
+            surveillance_fig02.FIGURE_NAME, surveillance_fig02.build
         ),
+        _genomic_figure_builder(genomic_fig01.FIGURE_NAME, genomic_fig01.build),
         _genomic_figure_builder(genomic_fig02.FIGURE_NAME, genomic_fig02.build),
+        _genomic_figure_builder(genomic_fig03.FIGURE_NAME, genomic_fig03.build),
+        _genomic_figure_builder(genomic_fig04.FIGURE_NAME, genomic_fig04.build),
         _genomic_figure_builder(genomic_fig05.FIGURE_NAME, genomic_fig05.build),
+        _genomic_figure_builder(genomic_fig06.FIGURE_NAME, genomic_fig06.build),
         _genomic_figure_builder(genomic_fig07.FIGURE_NAME, genomic_fig07.build),
         _genomic_figure_builder(genomic_fig08.FIGURE_NAME, genomic_fig08.build),
-        _genomic_figure_builder(genomic_fig03.FIGURE_NAME, genomic_fig03.build),
-        _genomic_figure_builder(genomic_fig06.FIGURE_NAME, genomic_fig06.build),
         _genomic_figure_builder(genomic_fig09.FIGURE_NAME, genomic_fig09.build),
         _genomic_figure_builder(genomic_fig10.FIGURE_NAME, genomic_fig10.build),
-        _genomic_figure_builder(genomic_fig01.FIGURE_NAME, genomic_fig01.build),
-        _genomic_figure_builder(genomic_fig04.FIGURE_NAME, genomic_fig04.build),
         _sse_figure_builder(sse_fig01.FIGURE_NAME, sse_fig01.build),
         _sse_figure_builder(sse_fig02.FIGURE_NAME, sse_fig02.build),
         _sse_figure_builder(sse_fig03.FIGURE_NAME, sse_fig03.build),
-        _sse_figure_builder(
-            sse_fig04_main.FIGURE_NAME["mixing"],
-            sse_fig04_main.build_mixing,
-        ),
-        _sse_figure_builder(
-            sse_fig04_main.FIGURE_NAME["composition"],
-            sse_fig04_main.build_composition,
-        ),
-        _sse_figure_builder(
-            sse_fig04_app.FIGURE_NAME["mixing"],
-            sse_fig04_app.build_mixing,
-        ),
-        _sse_figure_builder(
-            sse_fig04_app.FIGURE_NAME["composition"],
-            sse_fig04_app.build_composition,
-        ),
-        _sse_figure_builder(sse_fig05.FILE_NAME, sse_fig05.build),
-        _sse_figure_builder(sse_fig06.FILE_NAME, sse_fig06.build),
-        _sse_figure_builder(sse_fig07.FILE_NAME, sse_fig07.build),
-        _sse_figure_builder(sse_fig08.FILE_NAME, sse_fig08.build),
-        _sse_figure_builder(sse_fig09.FILE_NAME, sse_fig09.build),
-        _sse_figure_builder(sse_fig10.FILE_NAME, sse_fig10.build),
-        _sse_figure_builder(sse_fig11.FILE_NAME, sse_fig11.build),
-        _sse_figure_builder(sse_fig12.FILE_NAME, sse_fig12.build),
-        _sse_figure_builder(
-            sse_size_profiles.BUILDER_NAME, sse_size_profiles.build_figures
-        ),
+        _sse_figure_builder(sse_fig04.FIGURE_NAME, sse_fig04.build),
+        _sse_figure_builder(sse_fig05.FIGURE_NAME, sse_fig05.build),
+        _sse_figure_builder(sse_fig06.FIGURE_NAME, sse_fig06.build),
+        _sse_figure_builder(sse_fig07.FIGURE_NAME, sse_fig07.build),
+        _sse_figure_builder(sse_fig08.FIGURE_NAME, sse_fig08.build),
+        _sse_figure_builder(sse_fig09.FIGURE_NAME, sse_fig09.build),
+        _sse_figure_builder(sse_fig10.FIGURE_NAME, sse_fig10.build),
+        _sse_figure_builder(sse_fig11.FIGURE_NAME, sse_fig11.build),
+        _sse_figure_builder(sse_fig13.FIGURE_NAME, sse_fig13.build),
+        _sse_figure_builder(sse_fig14.FIGURE_NAME, sse_fig14.build),
+        _sse_figure_builder(sse_fig15.FIGURE_NAME, sse_fig15.build),
+        _sse_figure_builder(sse_fig20.FIGURE_NAME, sse_fig20.build),
+        _sse_figure_builder(sse_fig21.FIGURE_NAME, sse_fig21.build),
+        _sse_figure_builder(sse_fig22.FIGURE_NAME, sse_fig22.build),
+        _sse_figure_builder(sse_fig23.FIGURE_NAME, sse_fig23.build),
+        _sse_figure_builder(sse_fig24.FIGURE_NAME, sse_fig24.build),
+        _sse_figure_builder(sse_fig25.FIGURE_NAME, sse_fig25.build),
+        _sse_figure_builder(sse_fig26.FIGURE_NAME, sse_fig26.build),
+        _sse_figure_builder(sse_fig27.FIGURE_NAME, sse_fig27.build),
+        _sse_figure_builder(sse_fig28.FIGURE_NAME, sse_fig28.build),
+        _sse_figure_builder(sse_fig29.FIGURE_NAME, sse_fig29.build),
     )
 
 
 def table_builders() -> tuple[ArtifactBuilder, ...]:
-    """Return all top-level table builders in build order."""
+    """Return each individual table builder in build order."""
     return (
-        _sse_table_builder(
-            sse_size_profiles.BUILDER_NAME, sse_size_profiles.build_tables
+        _surveillance_table_builder(
+            surveillance_tab01.TABLE_NAME, surveillance_tab01.build
         ),
         _surveillance_table_builder(
-            surveillance_fig01.FIGURE_NAME,
-            surveillance_fig01.build,
+            surveillance_tab02.TABLE_NAME, surveillance_tab02.build
         ),
         _surveillance_table_builder(
-            surveillance_fig02.FIGURE_NAME,
-            surveillance_fig02.build,
+            surveillance_tab03.TABLE_NAME, surveillance_tab03.build
         ),
-        *(
-            _genomic_table_builder(name, build_func)
-            for name, build_func in genomic_tables.TABLE_WRITERS
+        _surveillance_table_builder(
+            surveillance_tab04.TABLE_NAME, surveillance_tab04.build
         ),
-        *(
-            _sse_table_builder(name, build_func)
-            for name, build_func in sse_tables.TABLE_WRITERS
+        _surveillance_table_builder(
+            surveillance_tab05.TABLE_NAME, surveillance_tab05.build
         ),
+        _surveillance_table_builder(
+            surveillance_tab06.TABLE_NAME, surveillance_tab06.build
+        ),
+        _surveillance_table_builder(
+            surveillance_tab07.TABLE_NAME, surveillance_tab07.build
+        ),
+        _surveillance_table_builder(
+            surveillance_tab08.TABLE_NAME, surveillance_tab08.build
+        ),
+        _genomic_table_builder(genomic_tab01.TABLE_NAME, genomic_tab01.build),
+        _genomic_table_builder(genomic_tab02.TABLE_NAME, genomic_tab02.build),
+        _genomic_table_builder(genomic_tab03.TABLE_NAME, genomic_tab03.build),
+        _genomic_table_builder(genomic_tab04.TABLE_NAME, genomic_tab04.build),
+        _genomic_table_builder(genomic_tab05.TABLE_NAME, genomic_tab05.build),
+        _genomic_table_builder(genomic_tab06.TABLE_NAME, genomic_tab06.build),
+        _genomic_table_builder(genomic_tab07.TABLE_NAME, genomic_tab07.build),
+        _sse_table_builder(sse_tab01.TABLE_NAME, sse_tab01.build),
+        _sse_table_builder(sse_tab02.TABLE_NAME, sse_tab02.build),
+        _sse_table_builder(sse_tab03.TABLE_NAME, sse_tab03.build),
+        _sse_table_builder(sse_tab04.TABLE_NAME, sse_tab04.build),
+        _sse_table_builder(sse_tab05.TABLE_NAME, sse_tab05.build),
+        _sse_table_builder(sse_tab06.TABLE_NAME, sse_tab06.build),
+        _sse_table_builder(sse_tab07.TABLE_NAME, sse_tab07.build),
+        _sse_table_builder(sse_tab08.TABLE_NAME, sse_tab08.build),
+        _sse_table_builder(sse_tab09.TABLE_NAME, sse_tab09.build),
+        _sse_table_builder(sse_tab10.TABLE_NAME, sse_tab10.build),
     )
 
 

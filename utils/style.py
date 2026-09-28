@@ -12,6 +12,7 @@ Usage
 
 from __future__ import annotations
 
+import string
 import warnings
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager
@@ -21,6 +22,7 @@ from typing import Any, Literal
 import matplotlib as mpl
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -261,33 +263,58 @@ def save_figure(
 
 
 def add_panel_labels(
-    axes: Axes | Sequence[Axes],
+    axes: Axes | Sequence[Axes] | np.ndarray,
     *,
-    x: float = -0.08,
-    y: float = 1.08,
+    x: float = 0.0,
+    y: float = 1.0,
+    offset_points: tuple[float, float] = (-6, 6),
     label: str | Sequence[str] | None = None,
     kwargs: dict[str, Any] | None = None,
 ) -> None:
-    """Place sequential panel labels on a list of axes."""
-    import string
+    """Label axes in row-major order, accepting a single axis or subplot grid.
 
-    labels = list(string.ascii_uppercase)
+    Labels sit a fixed number of points above and left of the axes corner,
+    independent of subplot height. They use the shared title size and bold
+    weight. Explicit labels must match the number of axes; text properties
+    can be overridden in ``kwargs``.
+    """
 
-    if isinstance(axes, Axes):
-        axes = [axes]
-
-    if label is not None:
+    flat_axes = (
+        [axes]
+        if isinstance(axes, Axes)
+        else np.asarray(axes, dtype=object).ravel().tolist()
+    )
+    if not all(isinstance(ax, Axes) for ax in flat_axes):
+        raise TypeError("Panel labels require Matplotlib axes.")
+    if label is None:
+        labels = []
+        for index in range(1, len(flat_axes) + 1):
+            letters = ""
+            while index:
+                index, remainder = divmod(index - 1, 26)
+                letters = string.ascii_uppercase[remainder] + letters
+            labels.append(letters)
+    else:
         labels = [label] if isinstance(label, str) else list(label)
-    for ax, lb in zip(axes, labels):
-        ax.text(
-            x,
-            y,
+        if len(labels) != len(flat_axes):
+            raise ValueError("Provide one panel label per axis.")
+    text_kwargs = {
+        "fontsize": mpl.rcParams["axes.titlesize"],
+        "fontweight": "bold",
+        "va": "bottom",
+        "ha": "right",
+        "clip_on": False,
+        "gid": "panel-label",
+        **(kwargs or {}),
+    }
+    for ax, lb in zip(flat_axes, labels):
+        ax.annotate(
             lb,
-            transform=ax.transAxes,
-            fontweight="bold",
-            va="top",
-            ha="left",
-            **(kwargs or {}),
+            xy=(x, y),
+            xycoords="axes fraction",
+            xytext=offset_points,
+            textcoords="offset points",
+            **text_kwargs,
         )
 
 

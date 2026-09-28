@@ -5,9 +5,7 @@ from __future__ import annotations
 import argparse
 import math
 import re
-import sys
 import textwrap
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -16,9 +14,7 @@ from matplotlib.cm import ScalarMappable
 from matplotlib.patches import Patch
 from matplotlib.ticker import PercentFormatter
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from common import (
+from .common import (
     POLICY_COLORS,
     POLICY_LABELS,
     POLICY_STRINGENCY_CMAP,

@@ -3,17 +3,13 @@
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.colors import TwoSlopeNorm
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from common import (
+from .common import (
     Paths,
     add_common_args,
     new_figure,

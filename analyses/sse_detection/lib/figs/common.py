@@ -26,14 +26,17 @@ from ..sse.config import (
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils import (  # noqa: F401
-    CLADES,
-    add_policy_bands,
+from utils import CLADES as CLADES  # noqa: F401
+from utils import add_policy_bands as add_policy_bands
+from utils import (
     load_policy_calendar,
     policy_era_labels,
     policy_order,
 )
-from utils.style import *
+from utils.style import WIDTHS
+from utils.style import add_panel_labels as add_panel_labels
+from utils.style import new_figure as new_figure
+from utils.style import save_figure
 
 DEFAULT_TABLE_DIR = SSE_OUTPUT_DIR
 DEFAULT_RESULT_TABLE_DIR = TABLE_DIR
@@ -73,6 +76,7 @@ class Paths:
     figure_dir: Path = FIGURE_DIR
     bayesian_result_dir: Path = BAYESIAN_OUTPUT_DIR
     result_table_dir: Path = DEFAULT_RESULT_TABLE_DIR
+    publication_table_dir: Path = PROJECT_ROOT / "results/tables"
 
 
 def read_table(paths: Paths, name: str) -> pd.DataFrame:
@@ -89,7 +93,7 @@ def read_table(paths: Paths, name: str) -> pd.DataFrame:
 
 def latex_table_path(paths: Paths, name: str) -> Path:
     """Return a LaTeX table-fragment path under the results table directory."""
-    table_dir = paths.figure_dir.parent / "tables"
+    table_dir = paths.publication_table_dir
     table_dir.mkdir(parents=True, exist_ok=True)
     return table_dir / f"{name}.tex"
 
@@ -125,6 +129,12 @@ def date_axis(ax: Axes) -> None:
 
 def add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
+        "--publication-table-dir",
+        type=Path,
+        default=PROJECT_ROOT / "results/tables",
+        help="Directory for generated LaTeX tables.",
+    )
+    parser.add_argument(
         "--table-dir",
         type=Path,
         default=DEFAULT_TABLE_DIR,
@@ -156,6 +166,7 @@ def paths_from_args(args: argparse.Namespace) -> Paths:
         figure_dir=args.figure_dir,
         bayesian_result_dir=args.bayesian_result_dir,
         result_table_dir=args.result_table_dir,
+        publication_table_dir=args.publication_table_dir,
     )
 
 
@@ -175,3 +186,23 @@ def wilson(k: pd.Series, n: pd.Series) -> tuple[pd.Series, pd.Series]:
     centre = (p + z * z / (2 * n)) / denom
     half = z * np.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
     return (centre - half).clip(lower=0), (centre + half).clip(upper=1)
+
+
+__all__ = [
+    "Paths",
+    "add_common_args",
+    "paths_from_args",
+    "read_table",
+    "styled_save_figure",
+    "sort_by_policy",
+    "date_axis",
+    "add_panel_labels",
+    "new_figure",
+    "add_policy_bands",
+    "DEFAULT_TABLE_DIR",
+    "DEFAULT_RESULT_TABLE_DIR",
+    "HIGH_PRIORITY",
+    "CLADES",
+    "latex_table_path",
+    "wilson",
+]

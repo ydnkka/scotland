@@ -23,6 +23,7 @@ from .common import (
 )
 
 FILE_NAME = "entropy_tertile_profiles"
+FIGURE_NAME = "fig_entropy_tertile_profiles"
 
 TERTILE_ORDER = (
     "more_homogeneous",
@@ -89,9 +90,7 @@ def _eligible_nodes(nodes: pd.DataFrame) -> pd.DataFrame:
         raise ValueError(
             "Eligible cluster rows must include candidates and background."
         )
-    eligible["sse_status"] = np.where(
-        eligible["candidate"], "candidate", "background"
-    )
+    eligible["sse_status"] = np.where(eligible["candidate"], "candidate", "background")
     eligible["min_candidate_size"] = min_candidate_size
 
     sort_columns = [
@@ -160,9 +159,7 @@ def build_entropy_tertile_profiles(nodes: pd.DataFrame) -> pd.DataFrame:
                         "background_proportion": background_proportion,
                         "candidate_proportion": candidate_proportion,
                         "difference": candidate_proportion - background_proportion,
-                        "difference_pp": (
-                            candidate_proportion - background_proportion
-                        )
+                        "difference_pp": (candidate_proportion - background_proportion)
                         * 100,
                         "eligible_total": background_total + candidate_total,
                         "min_candidate_size": int(
@@ -225,9 +222,7 @@ def _draw_kind_profile(
     }
 
     for y, feature in zip(y_positions, MIXING_FEATURES):
-        data = table.loc[
-            table["feature"].eq(feature.prefix) & table["kind"].eq(kind)
-        ]
+        data = table.loc[table["feature"].eq(feature.prefix) & table["kind"].eq(kind)]
         for tertile in TERTILE_ORDER:
             row = data.loc[data["tertile"].eq(tertile)]
             if row.empty:
@@ -307,7 +302,7 @@ def build(paths: Paths) -> dict[str, object]:
         wspace=0.08,
     )
     add_panel_labels(axes)
-    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}")
+    outputs = styled_save_figure(fig, paths, FIGURE_NAME)
     return {"figure": fig, "outputs": outputs, "plot_data": table}
 
 

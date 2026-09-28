@@ -19,6 +19,7 @@ from .common import (
 )
 
 FILE_NAME = "stratified_calibration"
+FIGURE_NAME = "fig_stratified_calibration"
 
 
 def build_stratified_calibration(nodes: pd.DataFrame) -> pd.DataFrame:
@@ -96,13 +97,16 @@ def build(paths: Paths) -> dict[str, object]:
                 )
             ax.set_title(f"{axis_name.title()} | {stratifier.lower()}")
             ax.legend(
-                loc="upper left", frameon=True, facecolor="#ffffff7b", edgecolor="#ffffff7b"
+                loc="upper left",
+                frameon=True,
+                facecolor="#ffffff7b",
+                edgecolor="#ffffff7b",
             )
 
     fig.supxlabel("Randomised upper-tail permutation p-value")
     fig.supylabel("Empirical cumulative proportion")
     add_panel_labels(axes.ravel())
-    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}")
+    outputs = styled_save_figure(fig, paths, FIGURE_NAME)
     return {"figure": fig, "outputs": outputs}
 
 

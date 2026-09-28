@@ -90,18 +90,14 @@ python -m results.make_figures --skip-missing
 python -m results.make_tables --skip-missing
 ```
 
-Use `python -m results.make_figures --list` or `python -m results.make_tables --list`
-to inspect available builders. Individual builders can be selected by fully
-qualified name, for example:
+Use `python -m results.make_figures --list` or `python -m results.make_tables --list` to inspect available builders. Individual builders can be selected by fully qualified name, for example:
 
 ```bash
-python -m results.make_figures surveillance:policy_sequences_over_time
+python -m results.make_figures surveillance:fig_policy_sequences_over_time
 python -m results.make_tables genomic_networks:tab_policy_denominators
 ```
 
-Analysis-local CSV/parquet outputs are written below each package's `results/`
-directory. Project-level publication figures are written to `results/figures/`,
-and project-level LaTeX table fragments are written to `results/tables/`.
+Analysis-local CSV/parquet outputs are written below each package's `results/` directory. Project-level publication figures are written to `results/figures/`, and project-level LaTeX table fragments are written to `results/tables/`.
 
 ## Governance and reproducibility
 

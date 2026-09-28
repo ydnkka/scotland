@@ -3,16 +3,12 @@
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 
 import matplotlib.dates as mdates
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from common import (
+from .common import (
     Paths,
     add_common_args,
     add_panel_labels,
@@ -91,7 +87,10 @@ def build(paths: Paths) -> None:
         ("n_edges_used", "Edges"),
         ("edge_weight_total", "Total edge weight"),
         ("degree_assortativity", "Degree assortativity (equal edge weights)"),
-        ("weighted_degree_assortativity", "Degree assortativity (EpiLink-weighted edges)"),
+        (
+            "weighted_degree_assortativity",
+            "Degree assortativity (EpiLink-weighted edges)",
+        ),
         ("strength_assortativity", "Strength assortativity (EpiLink-weighted edges)"),
     ]
     rows = []

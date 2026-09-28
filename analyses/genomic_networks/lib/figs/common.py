@@ -18,14 +18,17 @@ PROJECT_ROOT = Path(__file__).resolve().parents[4]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils import (  # noqa: F401
-    add_policy_bands,
+from utils import add_policy_bands as add_policy_bands  # noqa: F401
+from utils import (
     load_policy_calendar,
     policy_era_labels,
     policy_order,
-    window_idx_from_id,
 )
-from utils.style import *
+from utils import window_idx_from_id as window_idx_from_id
+from utils.style import WIDTHS
+from utils.style import add_panel_labels as add_panel_labels
+from utils.style import new_figure as new_figure
+from utils.style import save_figure
 
 DEFAULT_TABLE_DIR = PROJECT_ROOT / "analyses/genomic_networks/results/tables"
 FIGURE_DIR = PROJECT_ROOT / "results/figures"
@@ -65,6 +68,7 @@ POLICY_COLORS = {
 class Paths:
     table_dir: Path
     figure_dir: Path = FIGURE_DIR
+    publication_table_dir: Path = PROJECT_ROOT / "results/tables"
 
 
 def read_table(paths: Paths, name: str) -> pd.DataFrame:
@@ -113,6 +117,13 @@ def date_axis(ax: Axes) -> None:
 
 
 def add_common_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--figure-dir", type=Path, default=FIGURE_DIR)
+    parser.add_argument(
+        "--publication-table-dir",
+        type=Path,
+        default=PROJECT_ROOT / "results/tables",
+        help="Directory for generated LaTeX tables.",
+    )
     parser.add_argument(
         "--table-dir",
         type=Path,
@@ -122,4 +133,32 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
 
 
 def paths_from_args(args: argparse.Namespace) -> Paths:
-    return Paths(table_dir=args.table_dir)
+    return Paths(
+        publication_table_dir=args.publication_table_dir,
+        table_dir=args.table_dir,
+        figure_dir=args.figure_dir,
+    )
+
+
+__all__ = [
+    "Paths",
+    "add_common_args",
+    "paths_from_args",
+    "read_table",
+    "styled_save_figure",
+    "sort_by_policy",
+    "date_axis",
+    "add_panel_labels",
+    "new_figure",
+    "add_policy_bands",
+    "DEFAULT_TABLE_DIR",
+    "FIGURE_DIR",
+    "ATTRIBUTE_ORDER",
+    "POLICY_ORDER",
+    "POLICY_LABELS",
+    "POLICY_COLORS",
+    "POLICY_STRINGENCY_CMAP",
+    "POLICY_STRINGENCY_NORM",
+    "ordered_policy_values",
+    "window_idx_from_id",
+]

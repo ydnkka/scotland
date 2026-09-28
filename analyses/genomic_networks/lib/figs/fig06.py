@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -11,9 +10,12 @@ import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.ticker import PercentFormatter
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+from analyses.genomic_networks.lib.config import (
+    ANALYSIS_RESOLUTION,
+    SPARSIFICATION_THRESHOLD,
+)
 
-from common import (
+from .common import (
     Paths,
     add_common_args,
     add_panel_labels,
@@ -21,11 +23,6 @@ from common import (
     paths_from_args,
     read_table,
     styled_save_figure,
-)
-
-from analyses.genomic_networks.lib.config import (
-    ANALYSIS_RESOLUTION,
-    SPARSIFICATION_THRESHOLD,
 )
 
 BASELINE_THRESHOLD = SPARSIFICATION_THRESHOLD

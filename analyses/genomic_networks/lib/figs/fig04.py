@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 from textwrap import fill
 
 import matplotlib.pyplot as plt
@@ -12,9 +10,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.ticker import PercentFormatter
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from common import (
+from .common import (
     POLICY_LABELS,
     Paths,
     add_common_args,

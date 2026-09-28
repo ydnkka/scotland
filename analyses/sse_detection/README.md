@@ -73,7 +73,7 @@ python -m results.make_tables --domain sse_detection --skip-missing
 
 The detector has no CLI options; its settings are constants in `lib/sse/config.py`. Bayesian fitting commands are listed in [BAYESIAN_MODELS.md](BAYESIAN_MODELS.md).
 
-## Chapter 6 descriptive size analyses
+## Descriptive size analyses
 
 These builders reuse saved detector scores, labels, and entropy values. They do
 not fit Bayesian models or recalibrate the detector. They compare cluster and
@@ -82,27 +82,47 @@ screening routes, saved-p cutoffs 0.01/0.025/0.05/0.10, and restrictions to
 primary-labelled clusters of size at least 10 or 20.
 
 ```bash
-MPLBACKEND=Agg python -m results.make_figures sse_detection:ch6_size_profiles
-MPLBACKEND=Agg python -m results.make_tables sse_detection:ch6_size_profiles
+MPLBACKEND=Agg python -m results.make_figures sse_detection:fig_size_cumulative
+MPLBACKEND=Agg python -m results.make_tables sse_detection:tab_size_overview
 python -m unittest analyses.sse_detection.test_characterisation -q
 ```
 
-To update presentation labels from the existing aggregate tables, use
-`python -m analyses.sse_detection.lib.figs.size_profiles --from-saved-tables`.
-Add `--tables-only` to render the LaTeX tables, and `--figure-dir` to select a
-temporary output location. This mode reads the saved `tab_ch6_*` tables without
-rebuilding or overwriting the aggregates. Figures and publication tables use
-the attribute name "Urban/rural class"; data columns retain their existing names.
+Size figures have individual entry points `lib/figs/fig22.py`–`fig29.py`;
+size tables use `tab07.py`–`tab10.py`. To update presentation from saved
+aggregates without recalculating or overwriting them, run the relevant module:
+
+```bash
+python -m analyses.sse_detection.lib.figs.fig22 --from-saved-tables
+python -m analyses.sse_detection.lib.figs.tab07 --from-saved-tables
+```
+
+Use `--figure-dir` for figure destinations or `--publication-table-dir` for
+LaTeX destinations. `size_profiles.py` supplies shared calculations and plotting
+helpers; it no longer builds a bundle of artifacts. New aggregates use
+`tab_size_profile_*` names; `--from-saved-tables` also accepts existing
+`tab_ch6_*` inputs. Figure and table output filenames do not encode chapter or
+supplement placement. Figures and publication tables use the attribute name
+"Urban/rural class"; data columns retain their existing names.
 
 `lib/characterisation.py` provides aggregate calculations and reconciliation
-checks. `lib/figs/size_profiles.py` writes eight PDF/PNG figures, four LaTeX
-tables, and five aggregate CSV/parquet tables named `tab_ch6_*`. These source
+checks. The eight figure scripts write PDF/PNG outputs, and the four table
+scripts write LaTeX outputs. Shared preparation writes five aggregate
+CSV/parquet tables named `tab_size_profile_*`. These source
 tables include category percentages, differences under both weighting schemes,
 entropy quartiles, and missing-value denominators. No identifiers are exported.
 Burden-only and both-axis comparisons use burden-eligible background clusters.
 Intervals in the entropy figures are IQRs, not confidence intervals. These are
 unadjusted descriptions; small differences and size overlap do not validate
 the screen against confirmed superspreading events.
+
+Cluster-composition figures are the two overviews in `fig20.py` (demographic and
+socioeconomic attributes) and `fig21.py` (health boards). Individual attribute
+figures have been removed. Forest plots use `fig04.py`, `fig13.py`, `fig14.py`,
+and `fig15.py`, with shared helpers in `forest_common.py` and `forest.py`.
+Bayesian publication tables use `tab01.py`–`tab06.py` and `table_common.py`.
+All panel letters come from `utils.style.add_panel_labels`, including subplot
+grids. The demographic composition overview uses A–H, and the health-board
+overview continues with I–J; other figures start at A.
 
 ## Layout
 

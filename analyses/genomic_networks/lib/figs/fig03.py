@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 
 import matplotlib.dates as mdates
 import numpy as np
@@ -13,9 +11,7 @@ from matplotlib.axes import Axes
 from matplotlib.patches import Patch
 from matplotlib.ticker import PercentFormatter
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from common import (
+from .common import (
     Paths,
     add_common_args,
     add_panel_labels,
@@ -215,7 +211,7 @@ def build(paths: Paths) -> None:
         frameon=False,
     )
     fig.supxlabel("Window midpoint date")
-    
+
     add_panel_labels(axes)
     styled_save_figure(fig, paths, FIGURE_NAME)
 

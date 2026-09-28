@@ -10,5 +10,5 @@ TABLES_DIR = RESULTS_DIR / "tables"
 
 DAILY_SMOOTH_WINDOW = 7
 SEQUENCE_WINDOW_STRIDE = 3
-FIGURE_NAME = "policy_sequences_over_time"
-POLICY_INDEX_FIGURE_NAME = "policy_index_comparison"
+FIGURE_NAME = "fig_policy_sequences_over_time"
+POLICY_INDEX_FIGURE_NAME = "fig_policy_index_comparison"

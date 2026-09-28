@@ -21,9 +21,10 @@ from .common import (
     read_table,
     styled_save_figure,
 )
-from .fig01 import CLUSTER_ROLE_GROUPS, ROLE_COLORS
+from .graph_styles import CLUSTER_ROLE_GROUPS, ROLE_COLORS
 
 FILE_NAME = "transition_graph_characteristics"
+FIGURE_NAME = "fig_transition_graph_characteristics"
 
 PREFERRED_ROLES = [
     "Isolated",
@@ -121,7 +122,9 @@ def build_transition_context(
     return window, policy_context, role_pivot
 
 
-def draw_transition_counts(ax, window: pd.DataFrame, policy_context: pd.DataFrame) -> None:
+def draw_transition_counts(
+    ax, window: pd.DataFrame, policy_context: pd.DataFrame
+) -> None:
     add_policy_bands(ax, policy_context)
     nodes_line = ax.plot(
         window["wn_mid_date"], window["n_nodes"], color="#1f4e79", lw=1.3
@@ -130,7 +133,9 @@ def draw_transition_counts(ax, window: pd.DataFrame, policy_context: pd.DataFram
         window["wn_mid_date"], window["n_out_edges"], color="#d95f02", lw=1.3
     )[0]
     ax.set_ylabel("Count")
-    ax.legend([nodes_line, edges_line], ["Clusters", "Outgoing links"], loc="upper left")
+    ax.legend(
+        [nodes_line, edges_line], ["Clusters", "Outgoing links"], loc="upper left"
+    )
     date_axis(ax)
 
 
@@ -238,7 +243,7 @@ def build(paths: Paths) -> dict[str, object]:
     draw_role_count_grid(axes[1, 1], table)
 
     add_panel_labels(axes.ravel())
-    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}")
+    outputs = styled_save_figure(fig, paths, FIGURE_NAME)
     return {"figure": fig, "outputs": outputs}
 
 

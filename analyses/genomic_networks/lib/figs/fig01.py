@@ -3,14 +3,10 @@
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from common import (
+from .common import (
     Paths,
     add_common_args,
     add_panel_labels,
@@ -70,7 +66,7 @@ def build(paths: Paths) -> None:
     for i in range(matrix.shape[0]):
         for j in range(matrix.shape[1]):
             value = matrix.iloc[i, j]
-            if value > 0: # type: ignore
+            if value > 0:  # type: ignore
                 axes[1].text(j, i, f"{value:.1f}", ha="center", va="center")
     fig.colorbar(image, ax=axes[1], label="Population share (%)")
     add_panel_labels(axes)

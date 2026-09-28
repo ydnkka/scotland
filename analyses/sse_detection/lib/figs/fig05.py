@@ -21,6 +21,7 @@ from .common import (
 )
 
 FILE_NAME = "candidate_timeline"
+FIGURE_NAME = "fig_candidate_timeline"
 
 
 def build_candidate_timeline(nodes: pd.DataFrame) -> pd.DataFrame:
@@ -32,7 +33,14 @@ def build_candidate_timeline(nodes: pd.DataFrame) -> pd.DataFrame:
         {"high_priority_burden", "high_priority_both_axes"}
     )
     rows = []
-    keys = ["window_id", "window_idx", "wn_mid_date", "policy_era", "policy_period", "who_voc"]
+    keys = [
+        "window_id",
+        "window_idx",
+        "wn_mid_date",
+        "policy_era",
+        "policy_period",
+        "who_voc",
+    ]
     for key, group in tested.groupby(keys, dropna=False, observed=True):
         for axis in ("burst", "burden"):
             eligible = (
@@ -58,9 +66,9 @@ def build(paths: Paths) -> dict[str, object]:
     write_table(table, paths.result_table_dir, f"tab_{FILE_NAME}")
     table["wn_mid_date"] = pd.to_datetime(table["wn_mid_date"])
     summary = (
-        table.groupby(["wn_mid_date", "policy_era", "policy_period", "axis"], observed=True)[
-            ["eligible_n", "candidate_n"]
-        ]
+        table.groupby(
+            ["wn_mid_date", "policy_era", "policy_period", "axis"], observed=True
+        )[["eligible_n", "candidate_n"]]
         .sum()
         .reset_index()
     )
@@ -85,7 +93,7 @@ def build(paths: Paths) -> dict[str, object]:
     ax.set_xlabel("Window midpoint")
     ax.legend(loc="upper left")
     date_axis(ax)
-    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}")
+    outputs = styled_save_figure(fig, paths, FIGURE_NAME)
     return {"figure": fig, "outputs": outputs}
 
 

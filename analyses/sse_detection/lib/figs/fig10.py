@@ -22,6 +22,7 @@ from .common import (
 )
 
 FILE_NAME = "threshold_robustness"
+FIGURE_NAME = "fig_threshold_robustness"
 MIN_SIZE_VALUES = tuple(range(2, 21, 2))
 ALPHA_VALUES = tuple(i / 100 for i in range(1, 11))
 PRIMARY_MIN_SIZE = 6
@@ -39,9 +40,7 @@ def _contrast_text_color(image, value: float) -> str:
 
 
 def build_threshold_robustness(nodes: pd.DataFrame) -> pd.DataFrame:
-    baseline = set(
-        nodes.loc[nodes["candidate_tier"].isin(HIGH_PRIORITY), "cluster_id"]
-    )
+    baseline = set(nodes.loc[nodes["candidate_tier"].isin(HIGH_PRIORITY), "cluster_id"])
     rows = []
     for min_size in MIN_SIZE_VALUES:
         # Re-score in memory so threshold sensitivity does not alter primary outputs.
@@ -69,9 +68,9 @@ def build_threshold_robustness(nodes: pd.DataFrame) -> pd.DataFrame:
                     "eligible_n": int(size_ok.sum()),
                     "candidate_n": len(chosen),
                     "baseline_overlap_n": len(chosen & baseline),
-                    "baseline_jaccard": len(chosen & baseline) / len(union)
-                    if union
-                    else 1.0,
+                    "baseline_jaccard": (
+                        len(chosen & baseline) / len(union) if union else 1.0
+                    ),
                 }
             )
     return pd.DataFrame(rows)
@@ -118,9 +117,7 @@ def build(paths: Paths) -> dict[str, object]:
     primary_x = alphas.index(PRIMARY_ALPHA)
     primary_y = sizes.index(PRIMARY_MIN_SIZE)
 
-    for row_idx, (ax, value, title, cmap, vmax, cbar_label) in enumerate(
-        heatmap_specs
-    ):
+    for row_idx, (ax, value, title, cmap, vmax, cbar_label) in enumerate(heatmap_specs):
         matrix = table.pivot(
             index="min_cluster_size", columns="alpha", values=value
         ).reindex(index=sizes, columns=alphas)
@@ -231,7 +228,7 @@ def build(paths: Paths) -> dict[str, object]:
             ax.set_xlabel("Minimum cluster size")
 
     add_panel_labels(axes.ravel())
-    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}")
+    outputs = styled_save_figure(fig, paths, FIGURE_NAME)
     return {"figure": fig, "outputs": outputs}
 
 

@@ -17,19 +17,20 @@ python -m results.make_tables --domain surveillance
 ```
 
 The individual figure builders live in `lib/figs/fig01.py` and
-`lib/figs/fig02.py`. The central `results` commands provide the build entry
-points; this analysis does not currently define root-level LaTeX table
-fragments.
+`lib/figs/fig02.py`; companion table builders live in `tab01.py`–`tab08.py`.
+Shared calculations are in `sequence_data.py` and `policy_data.py`.
+Each builder writes one artifact (in its supported file formats). The central
+`results` commands provide the build entry points; this analysis does not
+currently define root-level LaTeX table fragments.
 
 ## Outputs
 
-`policy_sequences_over_time` writes analysis-local CSV/parquet tables for raw
-and smoothed clade frequencies, clade counts, dominance, overtake events, and
-sequencing proportion, plus project-level `policy_sequences_over_time.{png,pdf}`.
-
-`policy_index_comparison` writes `policy_indices_daily` and
-`policy_index_correlation` as analysis-local CSV/parquet tables, plus
-project-level `policy_index_comparison.{png,pdf}`.
+The figures are `fig_policy_sequences_over_time.{png,pdf}` and
+`fig_policy_index_comparison.{png,pdf}`. Table names start with `tab_`:
+raw and smoothed clade frequencies, clade counts, dominance, overtake events,
+sequencing proportion, daily policy indices, and policy-index correlation.
+Use `python -m results.make_tables --domain surveillance --list` to list their
+individual builder names.
 
 Default output locations are:
 

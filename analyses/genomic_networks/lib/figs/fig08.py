@@ -3,22 +3,20 @@
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.lines import Line2D
 from matplotlib.ticker import PercentFormatter
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+from analyses.genomic_networks.lib.io import write_table
 
-from assortativity_analysis import (
+from .assortativity_analysis import (
     VARIANCE_REFERENCE_WINDSORISE,
     compatibility_variance_decomposition_long,
     variance_decomposition_summary,
 )
-from common import (
+from .common import (
     Paths,
     add_common_args,
     add_panel_labels,
@@ -26,8 +24,6 @@ from common import (
     paths_from_args,
     styled_save_figure,
 )
-
-from analyses.genomic_networks.lib.io import write_table
 
 FIGURE_NAME = "fig_assortativity_variance_decomposition"
 

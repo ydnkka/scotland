@@ -1,1 +1,1 @@
-"""Genomic-network figure and table artifact builders."""
+"""Numbered figure and table builders with shared presentation helpers."""

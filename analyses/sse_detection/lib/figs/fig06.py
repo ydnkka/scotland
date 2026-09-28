@@ -21,6 +21,7 @@ from .common import (
 )
 
 FILE_NAME = "score_landscape"
+FIGURE_NAME = "fig_score_landscape"
 CANDIDATE_COLORS = {
     "possible_review": "#E6AB02",
     "high_priority_burst": "#D55E00",
@@ -187,7 +188,7 @@ def build(paths: Paths) -> dict[str, object]:
     draw_score_landscape(axes[1], table)
 
     add_panel_labels(axes)
-    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}")
+    outputs = styled_save_figure(fig, paths, FIGURE_NAME)
     return {"figure": fig, "outputs": outputs}
 
 

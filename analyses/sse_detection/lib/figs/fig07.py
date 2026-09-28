@@ -20,6 +20,7 @@ from .common import (
 )
 
 FILE_NAME = "candidate_exemplars"
+FIGURE_NAME = "fig_candidate_exemplars"
 COLORS = {
     "background_or_low_information": "#B8B8B8",
     "possible_review": "#E6AB02",
@@ -170,8 +171,8 @@ def build(paths: Paths) -> dict[str, object]:
             edges.loc[edges["example"].eq(example)],
             example,
         )
-    add_panel_labels(axes, x=-0.08, y=1.1)
-    outputs = styled_save_figure(fig, paths, f"fig_{FILE_NAME}")
+    add_panel_labels(axes)
+    outputs = styled_save_figure(fig, paths, FIGURE_NAME)
     return {"figure": fig, "outputs": outputs}
 
 

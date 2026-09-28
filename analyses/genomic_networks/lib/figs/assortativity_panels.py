@@ -2,28 +2,23 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-import sys
 from typing import Literal
 
-from matplotlib.axes import Axes
 import matplotlib.dates as mdates
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from common import (  # noqa: E402
+from .common import (  # noqa: E402
     Paths,
+    add_panel_labels,
     add_policy_bands,
     date_axis,
-    panel_label,
+    new_figure,
     read_table,
-    styled_new_figure,
     styled_save_figure,
     window_idx_from_id,
 )
-
 
 ASSORTATIVITY_ATTRIBUTES: tuple[tuple[str, str], ...] = (
     ("age_band", "Age band"),
@@ -150,9 +145,11 @@ def compatibility_window_assortativity(paths: Paths) -> pd.DataFrame:
                     group["assortativity"], group["edge_weight_total"], 0.75
                 ),
                 "edge_weight_total": group["edge_weight_total"].sum(),
-                "eligible_networks": group["pairwise_stem"].nunique()
-                if "pairwise_stem" in group.columns
-                else len(group),
+                "eligible_networks": (
+                    group["pairwise_stem"].nunique()
+                    if "pairwise_stem" in group.columns
+                    else len(group)
+                ),
             }
         )
     return pd.DataFrame(rows)
@@ -286,7 +283,7 @@ def plot_compatibility_assortativity_grid(
         paths, uncertainty=uncertainty
     )
 
-    fig, axes = styled_new_figure(
+    fig, axes = new_figure(
         width="double",
         height_in=7.4,
         nrows=3,
@@ -308,10 +305,10 @@ def plot_compatibility_assortativity_grid(
             label=label,
         )
         ax.set_ylim(*y_limits)
-        panel_label(ax, chr(ord("A") + idx))
         if idx % 2 == 0:
             ax.set_ylabel("Compatibility assortativity")
         if idx < 4:
             ax.tick_params(labelbottom=False)
 
-    styled_save_figure(fig, paths, figure_name, tight=False)
+    add_panel_labels(axes)
+    styled_save_figure(fig, paths, figure_name)

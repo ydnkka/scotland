@@ -1,1 +1,1 @@
-"""SSE detection figure builders."""
+"""Numbered figure and table builders with shared presentation helpers."""

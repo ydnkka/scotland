@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -13,9 +11,7 @@ import pandas as pd
 from matplotlib.colors import TwoSlopeNorm
 from matplotlib.ticker import PercentFormatter
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from common import (
+from .common import (
     Paths,
     add_common_args,
     add_panel_labels,
@@ -240,10 +236,13 @@ def build(paths: Paths) -> None:
     ax.set_ylabel("Maximum cluster size")
 
     ax = axes[1, 1]
-    spread = cluster_table[["cluster_size", "median_pairwise_residential_distance_km"]].copy()
+    spread = cluster_table[
+        ["cluster_size", "median_pairwise_residential_distance_km"]
+    ].copy()
     spread = spread.replace([np.inf, -np.inf], np.nan).dropna()
     spread = spread.loc[
-        spread["cluster_size"].gt(1) & spread["median_pairwise_residential_distance_km"].gt(0)
+        spread["cluster_size"].gt(1)
+        & spread["median_pairwise_residential_distance_km"].gt(0)
     ]
     x = np.log10(spread["cluster_size"].to_numpy())
     y = np.log10(spread["median_pairwise_residential_distance_km"].to_numpy())
