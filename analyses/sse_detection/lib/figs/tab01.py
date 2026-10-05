@@ -22,7 +22,7 @@ from .table_common import (
     _write_data_table,
 )
 
-TABLE_NAME = "tab_bayesian_model_specifications"
+TABLE_NAME = "tab01_bayesian_model_specifications"
 
 CONSOLIDATED_RESULT_STEMS = (
     "mixing_logistic_consolidated_results",

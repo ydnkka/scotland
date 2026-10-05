@@ -22,7 +22,7 @@ from .table_common import (
     fmt_percent,
 )
 
-TABLE_NAME = "tab_sequence_composition_by_policy"
+TABLE_NAME = "tab01_sequence_composition_by_policy"
 
 SEQUENCE_COMPOSITION_ATTRIBUTES = (
     "sex",

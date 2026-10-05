@@ -13,7 +13,7 @@ from .size_profiles import (
 )
 from .table_common import write_size_table
 
-TABLE_NAME = "tab_sensitivity_sizes"
+TABLE_NAME = "tab08_sensitivity_sizes"
 
 
 def build(paths: Paths, *, tables=None):

@@ -9,7 +9,7 @@ from ..config import SEQUENCE_WINDOW_STRIDE, TABLES_DIR
 from ..io import write_table
 from .sequence_data import compute_lineage_frequency_tables, load_sequences
 
-TABLE_NAME = "tab_clade_dominance_by_period"
+TABLE_NAME = "tab04_clade_dominance_by_period"
 
 
 def build(*, table_dir: Path = TABLES_DIR, window_stride: int = SEQUENCE_WINDOW_STRIDE):

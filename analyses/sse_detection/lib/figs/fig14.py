@@ -22,7 +22,7 @@ from .forest_common import (
     _mixing_label_order,
 )
 
-FIGURE_NAME = "fig_random_effects_mixing"
+FIGURE_NAME = "fig14_random_effects_mixing"
 
 
 def build(paths: Paths) -> dict[str, object]:

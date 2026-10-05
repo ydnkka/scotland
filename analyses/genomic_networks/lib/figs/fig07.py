@@ -24,7 +24,7 @@ from .common import (
     styled_save_figure,
 )
 
-FIGURE_NAME = "fig_assortativity_pooled_window"
+FIGURE_NAME = "fig07_assortativity_pooled_window"
 
 
 def _date_values(values: pd.Series) -> np.ndarray:

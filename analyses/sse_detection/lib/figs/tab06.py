@@ -20,7 +20,7 @@ from .table_common import (
     _write_data_table,
 )
 
-TABLE_NAME = "tab_bayesian_random_effect_sds"
+TABLE_NAME = "tab06_bayesian_random_effect_sds"
 
 
 def build_random_effects_table(result_dir: Path = BAYESIAN_OUTPUT_DIR) -> pd.DataFrame:

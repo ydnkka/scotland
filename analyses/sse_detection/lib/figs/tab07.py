@@ -9,7 +9,7 @@ from .common import Paths, add_common_args, paths_from_args
 from .size_profiles import load_saved_summaries, prepare
 from .table_common import write_size_table
 
-TABLE_NAME = "tab_size_overview"
+TABLE_NAME = "tab07_size_overview"
 
 
 def build(paths: Paths, *, tables=None):

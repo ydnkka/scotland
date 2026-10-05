@@ -20,7 +20,7 @@ from .common import (
 )
 
 FILE_NAME = "candidate_exemplars"
-FIGURE_NAME = "fig_candidate_exemplars"
+FIGURE_NAME = "fig07_candidate_exemplars"
 COLORS = {
     "background_or_low_information": "#B8B8B8",
     "possible_review": "#E6AB02",

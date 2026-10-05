@@ -14,7 +14,7 @@ from .size_profiles import (
     prepare,
 )
 
-FIGURE_NAME = "fig_sensitivity_composition"
+FIGURE_NAME = "fig28_sensitivity_composition"
 
 
 def build(paths: Paths, *, tables=None):

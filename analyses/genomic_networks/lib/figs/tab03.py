@@ -13,7 +13,7 @@ from .table_common import (
     fmt_iqr,
 )
 
-TABLE_NAME = "tab_cluster_period_summary"
+TABLE_NAME = "tab03_cluster_period_summary"
 
 
 def build(paths: Paths) -> None:

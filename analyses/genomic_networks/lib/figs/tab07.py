@@ -14,7 +14,7 @@ from .table_common import (
     fmt_int,
 )
 
-TABLE_NAME = "tab_simd_population_weighting"
+TABLE_NAME = "tab07_simd_population_weighting"
 
 SIMD_GROUP_LABELS = {
     5: "quintile",

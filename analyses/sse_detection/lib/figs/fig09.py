@@ -23,7 +23,7 @@ from .common import (
 )
 
 FILE_NAME = "entropy_tertile_profiles"
-FIGURE_NAME = "fig_entropy_tertile_profiles"
+FIGURE_NAME = "fig09_entropy_tertile_profiles"
 
 TERTILE_ORDER = (
     "more_homogeneous",

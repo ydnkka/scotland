@@ -21,7 +21,7 @@ from .common import (
 )
 
 FILE_NAME = "candidate_timeline"
-FIGURE_NAME = "fig_candidate_timeline"
+FIGURE_NAME = "fig05_candidate_timeline"
 
 
 def build_candidate_timeline(nodes: pd.DataFrame) -> pd.DataFrame:

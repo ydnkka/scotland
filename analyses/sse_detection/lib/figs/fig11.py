@@ -19,7 +19,7 @@ from .common import (
 )
 
 FILE_NAME = "stratified_calibration"
-FIGURE_NAME = "fig_stratified_calibration"
+FIGURE_NAME = "fig11_stratified_calibration"
 
 
 def build_stratified_calibration(nodes: pd.DataFrame) -> pd.DataFrame:

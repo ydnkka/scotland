@@ -9,7 +9,7 @@ from ..config import TABLES_DIR
 from ..io import write_table
 from .policy_data import load_policy_indices
 
-TABLE_NAME = "tab_policy_indices_daily"
+TABLE_NAME = "tab07_policy_indices_daily"
 
 
 def build(*, table_dir: Path = TABLES_DIR, start_date=None, end_date=None):

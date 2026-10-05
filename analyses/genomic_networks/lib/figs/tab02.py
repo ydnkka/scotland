@@ -14,7 +14,7 @@ from .table_common import (
     fmt_percent,
 )
 
-TABLE_NAME = "tab_policy_denominators"
+TABLE_NAME = "tab02_policy_denominators"
 
 
 def build(paths: Paths) -> None:

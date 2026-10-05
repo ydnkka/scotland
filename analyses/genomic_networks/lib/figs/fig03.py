@@ -23,7 +23,7 @@ from .common import (
     styled_save_figure,
 )
 
-FIGURE_NAME = "fig_vaccination_context"
+FIGURE_NAME = "fig03_vaccination_context"
 MIN_DAYS_SERIES_COUNT = 20
 
 DOSE_GROUPS = (

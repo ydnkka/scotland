@@ -18,7 +18,7 @@ from .table_common import (
     _write_data_table,
 )
 
-TABLE_NAME = "tab_bayesian_fixed_effects_intercepts"
+TABLE_NAME = "tab04_bayesian_fixed_effects_intercepts"
 
 
 def _intercept_digits(row: pd.Series) -> int:

@@ -24,7 +24,7 @@ from .common import (
 from .graph_styles import CLUSTER_ROLE_GROUPS, ROLE_COLORS
 
 FILE_NAME = "transition_graph_characteristics"
-FIGURE_NAME = "fig_transition_graph_characteristics"
+FIGURE_NAME = "fig08_transition_graph_characteristics"
 
 PREFERRED_ROLES = [
     "Isolated",

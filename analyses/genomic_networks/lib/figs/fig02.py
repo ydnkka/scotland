@@ -29,7 +29,7 @@ from .common import (
     styled_save_figure,
 )
 
-FIGURE_NAME = "fig_sequence_composition_by_policy"
+FIGURE_NAME = "fig02_sequence_composition_by_policy"
 
 
 def ordered_sequence_categories(

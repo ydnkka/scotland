@@ -7,7 +7,7 @@ import argparse
 from .common import Paths, add_common_args, paths_from_args
 from .size_profiles import _finish, draw_composition, load_saved_summaries, prepare
 
-FIGURE_NAME = "fig_route_composition"
+FIGURE_NAME = "fig26_route_composition"
 
 
 def build(paths: Paths, *, tables=None):

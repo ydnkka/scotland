@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 
 from .lib.config import FIGURES_DIR, TABLES_DIR
-from .lib.registry import DOMAINS, build_tables, list_builders, table_builders
+from .lib.registry import DOMAINS, build_tables, list_builders, table_builders, write_asset_manifest
 
 LOGGER = logging.getLogger(__name__)
 
@@ -75,6 +75,7 @@ def main() -> int:
         skip_missing=args.skip_missing,
         logger=LOGGER,
     )
+    write_asset_manifest()
     return 0
 
 

@@ -9,7 +9,7 @@ from ..config import SEQUENCE_WINDOW_STRIDE, TABLES_DIR
 from ..io import write_table
 from .sequence_data import compute_lineage_frequency_tables, load_sequences
 
-TABLE_NAME = "tab_clade_frequency_by_period_smoothed"
+TABLE_NAME = "tab02_clade_frequency_by_period_smoothed"
 
 
 def build(*, table_dir: Path = TABLES_DIR, window_stride: int = SEQUENCE_WINDOW_STRIDE):

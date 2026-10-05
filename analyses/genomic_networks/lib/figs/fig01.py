@@ -16,7 +16,7 @@ from .common import (
     styled_save_figure,
 )
 
-FIGURE_NAME = "fig_simd_population_weighting"
+FIGURE_NAME = "fig01_simd_population_weighting"
 
 
 def build(paths: Paths) -> None:
@@ -39,7 +39,9 @@ def build(paths: Paths) -> None:
             group["pct_population"],
             marker="o",
             lw=1.2,
-            label=method,
+            label={"Equal Data Zone grouping": "Equal datazone grouping"}.get(
+                method, method
+            ),
         )
     ax.axhline(20, color="#777777", lw=0.8, ls=":")
     ax.set_xlabel("SIMD quintile")
@@ -62,7 +64,7 @@ def build(paths: Paths) -> None:
     axes[1].set_yticks(np.arange(matrix.shape[0]))
     axes[1].set_yticklabels(matrix.index)
     axes[1].set_xlabel("Population-weighted group")
-    axes[1].set_ylabel("Equal-Data-Zone group")
+    axes[1].set_ylabel("Equal-datazone group")
     for i in range(matrix.shape[0]):
         for j in range(matrix.shape[1]):
             value = matrix.iloc[i, j]

@@ -8,7 +8,7 @@ from ..characterisation import ATTRIBUTES, SIZE_BANDS
 from .common import Paths, add_common_args, paths_from_args
 from .size_profiles import CATEGORY_ORDERS, SHORT_LABELS, load_saved_summaries, prepare
 
-TABLE_NAME = "tab_size_composition"
+TABLE_NAME = "tab10_size_composition"
 
 
 def build(paths: Paths, *, tables=None):

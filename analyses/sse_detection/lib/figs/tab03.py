@@ -19,7 +19,7 @@ from .table_common import (
     _write_data_table,
 )
 
-TABLE_NAME = "tab_bayesian_fixed_effects_focal"
+TABLE_NAME = "tab03_bayesian_fixed_effects_focal"
 
 
 def build_fixed_effects_focal_table(

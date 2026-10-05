@@ -23,7 +23,7 @@ from .forest_common import (
     _load_composition_tables,
 )
 
-FIGURE_NAME = "fig_fixed_effects_composition"
+FIGURE_NAME = "fig13_fixed_effects_composition"
 
 
 def build(paths: Paths) -> dict[str, object]:

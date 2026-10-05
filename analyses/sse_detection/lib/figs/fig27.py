@@ -14,7 +14,7 @@ from .common import (
 )
 from .size_profiles import _finish, load_saved_summaries, prepare
 
-FIGURE_NAME = "fig_route_entropy"
+FIGURE_NAME = "fig27_route_entropy"
 
 
 def build(paths: Paths, *, tables=None):

@@ -23,7 +23,7 @@ from .common import (
     styled_save_figure,
 )
 
-FIGURE_NAME = "fig_cluster_landscape"
+FIGURE_NAME = "fig05_cluster_landscape"
 
 WINDOW_CORRELATION_METRICS = (
     "wn_no_sequences",

@@ -21,7 +21,7 @@ from .forest_common import (
     _load_mixing_tables,
 )
 
-FIGURE_NAME = "fig_fixed_effects_mixing"
+FIGURE_NAME = "fig04_fixed_effects_mixing"
 
 
 def build(paths: Paths) -> dict[str, object]:

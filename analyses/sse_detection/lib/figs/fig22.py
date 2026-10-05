@@ -16,7 +16,7 @@ from .common import (
 )
 from .size_profiles import COLORS, _finish, load_saved_summaries, prepare
 
-FIGURE_NAME = "fig_size_cumulative"
+FIGURE_NAME = "fig22_size_cumulative"
 
 
 def build(paths: Paths, *, tables=None):

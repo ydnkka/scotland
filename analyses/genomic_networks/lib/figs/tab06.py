@@ -20,7 +20,7 @@ from .table_common import (
     fmt_int,
 )
 
-TABLE_NAME = "tab_assortativity_variance_decomposition"
+TABLE_NAME = "tab06_assortativity_variance_decomposition"
 
 ATTRIBUTE_COLUMN_LABELS = {
     "SIMD quintile": "SIMD",

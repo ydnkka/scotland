@@ -20,7 +20,7 @@ from .table_common import (
     _write_data_table,
 )
 
-TABLE_NAME = "tab_bayesian_fixed_effects_full"
+TABLE_NAME = "tab05_bayesian_fixed_effects_full"
 
 
 def build_fixed_effects_full_table(

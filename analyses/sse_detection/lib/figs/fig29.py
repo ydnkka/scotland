@@ -14,7 +14,7 @@ from .size_profiles import (
     prepare,
 )
 
-FIGURE_NAME = "fig_sensitivity_entropy"
+FIGURE_NAME = "fig29_sensitivity_entropy"
 
 
 def build(paths: Paths, *, tables=None):

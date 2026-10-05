@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import re
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -79,7 +81,7 @@ from analyses.surveillance.lib.figs import tab06 as surveillance_tab06
 from analyses.surveillance.lib.figs import tab07 as surveillance_tab07
 from analyses.surveillance.lib.figs import tab08 as surveillance_tab08
 
-from .config import FIGURES_DIR, TABLES_DIR
+from .config import FIGURES_DIR, RESULTS_DIR, TABLES_DIR
 
 LOGGER = logging.getLogger(__name__)
 BuilderKind = Literal["figure", "table"]
@@ -102,10 +104,20 @@ class ArtifactBuilder:
     name: str
     kind: BuilderKind
     build: BuildFunction
+    module: str = ""
 
     @property
     def key(self) -> str:
         return f"{self.domain}:{self.name}"
+
+    @property
+    def script(self) -> str:
+        return self.module.rsplit(".", 1)[-1]
+
+    @property
+    def legacy_name(self) -> str:
+        prefix = "fig" if self.kind == "figure" else "tab"
+        return f"{prefix}_{self.name.removeprefix(self.script + '_')}"
 
 
 DOMAINS: tuple[str, ...] = (
@@ -115,34 +127,45 @@ DOMAINS: tuple[str, ...] = (
 )
 
 
+def _validate_numbered_name(name: str, build_func: Callable[..., Any]) -> str:
+    module = build_func.__module__
+    script = module.rsplit(".", 1)[-1]
+    if not re.fullmatch(r"(?:fig|tab)\d{2}", script) or not name.startswith(script + "_"):
+        raise ValueError(f"Export stem {name!r} must begin with its producer script {script!r}")
+    return module
+
+
 def _surveillance_figure_builder(
     name: str,
     build_func: Callable[..., Any],
 ) -> ArtifactBuilder:
+    module = _validate_numbered_name(name, build_func)
     def build(context: BuildContext) -> Any:
         return build_func(
             figure_dir=context.figure_dir,
         )
 
-    return ArtifactBuilder("surveillance", name, "figure", build)
+    return ArtifactBuilder("surveillance", name, "figure", build, module)
 
 
 def _surveillance_table_builder(
     name: str,
     build_func: Callable[..., Any],
 ) -> ArtifactBuilder:
+    module = _validate_numbered_name(name, build_func)
     def build(context: BuildContext) -> Any:
         return build_func(
             table_dir=SURVEILLANCE_TABLES_DIR,
         )
 
-    return ArtifactBuilder("surveillance", name, "table", build)
+    return ArtifactBuilder("surveillance", name, "table", build, module)
 
 
 def _genomic_figure_builder(
     name: str,
     build_func: Callable[[GenomicPaths], Any],
 ) -> ArtifactBuilder:
+    module = _validate_numbered_name(name, build_func)
     def build(context: BuildContext) -> Any:
         paths = GenomicPaths(
             table_dir=GENOMIC_TABLES_DIR,
@@ -150,13 +173,14 @@ def _genomic_figure_builder(
         )
         return build_func(paths)
 
-    return ArtifactBuilder("genomic_networks", name, "figure", build)
+    return ArtifactBuilder("genomic_networks", name, "figure", build, module)
 
 
 def _genomic_table_builder(
     name: str,
     build_func: Callable[[GenomicPaths], Any],
 ) -> ArtifactBuilder:
+    module = _validate_numbered_name(name, build_func)
     def build(context: BuildContext) -> Any:
         paths = GenomicPaths(
             table_dir=GENOMIC_TABLES_DIR,
@@ -165,13 +189,14 @@ def _genomic_table_builder(
         )
         return build_func(paths)
 
-    return ArtifactBuilder("genomic_networks", name, "table", build)
+    return ArtifactBuilder("genomic_networks", name, "table", build, module)
 
 
 def _sse_figure_builder(
     name: str,
     build_func: Callable[[SSEPaths], Any],
 ) -> ArtifactBuilder:
+    module = _validate_numbered_name(name, build_func)
     def build(context: BuildContext) -> Any:
         paths = SSEPaths(
             table_dir=SSE_TABLE_DIR,
@@ -181,13 +206,14 @@ def _sse_figure_builder(
         )
         return build_func(paths)
 
-    return ArtifactBuilder("sse_detection", name, "figure", build)
+    return ArtifactBuilder("sse_detection", name, "figure", build, module)
 
 
 def _sse_table_builder(
     name: str,
     build_func: Callable[[SSEPaths], Any],
 ) -> ArtifactBuilder:
+    module = _validate_numbered_name(name, build_func)
     def build(context: BuildContext) -> Any:
         paths = SSEPaths(
             table_dir=SSE_TABLE_DIR,
@@ -198,7 +224,7 @@ def _sse_table_builder(
         )
         return build_func(paths)
 
-    return ArtifactBuilder("sse_detection", name, "table", build)
+    return ArtifactBuilder("sse_detection", name, "table", build, module)
 
 
 def figure_builders() -> tuple[ArtifactBuilder, ...]:
@@ -292,6 +318,35 @@ def table_builders() -> tuple[ArtifactBuilder, ...]:
         _sse_table_builder(sse_tab09.TABLE_NAME, sse_tab09.build),
         _sse_table_builder(sse_tab10.TABLE_NAME, sse_tab10.build),
     )
+
+
+def publication_assets() -> list[dict[str, Any]]:
+    """Describe the numbered PDF/PNG and LaTeX exports for migration and thesis sync."""
+    assets = []
+    for builder in (*figure_builders(), *table_builders()):
+        # Surveillance table scripts produce analysis-local CSV/parquet data.
+        if builder.kind == "table" and builder.domain == "surveillance":
+            continue
+        assets.append({
+            "domain": builder.domain,
+            "kind": builder.kind,
+            "module": builder.module,
+            "script": builder.script,
+            "stem": builder.name,
+            "legacy_stem": builder.legacy_name,
+            "directory": "figures" if builder.kind == "figure" else "tables",
+            "formats": ["pdf", "png"] if builder.kind == "figure" else ["tex"],
+        })
+    if len({row["stem"] for row in assets}) != len(assets):
+        raise ValueError("Publication export stems must be unique across analysis domains")
+    return assets
+
+
+def write_asset_manifest(path: Path = RESULTS_DIR / "asset_manifest.json") -> Path:
+    """Record producer identities independently of manuscript figure/table numbering."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"schema_version": 1, "assets": publication_assets()}, indent=2) + "\n")
+    return path
 
 
 def _normalise_requested(values: Iterable[str] | None) -> tuple[str, ...] | None:

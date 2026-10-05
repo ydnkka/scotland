@@ -25,7 +25,7 @@ from .common import (
     styled_save_figure,
 )
 
-FIGURE_NAME = "fig_assortativity_variance_decomposition"
+FIGURE_NAME = "fig08_assortativity_variance_decomposition"
 
 
 def plot_variance_decomposition(paths: Paths, vd_long: pd.DataFrame) -> None:

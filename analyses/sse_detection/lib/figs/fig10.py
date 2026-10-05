@@ -22,7 +22,7 @@ from .common import (
 )
 
 FILE_NAME = "threshold_robustness"
-FIGURE_NAME = "fig_threshold_robustness"
+FIGURE_NAME = "fig10_threshold_robustness"
 MIN_SIZE_VALUES = tuple(range(2, 21, 2))
 ALPHA_VALUES = tuple(i / 100 for i in range(1, 11))
 PRIMARY_MIN_SIZE = 6

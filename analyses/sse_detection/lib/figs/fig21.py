@@ -7,7 +7,7 @@ import argparse
 from .common import Paths, add_common_args, paths_from_args, styled_save_figure
 from .composition_profiles import COMPOSITION_FIGURES, draw_overview
 
-FIGURE_NAME = "fig_cluster_composition_overview_health_board"
+FIGURE_NAME = "fig21_cluster_composition_overview_health_board"
 
 
 def build(paths: Paths) -> dict[str, object]:

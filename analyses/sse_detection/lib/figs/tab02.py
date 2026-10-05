@@ -19,7 +19,7 @@ from .table_common import (
     _write_data_table,
 )
 
-TABLE_NAME = "tab_bayesian_model_diagnostics"
+TABLE_NAME = "tab02_bayesian_model_diagnostics"
 
 
 def build_model_diagnostics_table(

@@ -9,7 +9,7 @@ from ..config import SEQUENCE_WINDOW_STRIDE, TABLES_DIR
 from ..io import write_table
 from .sequence_data import compute_sequencing_proportion, load_sequences
 
-TABLE_NAME = "tab_sequencing_proportion_by_period"
+TABLE_NAME = "tab06_sequencing_proportion_by_period"
 
 
 def build(*, table_dir: Path = TABLES_DIR, window_stride: int = SEQUENCE_WINDOW_STRIDE):

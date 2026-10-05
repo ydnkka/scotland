@@ -8,7 +8,7 @@ from ..characterisation import SIZE_BANDS
 from .common import Paths, add_common_args, paths_from_args
 from .size_profiles import _finish, draw_entropy, load_saved_summaries, prepare
 
-FIGURE_NAME = "fig_entropy_by_size"
+FIGURE_NAME = "fig24_entropy_by_size"
 
 
 def build(paths: Paths, *, tables=None):

@@ -15,7 +15,7 @@ from .common import (
     styled_save_figure,
 )
 
-FIGURE_NAME = "fig_transition_graph_roles"
+FIGURE_NAME = "fig01_transition_graph_roles"
 
 
 from .graph_styles import ROLE_COLORS

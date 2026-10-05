@@ -21,7 +21,7 @@ from .common import (
     window_idx_from_id,
 )
 
-FIGURE_NAME = "fig_compatibility_topology"
+FIGURE_NAME = "fig09_compatibility_topology"
 
 
 def _date_values(values: pd.Series) -> np.ndarray:

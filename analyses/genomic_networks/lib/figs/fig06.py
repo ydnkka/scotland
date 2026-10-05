@@ -26,7 +26,7 @@ from .common import (
 )
 
 BASELINE_THRESHOLD = SPARSIFICATION_THRESHOLD
-FIGURE_NAME = "fig_parameter_sensitivity"
+FIGURE_NAME = "fig06_parameter_sensitivity"
 LEIDEN_SUMMARY_TABLE = "leiden_resolution_sensitivity_summary"
 SPARSIFICATION_SUMMARY_TABLE = "sparsification_threshold_sensitivity_summary"
 

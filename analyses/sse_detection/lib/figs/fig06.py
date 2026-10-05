@@ -21,7 +21,7 @@ from .common import (
 )
 
 FILE_NAME = "score_landscape"
-FIGURE_NAME = "fig_score_landscape"
+FIGURE_NAME = "fig06_score_landscape"
 CANDIDATE_COLORS = {
     "possible_review": "#E6AB02",
     "high_priority_burst": "#D55E00",

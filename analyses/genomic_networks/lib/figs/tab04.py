@@ -12,7 +12,7 @@ from .table_common import (
     fmt_iqr,
 )
 
-TABLE_NAME = "tab_cluster_pairwise_distance_summary"
+TABLE_NAME = "tab04_cluster_pairwise_distance_summary"
 
 
 def build(paths: Paths) -> None:

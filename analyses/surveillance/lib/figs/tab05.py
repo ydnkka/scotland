@@ -9,7 +9,7 @@ from ..config import SEQUENCE_WINDOW_STRIDE, TABLES_DIR
 from ..io import write_table
 from .sequence_data import compute_lineage_frequency_tables, load_sequences
 
-TABLE_NAME = "tab_clade_overtake_events"
+TABLE_NAME = "tab05_clade_overtake_events"
 
 
 def build(*, table_dir: Path = TABLES_DIR, window_stride: int = SEQUENCE_WINDOW_STRIDE):

@@ -20,7 +20,7 @@ from .table_common import (
     fmt_int,
 )
 
-TABLE_NAME = "tab_assortativity_summary"
+TABLE_NAME = "tab05_assortativity_summary"
 
 
 def fmt_ci(low: Any, high: Any, digits: int = 2) -> str:

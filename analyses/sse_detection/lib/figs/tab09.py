@@ -8,7 +8,7 @@ from .common import Paths, add_common_args, paths_from_args
 from .size_profiles import load_saved_summaries, prepare
 from .table_common import write_size_table
 
-TABLE_NAME = "tab_route_sizes"
+TABLE_NAME = "tab09_route_sizes"
 
 
 def build(paths: Paths, *, tables=None):
