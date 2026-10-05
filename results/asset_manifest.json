@@ -1,0 +1,677 @@
+{
+  "schema_version": 1,
+  "assets": [
+    {
+      "domain": "surveillance",
+      "kind": "figure",
+      "module": "analyses.surveillance.lib.figs.fig01",
+      "script": "fig01",
+      "stem": "fig01_policy_sequences_over_time",
+      "legacy_stem": "fig_policy_sequences_over_time",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "surveillance",
+      "kind": "figure",
+      "module": "analyses.surveillance.lib.figs.fig02",
+      "script": "fig02",
+      "stem": "fig02_policy_index_comparison",
+      "legacy_stem": "fig_policy_index_comparison",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "genomic_networks",
+      "kind": "figure",
+      "module": "analyses.genomic_networks.lib.figs.fig01",
+      "script": "fig01",
+      "stem": "fig01_simd_population_weighting",
+      "legacy_stem": "fig_simd_population_weighting",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "genomic_networks",
+      "kind": "figure",
+      "module": "analyses.genomic_networks.lib.figs.fig02",
+      "script": "fig02",
+      "stem": "fig02_sequence_composition_by_policy",
+      "legacy_stem": "fig_sequence_composition_by_policy",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "genomic_networks",
+      "kind": "figure",
+      "module": "analyses.genomic_networks.lib.figs.fig03",
+      "script": "fig03",
+      "stem": "fig03_vaccination_context",
+      "legacy_stem": "fig_vaccination_context",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "genomic_networks",
+      "kind": "figure",
+      "module": "analyses.genomic_networks.lib.figs.fig04",
+      "script": "fig04",
+      "stem": "fig04_test_reason_by_policy_era",
+      "legacy_stem": "fig_test_reason_by_policy_era",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "genomic_networks",
+      "kind": "figure",
+      "module": "analyses.genomic_networks.lib.figs.fig05",
+      "script": "fig05",
+      "stem": "fig05_cluster_landscape",
+      "legacy_stem": "fig_cluster_landscape",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "genomic_networks",
+      "kind": "figure",
+      "module": "analyses.genomic_networks.lib.figs.fig06",
+      "script": "fig06",
+      "stem": "fig06_parameter_sensitivity",
+      "legacy_stem": "fig_parameter_sensitivity",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "genomic_networks",
+      "kind": "figure",
+      "module": "analyses.genomic_networks.lib.figs.fig07",
+      "script": "fig07",
+      "stem": "fig07_assortativity_pooled_window",
+      "legacy_stem": "fig_assortativity_pooled_window",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "genomic_networks",
+      "kind": "figure",
+      "module": "analyses.genomic_networks.lib.figs.fig08",
+      "script": "fig08",
+      "stem": "fig08_assortativity_variance_decomposition",
+      "legacy_stem": "fig_assortativity_variance_decomposition",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "genomic_networks",
+      "kind": "figure",
+      "module": "analyses.genomic_networks.lib.figs.fig09",
+      "script": "fig09",
+      "stem": "fig09_compatibility_topology",
+      "legacy_stem": "fig_compatibility_topology",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "genomic_networks",
+      "kind": "figure",
+      "module": "analyses.genomic_networks.lib.figs.fig10",
+      "script": "fig10",
+      "stem": "fig10_compatibility_topology_correlations",
+      "legacy_stem": "fig_compatibility_topology_correlations",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig01",
+      "script": "fig01",
+      "stem": "fig01_transition_graph_roles",
+      "legacy_stem": "fig_transition_graph_roles",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig02",
+      "script": "fig02",
+      "stem": "fig02_sse_score_null_calibration",
+      "legacy_stem": "fig_sse_score_null_calibration",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig03",
+      "script": "fig03",
+      "stem": "fig03_sse_composition_descriptive",
+      "legacy_stem": "fig_sse_composition_descriptive",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig04",
+      "script": "fig04",
+      "stem": "fig04_fixed_effects_mixing",
+      "legacy_stem": "fig_fixed_effects_mixing",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig05",
+      "script": "fig05",
+      "stem": "fig05_candidate_timeline",
+      "legacy_stem": "fig_candidate_timeline",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig06",
+      "script": "fig06",
+      "stem": "fig06_score_landscape",
+      "legacy_stem": "fig_score_landscape",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig07",
+      "script": "fig07",
+      "stem": "fig07_candidate_exemplars",
+      "legacy_stem": "fig_candidate_exemplars",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig08",
+      "script": "fig08",
+      "stem": "fig08_transition_graph_characteristics",
+      "legacy_stem": "fig_transition_graph_characteristics",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig09",
+      "script": "fig09",
+      "stem": "fig09_entropy_tertile_profiles",
+      "legacy_stem": "fig_entropy_tertile_profiles",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig10",
+      "script": "fig10",
+      "stem": "fig10_threshold_robustness",
+      "legacy_stem": "fig_threshold_robustness",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig11",
+      "script": "fig11",
+      "stem": "fig11_stratified_calibration",
+      "legacy_stem": "fig_stratified_calibration",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig13",
+      "script": "fig13",
+      "stem": "fig13_fixed_effects_composition",
+      "legacy_stem": "fig_fixed_effects_composition",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig14",
+      "script": "fig14",
+      "stem": "fig14_random_effects_mixing",
+      "legacy_stem": "fig_random_effects_mixing",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig15",
+      "script": "fig15",
+      "stem": "fig15_random_effects_composition",
+      "legacy_stem": "fig_random_effects_composition",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig20",
+      "script": "fig20",
+      "stem": "fig20_cluster_composition_overview_demographic",
+      "legacy_stem": "fig_cluster_composition_overview_demographic",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig21",
+      "script": "fig21",
+      "stem": "fig21_cluster_composition_overview_health_board",
+      "legacy_stem": "fig_cluster_composition_overview_health_board",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig22",
+      "script": "fig22",
+      "stem": "fig22_size_cumulative",
+      "legacy_stem": "fig_size_cumulative",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig23",
+      "script": "fig23",
+      "stem": "fig23_composition_by_size",
+      "legacy_stem": "fig_composition_by_size",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig24",
+      "script": "fig24",
+      "stem": "fig24_entropy_by_size",
+      "legacy_stem": "fig_entropy_by_size",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig25",
+      "script": "fig25",
+      "stem": "fig25_composition_by_size_cluster_weighted",
+      "legacy_stem": "fig_composition_by_size_cluster_weighted",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig26",
+      "script": "fig26",
+      "stem": "fig26_route_composition",
+      "legacy_stem": "fig_route_composition",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig27",
+      "script": "fig27",
+      "stem": "fig27_route_entropy",
+      "legacy_stem": "fig_route_entropy",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig28",
+      "script": "fig28",
+      "stem": "fig28_sensitivity_composition",
+      "legacy_stem": "fig_sensitivity_composition",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "figure",
+      "module": "analyses.sse_detection.lib.figs.fig29",
+      "script": "fig29",
+      "stem": "fig29_sensitivity_entropy",
+      "legacy_stem": "fig_sensitivity_entropy",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "genomic_networks",
+      "kind": "table",
+      "module": "analyses.genomic_networks.lib.figs.tab01",
+      "script": "tab01",
+      "stem": "tab01_sequence_composition_by_policy",
+      "legacy_stem": "tab_sequence_composition_by_policy",
+      "directory": "tables",
+      "formats": [
+        "tex"
+      ]
+    },
+    {
+      "domain": "genomic_networks",
+      "kind": "table",
+      "module": "analyses.genomic_networks.lib.figs.tab02",
+      "script": "tab02",
+      "stem": "tab02_policy_denominators",
+      "legacy_stem": "tab_policy_denominators",
+      "directory": "tables",
+      "formats": [
+        "tex"
+      ]
+    },
+    {
+      "domain": "genomic_networks",
+      "kind": "table",
+      "module": "analyses.genomic_networks.lib.figs.tab03",
+      "script": "tab03",
+      "stem": "tab03_cluster_period_summary",
+      "legacy_stem": "tab_cluster_period_summary",
+      "directory": "tables",
+      "formats": [
+        "tex"
+      ]
+    },
+    {
+      "domain": "genomic_networks",
+      "kind": "table",
+      "module": "analyses.genomic_networks.lib.figs.tab04",
+      "script": "tab04",
+      "stem": "tab04_cluster_pairwise_distance_summary",
+      "legacy_stem": "tab_cluster_pairwise_distance_summary",
+      "directory": "tables",
+      "formats": [
+        "tex"
+      ]
+    },
+    {
+      "domain": "genomic_networks",
+      "kind": "table",
+      "module": "analyses.genomic_networks.lib.figs.tab05",
+      "script": "tab05",
+      "stem": "tab05_assortativity_summary",
+      "legacy_stem": "tab_assortativity_summary",
+      "directory": "tables",
+      "formats": [
+        "tex"
+      ]
+    },
+    {
+      "domain": "genomic_networks",
+      "kind": "table",
+      "module": "analyses.genomic_networks.lib.figs.tab06",
+      "script": "tab06",
+      "stem": "tab06_assortativity_variance_decomposition",
+      "legacy_stem": "tab_assortativity_variance_decomposition",
+      "directory": "tables",
+      "formats": [
+        "tex"
+      ]
+    },
+    {
+      "domain": "genomic_networks",
+      "kind": "table",
+      "module": "analyses.genomic_networks.lib.figs.tab07",
+      "script": "tab07",
+      "stem": "tab07_simd_population_weighting",
+      "legacy_stem": "tab_simd_population_weighting",
+      "directory": "tables",
+      "formats": [
+        "tex"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "table",
+      "module": "analyses.sse_detection.lib.figs.tab01",
+      "script": "tab01",
+      "stem": "tab01_bayesian_model_specifications",
+      "legacy_stem": "tab_bayesian_model_specifications",
+      "directory": "tables",
+      "formats": [
+        "tex"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "table",
+      "module": "analyses.sse_detection.lib.figs.tab02",
+      "script": "tab02",
+      "stem": "tab02_bayesian_model_diagnostics",
+      "legacy_stem": "tab_bayesian_model_diagnostics",
+      "directory": "tables",
+      "formats": [
+        "tex"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "table",
+      "module": "analyses.sse_detection.lib.figs.tab03",
+      "script": "tab03",
+      "stem": "tab03_bayesian_fixed_effects_focal",
+      "legacy_stem": "tab_bayesian_fixed_effects_focal",
+      "directory": "tables",
+      "formats": [
+        "tex"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "table",
+      "module": "analyses.sse_detection.lib.figs.tab04",
+      "script": "tab04",
+      "stem": "tab04_bayesian_fixed_effects_intercepts",
+      "legacy_stem": "tab_bayesian_fixed_effects_intercepts",
+      "directory": "tables",
+      "formats": [
+        "tex"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "table",
+      "module": "analyses.sse_detection.lib.figs.tab05",
+      "script": "tab05",
+      "stem": "tab05_bayesian_fixed_effects_full",
+      "legacy_stem": "tab_bayesian_fixed_effects_full",
+      "directory": "tables",
+      "formats": [
+        "tex"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "table",
+      "module": "analyses.sse_detection.lib.figs.tab06",
+      "script": "tab06",
+      "stem": "tab06_bayesian_random_effect_sds",
+      "legacy_stem": "tab_bayesian_random_effect_sds",
+      "directory": "tables",
+      "formats": [
+        "tex"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "table",
+      "module": "analyses.sse_detection.lib.figs.tab07",
+      "script": "tab07",
+      "stem": "tab07_size_overview",
+      "legacy_stem": "tab_size_overview",
+      "directory": "tables",
+      "formats": [
+        "tex"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "table",
+      "module": "analyses.sse_detection.lib.figs.tab08",
+      "script": "tab08",
+      "stem": "tab08_sensitivity_sizes",
+      "legacy_stem": "tab_sensitivity_sizes",
+      "directory": "tables",
+      "formats": [
+        "tex"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "table",
+      "module": "analyses.sse_detection.lib.figs.tab09",
+      "script": "tab09",
+      "stem": "tab09_route_sizes",
+      "legacy_stem": "tab_route_sizes",
+      "directory": "tables",
+      "formats": [
+        "tex"
+      ]
+    },
+    {
+      "domain": "sse_detection",
+      "kind": "table",
+      "module": "analyses.sse_detection.lib.figs.tab10",
+      "script": "tab10",
+      "stem": "tab10_size_composition",
+      "legacy_stem": "tab_size_composition",
+      "directory": "tables",
+      "formats": [
+        "tex"
+      ]
+    }
+  ]
+}

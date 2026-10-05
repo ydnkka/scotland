@@ -140,6 +140,7 @@ def _surveillance_figure_builder(
     build_func: Callable[..., Any],
 ) -> ArtifactBuilder:
     module = _validate_numbered_name(name, build_func)
+
     def build(context: BuildContext) -> Any:
         return build_func(
             figure_dir=context.figure_dir,
@@ -153,6 +154,7 @@ def _surveillance_table_builder(
     build_func: Callable[..., Any],
 ) -> ArtifactBuilder:
     module = _validate_numbered_name(name, build_func)
+
     def build(context: BuildContext) -> Any:
         return build_func(
             table_dir=SURVEILLANCE_TABLES_DIR,
@@ -166,6 +168,7 @@ def _genomic_figure_builder(
     build_func: Callable[[GenomicPaths], Any],
 ) -> ArtifactBuilder:
     module = _validate_numbered_name(name, build_func)
+
     def build(context: BuildContext) -> Any:
         paths = GenomicPaths(
             table_dir=GENOMIC_TABLES_DIR,
@@ -181,6 +184,7 @@ def _genomic_table_builder(
     build_func: Callable[[GenomicPaths], Any],
 ) -> ArtifactBuilder:
     module = _validate_numbered_name(name, build_func)
+
     def build(context: BuildContext) -> Any:
         paths = GenomicPaths(
             table_dir=GENOMIC_TABLES_DIR,
@@ -197,6 +201,7 @@ def _sse_figure_builder(
     build_func: Callable[[SSEPaths], Any],
 ) -> ArtifactBuilder:
     module = _validate_numbered_name(name, build_func)
+
     def build(context: BuildContext) -> Any:
         paths = SSEPaths(
             table_dir=SSE_TABLE_DIR,
@@ -214,6 +219,7 @@ def _sse_table_builder(
     build_func: Callable[[SSEPaths], Any],
 ) -> ArtifactBuilder:
     module = _validate_numbered_name(name, build_func)
+
     def build(context: BuildContext) -> Any:
         paths = SSEPaths(
             table_dir=SSE_TABLE_DIR,

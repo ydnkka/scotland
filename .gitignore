@@ -26,6 +26,8 @@ analyses/**/results/**
 !/results/README.md
 !/results/make_figures.py
 !/results/make_tables.py
+!/results/migrate_asset_names.py
+!/results/asset_manifest.json
 !/results/lib/
 !/results/lib/**
 !/results/figures/
