@@ -36,12 +36,12 @@ values are serially dependent.
 When built through the project-level `results` commands, tables are index-free
 CSV and parquet files under `analyses/surveillance/results/tables/`:
 
-- `tab_clade_frequency_by_period`: unsmoothed weekly frequencies;
-- `tab_clade_frequency_by_period_smoothed`: plotted trailing means;
-- `tab_clade_counts_by_period`: total and clade counts;
-- `tab_clade_dominance_by_period` and `tab_clade_overtake_events`;
-- `tab_sequencing_proportion_by_period`: observed and plotted coverage;
-- `tab_policy_indices_daily` and `tab_policy_index_correlation`.
+- `tab01_clade_frequency_by_period`: unsmoothed weekly frequencies;
+- `tab02_clade_frequency_by_period_smoothed`: plotted trailing means;
+- `tab03_clade_counts_by_period`: total and clade counts;
+- `tab04_clade_dominance_by_period` and `tab05_clade_overtake_events`;
+- `tab06_sequencing_proportion_by_period`: observed and plotted coverage;
+- `tab07_policy_indices_daily` and `tab08_policy_index_correlation`.
 
 Figures are PNG and PDF only under project-level `results/figures/`.
 

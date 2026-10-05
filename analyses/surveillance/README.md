@@ -25,8 +25,8 @@ currently define root-level LaTeX table fragments.
 
 ## Outputs
 
-The figures are `fig_policy_sequences_over_time.{png,pdf}` and
-`fig_policy_index_comparison.{png,pdf}`. Table names start with `tab_`:
+The figures are `fig01_policy_sequences_over_time.{png,pdf}` and
+`fig02_policy_index_comparison.{png,pdf}`. Table names start with their `tabNN_` script identifier:
 raw and smoothed clade frequencies, clade counts, dominance, overtake events,
 sequencing proportion, daily policy indices, and policy-index correlation.
 Use `python -m results.make_tables --domain surveillance --list` to list their

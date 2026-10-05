@@ -93,11 +93,18 @@ python -m results.make_tables --skip-missing
 Use `python -m results.make_figures --list` or `python -m results.make_tables --list` to inspect available builders. Individual builders can be selected by fully qualified name, for example:
 
 ```bash
-python -m results.make_figures surveillance:fig_policy_sequences_over_time
-python -m results.make_tables genomic_networks:tab_policy_denominators
+python -m results.make_figures surveillance:fig01_policy_sequences_over_time
+python -m results.make_tables genomic_networks:tab02_policy_denominators
 ```
 
 Analysis-local CSV/parquet outputs are written below each package's `results/` directory. Project-level publication figures are written to `results/figures/`, and project-level LaTeX table fragments are written to `results/tables/`.
+
+Publication filenames include their producing script identifier, for example
+`fig05_cluster_landscape.pdf` from genomic networks' `fig05.py` and
+`tab03_cluster_period_summary.tex` from its `tab03.py`. Existing unnumbered
+publication exports can be migrated with `python -m results.migrate_asset_names`.
+The central builders and migration command write `results/asset_manifest.json`
+for thesis synchronization. See the [publication guide](results/README.md).
 
 ## Governance and reproducibility
 

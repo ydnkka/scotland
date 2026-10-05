@@ -82,8 +82,8 @@ screening routes, saved-p cutoffs 0.01/0.025/0.05/0.10, and restrictions to
 primary-labelled clusters of size at least 10 or 20.
 
 ```bash
-MPLBACKEND=Agg python -m results.make_figures sse_detection:fig_size_cumulative
-MPLBACKEND=Agg python -m results.make_tables sse_detection:tab_size_overview
+MPLBACKEND=Agg python -m results.make_figures sse_detection:fig22_size_cumulative
+MPLBACKEND=Agg python -m results.make_tables sse_detection:tab07_size_overview
 python -m unittest analyses.sse_detection.test_characterisation -q
 ```
 

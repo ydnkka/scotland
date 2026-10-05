@@ -1,6 +1,7 @@
 """Regression tests for selecting individual publication artifacts."""
 
 import unittest
+import importlib
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -16,6 +17,7 @@ from analyses.surveillance.lib.figs import tab01
 from utils.style import add_panel_labels
 
 from . import registry
+from results.migrate_asset_names import migration_plan
 
 
 class IndividualArtifactTests(unittest.TestCase):
@@ -46,14 +48,14 @@ class IndividualArtifactTests(unittest.TestCase):
         ):
             figures = Path(tmp) / "figures"
             result = registry.build_figures(
-                names=["sse_detection:fig_size_cumulative"],
+                names=["sse_detection:fig22_size_cumulative"],
                 figure_dir=figures,
                 table_dir=Path(tmp) / "tables",
             )
-            self.assertEqual(list(result), ["sse_detection:fig_size_cumulative"])
+            self.assertEqual(list(result), ["sse_detection:fig22_size_cumulative"])
             self.assertEqual(
                 {p.name for p in figures.iterdir()},
-                {"fig_size_cumulative.png", "fig_size_cumulative.pdf"},
+                {"fig22_size_cumulative.png", "fig22_size_cumulative.pdf"},
             )
             self.assertEqual(list((Path(tmp) / "tables").iterdir()), [])
         plt.close("all")
@@ -75,14 +77,14 @@ class IndividualArtifactTests(unittest.TestCase):
         ):
             output = Path(tmp) / "custom-publication-tables"
             registry.build_tables(
-                names=["sse_detection:tab_route_sizes"],
+                names=["sse_detection:tab09_route_sizes"],
                 figure_dir=Path(tmp) / "figures",
                 table_dir=output,
             )
             self.assertEqual(
-                [p.name for p in output.iterdir()], ["tab_route_sizes.tex"]
+                [p.name for p in output.iterdir()], ["tab09_route_sizes.tex"]
             )
-            text = (output / "tab_route_sizes.tex").read_text()
+            text = (output / "tab09_route_sizes.tex").read_text()
             self.assertIn("Background & 2 & 18", text)
             self.assertIn("Burst only & 1 & 6", text)
             self.assertFalse((output.parent / "tables").exists())
@@ -101,19 +103,62 @@ class IndividualArtifactTests(unittest.TestCase):
             registry, "SURVEILLANCE_TABLES_DIR", Path(tmp) / "source-tables"
         ):
             registry.build_tables(
-                names=["surveillance:tab_clade_frequency_by_period"],
+                names=["surveillance:tab01_clade_frequency_by_period"],
                 figure_dir=Path(tmp) / "figures",
                 table_dir=Path(tmp) / "publication-tables",
             )
             files = list((Path(tmp) / "source-tables").iterdir())
             self.assertEqual({p.suffix for p in files}, {".csv", ".parquet"})
-            self.assertEqual({p.stem for p in files}, {"tab_clade_frequency_by_period"})
+            self.assertEqual({p.stem for p in files}, {"tab01_clade_frequency_by_period"})
             table = pd.read_csv(
-                Path(tmp) / "source-tables/tab_clade_frequency_by_period.csv"
+                Path(tmp) / "source-tables/tab01_clade_frequency_by_period.csv"
             )
             self.assertAlmostEqual(table.loc[0, "Alpha"], 2 / 3)
             self.assertAlmostEqual(table.loc[0, "Delta"], 1 / 3)
             self.assertEqual(list((Path(tmp) / "figures").iterdir()), [])
+
+    def test_every_export_matches_the_physical_producer_script(self):
+        builders = (*registry.figure_builders(), *registry.table_builders())
+        for builder in builders:
+            module = importlib.import_module(builder.module)
+            script = Path(module.__file__).stem
+            self.assertTrue(builder.name.startswith(script + "_"), builder.key)
+            constant = module.FIGURE_NAME if builder.kind == "figure" else module.TABLE_NAME
+            self.assertEqual(builder.name, constant)
+        assets = registry.publication_assets()
+        self.assertEqual(len(assets), len({asset["stem"] for asset in assets}))
+        self.assertFalse(any(asset["domain"] == "surveillance" and asset["kind"] == "table" for asset in assets))
+
+    def test_migration_rejects_conflicts_before_any_export_is_moved(self):
+        with TemporaryDirectory() as tmp:
+            directory = Path(tmp) / "figures"
+            directory.mkdir()
+            assets = [
+                {"directory": "figures", "formats": ["pdf"],
+                 "legacy_stem": "fig_one", "stem": "fig01_one"},
+                {"directory": "figures", "formats": ["pdf"],
+                 "legacy_stem": "fig_two", "stem": "fig02_two"},
+            ]
+            (directory / "fig_one.pdf").write_bytes(b"original one")
+            (directory / "fig_two.pdf").write_bytes(b"original two")
+            (directory / "fig02_two.pdf").write_bytes(b"different authored export")
+            with self.assertRaisesRegex(FileExistsError, "Conflicting"):
+                migration_plan(Path(tmp), assets)
+            self.assertTrue((directory / "fig_one.pdf").is_file())
+            self.assertFalse((directory / "fig01_one.pdf").exists())
+
+    def test_migration_accepts_identical_duplicates_and_already_numbered_files(self):
+        with TemporaryDirectory() as tmp:
+            directory = Path(tmp) / "tables"
+            directory.mkdir()
+            asset = {"directory": "tables", "formats": ["tex"],
+                     "legacy_stem": "tab_one", "stem": "tab01_one"}
+            old, new = directory / "tab_one.tex", directory / "tab01_one.tex"
+            old.write_text("same table")
+            new.write_text("same table")
+            self.assertEqual(migration_plan(Path(tmp), [asset]), [(old, new)])
+            old.unlink()
+            self.assertEqual(migration_plan(Path(tmp), [asset]), [])
 
 
 if __name__ == "__main__":
