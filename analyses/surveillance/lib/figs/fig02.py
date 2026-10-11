@@ -41,8 +41,10 @@ def configure_date_axis(ax, dates: pd.Series) -> None:
     ax.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%b\n%Y"))
     ax.xaxis.set_minor_locator(mdates.MonthLocator())
-    ax.tick_params(axis="x", which="both", length=4, width=0.5)
-    ax.tick_params(axis="x", which="major", length=6, width=0.8)
+    # The white theme hides tick lines unless bottom ticks are explicitly enabled.
+    ax.tick_params(axis="x", which="both", bottom=True, top=False, direction="out")
+    ax.tick_params(axis="x", which="major", length=3, width=0.6)
+    ax.tick_params(axis="x", which="minor", length=1.5, width=0.4)
     for label in ax.get_xticklabels():
         label.set_horizontalalignment("center")
 

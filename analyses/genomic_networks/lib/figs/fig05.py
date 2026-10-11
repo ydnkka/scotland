@@ -219,8 +219,6 @@ def build(paths: Paths) -> None:
     ax.legend(loc="upper left")
     date_axis(ax)
     ax.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
-    ax.tick_params(axis="x", which="both", length=4, width=0.5)
-    ax.tick_params(axis="x", which="major", length=6, width=0.8)
 
     ax = axes[1, 0]
     ax.scatter(
