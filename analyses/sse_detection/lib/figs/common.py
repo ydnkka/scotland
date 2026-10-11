@@ -125,6 +125,8 @@ def sort_by_policy(df: pd.DataFrame, column: str) -> pd.DataFrame:
 def date_axis(ax: Axes) -> None:
     ax.xaxis.set_major_locator(mdates.MonthLocator(interval=4))
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%b\n%Y"))
+    ax.tick_params(axis="x", which="both", length=4, width=0.5)
+    ax.tick_params(axis="x", which="major", length=6, width=0.8)
 
 
 def add_common_args(parser: argparse.ArgumentParser) -> None:

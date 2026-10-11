@@ -130,8 +130,12 @@ DOMAINS: tuple[str, ...] = (
 def _validate_numbered_name(name: str, build_func: Callable[..., Any]) -> str:
     module = build_func.__module__
     script = module.rsplit(".", 1)[-1]
-    if not re.fullmatch(r"(?:fig|tab)\d{2}", script) or not name.startswith(script + "_"):
-        raise ValueError(f"Export stem {name!r} must begin with its producer script {script!r}")
+    if not re.fullmatch(r"(?:fig|tab)\d{2}", script) or not name.startswith(
+        script + "_"
+    ):
+        raise ValueError(
+            f"Export stem {name!r} must begin with its producer script {script!r}"
+        )
     return module
 
 
@@ -333,25 +337,32 @@ def publication_assets() -> list[dict[str, Any]]:
         # Surveillance table scripts produce analysis-local CSV/parquet data.
         if builder.kind == "table" and builder.domain == "surveillance":
             continue
-        assets.append({
-            "domain": builder.domain,
-            "kind": builder.kind,
-            "module": builder.module,
-            "script": builder.script,
-            "stem": builder.name,
-            "legacy_stem": builder.legacy_name,
-            "directory": "figures" if builder.kind == "figure" else "tables",
-            "formats": ["pdf", "png"] if builder.kind == "figure" else ["tex"],
-        })
+        assets.append(
+            {
+                "domain": builder.domain,
+                "kind": builder.kind,
+                "module": builder.module,
+                "script": builder.script,
+                "stem": builder.name,
+                "legacy_stem": builder.legacy_name,
+                "directory": "figures" if builder.kind == "figure" else "tables",
+                "formats": ["pdf", "png"] if builder.kind == "figure" else ["tex"],
+            }
+        )
     if len({row["stem"] for row in assets}) != len(assets):
-        raise ValueError("Publication export stems must be unique across analysis domains")
+        raise ValueError(
+            "Publication export stems must be unique across analysis domains"
+        )
     return assets
 
 
 def write_asset_manifest(path: Path = RESULTS_DIR / "asset_manifest.json") -> Path:
     """Record producer identities independently of manuscript figure/table numbering."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"schema_version": 1, "assets": publication_assets()}, indent=2) + "\n")
+    path.write_text(
+        json.dumps({"schema_version": 1, "assets": publication_assets()}, indent=2)
+        + "\n"
+    )
     return path
 
 

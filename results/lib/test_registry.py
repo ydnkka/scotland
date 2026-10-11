@@ -1,7 +1,7 @@
 """Regression tests for selecting individual publication artifacts."""
 
-import unittest
 import importlib
+import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -14,10 +14,10 @@ import pandas as pd
 
 from analyses.sse_detection.lib.figs import fig22, tab09
 from analyses.surveillance.lib.figs import tab01
+from results.migrate_asset_names import migration_plan
 from utils.style import add_panel_labels
 
 from . import registry
-from results.migrate_asset_names import migration_plan
 
 
 class IndividualArtifactTests(unittest.TestCase):
@@ -43,8 +43,11 @@ class IndividualArtifactTests(unittest.TestCase):
                 "record_percent": [37.5, 100, 23.08, 100],
             }
         )
-        with TemporaryDirectory() as tmp, patch.object(
-            fig22, "prepare", return_value={"size_cumulative": cumulative}
+        with (
+            TemporaryDirectory() as tmp,
+            patch.object(
+                fig22, "prepare", return_value={"size_cumulative": cumulative}
+            ),
         ):
             figures = Path(tmp) / "figures"
             result = registry.build_figures(
@@ -72,8 +75,9 @@ class IndividualArtifactTests(unittest.TestCase):
                 "size_q75": [11, 6],
             }
         )
-        with TemporaryDirectory() as tmp, patch.object(
-            tab09, "prepare", return_value={"size_summary": sizes}
+        with (
+            TemporaryDirectory() as tmp,
+            patch.object(tab09, "prepare", return_value={"size_summary": sizes}),
         ):
             output = Path(tmp) / "custom-publication-tables"
             registry.build_tables(
@@ -97,10 +101,12 @@ class IndividualArtifactTests(unittest.TestCase):
                 "variant": ["Alpha", "Alpha", "Delta"],
             }
         )
-        with TemporaryDirectory() as tmp, patch.object(
-            tab01, "load_sequences", return_value=sequences
-        ), patch.object(
-            registry, "SURVEILLANCE_TABLES_DIR", Path(tmp) / "source-tables"
+        with (
+            TemporaryDirectory() as tmp,
+            patch.object(tab01, "load_sequences", return_value=sequences),
+            patch.object(
+                registry, "SURVEILLANCE_TABLES_DIR", Path(tmp) / "source-tables"
+            ),
         ):
             registry.build_tables(
                 names=["surveillance:tab01_clade_frequency_by_period"],
@@ -109,7 +115,9 @@ class IndividualArtifactTests(unittest.TestCase):
             )
             files = list((Path(tmp) / "source-tables").iterdir())
             self.assertEqual({p.suffix for p in files}, {".csv", ".parquet"})
-            self.assertEqual({p.stem for p in files}, {"tab01_clade_frequency_by_period"})
+            self.assertEqual(
+                {p.stem for p in files}, {"tab01_clade_frequency_by_period"}
+            )
             table = pd.read_csv(
                 Path(tmp) / "source-tables/tab01_clade_frequency_by_period.csv"
             )
@@ -123,21 +131,36 @@ class IndividualArtifactTests(unittest.TestCase):
             module = importlib.import_module(builder.module)
             script = Path(module.__file__).stem
             self.assertTrue(builder.name.startswith(script + "_"), builder.key)
-            constant = module.FIGURE_NAME if builder.kind == "figure" else module.TABLE_NAME
+            constant = (
+                module.FIGURE_NAME if builder.kind == "figure" else module.TABLE_NAME
+            )
             self.assertEqual(builder.name, constant)
         assets = registry.publication_assets()
         self.assertEqual(len(assets), len({asset["stem"] for asset in assets}))
-        self.assertFalse(any(asset["domain"] == "surveillance" and asset["kind"] == "table" for asset in assets))
+        self.assertFalse(
+            any(
+                asset["domain"] == "surveillance" and asset["kind"] == "table"
+                for asset in assets
+            )
+        )
 
     def test_migration_rejects_conflicts_before_any_export_is_moved(self):
         with TemporaryDirectory() as tmp:
             directory = Path(tmp) / "figures"
             directory.mkdir()
             assets = [
-                {"directory": "figures", "formats": ["pdf"],
-                 "legacy_stem": "fig_one", "stem": "fig01_one"},
-                {"directory": "figures", "formats": ["pdf"],
-                 "legacy_stem": "fig_two", "stem": "fig02_two"},
+                {
+                    "directory": "figures",
+                    "formats": ["pdf"],
+                    "legacy_stem": "fig_one",
+                    "stem": "fig01_one",
+                },
+                {
+                    "directory": "figures",
+                    "formats": ["pdf"],
+                    "legacy_stem": "fig_two",
+                    "stem": "fig02_two",
+                },
             ]
             (directory / "fig_one.pdf").write_bytes(b"original one")
             (directory / "fig_two.pdf").write_bytes(b"original two")
@@ -151,8 +174,12 @@ class IndividualArtifactTests(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             directory = Path(tmp) / "tables"
             directory.mkdir()
-            asset = {"directory": "tables", "formats": ["tex"],
-                     "legacy_stem": "tab_one", "stem": "tab01_one"}
+            asset = {
+                "directory": "tables",
+                "formats": ["tex"],
+                "legacy_stem": "tab_one",
+                "stem": "tab01_one",
+            }
             old, new = directory / "tab_one.tex", directory / "tab01_one.tex"
             old.write_text("same table")
             new.write_text("same table")

@@ -7,7 +7,13 @@ import logging
 from pathlib import Path
 
 from .lib.config import FIGURES_DIR, TABLES_DIR
-from .lib.registry import DOMAINS, build_figures, figure_builders, list_builders, write_asset_manifest
+from .lib.registry import (
+    DOMAINS,
+    build_figures,
+    figure_builders,
+    list_builders,
+    write_asset_manifest,
+)
 
 LOGGER = logging.getLogger(__name__)
 

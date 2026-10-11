@@ -180,6 +180,8 @@ def build(paths: Paths) -> None:
     )
     date_axis(axes[2])
     axes[2].xaxis.set_major_locator(mdates.MonthLocator(interval=3))
+    axes[2].tick_params(axis="x", which="both", length=4, width=0.5)
+    axes[2].tick_params(axis="x", which="major", length=6, width=0.8)
     add_panel_labels(axes)
     styled_save_figure(fig, paths, FIGURE_NAME)
 

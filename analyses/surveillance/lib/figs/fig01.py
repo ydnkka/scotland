@@ -221,13 +221,16 @@ def configure_date_axis(ax: Axes, dates: pd.Series):
         ax.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
         ax.xaxis.set_major_formatter(mdates.DateFormatter("%b\n%Y"))
         ax.xaxis.set_minor_locator(mdates.MonthLocator())
-        ax.tick_params(axis="x")
+        ax.tick_params(axis="x", which="both", length=4, width=0.5)
+        ax.tick_params(axis="x", which="major", length=6, width=0.8)
         for label in ax.get_xticklabels():
             label.set_horizontalalignment("center")
     else:
         ax.xaxis.set_major_locator(mdates.YearLocator())
         ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
         ax.xaxis.set_minor_locator(mdates.MonthLocator(interval=3))
+        ax.tick_params(axis="x", which="both", length=4, width=0.5)
+        ax.tick_params(axis="x", which="major", length=6, width=0.8)
 
 
 def add_epidemic_eras(
@@ -660,15 +663,7 @@ def build(
     plot_sequences_with_policy(timeline, sampling_df, ax=ax_top, show_xlabel=False)
     ax_top.tick_params(axis="x", labelbottom=False)
 
-    (
-        clade_freq,
-        plot_freq,
-        clade_counts,
-        dominance_df,
-        overtakes,
-        legend_handles,
-        legend_labels,
-    ) = plot_lineage_frequency_and_overtakes(
+    _, _, _, _, _, legend_handles, legend_labels = plot_lineage_frequency_and_overtakes(
         sequences,
         ax=ax_bottom,
         clade_col="variant",
