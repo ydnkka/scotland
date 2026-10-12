@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from utils import write_latex_grouped_column_table
+from utils import table_caption, write_latex_grouped_column_table
 
 from ..sse.config import BAYESIAN_OUTPUT_DIR
 from .common import Paths, add_common_args, latex_table_path, paths_from_args
@@ -166,20 +166,7 @@ def build(paths: Paths) -> dict[str, Path]:
     tex_path = latex_table_path(paths, name)
     write_latex_grouped_column_table(
         tex_path,
-        caption=(
-            "Intercept estimates from primary and expanded Bayesian "
-            "characterisation models. Values are posterior means with 95% HDIs. CSC "
-            "intercepts are baseline odds; intercepts for the local burst and onward "
-            "burden models are expected scores. These baselines correspond to zero "
-            "continuous predictors and group deviations, with categorical predictors at their "
-            "reference levels. Mixing intercepts are shown separately for observed "
-            "and null-standardised entropy specifications; composition intercepts "
-            "are shown once per outcome."
-        ),
-        short_caption=(
-            "Intercept estimates from primary and expanded Bayesian models."
-        ),
-        label="tab:bayesian_fixed_effects_intercepts",
+        **table_caption("tab:bayesian_fixed_effects_intercepts"),
         row_columns=["Outcome", "Mixing scale"],
         column_groups=[
             ("Mixing Model Intercept", ["Primary", "Expanded"]),

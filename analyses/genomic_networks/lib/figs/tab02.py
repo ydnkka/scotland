@@ -6,7 +6,7 @@ import argparse
 
 import pandas as pd
 
-from utils import addlinespace_after_group_changes, write_latex_table
+from utils import addlinespace_after_group_changes, table_caption, write_latex_table
 
 from .common import Paths, add_common_args, paths_from_args, read_table, sort_by_policy
 from .table_common import (
@@ -40,16 +40,7 @@ def build(paths: Paths) -> None:
         )
     write_latex_table(
         paths.publication_table_dir / f"{TABLE_NAME}.tex",
-        caption=(
-            "Rolling-window observation denominators stratified by epidemic era and "
-            "policy period. For each period, the table outlines the total number of "
-            "analytical windows alongside the median window-level counts of confirmed positive "
-            "tests and sequenced genomes. Sequencing coverage (the percentage of "
-            "confirmed positive tests successfully sequenced) is reported as a median, with "
-            "absolute minimum and maximum extremes presented in parentheses."
-        ),
-        short_caption="Rolling-window observation denominators by policy period",
-        label="tab:policy_denominators",
+        **table_caption("tab:policy_denominators"),
         columns=[
             "Epidemic era",
             "Period",

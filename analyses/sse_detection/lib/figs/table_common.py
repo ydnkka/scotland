@@ -8,7 +8,8 @@ from typing import Any
 import pandas as pd
 
 from utils.display_labels import normalise_attribute_label
-from utils.latex_tables import latex_escape
+from utils.latex_tables import latex_escape, render_latex_caption
+from utils.table_captions import table_caption
 
 SUMMARY_TABLE_STEMS = {
     "diagnostics": "summary_table_1_diagnostics",
@@ -170,7 +171,6 @@ def _sort_for_report(
 
 def write_size_table(
     path: Path,
-    caption: str,
     label: str,
     headers: list[str],
     rows: list[list],
@@ -186,12 +186,13 @@ def write_size_table(
     )
     header = " & ".join(latex_escape(x) for x in headers) + r" \\"
     body = [" & ".join(latex_escape(x) for x in row) + r" \\" for row in rows]
+    caption = render_latex_caption(**table_caption(label))
     if long:
         lines = [
             r"\begingroup\small",
             r"\setlength{\tabcolsep}{4pt}",
             r"\begin{longtable}{" + spec + "}",
-            r"\caption{" + caption + r"}\label{" + label + r"}\\",
+            caption + r"\\",
             r"\toprule",
             header,
             r"\midrule\endfirsthead",
@@ -208,7 +209,7 @@ def write_size_table(
     else:
         lines = [
             r"\begin{table}[htbp]\centering",
-            r"\caption{" + caption + r"}\label{" + label + "}",
+            caption,
             r"\begin{thesistablebody}{" + spec + "}",
             r"\toprule",
             header,

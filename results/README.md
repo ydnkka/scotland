@@ -65,6 +65,56 @@ selects the publication LaTeX destination. Individual table modules accept
 `--publication-table-dir` for that destination (surveillance CSV/parquet modules
 instead use `--table-dir`).
 
+## Editing table captions
+
+All publication table captions live in [`table_captions.yaml`](table_captions.yaml),
+keyed by their exact LaTeX label (for example, `tab:policy_denominators`). Each
+entry contains:
+
+- `caption`: concise text printed with the table.
+- `short_caption`: plain-text title used in the list of tables.
+- `columns`: descriptions of the displayed columns or grouped subcolumns.
+- `notes`: optional definitions and interpretation details.
+- `source`: the table script to rebuild after editing.
+- `caption_is_latex`: optional flag for captions containing LaTeX math or references.
+
+Column descriptions and notes are editorial metadata and are not automatically
+appended to the caption. Keep essential interpretation in `caption`; use the
+other fields for longer explanations. Column headings and layout are set in the
+table scripts.
+
+Keep each caption on one line using YAML single quotes, which preserve LaTeX
+backslashes. Double any apostrophe inside the quoted text (`''`). Plain-text
+captions are escaped automatically, including `%`, `&`, and `<`. With
+`caption_is_latex: true`, write LaTeX directly, including `\%` for percentages
+and `Table~\ref{tab:label}` for references. Short captions are always plain text.
+
+Table scripts load the entry using the shared helper:
+
+```python
+from utils import load_table_metadata, table_caption, write_latex_table
+
+write_latex_table(
+    output_path,
+    **table_caption("tab:policy_denominators"),
+    columns=columns,
+    rows=rows,
+)
+column_descriptions = load_table_metadata("tab:policy_denominators")["columns"]
+```
+
+Data-dependent captions use `{{name}}` placeholders. For example, the pairwise
+distance table supplies `n_summaries` and `n_pairs` as formatted strings to
+`table_caption(...)`. These placeholders leave ordinary LaTeX braces intact;
+missing labels or required values raise an error. The YAML path is resolved
+relative to the helper, so loading does not depend on the working directory.
+
+After editing, regenerate a table with its usual command, for example:
+
+```bash
+python -m results.make_tables genomic_networks:tab02_policy_denominators
+```
+
 ## Migrating existing exports and syncing thesis assets
 
 ```bash

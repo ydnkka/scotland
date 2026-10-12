@@ -8,7 +8,7 @@ from typing import Any
 
 import pandas as pd
 
-from utils import write_latex_table
+from utils import table_caption, write_latex_table
 
 from .assortativity_analysis import (
     compatibility_variance_decomposition_long,
@@ -106,15 +106,7 @@ def build(paths: Paths) -> None:
 
     write_latex_table(
         paths.publication_table_dir / f"{TABLE_NAME}.tex",
-        caption=(
-            "Variance decomposition of weighted compatibility assortativity estimates after "
-            "applying a 90th percentile inverse-variance weight cap. "
-            "SIMD, population-weighted SIMD quintile; HB, health board; "
-            "LA, local authority. Variance components and fractions are unitless proportions; "
-            "counts and uncertainty summaries retain their native units."
-        ),
-        short_caption="Variance decomposition of compatibility assortativity",
-        label="tab:assortativity_variance_decomposition",
+        **table_caption("tab:assortativity_variance_decomposition"),
         columns=[
             "Metric",
             *[

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from utils import write_latex_longtable
+from utils import table_caption, write_latex_longtable
 
 from ..sse.config import BAYESIAN_OUTPUT_DIR
 from .common import Paths, add_common_args, latex_table_path, paths_from_args
@@ -55,13 +55,7 @@ def build(paths: Paths) -> dict[str, Path]:
     tex_path = latex_table_path(paths, name)
     write_latex_longtable(
         tex_path,
-        caption=(
-            "Random-effect and residual standard-deviation summaries from "
-            "Bayesian characterisation models. Variance share and rank are shown "
-            "for random-effect standard deviations only."
-        ),
-        short_caption="Bayesian random-effect and residual standard deviations.",
-        label="tab:bayesian_random_effect_sds",
+        **table_caption("tab:bayesian_random_effect_sds"),
         columns=[
             "Domain",
             "Family",

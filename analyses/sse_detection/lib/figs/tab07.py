@@ -36,7 +36,6 @@ def build(paths: Paths, *, tables=None):
             )
     write_size_table(
         output_path,
-        "Cluster sizes and sequence records in the primary comparison. Records count sequence appearances in retained windows, not unique people. The interquartile range (IQR) describes the middle half of cluster sizes.",
         "tab:size_overview",
         ["Size band", "Group", "Clusters", "Records", "Median (IQR)"],
         rows,

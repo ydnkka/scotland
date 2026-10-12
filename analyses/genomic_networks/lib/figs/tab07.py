@@ -7,7 +7,7 @@ from typing import Any
 
 import numpy as np
 
-from utils import write_latex_table
+from utils import table_caption, write_latex_table
 
 from .common import Paths, add_common_args, paths_from_args, read_table
 from .table_common import (
@@ -15,13 +15,6 @@ from .table_common import (
 )
 
 TABLE_NAME = "tab07_simd_population_weighting"
-
-SIMD_GROUP_LABELS = {
-    5: "quintile",
-    10: "decile",
-    20: "vigintile",
-}
-
 
 def fmt_percent_points(value: Any) -> str:
     if value is None or (isinstance(value, float) and np.isnan(value)):
@@ -32,16 +25,6 @@ def fmt_percent_points(value: Any) -> str:
 def build(paths: Paths) -> None:
     """Write the SIMD validation LaTeX appendix table."""
     group_summary = read_table(paths, "simd_population_weighting_group_summary")
-    n_groups = 5
-    group_name = SIMD_GROUP_LABELS.get(n_groups, f"{n_groups}-group")
-    caption = (
-        f"Validation of national SIMD {group_name} boundaries comparing equal-Data-Zone "
-        "and population-weighted grouping methodologies. The table details the number of "
-        "Data Zones, total population counts, proportional population shares, and the "
-        "underlying SIMD rank ranges represented within each constructed group."
-    )
-    short_caption = f"SIMD {group_name} population-weighting validation"
-
     methods = ["equal_datazone", "population_weighted"]
     display = group_summary.loc[group_summary["grouping_method"].isin(methods)].copy()
     method_order = {method: idx for idx, method in enumerate(methods)}
@@ -73,9 +56,7 @@ def build(paths: Paths) -> None:
 
     write_latex_table(
         paths.publication_table_dir / f"{TABLE_NAME}.tex",
-        caption=caption,
-        short_caption=short_caption,
-        label="tab:simd_population_weighting",
+        **table_caption("tab:simd_population_weighting"),
         columns=[
             "Method",
             "Group",

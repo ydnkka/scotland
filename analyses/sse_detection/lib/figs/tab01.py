@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from utils import write_latex_table
+from utils import table_caption, write_latex_table
 
 from ..sse.config import BAYESIAN_OUTPUT_DIR
 from .common import Paths, add_common_args, latex_table_path, paths_from_args
@@ -189,15 +189,7 @@ def build(paths: Paths) -> dict[str, Path]:
     tex_path = latex_table_path(paths, name)
     write_latex_table(
         tex_path,
-        caption=(
-            "Fitted samples for the association models. Candidate outcomes give "
-            "CSC counts and percentages; score outcomes give observed means and "
-            "standard deviations. Expanded models add the three standardised "
-            "surveillance measures to the primary predictors. All models include "
-            "policy-period and clade varying intercepts."
-        ),
-        short_caption="Bayesian characterisation fitted samples and model specifications.",
-        label="tab:bayesian_model_specifications",
+        **table_caption("tab:bayesian_model_specifications"),
         columns=[
             "Domain",
             "Family",

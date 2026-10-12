@@ -17,6 +17,7 @@ from .latex_tables import (
     latex_column_spec,
     latex_escape,
     latex_shortstack,
+    render_latex_caption,
     render_latex_grouped_column_table,
     render_latex_longtable,
     render_latex_table,
@@ -54,6 +55,7 @@ from .style import (
     set_theme,
     theme,
 )
+from .table_captions import load_table_metadata, table_caption
 
 __all__ = [
     "CLADES",
@@ -64,8 +66,8 @@ __all__ = [
     "FIG_WIDTHS_IN",
     "PRIMARY_RESOLUTION",
     "WIDTHS",
-    "add_policy_bands",
     "add_panel_labels",
+    "add_policy_bands",
     "addlinespace_after_group_changes",
     "attach_policy_calendar",
     "clades_for_pango_lineages",
@@ -81,6 +83,7 @@ __all__ = [
     "load_datazone_info",
     "load_pairwise_edges",
     "load_policy_calendar",
+    "load_table_metadata",
     "new_figure",
     "pango_lineages_for_clades",
     "policy",
@@ -88,12 +91,14 @@ __all__ = [
     "policy_era_labels",
     "policy_order",
     "policy_period_labels",
+    "render_latex_caption",
     "render_latex_grouped_column_table",
     "render_latex_longtable",
     "render_latex_table",
     "save_figure",
     "set_theme",
     "style",
+    "table_caption",
     "theme",
     "window_id_from_idx",
     "window_id_to_policy_era",

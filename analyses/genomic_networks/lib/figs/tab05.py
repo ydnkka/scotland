@@ -8,7 +8,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from utils import write_latex_table
+from utils import table_caption, write_latex_table
 
 from .assortativity_analysis import (
     compatibility_window_pooled_meta,
@@ -75,18 +75,7 @@ def build(paths: Paths) -> None:
         )
     write_latex_table(
         paths.publication_table_dir / f"{TABLE_NAME}.tex",
-        caption=(
-            "Pooled compatibility assortativity estimates calculated across rolling windows. "
-            "For each attribute, the table reports the total number of windows, the subset "
-            "yielding an estimable coefficient, and the median number of lineages analyzed. "
-            "Mean r is the single overall pooled estimate: the GLS mean of the window-level "
-            "pooled assortativity estimates, adjusted for covariance induced by overlapping "
-            "rolling windows, with its 95% confidence interval. Window r is descriptive: "
-            "the median of the same window-level pooled estimates, followed by their "
-            "10th--90th percentile range."
-        ),
-        short_caption="Pooled compatibility assortativity estimates",
-        label="tab:assortativity_summary",
+        **table_caption("tab:assortativity_summary"),
         columns=[
             "Attribute",
             "Windows",

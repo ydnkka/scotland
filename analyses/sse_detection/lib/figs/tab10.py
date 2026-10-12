@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 
+from utils import render_latex_caption, table_caption
+
 from ..characterisation import ATTRIBUTES, SIZE_BANDS
 from .common import Paths, add_common_args, paths_from_args
 from .size_profiles import CATEGORY_ORDERS, SHORT_LABELS, load_saved_summaries, prepare
@@ -34,7 +36,7 @@ def build(paths: Paths, *, tables=None):
         r"\begin{landscape}\begingroup",
         r"\renewcommand{\thesistablesetup}{\small\setstretch{1}\setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{1.0}}",
         r"\begin{longtable}{@{}p{0.22\linewidth}*{15}{r}@{}}",
-        r"\caption[Composition within size bands]{Composition within size bands. CSC and BG give the percentage of sequence records in each category for CSC and background clusters; $\Delta$ is CSC minus background in percentage points. Denominators are the record counts in Table~\ref{tab:size_overview}; all five attributes are complete.}\label{tab:size_composition}\\",
+        render_latex_caption(**table_caption("tab:size_composition")) + r"\\",
         r"\toprule",
         *header,
         r"\endfirsthead",

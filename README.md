@@ -26,6 +26,7 @@ raw sequence and linked metadata
 - `analyses/genomic_networks/`: cohort, cluster, mixing, topology, and sensitivity analyses.
 - `analyses/sse_detection/`: transition graph, detector, figures, and Bayesian models.
 - `results/`: central publication figure and LaTeX-table builders.
+- `results/table_captions.yaml`: publication captions and column descriptions, keyed by LaTeX label.
 - `data/`: local raw and processed data; excluded from version control.
 
 Detailed documentation:

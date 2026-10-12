@@ -40,7 +40,6 @@ def build(paths: Paths, *, tables=None):
             )
     write_size_table(
         output_path,
-        "Descriptive sensitivity comparisons using saved scores. Primary uses $p\\leq0.05$ and size $\\geq6$. Alternative p cutoffs retain the same testing floor; size restrictions retain primary labels without recalibration.",
         "tab:sensitivity_sizes",
         ["Comparison", "Group", "Clusters", "Records", "Median size"],
         rows,

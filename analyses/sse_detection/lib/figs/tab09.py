@@ -28,7 +28,6 @@ def build(paths: Paths, *, tables=None):
         )
     write_size_table(
         output_path,
-        "Cluster sizes by screening route. Burden background is the subset of background clusters with positive observed downstream burden; it is the comparator for burden-only and both-axis candidates. Rows therefore do not form a disjoint partition.",
         "tab:route_sizes",
         ["Group", "Clusters", "Records", "Median (IQR)"],
         rows,

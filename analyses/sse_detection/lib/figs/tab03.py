@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from utils import write_latex_longtable
+from utils import table_caption, write_latex_longtable
 
 from ..sse.config import BAYESIAN_OUTPUT_DIR
 from .common import Paths, add_common_args, latex_table_path, paths_from_args
@@ -58,21 +58,7 @@ def build(paths: Paths) -> dict[str, Path]:
     tex_path = latex_table_path(paths, name)
     write_latex_longtable(
         tex_path,
-        caption=(
-            "Focal fixed-effect estimates from expanded Bayesian characterisation "
-            "models. Values are posterior means with 95\\% HDIs. Logistic estimates "
-            "are CSC odds ratios; linear estimates are mean score differences. "
-            "Mixing estimates correspond to a one-unit increase in "
-            "null-standardised entropy; composition estimates compare each category "
-            "with the stated reference group. All models include policy-period and "
-            "clade varying intercepts and the three standardised surveillance "
-            "measures. Direction gives the posterior probability of the indicated "
-            "association; diagnostic criteria are defined in "
-            "Table~\\ref{tab:app_bayes_diagnostic_guide}."
-        ),
-        caption_is_latex=True,
-        short_caption="Focal fixed-effect estimates from expanded Bayesian models.",
-        label="tab:bayesian_fixed_effects_focal",
+        **table_caption("tab:bayesian_fixed_effects_focal"),
         columns=[
             "Domain",
             "Family",

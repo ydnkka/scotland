@@ -73,6 +73,23 @@ def _body_lines(
     return body
 
 
+def render_latex_caption(
+    *,
+    caption: str,
+    label: str,
+    short_caption: str | None = None,
+    caption_is_latex: bool = False,
+) -> str:
+    """Render a caption and label; the short caption is always plain text."""
+    rendered_caption = caption if caption_is_latex else latex_escape(caption)
+    rendered_short_caption = (
+        latex_escape(short_caption) if short_caption else rendered_caption
+    )
+    return (
+        f"\\caption[{rendered_short_caption}]{{{rendered_caption}}}\\label{{{label}}}"
+    )
+
+
 def render_latex_table(
     *,
     caption: str,
@@ -82,6 +99,7 @@ def render_latex_table(
     column_spec: str | None = None,
     addlinespace_after: set[int] | None = None,
     short_caption: str | None = None,
+    caption_is_latex: bool = False,
     landscape: bool = False,
 ) -> str:
     addlinespace_after = addlinespace_after or set()
@@ -94,9 +112,11 @@ def render_latex_table(
         [
             r"\begin{table}[htbp]",
             r"\centering",
-            (
-                f"\\caption[{latex_escape(short_caption or caption)}]"
-                f"{{{latex_escape(caption)}}}\\label{{{label}}}"
+            render_latex_caption(
+                caption=caption,
+                label=label,
+                short_caption=short_caption,
+                caption_is_latex=caption_is_latex,
             ),
             f"\\begin{{thesistablebody}}{{{column_spec}}}",
             r"\toprule",
@@ -136,9 +156,11 @@ def render_latex_longtable(
     Set caption_is_latex for authored LaTeX captions containing math or
     cross-references. An explicit short_caption is always treated as plain text.
     """
-    rendered_caption = caption if caption_is_latex else latex_escape(caption)
-    rendered_short_caption = (
-        latex_escape(short_caption) if short_caption else rendered_caption
+    rendered_caption = render_latex_caption(
+        caption=caption,
+        label=label,
+        short_caption=short_caption,
+        caption_is_latex=caption_is_latex,
     )
     addlinespace_after = addlinespace_after or set()
     column_count = len(columns)
@@ -164,8 +186,7 @@ def render_latex_longtable(
     lines.extend(
         [
             f"\\begin{{longtable}}{{{column_spec}}}",
-            f"    \\caption[{rendered_short_caption}]"
-            f"{{{rendered_caption}}}\\label{{{label}}} " + r"\\",
+            f"    {rendered_caption} " + r"\\",
             r"    \toprule",
             f"    {header} " + r"\\",
             r"    \midrule",
@@ -221,6 +242,7 @@ def render_latex_grouped_column_table(
     column_spec: str,
     addlinespace_after: set[int] | None = None,
     short_caption: str | None = None,
+    caption_is_latex: bool = False,
     font_size: str = r"\scriptsize",
     tabcolsep: str = "2.5pt",
     landscape: bool = False,
@@ -255,9 +277,11 @@ def render_latex_grouped_column_table(
             r"\centering",
             font_size,
             f"\\setlength{{\\tabcolsep}}{{{tabcolsep}}}",
-            (
-                f"\\caption[{latex_escape(short_caption or caption)}]"
-                f"{{{latex_escape(caption)}}}\\label{{{label}}}"
+            render_latex_caption(
+                caption=caption,
+                label=label,
+                short_caption=short_caption,
+                caption_is_latex=caption_is_latex,
             ),
             f"\\begin{{thesistablebody}}{{{column_spec}}}",
             r"\toprule",

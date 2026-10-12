@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 
-from utils import addlinespace_after_group_changes, write_latex_table
+from utils import addlinespace_after_group_changes, table_caption, write_latex_table
 
 from .common import Paths, add_common_args, paths_from_args, read_table, sort_by_policy
 from .table_common import (
@@ -59,21 +59,11 @@ def build(paths: Paths) -> None:
         rows.append(cells)
     write_latex_table(
         paths.publication_table_dir / f"{TABLE_NAME}.tex",
-        caption=(
-            "Summary of Scottish EpiLink clusters stratified by epidemic era and policy "
-            "period. The table reports sequence-window memberships and total distinct clusters, "
-            "with non-singleton cluster counts provided in parentheses. Further metrics "
-            "for non-singleton clusters summarise distributions [median (90th percentile; "
-            "maximum)] for both cluster size and affected Data Zones. Residential spatial distance "
-            "(in kilometers) and temporal span (in days) are reported as medians alongside "
-            "their corresponding interquartile ranges."
-        ),
-        short_caption="Scottish EpiLink cluster summary by policy period",
-        label="tab:cluster_period_summary",
+        **table_caption("tab:cluster_period_summary"),
         columns=[
             "Epidemic era",
             "Period",
-            "Members",
+            "Sequences",
             "Clusters",
             "Size",
             "Zones",

@@ -7,7 +7,7 @@ from typing import Any
 
 import pandas as pd
 
-from utils import write_latex_grouped_column_table
+from utils import table_caption, write_latex_grouped_column_table
 
 from .common import (
     POLICY_LABELS,
@@ -164,15 +164,7 @@ def build(paths: Paths) -> None:
 
     write_latex_grouped_column_table(
         paths.publication_table_dir / f"{TABLE_NAME}.tex",
-        caption=(
-            "Sequence composition by epidemic era and policy period for demographic, socioeconomic, or geographic variables. "
-            "Columns are grouped by epidemic era, with policy-period codes shown as subcolumns. "
-            "Cells report the number and percentage of unique sequences in that policy "
-            "period with the corresponding attribute category. Counts from one to four are "
-            "suppressed and shown as <5."
-        ),
-        short_caption="Sequence composition by epidemic era and policy period",
-        label="tab:sequence_composition_by_policy",
+        **table_caption("tab:sequence_composition_by_policy"),
         row_columns=["Attribute", "Category"],
         column_groups=column_groups,
         rows=rows,
