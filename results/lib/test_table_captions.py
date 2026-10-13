@@ -43,13 +43,7 @@ class TableCaptionTests(unittest.TestCase):
                 for note in entry.get("notes", []):
                     self.assertNotIn(note, rendered)
 
-    def test_dynamic_counts_and_missing_values(self):
-        label = "tab:cluster_pairwise_distance_summary"
-        caption = table_caption(label, n_summaries="12", n_pairs="1,234")
-        self.assertIn("12 window-lineage strata", caption["caption"])
-        self.assertIn("1,234 recorded pairs", caption["caption"])
-        with self.assertRaisesRegex(ValueError, "n_pairs"):
-            table_caption(label, n_summaries="12")
+    def test_missing_caption_raises(self):
         with self.assertRaisesRegex(KeyError, "tab:missing"):
             table_caption("tab:missing")
 

@@ -103,7 +103,7 @@ def build(paths: Paths) -> dict[str, object]:
                 edgecolor="#ffffff7b",
             )
 
-    fig.supxlabel("Randomised upper-tail permutation p-value")
+    fig.supxlabel("Randomised $p$-value")
     fig.supylabel("Empirical cumulative proportion")
     add_panel_labels(axes.ravel())
     outputs = styled_save_figure(fig, paths, FIGURE_NAME)

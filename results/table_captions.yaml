@@ -31,7 +31,7 @@ tab:policy_denominators:
 tab:cluster_period_summary:
   source: analyses/genomic_networks/lib/figs/tab03.py
   short_caption: Genomic cluster summary by policy period
-  caption: 'Genomic clusters by epidemic era and policy period. Cluster counts include non-singleton counts in parentheses; subsequent columns describe those clusters. Size and Zones show median (90th percentile; maximum). Spatial distance and sampling span show median (interquartile range). Sequence totals count memberships across windows.'
+  caption: 'Genomic clusters by epidemic era and policy period. Cluster counts include non-singleton counts in parentheses; subsequent columns describe those clusters. Size and datasozes (zones) show median (90th percentile; maximum). Spatial distance and sampling span show median (interquartile range). Sequence totals count memberships across windows.'
   columns:
     Epidemic era: Broad epidemic phase.
     Period: Policy-period code.
@@ -45,19 +45,8 @@ tab:cluster_period_summary:
     - Datazones are small statistical areas.
     - The interquartile range spans the middle 50% of values.
 
-tab:cluster_pairwise_distance_summary:
-  source: analyses/genomic_networks/lib/figs/tab04.py
-  short_caption: Genetic and temporal distances within clusters
-  caption: 'Within-cluster genetic and temporal distances across {{n_summaries}} window-lineage strata, each with at least ten pairs ({{n_pairs}} recorded pairs in total). Values summarise stratum-level median distances as median (interquartile range), with equal weights or weights proportional to pair counts.'
-  columns:
-    Metric: Genetic distance in single-nucleotide differences (SNPs), or sample-date difference in days.
-    Weighting: Equal weight per window-lineage stratum (Unweighted), or weight proportional to its pair count (Pair-weighted).
-    Median: Median stratum-level distance, with interquartile range.
-  notes:
-    - Pair counts include appearances across overlapping windows, not necessarily unique pairs.
-
 tab:assortativity_summary:
-  source: analyses/genomic_networks/lib/figs/tab05.py
+  source: analyses/genomic_networks/lib/figs/tab04.py
   short_caption: Compatibility assortativity across time windows
   caption: 'Compatibility assortativity across overlapping windows. Positive r indicates that linked sequences share an attribute more often than expected by chance. Mean r accounts for window overlap and includes a 95% confidence interval; Window r shows the median (10th--90th percentiles).'
   columns:
@@ -71,7 +60,7 @@ tab:assortativity_summary:
     - SIMD quintiles are five groups ranked by the Scottish Index of Multiple Deprivation.
 
 tab:assortativity_variance_decomposition:
-  source: analyses/genomic_networks/lib/figs/tab06.py
+  source: analyses/genomic_networks/lib/figs/tab05.py
   short_caption: Sources of variation in compatibility assortativity
   caption: 'Variation in compatibility assortativity explained by time window, viral lineage or both. A | B is the additional fraction explained by A after accounting for B. Estimates are precision-weighted, with the highest 10% of weights capped. HB denotes health board; LA, local authority.'
   columns:
@@ -91,7 +80,7 @@ tab:assortativity_variance_decomposition:
     - Median boot SE is the median bootstrap standard error; Median CI width is the median confidence-interval width.
 
 tab:simd_population_weighting:
-  source: analyses/genomic_networks/lib/figs/tab07.py
+  source: analyses/genomic_networks/lib/figs/tab06.py
   short_caption: Area-based and population-weighted deprivation quintiles
   caption: 'Comparison of area-based and population-weighted Scottish Index of Multiple Deprivation (SIMD) quintiles. Groups contain approximately equal numbers of datazones or people, respectively. Group 1 is most deprived; group 5 is least deprived.'
   columns:

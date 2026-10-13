@@ -510,8 +510,8 @@
       "kind": "table",
       "module": "analyses.genomic_networks.lib.figs.tab04",
       "script": "tab04",
-      "stem": "tab04_cluster_pairwise_distance_summary",
-      "legacy_stem": "tab_cluster_pairwise_distance_summary",
+      "stem": "tab04_assortativity_summary",
+      "legacy_stem": "tab_assortativity_summary",
       "directory": "tables",
       "formats": [
         "tex"
@@ -522,8 +522,8 @@
       "kind": "table",
       "module": "analyses.genomic_networks.lib.figs.tab05",
       "script": "tab05",
-      "stem": "tab05_assortativity_summary",
-      "legacy_stem": "tab_assortativity_summary",
+      "stem": "tab05_assortativity_variance_decomposition",
+      "legacy_stem": "tab_assortativity_variance_decomposition",
       "directory": "tables",
       "formats": [
         "tex"
@@ -534,19 +534,7 @@
       "kind": "table",
       "module": "analyses.genomic_networks.lib.figs.tab06",
       "script": "tab06",
-      "stem": "tab06_assortativity_variance_decomposition",
-      "legacy_stem": "tab_assortativity_variance_decomposition",
-      "directory": "tables",
-      "formats": [
-        "tex"
-      ]
-    },
-    {
-      "domain": "genomic_networks",
-      "kind": "table",
-      "module": "analyses.genomic_networks.lib.figs.tab07",
-      "script": "tab07",
-      "stem": "tab07_simd_population_weighting",
+      "stem": "tab06_simd_population_weighting",
       "legacy_stem": "tab_simd_population_weighting",
       "directory": "tables",
       "formats": [

@@ -1,18 +1,18 @@
-"""Build assortativity summary table."""
+"""Build assortativity variance decomposition table."""
 
 from __future__ import annotations
 
 import argparse
+from collections.abc import Callable
 from typing import Any
 
-import numpy as np
 import pandas as pd
 
 from utils import table_caption, write_latex_table
 
 from .assortativity_analysis import (
-    compatibility_window_pooled_meta,
-    pooled_window_attribute_summary,
+    compatibility_variance_decomposition_long,
+    variance_decomposition_summary,
 )
 from .common import ATTRIBUTE_ORDER, Paths, add_common_args, paths_from_args, read_table
 from .table_common import (
@@ -20,72 +20,103 @@ from .table_common import (
     fmt_int,
 )
 
-TABLE_NAME = "tab05_assortativity_summary"
+TABLE_NAME = "tab05_assortativity_variance_decomposition"
+
+ATTRIBUTE_COLUMN_LABELS = {
+    "SIMD quintile": "SIMD",
+    "Urban/rural class": "Urban/rural class",
+    "Health board": "HB",
+    "Local authority": "LA",
+}
 
 
-def fmt_ci(low: Any, high: Any, digits: int = 2) -> str:
-    if (
-        low is None
-        or high is None
-        or (isinstance(low, float) and np.isnan(low))
-        or (isinstance(high, float) and np.isnan(high))
-    ):
-        return "not estimated"
-    return f"{fmt_float(low, digits)}--{fmt_float(high, digits)}"
-
-
-def pooled_window_attribute_summary_table(paths: Paths) -> pd.DataFrame:
+def variance_decomposition_summary_table(paths: Paths) -> pd.DataFrame:
     try:
-        summary = read_table(paths, "compatibility_window_pooled_summary")
-        if {"gls_mean", "gls_ci_low", "gls_ci_high"}.issubset(summary.columns):
-            return summary
+        return read_table(paths, "compatibility_variance_decomposition_summary")
     except FileNotFoundError:
-        pass
-    window_meta, _ = compatibility_window_pooled_meta(paths)
-    return pooled_window_attribute_summary(window_meta)
+        vd_long = compatibility_variance_decomposition_long(paths)
+        return variance_decomposition_summary(vd_long)
 
 
 def build(paths: Paths) -> None:
-    summary = pooled_window_attribute_summary_table(paths)
-    rows = []
+    summary = variance_decomposition_summary_table(paths)
+    attribute_rows = {}
     for attribute in ATTRIBUTE_ORDER:
         group = summary.loc[summary["attribute_label"].eq(attribute)]
-        if group.empty:
-            continue
-        row = group.iloc[0]
-        mean_col = "gls_mean" if "gls_mean" in row.index else "weighted_mean"
-        low_col = "gls_ci_low" if "gls_ci_low" in row.index else "ci_low"
-        high_col = "gls_ci_high" if "gls_ci_high" in row.index else "ci_high"
+        if not group.empty:
+            attribute_rows[attribute] = group.iloc[0]
+
+    metrics: list[tuple[str, str, Callable[[Any], str]]] = [
+        ("Rows", "n", fmt_int),
+        ("Windows", "n_windows", fmt_int),
+        ("Lineages", "n_lineages", fmt_int),
+        (
+            "Additive model",
+            "additive_model_fraction",
+            lambda value: fmt_float(value, 3),
+        ),
+        (
+            "Adj. additive",
+            "adj_additive_model_fraction",
+            lambda value: fmt_float(value, 3),
+        ),
+        ("Residual", "residual_fraction", lambda value: fmt_float(value, 3)),
+        (
+            "Window alone",
+            "window_alone_fraction",
+            lambda value: fmt_float(value, 3),
+        ),
+        (
+            "Lineage alone",
+            "lineage_alone_fraction",
+            lambda value: fmt_float(value, 3),
+        ),
+        (
+            "Lineage | Window",
+            "lineage_given_window_fraction",
+            lambda value: fmt_float(value, 3),
+        ),
+        (
+            "Window | Lineage",
+            "window_given_lineage_fraction",
+            lambda value: fmt_float(value, 3),
+        ),
+        ("Weight cap", "weight_cap", lambda value: fmt_float(value, 2)),
+        ("Capped weights", "n_weights_capped", fmt_int),
+        ("Median boot SE", "median_boot_se", lambda value: fmt_float(value, 3)),
+        (
+            "Median CI width",
+            "median_ci_width",
+            lambda value: fmt_float(value, 3),
+        ),
+    ]
+
+    attributes = list(attribute_rows)
+    rows = []
+    for metric_label, column, formatter in metrics:
         rows.append(
             [
-                attribute,
-                fmt_int(row["n_windows"]),
-                fmt_int(row["n_estimated_windows"]),
-                fmt_float(row["median_n_lineages"], 1),
-                (
-                    f"{fmt_float(row[mean_col], 4)} "
-                    f"({fmt_ci(row[low_col], row[high_col], 4)})"
-                ),
-                (
-                    f"{fmt_float(row['window_median'], 3)} "
-                    f"({fmt_float(row['window_q10'], 3)}--"
-                    f"{fmt_float(row['window_q90'], 3)})"
-                ),
+                metric_label,
+                *[
+                    formatter(attribute_rows[attribute][column])
+                    for attribute in attributes
+                ],
             ]
         )
+
     write_latex_table(
         paths.publication_table_dir / f"{TABLE_NAME}.tex",
-        **table_caption("tab:assortativity_summary"),
+        **table_caption("tab:assortativity_variance_decomposition"),
         columns=[
-            "Attribute",
-            "Windows",
-            "Est.",
-            "Lineages",
-            "Mean r (95% CI)",
-            "Window r (10th--90th)",
+            "Metric",
+            *[
+                ATTRIBUTE_COLUMN_LABELS.get(attribute) or attribute
+                for attribute in attributes
+            ],
         ],
         rows=rows,
-        column_spec="lrrrrll",
+        column_spec="l" + "r" * len(attributes),
+        addlinespace_after={2, 9},
     )
 
 

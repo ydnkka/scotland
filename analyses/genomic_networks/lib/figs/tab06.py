@@ -1,122 +1,73 @@
-"""Build assortativity variance decomposition table."""
+"""Build simd population weighting table."""
 
 from __future__ import annotations
 
 import argparse
-from collections.abc import Callable
 from typing import Any
 
-import pandas as pd
+import numpy as np
 
 from utils import table_caption, write_latex_table
 
-from .assortativity_analysis import (
-    compatibility_variance_decomposition_long,
-    variance_decomposition_summary,
-)
-from .common import ATTRIBUTE_ORDER, Paths, add_common_args, paths_from_args, read_table
+from .common import Paths, add_common_args, paths_from_args, read_table
 from .table_common import (
-    fmt_float,
     fmt_int,
 )
 
-TABLE_NAME = "tab06_assortativity_variance_decomposition"
+TABLE_NAME = "tab06_simd_population_weighting"
 
-ATTRIBUTE_COLUMN_LABELS = {
-    "SIMD quintile": "SIMD",
-    "Urban/rural class": "Urban/rural class",
-    "Health board": "HB",
-    "Local authority": "LA",
-}
-
-
-def variance_decomposition_summary_table(paths: Paths) -> pd.DataFrame:
-    try:
-        return read_table(paths, "compatibility_variance_decomposition_summary")
-    except FileNotFoundError:
-        vd_long = compatibility_variance_decomposition_long(paths)
-        return variance_decomposition_summary(vd_long)
+def fmt_percent_points(value: Any) -> str:
+    if value is None or (isinstance(value, float) and np.isnan(value)):
+        return ""
+    return f"{float(value):.1f}%"
 
 
 def build(paths: Paths) -> None:
-    summary = variance_decomposition_summary_table(paths)
-    attribute_rows = {}
-    for attribute in ATTRIBUTE_ORDER:
-        group = summary.loc[summary["attribute_label"].eq(attribute)]
-        if not group.empty:
-            attribute_rows[attribute] = group.iloc[0]
-
-    metrics: list[tuple[str, str, Callable[[Any], str]]] = [
-        ("Rows", "n", fmt_int),
-        ("Windows", "n_windows", fmt_int),
-        ("Lineages", "n_lineages", fmt_int),
-        (
-            "Additive model",
-            "additive_model_fraction",
-            lambda value: fmt_float(value, 3),
-        ),
-        (
-            "Adj. additive",
-            "adj_additive_model_fraction",
-            lambda value: fmt_float(value, 3),
-        ),
-        ("Residual", "residual_fraction", lambda value: fmt_float(value, 3)),
-        (
-            "Window alone",
-            "window_alone_fraction",
-            lambda value: fmt_float(value, 3),
-        ),
-        (
-            "Lineage alone",
-            "lineage_alone_fraction",
-            lambda value: fmt_float(value, 3),
-        ),
-        (
-            "Lineage | Window",
-            "lineage_given_window_fraction",
-            lambda value: fmt_float(value, 3),
-        ),
-        (
-            "Window | Lineage",
-            "window_given_lineage_fraction",
-            lambda value: fmt_float(value, 3),
-        ),
-        ("Weight cap", "weight_cap", lambda value: fmt_float(value, 2)),
-        ("Capped weights", "n_weights_capped", fmt_int),
-        ("Median boot SE", "median_boot_se", lambda value: fmt_float(value, 3)),
-        (
-            "Median CI width",
-            "median_ci_width",
-            lambda value: fmt_float(value, 3),
-        ),
-    ]
-
-    attributes = list(attribute_rows)
+    """Write the SIMD validation LaTeX appendix table."""
+    group_summary = read_table(paths, "simd_population_weighting_group_summary")
+    methods = ["equal_datazone", "population_weighted"]
+    display = group_summary.loc[group_summary["grouping_method"].isin(methods)].copy()
+    method_order = {method: idx for idx, method in enumerate(methods)}
+    display["_method_sort"] = display["grouping_method"].map(method_order)
+    display = display.sort_values(["_method_sort", "simd_group"])
+    display["rank_range"] = (
+        display["first_simd_rank"].map(fmt_int)
+        + "--"
+        + display["last_simd_rank"].map(fmt_int)
+    )
     rows = []
-    for metric_label, column, formatter in metrics:
-        rows.append(
-            [
-                metric_label,
-                *[
-                    formatter(attribute_rows[attribute][column])
-                    for attribute in attributes
-                ],
-            ]
-        )
+    addlinespace_after: set[int] = set()
+    method_groups = list(display.groupby("_method_sort", sort=False))
+    for method_idx, (_, group) in enumerate(method_groups):
+        group = group.sort_values("simd_group")
+        for row_idx, row in enumerate(group.itertuples(index=False)):
+            rows.append(
+                [
+                    str(row.grouping_method_label) if row_idx == 0 else "",
+                    row.simd_group,
+                    fmt_int(row.n_datazones),
+                    fmt_int(row.total_population),
+                    fmt_percent_points(row.pct_population),
+                    str(row.rank_range),
+                ]
+            )
+        if method_idx < len(method_groups) - 1 and rows:
+            addlinespace_after.add(len(rows) - 1)
 
     write_latex_table(
         paths.publication_table_dir / f"{TABLE_NAME}.tex",
-        **table_caption("tab:assortativity_variance_decomposition"),
+        **table_caption("tab:simd_population_weighting"),
         columns=[
-            "Metric",
-            *[
-                ATTRIBUTE_COLUMN_LABELS.get(attribute) or attribute
-                for attribute in attributes
-            ],
+            "Method",
+            "Group",
+            "Zones",
+            "Pop.",
+            "Share",
+            "Ranks",
         ],
         rows=rows,
-        column_spec="l" + "r" * len(attributes),
-        addlinespace_after={2, 9},
+        column_spec="lrrrrl",
+        addlinespace_after=addlinespace_after,
     )
 
 

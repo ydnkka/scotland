@@ -27,7 +27,6 @@ from analyses.genomic_networks.lib.figs import tab03 as genomic_tab03
 from analyses.genomic_networks.lib.figs import tab04 as genomic_tab04
 from analyses.genomic_networks.lib.figs import tab05 as genomic_tab05
 from analyses.genomic_networks.lib.figs import tab06 as genomic_tab06
-from analyses.genomic_networks.lib.figs import tab07 as genomic_tab07
 from analyses.genomic_networks.lib.figs.common import Paths as GenomicPaths
 from analyses.sse_detection.lib.figs import fig01 as sse_fig01
 from analyses.sse_detection.lib.figs import fig02 as sse_fig02
@@ -316,7 +315,6 @@ def table_builders() -> tuple[ArtifactBuilder, ...]:
         _genomic_table_builder(genomic_tab04.TABLE_NAME, genomic_tab04.build),
         _genomic_table_builder(genomic_tab05.TABLE_NAME, genomic_tab05.build),
         _genomic_table_builder(genomic_tab06.TABLE_NAME, genomic_tab06.build),
-        _genomic_table_builder(genomic_tab07.TABLE_NAME, genomic_tab07.build),
         _sse_table_builder(sse_tab01.TABLE_NAME, sse_tab01.build),
         _sse_table_builder(sse_tab02.TABLE_NAME, sse_tab02.build),
         _sse_table_builder(sse_tab03.TABLE_NAME, sse_tab03.build),

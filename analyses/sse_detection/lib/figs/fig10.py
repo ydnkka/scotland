@@ -150,7 +150,7 @@ def build(paths: Paths) -> dict[str, object]:
         if row_idx == 0:
             ax.tick_params(labelbottom=False)
         else:
-            ax.set_xlabel("Upper-tail p threshold")
+            ax.set_xlabel("$p$-value $\\leq$ cutoff")
         ax.set_ylabel("Minimum cluster size")
         ax.set_title(title)
         for y, row in enumerate(matrix.to_numpy()):
@@ -185,13 +185,13 @@ def build(paths: Paths) -> dict[str, object]:
         (
             axes[0, 1],
             "candidate_n",
-            f"Candidates at p <= {PRIMARY_ALPHA:.2f}",
+            f"Candidates at $p\\leq$ {PRIMARY_ALPHA:.2f}",
             "Candidates retained",
         ),
         (
             axes[1, 1],
             "baseline_jaccard",
-            f"Jaccard at p <= {PRIMARY_ALPHA:.2f}",
+            f"Jaccard at $p\\leq$ {PRIMARY_ALPHA:.2f}",
             "Jaccard similarity",
         ),
     )
