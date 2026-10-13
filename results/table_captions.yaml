@@ -8,38 +8,38 @@
 tab:sequence_composition_by_policy:
   source: analyses/genomic_networks/lib/figs/tab01.py
   short_caption: Characteristics of sequenced cases by policy period
-  caption: 'Characteristics of sequenced cases by epidemic era and policy period. Cells show unique sequences, n (%), within each period. SIMD quintiles run from most deprived (Q1) to least deprived (Q5). Counts of one to four are shown as <5.'
+  caption: 'Characteristics of sequenced cases by epidemic era and policy period. Cells give the number and percentage of unique sequences in each period, n (%). SIMD is the Scottish Index of Multiple Deprivation; quintiles run from most deprived (Q1) to least deprived (Q5). Counts of one to four are shown as <5.'
   columns:
     Attribute: Demographic, socioeconomic or geographic characteristic.
     Category: Category within the characteristic.
-    Policy-period subcolumns: Number and percentage of unique sequences in each category; grouped by epidemic era.
+    Policy period subcolumns: Number and percentage of unique sequences in each category; grouped by epidemic era.
   notes:
     - SIMD is the Scottish Index of Multiple Deprivation.
 
 tab:policy_denominators:
   source: analyses/genomic_networks/lib/figs/tab02.py
   short_caption: Positive tests and sequencing coverage by policy period
-  caption: 'Positive tests and sequencing coverage by epidemic era and policy period. Tests and Genomes are median counts per overlapping window. Coverage is the percentage of positive tests sequenced, reported as median (minimum--maximum) across windows.'
+  caption: 'Positive tests and sequencing coverage by epidemic era and policy period. Tests and Genomes give median counts across overlapping surveillance windows. Coverage is the percentage of positive tests that were sequenced, reported as the median with the minimum and maximum across windows.'
   columns:
     Epidemic era: Broad epidemic phase.
-    Period: Policy-period code.
+    Period: Policy period code.
     Windows: Number of overlapping time windows.
-    Tests: Median positive-test count per window.
-    Genomes: Median sequenced-genome count per window.
+    Tests: Median number of positive tests per window.
+    Genomes: Median number of sequenced genomes per window.
     Coverage: Median percentage of positive tests sequenced, with minimum and maximum.
 
 tab:cluster_period_summary:
   source: analyses/genomic_networks/lib/figs/tab03.py
   short_caption: Genomic cluster summary by policy period
-  caption: 'Genomic clusters by epidemic era and policy period. Cluster counts include non-singleton counts in parentheses; subsequent columns describe those clusters. Size and datasozes (zones) show median (90th percentile; maximum). Spatial distance and sampling span show median (interquartile range). Sequence totals count memberships across windows.'
+  caption: 'Genomic clusters by epidemic era and policy period. Counts in parentheses give the number of clusters with at least two sequences; the remaining columns describe these clusters. Size and Zones are reported as median (90th percentile; maximum), where Zones counts distinct datazones. Spatial distance and sampling span are reported as median (interquartile range). Sequence totals count appearances across windows.'
   columns:
     Epidemic era: Broad epidemic phase.
-    Period: Policy-period code.
+    Period: Policy period code.
     Sequences: Sequence memberships across windows; sequences can appear more than once.
     Clusters: Total clusters, with the number containing at least two sequences in parentheses.
-    Size: Sequences per non-singleton cluster; median (90th percentile; maximum).
-    Zones: Distinct datazones per non-singleton cluster; median (90th percentile; maximum).
-    Spatial (km): Median of cluster-level median residential distances, with interquartile range.
+    Size: Sequences per cluster containing at least two sequences; median (90th percentile; maximum).
+    Zones: Distinct datazones per cluster containing at least two sequences; median (90th percentile; maximum).
+    Spatial (km): Median and interquartile range of the median residential distances within clusters.
     Span (days): Time between first and last samples per cluster; median (interquartile range).
   notes:
     - Datazones are small statistical areas.
@@ -48,7 +48,7 @@ tab:cluster_period_summary:
 tab:assortativity_summary:
   source: analyses/genomic_networks/lib/figs/tab04.py
   short_caption: Compatibility assortativity across time windows
-  caption: 'Compatibility assortativity across overlapping windows. Positive r indicates that linked sequences share an attribute more often than expected by chance. Mean r accounts for window overlap and includes a 95% confidence interval; Window r shows the median (10th--90th percentiles).'
+  caption: 'Compatibility assortativity across overlapping surveillance windows. Positive r indicates more compatibility weight between sequences in the same attribute category than expected from the category shares of total weight. Mean r accounts for window overlap and includes a 95% confidence interval. Window r gives the median with the 10th and 90th percentiles.'
   columns:
     Attribute: Characteristic used to assess similarity between linked sequences.
     Windows: Total number of windows.
@@ -62,29 +62,29 @@ tab:assortativity_summary:
 tab:assortativity_variance_decomposition:
   source: analyses/genomic_networks/lib/figs/tab05.py
   short_caption: Sources of variation in compatibility assortativity
-  caption: 'Variation in compatibility assortativity explained by time window, viral lineage or both. A | B is the additional fraction explained by A after accounting for B. Estimates are precision-weighted, with the highest 10% of weights capped. HB denotes health board; LA, local authority.'
+  caption: 'Variation in compatibility assortativity explained by surveillance window, viral lineage or both. A | B is the additional fraction explained by A after accounting for B. More precise estimates receive greater weight, with weights capped at the 90th percentile. HB denotes health board; LA denotes local authority.'
   columns:
-    Metric: Sample count, explained-variation fraction or uncertainty summary.
+    Metric: Sample count, fraction of variation explained or uncertainty summary.
     Sex: Recorded sex.
-    Age band: Age-band classification used in the assortativity analysis.
-    Age group: Age-group classification used in the assortativity analysis.
+    Age band: Age band classification used in the assortativity analysis.
+    Age group: Age group classification used in the assortativity analysis.
     SIMD: Scottish Index of Multiple Deprivation quintile.
     Urban/rural class: Residential urban/rural classification.
     HB: Health board.
     LA: Local authority.
   notes:
-    - Rows counts window-lineage combinations; Windows and Lineages count distinct groups.
+    - Rows counts combinations of window and lineage; Windows and Lineages count distinct groups.
     - Additive model is the fraction explained jointly by window and lineage; Adj. additive adjusts for model complexity.
     - Residual is the unexplained fraction; Window alone and Lineage alone use one grouping factor.
-    - Weight cap is the upper precision-weight limit; Capped weights counts estimates affected.
-    - Median boot SE is the median bootstrap standard error; Median CI width is the median confidence-interval width.
+    - Weight cap is the largest permitted weight; Capped weights counts estimates affected.
+    - Median boot SE is the median bootstrap standard error; Median CI width is the median width of the confidence intervals.
 
 tab:simd_population_weighting:
   source: analyses/genomic_networks/lib/figs/tab06.py
-  short_caption: Area-based and population-weighted deprivation quintiles
-  caption: 'Comparison of area-based and population-weighted Scottish Index of Multiple Deprivation (SIMD) quintiles. Groups contain approximately equal numbers of datazones or people, respectively. Group 1 is most deprived; group 5 is least deprived.'
+  short_caption: Deprivation quintiles based on areas or population
+  caption: 'Comparison of Scottish Index of Multiple Deprivation (SIMD) quintiles containing approximately equal numbers of datazones or people. Datazones are small statistical areas. Group 1 is most deprived; group 5 is least deprived.'
   columns:
-    Method: Equal-datazone or population-weighted grouping.
+    Method: Grouping by number of datazones or by population.
     Group: Deprivation quintile, from 1 (most deprived) to 5 (least deprived).
     Zones: Number of datazones (small statistical areas).
     Pop.: Total population in the quintile.
@@ -93,36 +93,36 @@ tab:simd_population_weighting:
 
 tab:bayesian_model_specifications:
   source: analyses/sse_detection/lib/figs/tab01.py
-  short_caption: Samples and specifications for Bayesian models
-  caption: 'Samples used in Bayesian models. Mixing rows represent clusters; composition rows represent sequence appearances across windows. Candidate outcomes show n (%); scores show mean (standard deviation). Expanded models add three surveillance covariates. All models include policy-period and clade varying intercepts.'
+  short_caption: Data and specifications for Bayesian models
+  caption: 'Data used to fit the Bayesian models. Mixing models use one observation per cluster; composition models use one observation per sequence record in each window. CSC denotes a candidate superspreading cluster. For CSC status, values give the number and percentage of observations assigned to a CSC; scores are reported as mean (standard deviation). Expanded models add three surveillance measures. All models allow baseline outcomes to vary by policy period and clade.'
   columns:
-    Domain: Cluster-level mixing or sequence-level composition analysis.
-    Family: Logistic model for candidate status or linear model for scores.
-    Outcome: Superspreading-compatible candidate status, burst score or burden score.
-    Predictor scale: Categorical composition, observed entropy per 0.1, or null-standardised entropy per SD.
-    Model: Primary predictors alone, or expanded adjustment for surveillance covariates.
+    Domain: Diversity within clusters (mixing) or attributes of sequence records (composition).
+    Family: Logistic model for CSC status or linear model for screening scores.
+    Outcome: Candidate superspreading cluster status, local burst score or onward burden score.
+    Predictor scale: Category contrasts for composition, or an increase of 0.1 in observed entropy or one unit in null-standardised entropy.
+    Model: Primary model or expanded model with additional adjustment for surveillance measures.
     Fitted rows: Number of observations used in the fitted model.
-    Fitted outcome: Candidate count and percentage, or score mean and standard deviation.
+    Fitted outcome: Number and percentage of observations assigned to a CSC, or score mean and standard deviation.
   notes:
-    - Entropy measures diversity; null standardisation expresses departure from random expectation in SD units.
-    - Expanded models add window sequencing proportion, cumulative sequencing proportion and cumulative cases per person.
+    - Entropy measures diversity; null standardisation expresses the difference from the simulated mean in units of the simulated standard deviation.
+    - Expanded models add window sequencing proportion, datazone cumulative sequencing proportion and datazone cumulative incidence.
     - A clade is a group of related viruses.
 
 tab:bayesian_model_diagnostics:
   source: analyses/sse_detection/lib/figs/tab02.py
   short_caption: Sampling checks for Bayesian models
   caption_is_latex: true
-  caption: 'Sampling diagnostics for Bayesian models. Status indicates whether all checks passed. Div. counts post-tuning divergences; BFMI measures sampling efficiency; Rhat measures between-chain agreement; ESS is effective sample size. Diagnostic thresholds are in Table~\ref{tab:app_bayes_diagnostic_guide}; model definitions are in Table~\ref{tab:ch6_model_terminology}.'
+  caption: 'Checks of Bayesian model fitting. Status indicates whether all checks passed. Div. counts divergent transitions after tuning; BFMI assesses sampling efficiency; Rhat measures agreement between sampling chains. Effective sample size (ESS) estimates the equivalent number of independent draws. Diagnostic thresholds are in Table~\ref{tab:app_bayes_diagnostic_guide}; model definitions are in Table~\ref{tab:ch6_model_terminology}.'
   columns:
     Domain: Mixing or composition analysis.
     Family: Logistic or linear model.
-    Outcome: Candidate status, burst score or burden score.
+    Outcome: Candidate superspreading cluster status, local burst score or onward burden score.
     Scale: Observed or null-standardised mixing entropy; blank for composition.
     Model: Primary or expanded model.
     Status: OK if all diagnostic checks passed; Warning if at least one failed.
-    Div.: Number of post-tuning sampler divergences.
+    Div.: Number of divergent transitions after tuning.
     Min BFMI: Minimum Bayesian fraction of missing information across chains.
-    Max Rhat: Maximum between-chain convergence statistic across parameters.
+    Max Rhat: Largest convergence statistic across parameters, measuring agreement between sampling chains.
     Min bulk ESS: Minimum effective sample size for the centre of the posterior.
     Min tail ESS: Minimum effective sample size for the posterior tails.
     Max tree depth: Maximum sampler tree depth, indicating work per draw.
@@ -131,76 +131,76 @@ tab:bayesian_fixed_effects_focal:
   source: analyses/sse_detection/lib/figs/tab03.py
   short_caption: Associations from expanded Bayesian models
   caption_is_latex: true
-  caption: 'Selected associations from expanded Bayesian models, with 95\% highest density intervals. Logistic effects are candidate-status odds ratios; linear effects are mean score differences. Mixing effects are per unit of null-standardised entropy; composition effects compare categories with their reference groups. Adjustments are in Table~\ref{tab:bayesian_model_specifications}.'
+  caption: 'Selected associations from expanded Bayesian models, with 95\% highest density intervals. Logistic estimates are odds ratios for candidate superspreading cluster (CSC) status; linear estimates are differences in mean screening scores. Mixing estimates describe an increase of one unit in null-standardised entropy; composition estimates compare categories with their reference groups. Model specifications are in Table~\ref{tab:bayesian_model_specifications}.'
   columns:
     Domain: Mixing or composition analysis.
     Family: Logistic or linear model.
-    Outcome: Candidate status, burst score or burden score.
+    Outcome: Candidate superspreading cluster status, local burst score or onward burden score.
     Scale: Null-standardised mixing entropy; blank for composition.
-    Model: Expanded model including surveillance covariates.
-    Term: Mixing-entropy predictor or categorical contrast.
+    Model: Expanded model including surveillance measures.
+    Term: Entropy predictor or category contrast.
     Effect (95% HDI): Posterior estimate and 95% highest density interval; null value is 1 for odds ratios and 0 for score differences.
     Direction: Posterior probability of the indicated association direction.
-    Diagnostic: Sampling-check status; see the diagnostic guide in the thesis.
+    Diagnostic: Results of sampling checks; see the diagnostic guide in the thesis.
 
 tab:bayesian_fixed_effects_intercepts:
   source: analyses/sse_detection/lib/figs/tab04.py
   short_caption: Baseline estimates from Bayesian models
-  caption: 'Baseline estimates from primary and expanded Bayesian models, with 95% highest density intervals. Candidate intercepts are baseline odds; score intercepts are expected scores. Numerical predictors and varying intercepts are set to zero, and categories to reference levels. Composition estimates appear once per outcome.'
+  caption: 'Baseline estimates from primary and expanded Bayesian models, with 95% highest density intervals. Intercepts give baseline odds for candidate superspreading cluster (CSC) status and expected values for screening scores. Continuous predictors and varying intercepts are set to zero, and categories to their reference groups. Composition estimates appear once per outcome.'
   columns:
-    Outcome: Candidate status, burst score or burden score.
+    Outcome: Candidate superspreading cluster status, local burst score or onward burden score.
     Mixing scale: Observed entropy or entropy standardised against random expectation.
     Mixing Model Intercept / Primary: Baseline from the primary mixing model.
-    Mixing Model Intercept / Expanded: Baseline from the surveillance-adjusted mixing model.
+    Mixing Model Intercept / Expanded: Baseline from the mixing model adjusted for surveillance measures.
     Composition Model Intercept / Primary: Baseline from the primary composition model.
-    Composition Model Intercept / Expanded: Baseline from the surveillance-adjusted composition model.
+    Composition Model Intercept / Expanded: Baseline from the composition model adjusted for surveillance measures.
 
 tab:bayesian_fixed_effects_full:
   source: analyses/sse_detection/lib/figs/tab05.py
   short_caption: Complete Bayesian model estimates
-  caption: 'Complete Bayesian estimates for intercepts, predictors and group-level baseline differences, with 95% highest density intervals. P(+) and P(-) are posterior probabilities of positive and negative effects. Direction gives the more probable direction; Band summarises its probability. Status reports sampling checks.'
+  caption: 'Complete Bayesian estimates for intercepts, predictors and differences in baseline outcomes between groups, with 95% highest density intervals. P(+) and P(-) are posterior probabilities of positive and negative associations. Direction gives the more probable direction; Band summarises its probability. Status reports the results of sampling checks.'
   columns:
     Domain; family: Analysis domain and model family.
-    Outcome: Candidate status, burst score or burden score.
+    Outcome: Candidate superspreading cluster status, local burst score or onward burden score.
     Scale: Observed or null-standardised mixing entropy; blank for composition.
     Model: Primary or expanded model.
-    Parameter: Predictor, intercept or group-level baseline difference.
+    Parameter: Predictor, intercept or difference in baseline outcome for a group.
     Term type: Classification of the parameter.
     Effect (95% HDI): Posterior estimate with 95% highest density interval.
     Effect scale: Scale on which the estimate and interval are reported.
-    P(+): Posterior probability of higher odds or a positive score effect.
-    P(-): Posterior probability of lower odds or a negative score effect.
+    P(+): Posterior probability of higher odds or a positive difference in mean score.
+    P(-): Posterior probability of lower odds or a negative difference in mean score.
     Direction: More probable direction and its posterior probability.
     Band: Weak or uncertain (<0.90), moderate (0.90 to <0.95), strong (0.95 to <0.975), or very strong (at least 0.975).
     Status: Whether sampling diagnostics passed.
   notes:
-    - Group-level baseline differences are for policy period and clade.
+    - Differences in baseline outcomes between groups are for policy period and clade.
 
 tab:bayesian_random_effect_sds:
   source: analyses/sse_detection/lib/figs/tab06.py
-  short_caption: Group-level and residual variation in Bayesian models
-  caption: 'Policy-period, clade and residual variation in Bayesian models, with 95% highest density intervals. Logistic SDs are expressed as odds multipliers. Variance shares compare squared policy-period and clade SDs before conversion to odds; rank 1 denotes the larger component.'
+  short_caption: Variation between groups and residual variation in Bayesian models
+  caption: 'Variation in baseline outcomes between policy periods and clades, and residual variation, with 95% highest density intervals. Standard deviations (SDs) for logistic models are expressed as odds multipliers. Variance shares compare squared SDs for policy period and clade on the original scale, before conversion to odds multipliers; rank 1 denotes the larger component.'
   columns:
     Domain: Mixing or composition analysis.
     Family: Logistic or linear model.
-    Outcome: Candidate status, burst score or burden score.
+    Outcome: Candidate superspreading cluster status, local burst score or onward burden score.
     Scale: Observed or null-standardised mixing entropy; blank for composition.
     Model: Primary or expanded model.
-    Component: Group-level variation or linear-model residual variation.
+    Component: Variation between groups or residual variation in a linear model.
     Group: Policy period or clade, where applicable.
-    SD (95% HDI): Standard-deviation estimate and 95% highest density interval, on the reported effect scale.
+    SD (95% HDI): Standard deviation estimate and 95% highest density interval, on the reported effect scale.
     Effect scale: Native score units or odds multipliers for logistic models.
-    Variance share: Component's squared native-scale SD as a percentage of the policy-period and clade total.
-    Rank: Descending rank of group-level SD within the model.
-    Diagnostic: Sampling-check status.
+    Variance share: Squared SD of the component on the original scale, as a percentage of the total for policy period and clade.
+    Rank: Rank of the SD for each grouping factor within the model, from largest to smallest.
+    Diagnostic: Results of sampling checks.
 
 tab:size_overview:
   source: analyses/sse_detection/lib/figs/tab07.py
   short_caption: Cluster sizes and sequence records
-  caption: 'Cluster sizes and sequence records in the primary comparison. CSC denotes superspreading-compatible candidates; background comprises other eligible clusters. Records count sequence appearances across windows. Cluster sizes are reported as median (interquartile range).'
+  caption: 'Cluster sizes and sequence records in the primary comparison. CSC denotes a candidate superspreading cluster; background includes all other eligible clusters. Records count appearances of sequences across retained windows. Cluster sizes are reported as median (interquartile range).'
   columns:
-    Size band: Cluster-size category; All combines all eligible sizes.
-    Group: Candidate (CSC) or background cluster.
+    Size band: Category of cluster size; All combines all eligible sizes.
+    Group: Candidate superspreading cluster (CSC) or background cluster.
     Clusters: Number of clusters in the group and size band.
     Records: Number of sequence appearances across windows; sequences can recur.
     Median (IQR): Median cluster size with the 25th and 75th percentiles.
@@ -209,10 +209,10 @@ tab:sensitivity_sizes:
   source: analyses/sse_detection/lib/figs/tab08.py
   short_caption: Cluster sizes under alternative screening rules
   caption_is_latex: true
-  caption: 'Cluster counts and sizes under alternative screening rules. CSC denotes superspreading-compatible candidates. Primary uses $p\leq0.05$ and at least six sequences per cluster. Alternative p cutoffs retain this minimum; size restrictions retain primary candidate labels. Records count sequence appearances across windows.'
+  caption: 'Cluster counts and sizes under alternative screening rules. CSC denotes a candidate superspreading cluster. The primary comparison uses $p\leq0.05$ and at least six sequences per cluster. Other cutoffs retain this minimum size and classify all remaining eligible clusters as background. Size restrictions retain primary labels and apply to both groups. Records count appearances of sequences across retained windows.'
   columns:
-    Comparison: Primary analysis, alternative p cutoff or cluster-size restriction.
-    Group: Candidate (CSC) or other eligible (background) cluster.
+    Comparison: Primary analysis, alternative p cutoff or restriction on cluster size.
+    Group: Candidate superspreading cluster (CSC) or other eligible cluster (background).
     Clusters: Number of clusters under the comparison rule.
     Records: Number of sequence appearances across windows.
     Median size: Median number of sequences per cluster.
@@ -223,30 +223,30 @@ tab:sensitivity_sizes:
 tab:route_sizes:
   source: analyses/sse_detection/lib/figs/tab09.py
   short_caption: Cluster sizes by screening route
-  caption: 'Cluster sizes by screening route (burst, burden or both). Background clusters were not flagged; burden background is the subset with positive observed burden. Groups overlap. Records count sequence appearances across windows; sizes show median (interquartile range).'
+  caption: 'Cluster sizes for candidates selected for local burst only, onward burden only or both scores. Background includes all other eligible clusters; burden background is the subset with positive observed downstream burden. Records count appearances of sequences across retained windows. Sizes are reported as median (interquartile range).'
   columns:
     Group: Screening route or background comparison group.
     Clusters: Number of clusters in the group.
     Records: Number of sequence appearances across windows.
     Median (IQR): Median cluster size with the 25th and 75th percentiles.
   notes:
-    - Burst reflects cluster size and the proportion of sequences absent from earlier linked clusters.
-    - Burden measures new sequences in later linked clusters.
+    - Local burst reflects relative cluster size and, when earlier links are observed, the proportion of sequences absent from earlier linked clusters.
+    - Onward burden measures additional sampled membership in later linked clusters relative to the starting cluster size.
     - Both axes means both screening criteria were met.
-    - Burden background is the comparison group for burden candidates.
+    - Burden background is the comparison group for candidates selected for onward burden only or both scores.
 
 tab:size_composition:
   source: analyses/sse_detection/lib/figs/tab10.py
-  short_caption: Sequence characteristics by cluster size
+  short_caption: Population composition by cluster size
   caption_is_latex: true
-  caption: 'Sequence characteristics by cluster-size band for superspreading-compatible candidates (CSC) and other eligible clusters (BG). Values are percentages of sequence records; $\Delta$ is CSC minus BG in percentage points. Denominators are in Table~\ref{tab:size_overview}. SIMD quintiles run from most deprived (Q1) to least deprived (Q5).'
+  caption: 'Population composition by cluster size for candidate superspreading clusters (CSC) and background clusters (BG). Values give category percentages among pooled sequence records in each group and size band; $\Delta$ is CSC minus BG in percentage points. Record counts are in Table~\ref{tab:size_overview}. SIMD is the Scottish Index of Multiple Deprivation; quintiles run from most deprived (Q1) to least deprived (Q5).'
   columns:
     Category: Category within each demographic, socioeconomic or geographic attribute.
     CSC: Percentage of candidate sequence records in the category, within the size band.
     BG: Percentage of background sequence records in the category, within the size band.
     Delta: Candidate minus background percentage, in percentage points.
   notes:
-    - Each cluster-size band has CSC, BG and Delta subcolumns.
+    - Each size band has CSC, BG and Delta subcolumns.
     - Records count sequence appearances across windows; sequences can recur.
     - All five attributes have complete data.
     - SIMD is the Scottish Index of Multiple Deprivation.
