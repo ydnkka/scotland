@@ -135,6 +135,73 @@ def plot_policy_stacked_bars(
         add_panel_labels(ax, label=panel)
 
 
+def policy_legend_handles(policy_columns: list[object]) -> list[Patch]:
+    legend_ncol = 3
+    legend_columns = [
+        era
+        for column in range(legend_ncol)
+        for era in policy_columns[column::legend_ncol]
+    ]
+    return [
+        Patch(
+            facecolor=POLICY_COLORS.get(str(era), "#999999"),
+            edgecolor=POLICY_COLORS.get(str(era), "#999999"),
+            label=POLICY_LABELS.get(str(era), str(era).capitalize().replace("_", " ")),
+        )
+        for era in legend_columns
+    ]
+
+
+def build_age_band_appendix(paths: Paths, sequence: pd.DataFrame) -> None:
+    age_band = sequence_policy_share_table(sequence, "age_band")
+    if age_band.empty:
+        return
+
+    fig, ax = new_figure(
+        width="double",
+        height_in=max(3.6, 0.35 * len(age_band) + 2.0),
+        constrained_layout=True,
+    )
+    plot_policy_stacked_bars(
+        ax,
+        age_band,
+        title="Age band",
+        wrap_width=14,
+    )
+    ax.set_xlabel("Proportion of sequences by epidemic era")
+
+    age_band_data = sequence.loc[sequence["attribute"].eq("age_band")]
+    policy_columns = ordered_policy_values(
+        age_band_data.loc[age_band_data["n_sequences"].fillna(0).gt(0), "policy_era"],
+        column="policy_era",
+    )
+    fig.legend(
+        title="Epidemic era in chronological order",
+        handles=policy_legend_handles(policy_columns),
+        loc="outside upper center",
+        ncol=3,
+        columnspacing=1.2,
+        handlelength=1.5,
+        labelspacing=0.35,
+        frameon=False,
+    )
+    stringency_mappable = ScalarMappable(
+        norm=POLICY_STRINGENCY_NORM,
+        cmap=POLICY_STRINGENCY_CMAP,
+    )
+    stringency_colorbar = fig.colorbar(
+        stringency_mappable,
+        ax=ax,
+        orientation="horizontal",
+        location="bottom",
+        ticks=[0, 25, 50, 75, 100],
+        shrink=0.55,
+        aspect=45,
+    )
+    stringency_colorbar.set_label("Mean restriction stringency")
+    styled_save_figure(fig, paths, f"{FIGURE_NAME}_app")
+
+
 def build(paths: Paths) -> None:
     sequence = read_table(paths, "sequence_composition_by_policy")
     sex = sequence_policy_share_table(sequence, "sex")
@@ -211,19 +278,7 @@ def build(paths: Paths) -> None:
         column="policy_era",
     )
     legend_ncol = 3
-    legend_columns = [
-        era
-        for column in range(legend_ncol)
-        for era in policy_columns[column::legend_ncol]
-    ]
-    handles = [
-        Patch(
-            facecolor=POLICY_COLORS.get(str(era), "#999999"),
-            edgecolor=POLICY_COLORS.get(str(era), "#999999"),
-            label=POLICY_LABELS.get(str(era), str(era).capitalize().replace("_", " ")),
-        )
-        for era in legend_columns
-    ]
+    handles = policy_legend_handles(policy_columns)
     axes["health_left"].set_xlabel("Proportion of sequences by epidemic era")
     axes["health_right"].set_xlabel("Proportion of sequences by epidemic era")
     fig.legend(
@@ -253,6 +308,7 @@ def build(paths: Paths) -> None:
     )
     stringency_colorbar.set_label("Mean restriction stringency")
     styled_save_figure(fig, paths, FIGURE_NAME)
+    build_age_band_appendix(paths, sequence)
 
 
 def main() -> int:
@@ -261,7 +317,7 @@ def main() -> int:
     args = parser.parse_args()
     paths = paths_from_args(args)
     build(paths)
-    print(f"Wrote {FIGURE_NAME} to {paths.figure_dir}")
+    print(f"Wrote {FIGURE_NAME} and {FIGURE_NAME}_app to {paths.figure_dir}")
     return 0
 
 
