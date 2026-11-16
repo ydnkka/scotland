@@ -7,7 +7,7 @@ import argparse
 import numpy as np
 import pandas as pd
 from matplotlib.colors import to_rgb
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Patch, Rectangle
 
 from ..sse.io import write_table
 from .common import (
@@ -144,15 +144,17 @@ def draw_role_distribution(
 ) -> None:
     add_policy_bands(ax, policy_context)
     colors = [ROLE_COLORS.get(role, "#bab0ac") for role in role_pivot.columns]
+    totals = role_pivot.sum(axis=1).replace(0, np.nan)
+    role_proportions = role_pivot.div(totals, axis=0).fillna(0)
     ax.stackplot(
-        role_pivot.index,
-        role_pivot.T.to_numpy(),
-        labels=role_pivot.columns,
+        role_proportions.index,
+        role_proportions.T.to_numpy(),
+        labels=role_proportions.columns,
         colors=colors,
         linewidth=0,
     )
-    ax.set_ylabel("Clusters")
-    ax.legend(loc="upper left")
+    ax.set_ylim(0, 1)
+    ax.set_ylabel("Proportion")
     date_axis(ax)
 
 
@@ -241,6 +243,15 @@ def build(paths: Paths) -> dict[str, object]:
     draw_component_size_distribution(axes[0, 1], components)
     draw_role_distribution(axes[1, 0], role_pivot, policy_context)
     draw_role_count_grid(axes[1, 1], table)
+    fig.legend(
+        handles=[
+            Patch(facecolor=ROLE_COLORS.get(role, "#bab0ac"), label=role)
+            for role in role_pivot.columns
+        ],
+        loc="outside lower center",
+        ncols=3,
+        frameon=False,
+    )
 
     add_panel_labels(axes.ravel())
     outputs = styled_save_figure(fig, paths, FIGURE_NAME)
