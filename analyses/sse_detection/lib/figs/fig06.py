@@ -31,9 +31,9 @@ CANDIDATE_COLORS = {
 
 TIER_DISPLAY_NAMES = {
     "possible_review": "Possible Review",
-    "high_priority_burst": "Burst",
-    "high_priority_burden": "Burden",
-    "high_priority_both_axes": "Both Axes",
+    "high_priority_burst": "High-priority local burst",
+    "high_priority_burden": "High-priority onward burden",
+    "high_priority_both_axes": "High-priority on both axes",
 }
 
 
@@ -42,7 +42,7 @@ def build_selection_funnel(nodes: pd.DataFrame) -> pd.DataFrame:
     rows = [
         ("All transition-network clusters", len(nodes)),
         (
-            f"Size eligible (cluster size >= {MIN_CLUSTER_SIZE})",
+            f"Eligible clusters (size >= {MIN_CLUSTER_SIZE})",
             int(nodes["sse_tested"].fillna(False).sum()),
         ),
         (
@@ -52,7 +52,7 @@ def build_selection_funnel(nodes: pd.DataFrame) -> pd.DataFrame:
         ("Possible review", int(tier.eq("possible_review").sum())),
         ("High-priority local burst", int(tier.eq("high_priority_burst").sum())),
         ("High-priority onward burden", int(tier.eq("high_priority_burden").sum())),
-        ("High priority on both axes", int(tier.eq("high_priority_both_axes").sum())),
+        ("High-priority on both axes", int(tier.eq("high_priority_both_axes").sum())),
     ]
     out = pd.DataFrame(rows, columns=["stage", "n"])
     out["order"] = np.arange(len(out))
