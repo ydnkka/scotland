@@ -65,6 +65,38 @@ selects the publication LaTeX destination. Individual table modules accept
 `--publication-table-dir` for that destination (surveillance CSV/parquet modules
 instead use `--table-dir`).
 
+## Supplementary CSV exports
+
+Generate `results/supplements/full_bayesian_estimates.csv` from the saved
+consolidated Bayesian results:
+
+```bash
+python -m results.make_supplements
+```
+
+The export reuses the full Bayesian reporting-table builder in
+`analyses/sse_detection/lib/figs/tab05.py`, preserving its columns, values, labels,
+and row order. It includes fixed effects, intercepts, and individual random
+intercepts across the saved model specifications. With the current inputs, it
+contains 801 rows across 18 models.
+
+After fitting or updating model outputs, refresh the consolidated tables first:
+
+```bash
+python -m analyses.sse_detection.combine_bayesian_results
+python -m results.make_supplements
+```
+
+To use another Bayesian output root or export destination:
+
+```bash
+python -m results.make_supplements --bayesian-result-dir path/to/bayesian_outputs --output-dir path/to/supplements
+```
+
+The input root must contain `consolidated_tables/summary_table_2_estimates.csv`.
+The command creates the output directory as needed and prints the exported row
+count and path.
+
 ## Editing table captions
 
 All publication table captions live in [`table_captions.yaml`](table_captions.yaml),

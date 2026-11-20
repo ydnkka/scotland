@@ -3,7 +3,7 @@ Mixing,Logistic,Candidate,Observed,Primary,Age,Mixing Entropy,1.1058342195970503
 Mixing,Logistic,Candidate,Observed,Primary,Health board,Mixing Entropy,1.1323555267062837,1.0778841508846315,1.1853048513203654,Odds Ratio,1.0,0.0,Higher Odds,1.0,Very Strong,OK
 Mixing,Logistic,Candidate,Observed,Primary,SIMD,Mixing Entropy,1.29822766543369,1.22140275816017,1.3909681284637805,Odds Ratio,1.0,0.0,Higher Odds,1.0,Very Strong,OK
 Mixing,Logistic,Candidate,Observed,Primary,Sex,Mixing Entropy,1.0569633154558846,0.991734349899582,1.1388283833246218,Odds Ratio,0.95675,0.04325,Higher Odds,0.95675,Strong,OK
-Mixing,Logistic,Candidate,Observed,Primary,Urban/Rural,Mixing Entropy,1.0792863114877027,1.0253151205244289,1.1388283833246218,Odds Ratio,0.997875,0.002125,Higher Odds,0.997875,Very Strong,OK
+Mixing,Logistic,Candidate,Observed,Primary,Urban/rural class,Mixing Entropy,1.0792863114877027,1.0253151205244289,1.1388283833246218,Odds Ratio,0.997875,0.002125,Higher Odds,0.997875,Very Strong,OK
 Mixing,Logistic,Candidate,Observed,Primary,Intercept,Intercept,0.0014855057385891,0.0006755387751938,0.0033459654574712,Odds,0.0,1.0,Lower Odds,1.0,Very Strong,OK
 Mixing,Logistic,Candidate,Observed,Primary,Clade: 19B,Random Intercept,0.9940179640539352,0.5488116360940264,1.803988415397857,Multiplicative Odds,0.489375,0.510625,Lower Odds,0.510625,Weak Or Uncertain,OK
 Mixing,Logistic,Candidate,Observed,Primary,Clade: 20A,Random Intercept,1.0449823548884438,0.6187833918061408,1.8964808793049517,Multiplicative Odds,0.561375,0.438625,Higher Odds,0.561375,Weak Or Uncertain,OK
@@ -39,7 +39,7 @@ Mixing,Logistic,Candidate,Observed,Expanded,Age,Mixing Entropy,1.106497919218784
 Mixing,Logistic,Candidate,Observed,Expanded,Health board,Mixing Entropy,1.1469428370695822,1.0908966797182778,1.2092495976572517,Odds Ratio,1.0,0.0,Higher Odds,1.0,Very Strong,OK
 Mixing,Logistic,Candidate,Observed,Expanded,SIMD,Mixing Entropy,1.2943388186242375,1.2092495976572517,1.3909681284637805,Odds Ratio,1.0,0.0,Higher Odds,1.0,Very Strong,OK
 Mixing,Logistic,Candidate,Observed,Expanded,Sex,Mixing Entropy,1.0499053318899962,0.9831436846349096,1.1274968515793755,Odds Ratio,0.922,0.078,Higher Odds,0.922,Moderate,OK
-Mixing,Logistic,Candidate,Observed,Expanded,Urban/Rural,Mixing Entropy,1.083395401798342,1.030454533953517,1.1388283833246218,Odds Ratio,0.998875,0.001125,Higher Odds,0.998875,Very Strong,OK
+Mixing,Logistic,Candidate,Observed,Expanded,Urban/rural class,Mixing Entropy,1.083395401798342,1.030454533953517,1.1388283833246218,Odds Ratio,0.998875,0.001125,Higher Odds,0.998875,Very Strong,OK
 Mixing,Logistic,Candidate,Observed,Expanded,Cumulative Sequencing Proportion,Continuous Adjuster,0.9380049995307296,0.8187307530779818,1.0597149957102876,Odds Ratio,0.16425,0.83575,Lower Odds,0.83575,Weak Or Uncertain,OK
 Mixing,Logistic,Candidate,Observed,Expanded,Cumulative incidence,Continuous Adjuster,0.894938748929031,0.7046880897187134,1.1018603736210106,Odds Ratio,0.15975,0.84025,Lower Odds,0.84025,Weak Or Uncertain,OK
 Mixing,Logistic,Candidate,Observed,Expanded,Window Sequencing Proportion,Continuous Adjuster,1.1560395702680215,1.0449823548884438,1.2840254166877414,Odds Ratio,0.99725,0.00275,Higher Odds,0.99725,Very Strong,OK
@@ -78,7 +78,7 @@ Mixing,Logistic,Candidate,Null Standardised,Primary,Age,Mixing Entropy,0.8505262
 Mixing,Logistic,Candidate,Null Standardised,Primary,Health board,Mixing Entropy,0.8683156312039567,0.8436648165963837,0.8958341352965282,Odds Ratio,0.0,1.0,Lower Odds,1.0,Very Strong,OK
 Mixing,Logistic,Candidate,Null Standardised,Primary,SIMD,Mixing Entropy,0.9609816162572236,0.9231163463866358,1.0010005001667084,Odds Ratio,0.027375,0.972625,Lower Odds,0.972625,Strong,OK
 Mixing,Logistic,Candidate,Null Standardised,Primary,Sex,Mixing Entropy,0.9366927113474552,0.8958341352965282,0.9831436846349096,Odds Ratio,0.0055,0.9945,Lower Odds,0.9945,Very Strong,OK
-Mixing,Logistic,Candidate,Null Standardised,Primary,Urban/Rural,Mixing Entropy,1.0703653084787743,1.017145322325241,1.1274968515793755,Odds Ratio,0.997,0.003,Higher Odds,0.997,Very Strong,OK
+Mixing,Logistic,Candidate,Null Standardised,Primary,Urban/rural class,Mixing Entropy,1.0703653084787743,1.017145322325241,1.1274968515793755,Odds Ratio,0.997,0.003,Higher Odds,0.997,Very Strong,OK
 Mixing,Logistic,Candidate,Null Standardised,Primary,Intercept,Intercept,0.0340815192187373,0.0247235264703393,0.0450492023935578,Odds,0.0,1.0,Lower Odds,1.0,Very Strong,OK
 Mixing,Logistic,Candidate,Null Standardised,Primary,Clade: 19B,Random Intercept,0.9920319148370608,0.5886049696783552,1.6160744021928934,Multiplicative Odds,0.489625,0.510375,Lower Odds,0.510375,Weak Or Uncertain,OK
 Mixing,Logistic,Candidate,Null Standardised,Primary,Clade: 20A,Random Intercept,1.046027859908717,0.6570468198150567,1.8221188003905089,Multiplicative Odds,0.57,0.43,Higher Odds,0.57,Weak Or Uncertain,OK
@@ -114,7 +114,7 @@ Mixing,Logistic,Candidate,Null Standardised,Expanded,Age,Mixing Entropy,0.848657
 Mixing,Logistic,Candidate,Null Standardised,Expanded,Health board,Mixing Entropy,0.8677080229498135,0.8436648165963837,0.8958341352965282,Odds Ratio,0.0,1.0,Lower Odds,1.0,Very Strong,OK
 Mixing,Logistic,Candidate,Null Standardised,Expanded,SIMD,Mixing Entropy,0.9590615737072732,0.922193691444608,0.9991503611476676,Odds Ratio,0.023,0.977,Lower Odds,0.977,Very Strong,OK
 Mixing,Logistic,Candidate,Null Standardised,Expanded,Sex,Mixing Entropy,0.9375361142620496,0.8958341352965282,0.9841273200552852,Odds Ratio,0.003875,0.996125,Lower Odds,0.996125,Very Strong,OK
-Mixing,Logistic,Candidate,Null Standardised,Expanded,Urban/Rural,Mixing Entropy,1.0689747376446328,1.0140984589384925,1.1274968515793755,Odds Ratio,0.99375,0.00625,Higher Odds,0.99375,Very Strong,OK
+Mixing,Logistic,Candidate,Null Standardised,Expanded,Urban/rural class,Mixing Entropy,1.0689747376446328,1.0140984589384925,1.1274968515793755,Odds Ratio,0.99375,0.00625,Higher Odds,0.99375,Very Strong,OK
 Mixing,Logistic,Candidate,Null Standardised,Expanded,Cumulative Sequencing Proportion,Continuous Adjuster,0.9569539574730468,0.835270211411272,1.078962574157284,Odds Ratio,0.248125,0.751875,Lower Odds,0.751875,Weak Or Uncertain,OK
 Mixing,Logistic,Candidate,Null Standardised,Expanded,Cumulative incidence,Continuous Adjuster,1.003004504503377,0.8187307530779818,1.2092495976572517,Odds Ratio,0.526,0.474,Higher Odds,0.526,Weak Or Uncertain,OK
 Mixing,Logistic,Candidate,Null Standardised,Expanded,Window Sequencing Proportion,Continuous Adjuster,0.970154443554126,0.8780954309205613,1.0725081812542163,Odds Ratio,0.27425,0.72575,Lower Odds,0.72575,Weak Or Uncertain,OK
@@ -149,298 +149,298 @@ Mixing,Logistic,Candidate,Null Standardised,Expanded,Policy Period: P3,Random In
 Mixing,Logistic,Candidate,Null Standardised,Expanded,Policy Period: PR,Random Intercept,1.0273678027634894,0.8436648165963837,1.336427488025472,Multiplicative Odds,0.585375,0.414625,Higher Odds,0.585375,Weak Or Uncertain,OK
 Mixing,Logistic,Candidate,Null Standardised,Expanded,Policy Period: SL,Random Intercept,0.986097544262862,0.7408182206817179,1.2460767305873808,Multiplicative Odds,0.461875,0.538125,Lower Odds,0.538125,Weak Or Uncertain,OK
 Mixing,Logistic,Candidate,Null Standardised,Expanded,Policy Period: T1,Random Intercept,1.054429645119356,0.8521437889662113,1.5372575235482815,Multiplicative Odds,0.623625,0.376375,Higher Odds,0.623625,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Primary,Age,Mixing Entropy,0.02203,0.02,0.025,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Primary,Health board,Mixing Entropy,0.01385,0.011,0.017,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Primary,SIMD,Mixing Entropy,0.03745,0.035,0.04,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Primary,Sex,Mixing Entropy,0.01596,0.013,0.019,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Primary,Urban/Rural,Mixing Entropy,0.00915,0.0067,0.012,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Primary,Intercept,Intercept,-0.104,-0.16,-0.047,Beta,0.000625,0.999375,Negative,0.999375,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Primary,Clade: 19B,Random Intercept,-0.01,-0.13,0.097,Beta,0.438375,0.561625,Negative,0.561625,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Primary,Clade: 20A,Random Intercept,0.032,-0.046,0.12,Beta,0.7795,0.2205,Positive,0.7795,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Primary,Clade: 20B,Random Intercept,0.0212,-0.049,0.096,Beta,0.72625,0.27375,Positive,0.72625,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Primary,Clade: 20E,Random Intercept,-0.0079,-0.064,0.049,Beta,0.3765,0.6235,Negative,0.6235,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Primary,Clade: 20I,Random Intercept,0.0498,0.0031,0.1,Beta,0.981,0.019,Positive,0.981,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Primary,Clade: 21A,Random Intercept,0.062,-0.025,0.19,Beta,0.894625,0.105375,Positive,0.894625,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Primary,Clade: 21D,Random Intercept,0.031,-0.083,0.18,Beta,0.68175,0.31825,Positive,0.68175,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Primary,Clade: 21I,Random Intercept,0.0102,-0.07,0.091,Beta,0.603125,0.396875,Positive,0.603125,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Primary,Clade: 21J,Random Intercept,0.0283,-0.017,0.072,Beta,0.907875,0.092125,Positive,0.907875,Moderate,OK
-Mixing,Linear,Burst Score,Observed,Primary,Clade: 21K,Random Intercept,-0.038,-0.086,0.00027,Beta,0.02625,0.97375,Negative,0.97375,Strong,OK
-Mixing,Linear,Burst Score,Observed,Primary,Clade: 21L,Random Intercept,-0.0401,-0.089,-0.0017,Beta,0.020125,0.979875,Negative,0.979875,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Primary,Clade: 22A,Random Intercept,-0.038,-0.12,0.027,Beta,0.151875,0.848125,Negative,0.848125,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Primary,Clade: 22B,Random Intercept,-0.04,-0.097,0.0061,Beta,0.044875,0.955125,Negative,0.955125,Strong,OK
-Mixing,Linear,Burst Score,Observed,Primary,Clade: 22C,Random Intercept,-0.086,-0.19,-0.0053,Beta,0.017375,0.982625,Negative,0.982625,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Primary,Clade: 22D,Random Intercept,0.027,-0.062,0.13,Beta,0.720125,0.279875,Positive,0.720125,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Primary,Clade: 22E,Random Intercept,-0.035,-0.15,0.057,Beta,0.249,0.751,Negative,0.751,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Primary,Clade: 23A,Random Intercept,0.049,-0.052,0.19,Beta,0.805,0.195,Positive,0.805,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Primary,Clade: Rec.,Random Intercept,-0.0144,-0.092,0.055,Beta,0.356625,0.643375,Negative,0.643375,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Primary,Policy Period: F5,Random Intercept,0.0535,-0.0045,0.12,Beta,0.9615,0.0385,Positive,0.9615,Strong,OK
-Mixing,Linear,Burst Score,Observed,Primary,Policy Period: FE,Random Intercept,0.0079,-0.032,0.05,Beta,0.649,0.351,Positive,0.649,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Primary,Policy Period: L0,Random Intercept,-0.052,-0.11,-0.0052,Beta,0.014,0.986,Negative,0.986,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Primary,Policy Period: L2,Random Intercept,-0.0109,-0.052,0.029,Beta,0.294375,0.705625,Negative,0.705625,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Primary,Policy Period: L21,Random Intercept,-0.0332,-0.072,0.002,Beta,0.030625,0.969375,Negative,0.969375,Strong,OK
-Mixing,Linear,Burst Score,Observed,Primary,Policy Period: L3,Random Intercept,-0.0231,-0.071,0.022,Beta,0.156875,0.843125,Negative,0.843125,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Primary,Policy Period: NN,Random Intercept,-0.0447,-0.084,-0.01,Beta,0.007,0.993,Negative,0.993,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Primary,Policy Period: OM,Random Intercept,-0.0111,-0.049,0.027,Beta,0.26975,0.73025,Negative,0.73025,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Primary,Policy Period: P3,Random Intercept,-0.0054,-0.058,0.049,Beta,0.41675,0.58325,Negative,0.58325,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Primary,Policy Period: PR,Random Intercept,0.0661,0.024,0.11,Beta,0.998,0.002,Positive,0.998,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Primary,Policy Period: SL,Random Intercept,0.0476,0.001,0.096,Beta,0.9775,0.0225,Positive,0.9775,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Primary,Policy Period: T1,Random Intercept,0.0059,-0.049,0.064,Beta,0.576375,0.423625,Positive,0.576375,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Age,Mixing Entropy,0.02209,0.02,0.025,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Health board,Mixing Entropy,0.014,0.011,0.017,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Expanded,SIMD,Mixing Entropy,0.03753,0.035,0.04,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Sex,Mixing Entropy,0.01579,0.013,0.019,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Urban/Rural,Mixing Entropy,0.00921,0.0067,0.012,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Cumulative Sequencing Proportion,Continuous Adjuster,0.0087,-0.0011,0.019,Beta,0.95875,0.04125,Positive,0.95875,Strong,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Cumulative incidence,Continuous Adjuster,-0.0,-0.016,0.016,Beta,0.494625,0.505375,Negative,0.505375,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Window Sequencing Proportion,Continuous Adjuster,0.0055,-0.0011,0.012,Beta,0.944,0.056,Positive,0.944,Moderate,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Intercept,Intercept,-0.115,-0.17,-0.058,Beta,0.000375,0.999625,Negative,0.999625,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Clade: 19B,Random Intercept,-0.008,-0.11,0.087,Beta,0.4325,0.5675,Negative,0.5675,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Clade: 20A,Random Intercept,0.0192,-0.049,0.1,Beta,0.693875,0.306125,Positive,0.693875,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Clade: 20B,Random Intercept,0.005,-0.062,0.075,Beta,0.561625,0.438375,Positive,0.561625,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Clade: 20E,Random Intercept,-0.0137,-0.067,0.038,Beta,0.288625,0.711375,Negative,0.711375,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Clade: 20I,Random Intercept,0.0406,-0.0028,0.09,Beta,0.9645,0.0355,Positive,0.9645,Strong,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Clade: 21A,Random Intercept,0.046,-0.029,0.16,Beta,0.844,0.156,Positive,0.844,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Clade: 21D,Random Intercept,0.021,-0.069,0.14,Beta,0.651375,0.348625,Positive,0.651375,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Clade: 21I,Random Intercept,0.0087,-0.061,0.083,Beta,0.59175,0.40825,Positive,0.59175,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Clade: 21J,Random Intercept,0.0308,-0.0083,0.071,Beta,0.942,0.058,Positive,0.942,Moderate,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Clade: 21K,Random Intercept,-0.0294,-0.074,0.0041,Beta,0.04525,0.95475,Negative,0.95475,Strong,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Clade: 21L,Random Intercept,-0.0309,-0.078,0.0036,Beta,0.04525,0.95475,Negative,0.95475,Strong,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Clade: 22A,Random Intercept,-0.026,-0.1,0.034,Beta,0.226875,0.773125,Negative,0.773125,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Clade: 22B,Random Intercept,-0.027,-0.081,0.016,Beta,0.13,0.87,Negative,0.87,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Clade: 22C,Random Intercept,-0.067,-0.17,0.0052,Beta,0.039125,0.960875,Negative,0.960875,Strong,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Clade: 22D,Random Intercept,0.0239,-0.051,0.12,Beta,0.70525,0.29475,Positive,0.70525,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Clade: 22E,Random Intercept,-0.024,-0.13,0.053,Beta,0.3,0.7,Negative,0.7,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Clade: 23A,Random Intercept,0.039,-0.043,0.16,Beta,0.784875,0.215125,Positive,0.784875,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Clade: Rec.,Random Intercept,-0.0076,-0.08,0.056,Beta,0.4255,0.5745,Negative,0.5745,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Policy Period: F5,Random Intercept,0.0698,0.0071,0.14,Beta,0.9865,0.0135,Positive,0.9865,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Policy Period: FE,Random Intercept,0.0127,-0.03,0.061,Beta,0.707125,0.292875,Positive,0.707125,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Policy Period: L0,Random Intercept,-0.0476,-0.1,0.0034,Beta,0.03375,0.96625,Negative,0.96625,Strong,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Policy Period: L2,Random Intercept,-0.0041,-0.05,0.039,Beta,0.436,0.564,Negative,0.564,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Policy Period: L21,Random Intercept,-0.0365,-0.08,0.002,Beta,0.032625,0.967375,Negative,0.967375,Strong,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Policy Period: L3,Random Intercept,-0.0282,-0.08,0.021,Beta,0.1215,0.8785,Negative,0.8785,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Policy Period: NN,Random Intercept,-0.0369,-0.08,0.0023,Beta,0.0335,0.9665,Negative,0.9665,Strong,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Policy Period: OM,Random Intercept,-0.003,-0.044,0.04,Beta,0.431,0.569,Negative,0.569,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Policy Period: P3,Random Intercept,-0.042,-0.11,0.024,Beta,0.10925,0.89075,Negative,0.89075,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Policy Period: PR,Random Intercept,0.069,0.022,0.12,Beta,0.997125,0.002875,Positive,0.997125,Very Strong,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Policy Period: SL,Random Intercept,0.0461,-0.0039,0.097,Beta,0.96675,0.03325,Positive,0.96675,Strong,OK
-Mixing,Linear,Burst Score,Observed,Expanded,Policy Period: T1,Random Intercept,0.0047,-0.055,0.063,Beta,0.570375,0.429625,Positive,0.570375,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Age,Mixing Entropy,-0.01963,-0.024,-0.015,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Health board,Mixing Entropy,-0.02907,-0.031,-0.027,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,SIMD,Mixing Entropy,-0.00407,-0.0068,-0.0013,Beta,0.001375,0.998625,Negative,0.998625,Very Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Sex,Mixing Entropy,-0.00568,-0.0092,-0.0021,Beta,0.00075,0.99925,Negative,0.99925,Very Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Urban/Rural,Mixing Entropy,0.00986,0.0066,0.013,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Intercept,Intercept,0.3798,0.36,0.41,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Clade: 19B,Random Intercept,-0.001,-0.032,0.029,Beta,0.476375,0.523625,Negative,0.523625,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Clade: 20A,Random Intercept,0.0047,-0.021,0.039,Beta,0.621,0.379,Positive,0.621,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Clade: 20B,Random Intercept,0.0007,-0.027,0.029,Beta,0.51975,0.48025,Positive,0.51975,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Clade: 20E,Random Intercept,0.0007,-0.023,0.025,Beta,0.526625,0.473375,Positive,0.526625,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Clade: 20I,Random Intercept,-0.0049,-0.031,0.015,Beta,0.340125,0.659875,Negative,0.659875,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Clade: 21A,Random Intercept,0.0034,-0.024,0.038,Beta,0.5845,0.4155,Positive,0.5845,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Clade: 21D,Random Intercept,0.0001,-0.031,0.031,Beta,0.50175,0.49825,Positive,0.50175,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Clade: 21I,Random Intercept,0.0004,-0.029,0.031,Beta,0.51525,0.48475,Positive,0.51525,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Clade: 21J,Random Intercept,-0.0056,-0.029,0.011,Beta,0.289125,0.710875,Negative,0.710875,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Clade: 21K,Random Intercept,-0.01,-0.03,0.0053,Beta,0.103625,0.896375,Negative,0.896375,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Clade: 21L,Random Intercept,0.0077,-0.0082,0.025,Beta,0.849125,0.150875,Positive,0.849125,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Clade: 22A,Random Intercept,0.0023,-0.023,0.032,Beta,0.558625,0.441375,Positive,0.558625,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Clade: 22B,Random Intercept,0.0032,-0.017,0.027,Beta,0.61875,0.38125,Positive,0.61875,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Clade: 22C,Random Intercept,-0.0043,-0.038,0.021,Beta,0.38575,0.61425,Negative,0.61425,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Clade: 22D,Random Intercept,0.0006,-0.03,0.031,Beta,0.520375,0.479625,Positive,0.520375,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Clade: 22E,Random Intercept,-0.002,-0.035,0.026,Beta,0.453875,0.546125,Negative,0.546125,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Clade: 23A,Random Intercept,0.0036,-0.024,0.039,Beta,0.587375,0.412625,Positive,0.587375,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Clade: Rec.,Random Intercept,-0.0,-0.03,0.029,Beta,0.50575,0.49425,Positive,0.50575,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Policy Period: F5,Random Intercept,0.0065,-0.038,0.052,Beta,0.612125,0.387875,Positive,0.612125,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Policy Period: FE,Random Intercept,-0.0238,-0.049,-0.00078,Beta,0.021125,0.978875,Negative,0.978875,Very Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Policy Period: L0,Random Intercept,0.0056,-0.033,0.044,Beta,0.626375,0.373625,Positive,0.626375,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Policy Period: L2,Random Intercept,-0.0314,-0.063,-0.0034,Beta,0.015625,0.984375,Negative,0.984375,Very Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Policy Period: L21,Random Intercept,-0.0146,-0.043,0.011,Beta,0.135,0.865,Negative,0.865,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Policy Period: L3,Random Intercept,-0.027,-0.067,0.0074,Beta,0.0685,0.9315,Negative,0.9315,Moderate,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Policy Period: NN,Random Intercept,-0.0185,-0.045,0.0061,Beta,0.070125,0.929875,Negative,0.929875,Moderate,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Policy Period: OM,Random Intercept,0.0145,-0.012,0.041,Beta,0.870375,0.129625,Positive,0.870375,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Policy Period: P3,Random Intercept,0.0171,-0.02,0.058,Beta,0.809375,0.190625,Positive,0.809375,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Policy Period: PR,Random Intercept,0.037,0.0098,0.063,Beta,0.9945,0.0055,Positive,0.9945,Very Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Policy Period: SL,Random Intercept,0.0045,-0.033,0.04,Beta,0.6055,0.3945,Positive,0.6055,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Primary,Policy Period: T1,Random Intercept,0.0277,-0.013,0.074,Beta,0.905,0.095,Positive,0.905,Moderate,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Age,Mixing Entropy,-0.02009,-0.024,-0.016,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Health board,Mixing Entropy,-0.03006,-0.032,-0.028,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,SIMD,Mixing Entropy,-0.00453,-0.0073,-0.0018,Beta,0.000625,0.999375,Negative,0.999375,Very Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Sex,Mixing Entropy,-0.00538,-0.0089,-0.0019,Beta,0.002,0.998,Negative,0.998,Very Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Urban/Rural,Mixing Entropy,0.01016,0.0069,0.013,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Cumulative Sequencing Proportion,Continuous Adjuster,0.0046,-0.0047,0.013,Beta,0.843,0.157,Positive,0.843,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Cumulative incidence,Continuous Adjuster,0.0215,0.0065,0.037,Beta,0.9975,0.0025,Positive,0.9975,Very Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Window Sequencing Proportion,Continuous Adjuster,-0.0177,-0.025,-0.011,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Intercept,Intercept,0.3943,0.37,0.43,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Clade: 19B,Random Intercept,-0.0012,-0.048,0.043,Beta,0.491,0.509,Negative,0.509,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Clade: 20A,Random Intercept,0.0086,-0.026,0.06,Beta,0.651875,0.348125,Positive,0.651875,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Clade: 20B,Random Intercept,0.0016,-0.036,0.044,Beta,0.525875,0.474125,Positive,0.525875,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Clade: 20E,Random Intercept,-0.0018,-0.034,0.029,Beta,0.447,0.553,Negative,0.553,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Clade: 20I,Random Intercept,0.021,-0.0044,0.061,Beta,0.915,0.085,Positive,0.915,Moderate,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Clade: 21A,Random Intercept,0.0094,-0.027,0.069,Beta,0.648,0.352,Positive,0.648,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Clade: 21D,Random Intercept,0.0013,-0.043,0.051,Beta,0.519625,0.480375,Positive,0.519625,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Clade: 21I,Random Intercept,0.0023,-0.036,0.043,Beta,0.544125,0.455875,Positive,0.544125,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Clade: 21J,Random Intercept,-0.0032,-0.028,0.02,Beta,0.386,0.614,Negative,0.614,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Clade: 21K,Random Intercept,-0.0132,-0.042,0.0056,Beta,0.101875,0.898125,Negative,0.898125,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Clade: 21L,Random Intercept,-0.0013,-0.029,0.018,Beta,0.5085,0.4915,Positive,0.5085,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Clade: 22A,Random Intercept,-0.0016,-0.042,0.034,Beta,0.48275,0.51725,Negative,0.51725,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Clade: 22B,Random Intercept,-0.0099,-0.047,0.016,Beta,0.2685,0.7315,Negative,0.7315,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Clade: 22C,Random Intercept,-0.0107,-0.064,0.022,Beta,0.30825,0.69175,Negative,0.69175,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Clade: 22D,Random Intercept,-0.0009,-0.049,0.042,Beta,0.484625,0.515375,Negative,0.515375,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Clade: 22E,Random Intercept,-0.0054,-0.057,0.033,Beta,0.408,0.592,Negative,0.592,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Clade: 23A,Random Intercept,0.0068,-0.033,0.065,Beta,0.610375,0.389625,Positive,0.610375,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Clade: Rec.,Random Intercept,-0.0019,-0.044,0.036,Beta,0.47175,0.52825,Negative,0.52825,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Policy Period: F5,Random Intercept,0.0004,-0.046,0.048,Beta,0.50125,0.49875,Positive,0.50125,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Policy Period: FE,Random Intercept,-0.0489,-0.087,-0.019,Beta,0.000375,0.999625,Negative,0.999625,Very Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Policy Period: L0,Random Intercept,0.0023,-0.037,0.041,Beta,0.5545,0.4455,Positive,0.5545,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Policy Period: L2,Random Intercept,-0.009,-0.043,0.024,Beta,0.2845,0.7155,Negative,0.7155,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Policy Period: L21,Random Intercept,0.0051,-0.024,0.032,Beta,0.649875,0.350125,Positive,0.649875,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Policy Period: L3,Random Intercept,0.0026,-0.033,0.042,Beta,0.54825,0.45175,Positive,0.54825,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Policy Period: NN,Random Intercept,-0.0256,-0.056,0.00088,Beta,0.028625,0.971375,Negative,0.971375,Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Policy Period: OM,Random Intercept,-0.0075,-0.041,0.02,Beta,0.32925,0.67075,Negative,0.67075,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Policy Period: P3,Random Intercept,0.0187,-0.028,0.077,Beta,0.762875,0.237125,Positive,0.762875,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Policy Period: PR,Random Intercept,0.0067,-0.034,0.04,Beta,0.67525,0.32475,Positive,0.67525,Weak Or Uncertain,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Policy Period: SL,Random Intercept,0.0334,-0.004,0.077,Beta,0.959875,0.040125,Positive,0.959875,Strong,OK
-Mixing,Linear,Burst Score,Null Standardised,Expanded,Policy Period: T1,Random Intercept,0.0219,-0.019,0.072,Beta,0.839125,0.160875,Positive,0.839125,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Age,Mixing Entropy,-0.01234,-0.017,-0.0074,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Mixing,Linear,Burden Score,Observed,Primary,Health board,Mixing Entropy,0.00437,-0.00056,0.0093,Beta,0.956125,0.043875,Positive,0.956125,Strong,OK
-Mixing,Linear,Burden Score,Observed,Primary,SIMD,Mixing Entropy,-0.01045,-0.016,-0.0052,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Mixing,Linear,Burden Score,Observed,Primary,Sex,Mixing Entropy,-0.01308,-0.019,-0.007,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Mixing,Linear,Burden Score,Observed,Primary,Urban/Rural,Mixing Entropy,-0.00498,-0.0097,-0.00023,Beta,0.020125,0.979875,Negative,0.979875,Very Strong,OK
-Mixing,Linear,Burden Score,Observed,Primary,Intercept,Intercept,0.801,0.72,0.89,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burden Score,Observed,Primary,Clade: 19B,Random Intercept,0.01,-0.15,0.17,Beta,0.555125,0.444875,Positive,0.555125,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Clade: 20A,Random Intercept,-0.061,-0.21,0.048,Beta,0.162375,0.837625,Negative,0.837625,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Clade: 20B,Random Intercept,0.024,-0.081,0.14,Beta,0.677125,0.322875,Positive,0.677125,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Clade: 20E,Random Intercept,0.015,-0.066,0.087,Beta,0.682625,0.317375,Positive,0.682625,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Clade: 20I,Random Intercept,-0.05,-0.13,0.011,Beta,0.06075,0.93925,Negative,0.93925,Moderate,OK
-Mixing,Linear,Burden Score,Observed,Primary,Clade: 21A,Random Intercept,-0.009,-0.15,0.12,Beta,0.4545,0.5455,Negative,0.5455,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Clade: 21I,Random Intercept,-0.024,-0.15,0.081,Beta,0.343125,0.656875,Negative,0.656875,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Clade: 21J,Random Intercept,-0.03,-0.1,0.026,Beta,0.158375,0.841625,Negative,0.841625,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Clade: 21K,Random Intercept,-0.0594,-0.12,-0.0044,Beta,0.019125,0.980875,Negative,0.980875,Very Strong,OK
-Mixing,Linear,Burden Score,Observed,Primary,Clade: 21L,Random Intercept,0.0461,-0.011,0.11,Beta,0.950375,0.049625,Positive,0.950375,Strong,OK
-Mixing,Linear,Burden Score,Observed,Primary,Clade: 22A,Random Intercept,-0.043,-0.16,0.055,Beta,0.20375,0.79625,Negative,0.79625,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Clade: 22B,Random Intercept,0.05,-0.02,0.13,Beta,0.91925,0.08075,Positive,0.91925,Moderate,OK
-Mixing,Linear,Burden Score,Observed,Primary,Clade: 22C,Random Intercept,-0.033,-0.16,0.072,Beta,0.281,0.719,Negative,0.719,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Clade: 22D,Random Intercept,0.071,-0.052,0.25,Beta,0.845875,0.154125,Positive,0.845875,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Clade: 22E,Random Intercept,0.07,-0.053,0.26,Beta,0.82725,0.17275,Positive,0.82725,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Clade: Rec.,Random Intercept,0.023,-0.083,0.14,Beta,0.65675,0.34325,Positive,0.65675,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Policy Period: F5,Random Intercept,0.0125,-0.037,0.082,Beta,0.671625,0.328375,Positive,0.671625,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Policy Period: FE,Random Intercept,-0.0315,-0.09,0.0028,Beta,0.045625,0.954375,Negative,0.954375,Strong,OK
-Mixing,Linear,Burden Score,Observed,Primary,Policy Period: L0,Random Intercept,0.0034,-0.044,0.054,Beta,0.55325,0.44675,Positive,0.55325,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Policy Period: L2,Random Intercept,0.0142,-0.023,0.066,Beta,0.746125,0.253875,Positive,0.746125,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Policy Period: L21,Random Intercept,0.0105,-0.023,0.052,Beta,0.71425,0.28575,Positive,0.71425,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Policy Period: L3,Random Intercept,0.0075,-0.037,0.064,Beta,0.605125,0.394875,Positive,0.605125,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Policy Period: NN,Random Intercept,0.0018,-0.033,0.04,Beta,0.52575,0.47425,Positive,0.52575,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Policy Period: OM,Random Intercept,0.0147,-0.025,0.051,Beta,0.819125,0.180875,Positive,0.819125,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Policy Period: P3,Random Intercept,0.0029,-0.048,0.059,Beta,0.548625,0.451375,Positive,0.548625,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Policy Period: PR,Random Intercept,-0.032,-0.1,0.0081,Beta,0.0955,0.9045,Negative,0.9045,Moderate,OK
-Mixing,Linear,Burden Score,Observed,Primary,Policy Period: SL,Random Intercept,-0.0006,-0.049,0.052,Beta,0.48125,0.51875,Negative,0.51875,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Primary,Policy Period: T1,Random Intercept,-0.0012,-0.055,0.052,Beta,0.480875,0.519125,Negative,0.519125,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Age,Mixing Entropy,-0.0131,-0.018,-0.0083,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Health board,Mixing Entropy,0.00642,0.0011,0.011,Beta,0.992875,0.007125,Positive,0.992875,Very Strong,OK
-Mixing,Linear,Burden Score,Observed,Expanded,SIMD,Mixing Entropy,-0.01094,-0.016,-0.0055,Beta,0.000125,0.999875,Negative,0.999875,Very Strong,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Sex,Mixing Entropy,-0.01325,-0.019,-0.0073,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Urban/Rural,Mixing Entropy,-0.0069,-0.012,-0.002,Beta,0.00325,0.99675,Negative,0.99675,Very Strong,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Cumulative Sequencing Proportion,Continuous Adjuster,-0.0084,-0.023,0.0064,Beta,0.13175,0.86825,Negative,0.86825,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Cumulative incidence,Continuous Adjuster,-0.0694,-0.099,-0.04,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Window Sequencing Proportion,Continuous Adjuster,0.0026,-0.0089,0.014,Beta,0.668,0.332,Positive,0.668,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Intercept,Intercept,0.808,0.71,0.91,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Clade: 19B,Random Intercept,0.008,-0.23,0.25,Beta,0.531,0.469,Positive,0.531,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Clade: 20A,Random Intercept,-0.131,-0.33,0.031,Beta,0.059125,0.940875,Negative,0.940875,Moderate,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Clade: 20B,Random Intercept,0.014,-0.14,0.16,Beta,0.5755,0.4245,Positive,0.5755,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Clade: 20E,Random Intercept,-0.038,-0.15,0.061,Beta,0.241375,0.758625,Negative,0.758625,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Clade: 20I,Random Intercept,-0.126,-0.23,-0.037,Beta,0.004,0.996,Negative,0.996,Very Strong,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Clade: 21A,Random Intercept,-0.046,-0.26,0.14,Beta,0.32175,0.67825,Negative,0.67825,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Clade: 21I,Random Intercept,-0.064,-0.23,0.09,Beta,0.21625,0.78375,Negative,0.78375,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Clade: 21J,Random Intercept,-0.08,-0.17,-0.00029,Beta,0.02475,0.97525,Negative,0.97525,Very Strong,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Clade: 21K,Random Intercept,-0.056,-0.14,0.026,Beta,0.077125,0.922875,Negative,0.922875,Moderate,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Clade: 21L,Random Intercept,0.08,-0.0038,0.17,Beta,0.969625,0.030375,Positive,0.969625,Strong,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Clade: 22A,Random Intercept,-0.03,-0.17,0.11,Beta,0.329875,0.670125,Negative,0.670125,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Clade: 22B,Random Intercept,0.11,0.015,0.22,Beta,0.99,0.01,Positive,0.99,Very Strong,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Clade: 22C,Random Intercept,-0.027,-0.18,0.12,Beta,0.360375,0.639625,Negative,0.639625,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Clade: 22D,Random Intercept,0.173,-0.012,0.4,Beta,0.962375,0.037625,Positive,0.962375,Strong,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Clade: 22E,Random Intercept,0.169,-0.034,0.43,Beta,0.94125,0.05875,Positive,0.94125,Moderate,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Clade: Rec.,Random Intercept,0.057,-0.088,0.22,Beta,0.771625,0.228375,Positive,0.771625,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Policy Period: F5,Random Intercept,0.0033,-0.031,0.045,Beta,0.560875,0.439125,Positive,0.560875,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Policy Period: FE,Random Intercept,-0.0142,-0.052,0.0075,Beta,0.150125,0.849875,Negative,0.849875,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Policy Period: L0,Random Intercept,-0.0001,-0.036,0.036,Beta,0.49325,0.50675,Negative,0.50675,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Policy Period: L2,Random Intercept,0.0051,-0.021,0.04,Beta,0.618125,0.381875,Positive,0.618125,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Policy Period: L21,Random Intercept,-0.0024,-0.031,0.024,Beta,0.423,0.577,Negative,0.577,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Policy Period: L3,Random Intercept,0.0016,-0.029,0.037,Beta,0.53525,0.46475,Positive,0.53525,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Policy Period: NN,Random Intercept,0.0033,-0.022,0.033,Beta,0.595375,0.404625,Positive,0.595375,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Policy Period: OM,Random Intercept,0.009,-0.014,0.039,Beta,0.769625,0.230375,Positive,0.769625,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Policy Period: P3,Random Intercept,0.0023,-0.033,0.045,Beta,0.544,0.456,Positive,0.544,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Policy Period: PR,Random Intercept,-0.0037,-0.044,0.024,Beta,0.434875,0.565125,Negative,0.565125,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Policy Period: SL,Random Intercept,-0.002,-0.038,0.031,Beta,0.451,0.549,Negative,0.549,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Observed,Expanded,Policy Period: T1,Random Intercept,-0.0027,-0.041,0.032,Beta,0.440125,0.559875,Negative,0.559875,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Age,Mixing Entropy,-0.00225,-0.0093,0.0047,Beta,0.266,0.734,Negative,0.734,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Health board,Mixing Entropy,0.01534,0.012,0.019,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,SIMD,Mixing Entropy,0.00914,0.0047,0.014,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Sex,Mixing Entropy,-0.00124,-0.0075,0.0049,Beta,0.351,0.649,Negative,0.649,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Urban/Rural,Mixing Entropy,-0.00414,-0.0097,0.0014,Beta,0.06875,0.93125,Negative,0.93125,Moderate,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Intercept,Intercept,0.593,0.54,0.65,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Clade: 19B,Random Intercept,0.006,-0.13,0.15,Beta,0.532,0.468,Positive,0.532,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Clade: 20A,Random Intercept,-0.055,-0.2,0.044,Beta,0.17025,0.82975,Negative,0.82975,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Clade: 20B,Random Intercept,0.026,-0.069,0.14,Beta,0.70375,0.29625,Positive,0.70375,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Clade: 20E,Random Intercept,0.011,-0.059,0.075,Beta,0.64625,0.35375,Positive,0.64625,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Clade: 20I,Random Intercept,-0.014,-0.086,0.041,Beta,0.346875,0.653125,Negative,0.653125,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Clade: 21A,Random Intercept,-0.001,-0.13,0.12,Beta,0.49975,0.50025,Negative,0.50025,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Clade: 21I,Random Intercept,-0.017,-0.13,0.082,Beta,0.3805,0.6195,Negative,0.6195,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Clade: 21J,Random Intercept,-0.013,-0.071,0.034,Beta,0.303875,0.696125,Negative,0.696125,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Clade: 21K,Random Intercept,-0.0601,-0.11,-0.011,Beta,0.01175,0.98825,Negative,0.98825,Very Strong,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Clade: 21L,Random Intercept,0.0407,-0.011,0.094,Beta,0.94775,0.05225,Positive,0.94775,Moderate,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Clade: 22A,Random Intercept,-0.045,-0.16,0.045,Beta,0.178,0.822,Negative,0.822,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Clade: 22B,Random Intercept,0.03,-0.034,0.1,Beta,0.81375,0.18625,Positive,0.81375,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Clade: 22C,Random Intercept,-0.037,-0.16,0.058,Beta,0.23375,0.76625,Negative,0.76625,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Clade: 22D,Random Intercept,0.06,-0.045,0.23,Beta,0.829625,0.170375,Positive,0.829625,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Clade: 22E,Random Intercept,0.052,-0.058,0.23,Beta,0.7815,0.2185,Positive,0.7815,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Clade: Rec.,Random Intercept,0.023,-0.073,0.14,Beta,0.665625,0.334375,Positive,0.665625,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Policy Period: F5,Random Intercept,0.0114,-0.025,0.074,Beta,0.673125,0.326875,Positive,0.673125,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Policy Period: FE,Random Intercept,-0.0143,-0.063,0.011,Beta,0.194125,0.805875,Negative,0.805875,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Policy Period: L0,Random Intercept,-0.0058,-0.055,0.03,Beta,0.39275,0.60725,Negative,0.60725,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Policy Period: L2,Random Intercept,0.0147,-0.013,0.066,Beta,0.775,0.225,Positive,0.775,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Policy Period: L21,Random Intercept,0.0061,-0.022,0.04,Beta,0.651625,0.348375,Positive,0.651625,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Policy Period: L3,Random Intercept,0.006,-0.028,0.055,Beta,0.591875,0.408125,Positive,0.591875,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Policy Period: NN,Random Intercept,-0.0029,-0.035,0.027,Beta,0.4155,0.5845,Negative,0.5845,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Policy Period: OM,Random Intercept,0.0076,-0.024,0.04,Beta,0.723625,0.276375,Positive,0.723625,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Policy Period: P3,Random Intercept,-0.0006,-0.044,0.041,Beta,0.491875,0.508125,Negative,0.508125,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Policy Period: PR,Random Intercept,-0.021,-0.082,0.0087,Beta,0.1605,0.8395,Negative,0.8395,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Policy Period: SL,Random Intercept,0.0045,-0.032,0.054,Beta,0.5635,0.4365,Positive,0.5635,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Primary,Policy Period: T1,Random Intercept,-0.0048,-0.055,0.035,Beta,0.41925,0.58075,Negative,0.58075,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Age,Mixing Entropy,-0.0016,-0.0084,0.0051,Beta,0.321375,0.678625,Negative,0.678625,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Health board,Mixing Entropy,0.0173,0.014,0.02,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,SIMD,Mixing Entropy,0.00955,0.0053,0.014,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Sex,Mixing Entropy,-0.00162,-0.0077,0.0045,Beta,0.300125,0.699875,Negative,0.699875,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Urban/Rural,Mixing Entropy,-0.00642,-0.012,-0.00076,Beta,0.012875,0.987125,Negative,0.987125,Very Strong,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Cumulative Sequencing Proportion,Continuous Adjuster,-0.0113,-0.026,0.0038,Beta,0.0715,0.9285,Negative,0.9285,Moderate,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Cumulative incidence,Continuous Adjuster,-0.0761,-0.1,-0.048,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Window Sequencing Proportion,Continuous Adjuster,0.0147,0.0033,0.027,Beta,0.994875,0.005125,Positive,0.994875,Very Strong,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Intercept,Intercept,0.598,0.51,0.69,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Clade: 19B,Random Intercept,-0.002,-0.25,0.25,Beta,0.491875,0.508125,Negative,0.508125,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Clade: 20A,Random Intercept,-0.148,-0.35,0.022,Beta,0.046375,0.953625,Negative,0.953625,Strong,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Clade: 20B,Random Intercept,0.014,-0.14,0.17,Beta,0.574375,0.425625,Positive,0.574375,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Clade: 20E,Random Intercept,-0.047,-0.16,0.055,Beta,0.202,0.798,Negative,0.798,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Clade: 20I,Random Intercept,-0.133,-0.24,-0.038,Beta,0.003,0.997,Negative,0.997,Very Strong,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Clade: 21A,Random Intercept,-0.057,-0.27,0.14,Beta,0.29125,0.70875,Negative,0.70875,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Clade: 21I,Random Intercept,-0.079,-0.25,0.082,Beta,0.174,0.826,Negative,0.826,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Clade: 21J,Random Intercept,-0.079,-0.17,0.0066,Beta,0.035125,0.964875,Negative,0.964875,Strong,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Clade: 21K,Random Intercept,-0.053,-0.14,0.034,Beta,0.1055,0.8945,Negative,0.8945,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Clade: 21L,Random Intercept,0.086,-0.0014,0.18,Beta,0.9725,0.0275,Positive,0.9725,Strong,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Clade: 22A,Random Intercept,-0.029,-0.17,0.11,Beta,0.341125,0.658875,Negative,0.658875,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Clade: 22B,Random Intercept,0.11,0.01,0.22,Beta,0.984125,0.015875,Positive,0.984125,Very Strong,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Clade: 22C,Random Intercept,-0.034,-0.19,0.12,Beta,0.332375,0.667625,Negative,0.667625,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Clade: 22D,Random Intercept,0.202,0.011,0.44,Beta,0.982125,0.017875,Positive,0.982125,Very Strong,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Clade: 22E,Random Intercept,0.182,-0.029,0.45,Beta,0.949875,0.050125,Positive,0.949875,Moderate,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Clade: Rec.,Random Intercept,0.071,-0.078,0.23,Beta,0.81925,0.18075,Positive,0.81925,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Policy Period: F5,Random Intercept,0.0073,-0.024,0.06,Beta,0.620625,0.379375,Positive,0.620625,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Policy Period: FE,Random Intercept,-0.0059,-0.037,0.017,Beta,0.31825,0.68175,Negative,0.68175,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Policy Period: L0,Random Intercept,-0.0048,-0.045,0.025,Beta,0.3965,0.6035,Negative,0.6035,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Policy Period: L2,Random Intercept,0.0086,-0.016,0.047,Beta,0.704,0.296,Positive,0.704,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Policy Period: L21,Random Intercept,-0.009,-0.043,0.013,Beta,0.260625,0.739375,Negative,0.739375,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Policy Period: L3,Random Intercept,-0.0005,-0.032,0.032,Beta,0.478625,0.521375,Negative,0.521375,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Policy Period: NN,Random Intercept,0.0041,-0.02,0.033,Beta,0.62925,0.37075,Positive,0.62925,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Policy Period: OM,Random Intercept,0.0075,-0.015,0.038,Beta,0.727375,0.272625,Positive,0.727375,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Policy Period: P3,Random Intercept,0.0002,-0.038,0.038,Beta,0.51125,0.48875,Positive,0.51125,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Policy Period: PR,Random Intercept,-0.003,-0.038,0.024,Beta,0.4385,0.5615,Negative,0.5615,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Policy Period: SL,Random Intercept,0.0,-0.033,0.035,Beta,0.496875,0.503125,Negative,0.503125,Weak Or Uncertain,OK
-Mixing,Linear,Burden Score,Null Standardised,Expanded,Policy Period: T1,Random Intercept,-0.0044,-0.047,0.028,Beta,0.410125,0.589875,Negative,0.589875,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Age,Mixing Entropy,0.02203,0.02,0.025,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Health board,Mixing Entropy,0.01385,0.011,0.017,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,SIMD,Mixing Entropy,0.03745,0.035,0.04,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Sex,Mixing Entropy,0.01596,0.013,0.019,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Urban/rural class,Mixing Entropy,0.00915,0.0067,0.012,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Intercept,Intercept,-0.104,-0.16,-0.047,Beta,0.000625,0.999375,Negative,0.999375,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Clade: 19B,Random Intercept,-0.01,-0.13,0.097,Beta,0.438375,0.561625,Negative,0.561625,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Clade: 20A,Random Intercept,0.032,-0.046,0.12,Beta,0.7795,0.2205,Positive,0.7795,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Clade: 20B,Random Intercept,0.0212,-0.049,0.096,Beta,0.72625,0.27375,Positive,0.72625,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Clade: 20E,Random Intercept,-0.0079,-0.064,0.049,Beta,0.3765,0.6235,Negative,0.6235,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Clade: 20I,Random Intercept,0.0498,0.0031,0.1,Beta,0.981,0.019,Positive,0.981,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Clade: 21A,Random Intercept,0.062,-0.025,0.19,Beta,0.894625,0.105375,Positive,0.894625,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Clade: 21D,Random Intercept,0.031,-0.083,0.18,Beta,0.68175,0.31825,Positive,0.68175,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Clade: 21I,Random Intercept,0.0102,-0.07,0.091,Beta,0.603125,0.396875,Positive,0.603125,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Clade: 21J,Random Intercept,0.0283,-0.017,0.072,Beta,0.907875,0.092125,Positive,0.907875,Moderate,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Clade: 21K,Random Intercept,-0.038,-0.086,0.00027,Beta,0.02625,0.97375,Negative,0.97375,Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Clade: 21L,Random Intercept,-0.0401,-0.089,-0.0017,Beta,0.020125,0.979875,Negative,0.979875,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Clade: 22A,Random Intercept,-0.038,-0.12,0.027,Beta,0.151875,0.848125,Negative,0.848125,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Clade: 22B,Random Intercept,-0.04,-0.097,0.0061,Beta,0.044875,0.955125,Negative,0.955125,Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Clade: 22C,Random Intercept,-0.086,-0.19,-0.0053,Beta,0.017375,0.982625,Negative,0.982625,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Clade: 22D,Random Intercept,0.027,-0.062,0.13,Beta,0.720125,0.279875,Positive,0.720125,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Clade: 22E,Random Intercept,-0.035,-0.15,0.057,Beta,0.249,0.751,Negative,0.751,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Clade: 23A,Random Intercept,0.049,-0.052,0.19,Beta,0.805,0.195,Positive,0.805,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Clade: Rec.,Random Intercept,-0.0144,-0.092,0.055,Beta,0.356625,0.643375,Negative,0.643375,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Policy Period: F5,Random Intercept,0.0535,-0.0045,0.12,Beta,0.9615,0.0385,Positive,0.9615,Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Policy Period: FE,Random Intercept,0.0079,-0.032,0.05,Beta,0.649,0.351,Positive,0.649,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Policy Period: L0,Random Intercept,-0.052,-0.11,-0.0052,Beta,0.014,0.986,Negative,0.986,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Policy Period: L2,Random Intercept,-0.0109,-0.052,0.029,Beta,0.294375,0.705625,Negative,0.705625,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Policy Period: L21,Random Intercept,-0.0332,-0.072,0.002,Beta,0.030625,0.969375,Negative,0.969375,Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Policy Period: L3,Random Intercept,-0.0231,-0.071,0.022,Beta,0.156875,0.843125,Negative,0.843125,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Policy Period: NN,Random Intercept,-0.0447,-0.084,-0.01,Beta,0.007,0.993,Negative,0.993,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Policy Period: OM,Random Intercept,-0.0111,-0.049,0.027,Beta,0.26975,0.73025,Negative,0.73025,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Policy Period: P3,Random Intercept,-0.0054,-0.058,0.049,Beta,0.41675,0.58325,Negative,0.58325,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Policy Period: PR,Random Intercept,0.0661,0.024,0.11,Beta,0.998,0.002,Positive,0.998,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Policy Period: SL,Random Intercept,0.0476,0.001,0.096,Beta,0.9775,0.0225,Positive,0.9775,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Primary,Policy Period: T1,Random Intercept,0.0059,-0.049,0.064,Beta,0.576375,0.423625,Positive,0.576375,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Age,Mixing Entropy,0.02209,0.02,0.025,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Health board,Mixing Entropy,0.014,0.011,0.017,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,SIMD,Mixing Entropy,0.03753,0.035,0.04,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Sex,Mixing Entropy,0.01579,0.013,0.019,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Urban/rural class,Mixing Entropy,0.00921,0.0067,0.012,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Cumulative Sequencing Proportion,Continuous Adjuster,0.0087,-0.0011,0.019,Beta,0.95875,0.04125,Positive,0.95875,Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Cumulative incidence,Continuous Adjuster,-0.0,-0.016,0.016,Beta,0.494625,0.505375,Negative,0.505375,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Window Sequencing Proportion,Continuous Adjuster,0.0055,-0.0011,0.012,Beta,0.944,0.056,Positive,0.944,Moderate,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Intercept,Intercept,-0.115,-0.17,-0.058,Beta,0.000375,0.999625,Negative,0.999625,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Clade: 19B,Random Intercept,-0.008,-0.11,0.087,Beta,0.4325,0.5675,Negative,0.5675,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Clade: 20A,Random Intercept,0.0192,-0.049,0.1,Beta,0.693875,0.306125,Positive,0.693875,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Clade: 20B,Random Intercept,0.005,-0.062,0.075,Beta,0.561625,0.438375,Positive,0.561625,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Clade: 20E,Random Intercept,-0.0137,-0.067,0.038,Beta,0.288625,0.711375,Negative,0.711375,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Clade: 20I,Random Intercept,0.0406,-0.0028,0.09,Beta,0.9645,0.0355,Positive,0.9645,Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Clade: 21A,Random Intercept,0.046,-0.029,0.16,Beta,0.844,0.156,Positive,0.844,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Clade: 21D,Random Intercept,0.021,-0.069,0.14,Beta,0.651375,0.348625,Positive,0.651375,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Clade: 21I,Random Intercept,0.0087,-0.061,0.083,Beta,0.59175,0.40825,Positive,0.59175,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Clade: 21J,Random Intercept,0.0308,-0.0083,0.071,Beta,0.942,0.058,Positive,0.942,Moderate,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Clade: 21K,Random Intercept,-0.0294,-0.074,0.0041,Beta,0.04525,0.95475,Negative,0.95475,Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Clade: 21L,Random Intercept,-0.0309,-0.078,0.0036,Beta,0.04525,0.95475,Negative,0.95475,Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Clade: 22A,Random Intercept,-0.026,-0.1,0.034,Beta,0.226875,0.773125,Negative,0.773125,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Clade: 22B,Random Intercept,-0.027,-0.081,0.016,Beta,0.13,0.87,Negative,0.87,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Clade: 22C,Random Intercept,-0.067,-0.17,0.0052,Beta,0.039125,0.960875,Negative,0.960875,Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Clade: 22D,Random Intercept,0.0239,-0.051,0.12,Beta,0.70525,0.29475,Positive,0.70525,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Clade: 22E,Random Intercept,-0.024,-0.13,0.053,Beta,0.3,0.7,Negative,0.7,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Clade: 23A,Random Intercept,0.039,-0.043,0.16,Beta,0.784875,0.215125,Positive,0.784875,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Clade: Rec.,Random Intercept,-0.0076,-0.08,0.056,Beta,0.4255,0.5745,Negative,0.5745,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Policy Period: F5,Random Intercept,0.0698,0.0071,0.14,Beta,0.9865,0.0135,Positive,0.9865,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Policy Period: FE,Random Intercept,0.0127,-0.03,0.061,Beta,0.707125,0.292875,Positive,0.707125,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Policy Period: L0,Random Intercept,-0.0476,-0.1,0.0034,Beta,0.03375,0.96625,Negative,0.96625,Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Policy Period: L2,Random Intercept,-0.0041,-0.05,0.039,Beta,0.436,0.564,Negative,0.564,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Policy Period: L21,Random Intercept,-0.0365,-0.08,0.002,Beta,0.032625,0.967375,Negative,0.967375,Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Policy Period: L3,Random Intercept,-0.0282,-0.08,0.021,Beta,0.1215,0.8785,Negative,0.8785,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Policy Period: NN,Random Intercept,-0.0369,-0.08,0.0023,Beta,0.0335,0.9665,Negative,0.9665,Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Policy Period: OM,Random Intercept,-0.003,-0.044,0.04,Beta,0.431,0.569,Negative,0.569,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Policy Period: P3,Random Intercept,-0.042,-0.11,0.024,Beta,0.10925,0.89075,Negative,0.89075,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Policy Period: PR,Random Intercept,0.069,0.022,0.12,Beta,0.997125,0.002875,Positive,0.997125,Very Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Policy Period: SL,Random Intercept,0.0461,-0.0039,0.097,Beta,0.96675,0.03325,Positive,0.96675,Strong,OK
+Mixing,Linear,Accumulation Score,Observed,Expanded,Policy Period: T1,Random Intercept,0.0047,-0.055,0.063,Beta,0.570375,0.429625,Positive,0.570375,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Age,Mixing Entropy,-0.01963,-0.024,-0.015,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Health board,Mixing Entropy,-0.02907,-0.031,-0.027,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,SIMD,Mixing Entropy,-0.00407,-0.0068,-0.0013,Beta,0.001375,0.998625,Negative,0.998625,Very Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Sex,Mixing Entropy,-0.00568,-0.0092,-0.0021,Beta,0.00075,0.99925,Negative,0.99925,Very Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Urban/rural class,Mixing Entropy,0.00986,0.0066,0.013,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Intercept,Intercept,0.3798,0.36,0.41,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Clade: 19B,Random Intercept,-0.001,-0.032,0.029,Beta,0.476375,0.523625,Negative,0.523625,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Clade: 20A,Random Intercept,0.0047,-0.021,0.039,Beta,0.621,0.379,Positive,0.621,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Clade: 20B,Random Intercept,0.0007,-0.027,0.029,Beta,0.51975,0.48025,Positive,0.51975,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Clade: 20E,Random Intercept,0.0007,-0.023,0.025,Beta,0.526625,0.473375,Positive,0.526625,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Clade: 20I,Random Intercept,-0.0049,-0.031,0.015,Beta,0.340125,0.659875,Negative,0.659875,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Clade: 21A,Random Intercept,0.0034,-0.024,0.038,Beta,0.5845,0.4155,Positive,0.5845,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Clade: 21D,Random Intercept,0.0001,-0.031,0.031,Beta,0.50175,0.49825,Positive,0.50175,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Clade: 21I,Random Intercept,0.0004,-0.029,0.031,Beta,0.51525,0.48475,Positive,0.51525,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Clade: 21J,Random Intercept,-0.0056,-0.029,0.011,Beta,0.289125,0.710875,Negative,0.710875,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Clade: 21K,Random Intercept,-0.01,-0.03,0.0053,Beta,0.103625,0.896375,Negative,0.896375,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Clade: 21L,Random Intercept,0.0077,-0.0082,0.025,Beta,0.849125,0.150875,Positive,0.849125,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Clade: 22A,Random Intercept,0.0023,-0.023,0.032,Beta,0.558625,0.441375,Positive,0.558625,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Clade: 22B,Random Intercept,0.0032,-0.017,0.027,Beta,0.61875,0.38125,Positive,0.61875,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Clade: 22C,Random Intercept,-0.0043,-0.038,0.021,Beta,0.38575,0.61425,Negative,0.61425,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Clade: 22D,Random Intercept,0.0006,-0.03,0.031,Beta,0.520375,0.479625,Positive,0.520375,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Clade: 22E,Random Intercept,-0.002,-0.035,0.026,Beta,0.453875,0.546125,Negative,0.546125,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Clade: 23A,Random Intercept,0.0036,-0.024,0.039,Beta,0.587375,0.412625,Positive,0.587375,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Clade: Rec.,Random Intercept,-0.0,-0.03,0.029,Beta,0.50575,0.49425,Positive,0.50575,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Policy Period: F5,Random Intercept,0.0065,-0.038,0.052,Beta,0.612125,0.387875,Positive,0.612125,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Policy Period: FE,Random Intercept,-0.0238,-0.049,-0.00078,Beta,0.021125,0.978875,Negative,0.978875,Very Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Policy Period: L0,Random Intercept,0.0056,-0.033,0.044,Beta,0.626375,0.373625,Positive,0.626375,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Policy Period: L2,Random Intercept,-0.0314,-0.063,-0.0034,Beta,0.015625,0.984375,Negative,0.984375,Very Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Policy Period: L21,Random Intercept,-0.0146,-0.043,0.011,Beta,0.135,0.865,Negative,0.865,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Policy Period: L3,Random Intercept,-0.027,-0.067,0.0074,Beta,0.0685,0.9315,Negative,0.9315,Moderate,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Policy Period: NN,Random Intercept,-0.0185,-0.045,0.0061,Beta,0.070125,0.929875,Negative,0.929875,Moderate,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Policy Period: OM,Random Intercept,0.0145,-0.012,0.041,Beta,0.870375,0.129625,Positive,0.870375,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Policy Period: P3,Random Intercept,0.0171,-0.02,0.058,Beta,0.809375,0.190625,Positive,0.809375,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Policy Period: PR,Random Intercept,0.037,0.0098,0.063,Beta,0.9945,0.0055,Positive,0.9945,Very Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Policy Period: SL,Random Intercept,0.0045,-0.033,0.04,Beta,0.6055,0.3945,Positive,0.6055,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Primary,Policy Period: T1,Random Intercept,0.0277,-0.013,0.074,Beta,0.905,0.095,Positive,0.905,Moderate,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Age,Mixing Entropy,-0.02009,-0.024,-0.016,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Health board,Mixing Entropy,-0.03006,-0.032,-0.028,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,SIMD,Mixing Entropy,-0.00453,-0.0073,-0.0018,Beta,0.000625,0.999375,Negative,0.999375,Very Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Sex,Mixing Entropy,-0.00538,-0.0089,-0.0019,Beta,0.002,0.998,Negative,0.998,Very Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Urban/rural class,Mixing Entropy,0.01016,0.0069,0.013,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Cumulative Sequencing Proportion,Continuous Adjuster,0.0046,-0.0047,0.013,Beta,0.843,0.157,Positive,0.843,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Cumulative incidence,Continuous Adjuster,0.0215,0.0065,0.037,Beta,0.9975,0.0025,Positive,0.9975,Very Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Window Sequencing Proportion,Continuous Adjuster,-0.0177,-0.025,-0.011,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Intercept,Intercept,0.3943,0.37,0.43,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Clade: 19B,Random Intercept,-0.0012,-0.048,0.043,Beta,0.491,0.509,Negative,0.509,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Clade: 20A,Random Intercept,0.0086,-0.026,0.06,Beta,0.651875,0.348125,Positive,0.651875,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Clade: 20B,Random Intercept,0.0016,-0.036,0.044,Beta,0.525875,0.474125,Positive,0.525875,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Clade: 20E,Random Intercept,-0.0018,-0.034,0.029,Beta,0.447,0.553,Negative,0.553,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Clade: 20I,Random Intercept,0.021,-0.0044,0.061,Beta,0.915,0.085,Positive,0.915,Moderate,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Clade: 21A,Random Intercept,0.0094,-0.027,0.069,Beta,0.648,0.352,Positive,0.648,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Clade: 21D,Random Intercept,0.0013,-0.043,0.051,Beta,0.519625,0.480375,Positive,0.519625,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Clade: 21I,Random Intercept,0.0023,-0.036,0.043,Beta,0.544125,0.455875,Positive,0.544125,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Clade: 21J,Random Intercept,-0.0032,-0.028,0.02,Beta,0.386,0.614,Negative,0.614,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Clade: 21K,Random Intercept,-0.0132,-0.042,0.0056,Beta,0.101875,0.898125,Negative,0.898125,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Clade: 21L,Random Intercept,-0.0013,-0.029,0.018,Beta,0.5085,0.4915,Positive,0.5085,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Clade: 22A,Random Intercept,-0.0016,-0.042,0.034,Beta,0.48275,0.51725,Negative,0.51725,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Clade: 22B,Random Intercept,-0.0099,-0.047,0.016,Beta,0.2685,0.7315,Negative,0.7315,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Clade: 22C,Random Intercept,-0.0107,-0.064,0.022,Beta,0.30825,0.69175,Negative,0.69175,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Clade: 22D,Random Intercept,-0.0009,-0.049,0.042,Beta,0.484625,0.515375,Negative,0.515375,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Clade: 22E,Random Intercept,-0.0054,-0.057,0.033,Beta,0.408,0.592,Negative,0.592,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Clade: 23A,Random Intercept,0.0068,-0.033,0.065,Beta,0.610375,0.389625,Positive,0.610375,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Clade: Rec.,Random Intercept,-0.0019,-0.044,0.036,Beta,0.47175,0.52825,Negative,0.52825,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Policy Period: F5,Random Intercept,0.0004,-0.046,0.048,Beta,0.50125,0.49875,Positive,0.50125,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Policy Period: FE,Random Intercept,-0.0489,-0.087,-0.019,Beta,0.000375,0.999625,Negative,0.999625,Very Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Policy Period: L0,Random Intercept,0.0023,-0.037,0.041,Beta,0.5545,0.4455,Positive,0.5545,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Policy Period: L2,Random Intercept,-0.009,-0.043,0.024,Beta,0.2845,0.7155,Negative,0.7155,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Policy Period: L21,Random Intercept,0.0051,-0.024,0.032,Beta,0.649875,0.350125,Positive,0.649875,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Policy Period: L3,Random Intercept,0.0026,-0.033,0.042,Beta,0.54825,0.45175,Positive,0.54825,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Policy Period: NN,Random Intercept,-0.0256,-0.056,0.00088,Beta,0.028625,0.971375,Negative,0.971375,Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Policy Period: OM,Random Intercept,-0.0075,-0.041,0.02,Beta,0.32925,0.67075,Negative,0.67075,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Policy Period: P3,Random Intercept,0.0187,-0.028,0.077,Beta,0.762875,0.237125,Positive,0.762875,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Policy Period: PR,Random Intercept,0.0067,-0.034,0.04,Beta,0.67525,0.32475,Positive,0.67525,Weak Or Uncertain,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Policy Period: SL,Random Intercept,0.0334,-0.004,0.077,Beta,0.959875,0.040125,Positive,0.959875,Strong,OK
+Mixing,Linear,Accumulation Score,Null Standardised,Expanded,Policy Period: T1,Random Intercept,0.0219,-0.019,0.072,Beta,0.839125,0.160875,Positive,0.839125,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Age,Mixing Entropy,-0.01234,-0.017,-0.0074,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Health board,Mixing Entropy,0.00437,-0.00056,0.0093,Beta,0.956125,0.043875,Positive,0.956125,Strong,OK
+Mixing,Linear,Expansion Score,Observed,Primary,SIMD,Mixing Entropy,-0.01045,-0.016,-0.0052,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Sex,Mixing Entropy,-0.01308,-0.019,-0.007,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Urban/rural class,Mixing Entropy,-0.00498,-0.0097,-0.00023,Beta,0.020125,0.979875,Negative,0.979875,Very Strong,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Intercept,Intercept,0.801,0.72,0.89,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Clade: 19B,Random Intercept,0.01,-0.15,0.17,Beta,0.555125,0.444875,Positive,0.555125,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Clade: 20A,Random Intercept,-0.061,-0.21,0.048,Beta,0.162375,0.837625,Negative,0.837625,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Clade: 20B,Random Intercept,0.024,-0.081,0.14,Beta,0.677125,0.322875,Positive,0.677125,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Clade: 20E,Random Intercept,0.015,-0.066,0.087,Beta,0.682625,0.317375,Positive,0.682625,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Clade: 20I,Random Intercept,-0.05,-0.13,0.011,Beta,0.06075,0.93925,Negative,0.93925,Moderate,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Clade: 21A,Random Intercept,-0.009,-0.15,0.12,Beta,0.4545,0.5455,Negative,0.5455,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Clade: 21I,Random Intercept,-0.024,-0.15,0.081,Beta,0.343125,0.656875,Negative,0.656875,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Clade: 21J,Random Intercept,-0.03,-0.1,0.026,Beta,0.158375,0.841625,Negative,0.841625,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Clade: 21K,Random Intercept,-0.0594,-0.12,-0.0044,Beta,0.019125,0.980875,Negative,0.980875,Very Strong,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Clade: 21L,Random Intercept,0.0461,-0.011,0.11,Beta,0.950375,0.049625,Positive,0.950375,Strong,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Clade: 22A,Random Intercept,-0.043,-0.16,0.055,Beta,0.20375,0.79625,Negative,0.79625,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Clade: 22B,Random Intercept,0.05,-0.02,0.13,Beta,0.91925,0.08075,Positive,0.91925,Moderate,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Clade: 22C,Random Intercept,-0.033,-0.16,0.072,Beta,0.281,0.719,Negative,0.719,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Clade: 22D,Random Intercept,0.071,-0.052,0.25,Beta,0.845875,0.154125,Positive,0.845875,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Clade: 22E,Random Intercept,0.07,-0.053,0.26,Beta,0.82725,0.17275,Positive,0.82725,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Clade: Rec.,Random Intercept,0.023,-0.083,0.14,Beta,0.65675,0.34325,Positive,0.65675,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Policy Period: F5,Random Intercept,0.0125,-0.037,0.082,Beta,0.671625,0.328375,Positive,0.671625,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Policy Period: FE,Random Intercept,-0.0315,-0.09,0.0028,Beta,0.045625,0.954375,Negative,0.954375,Strong,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Policy Period: L0,Random Intercept,0.0034,-0.044,0.054,Beta,0.55325,0.44675,Positive,0.55325,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Policy Period: L2,Random Intercept,0.0142,-0.023,0.066,Beta,0.746125,0.253875,Positive,0.746125,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Policy Period: L21,Random Intercept,0.0105,-0.023,0.052,Beta,0.71425,0.28575,Positive,0.71425,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Policy Period: L3,Random Intercept,0.0075,-0.037,0.064,Beta,0.605125,0.394875,Positive,0.605125,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Policy Period: NN,Random Intercept,0.0018,-0.033,0.04,Beta,0.52575,0.47425,Positive,0.52575,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Policy Period: OM,Random Intercept,0.0147,-0.025,0.051,Beta,0.819125,0.180875,Positive,0.819125,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Policy Period: P3,Random Intercept,0.0029,-0.048,0.059,Beta,0.548625,0.451375,Positive,0.548625,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Policy Period: PR,Random Intercept,-0.032,-0.1,0.0081,Beta,0.0955,0.9045,Negative,0.9045,Moderate,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Policy Period: SL,Random Intercept,-0.0006,-0.049,0.052,Beta,0.48125,0.51875,Negative,0.51875,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Primary,Policy Period: T1,Random Intercept,-0.0012,-0.055,0.052,Beta,0.480875,0.519125,Negative,0.519125,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Age,Mixing Entropy,-0.0131,-0.018,-0.0083,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Health board,Mixing Entropy,0.00642,0.0011,0.011,Beta,0.992875,0.007125,Positive,0.992875,Very Strong,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,SIMD,Mixing Entropy,-0.01094,-0.016,-0.0055,Beta,0.000125,0.999875,Negative,0.999875,Very Strong,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Sex,Mixing Entropy,-0.01325,-0.019,-0.0073,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Urban/rural class,Mixing Entropy,-0.0069,-0.012,-0.002,Beta,0.00325,0.99675,Negative,0.99675,Very Strong,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Cumulative Sequencing Proportion,Continuous Adjuster,-0.0084,-0.023,0.0064,Beta,0.13175,0.86825,Negative,0.86825,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Cumulative incidence,Continuous Adjuster,-0.0694,-0.099,-0.04,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Window Sequencing Proportion,Continuous Adjuster,0.0026,-0.0089,0.014,Beta,0.668,0.332,Positive,0.668,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Intercept,Intercept,0.808,0.71,0.91,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Clade: 19B,Random Intercept,0.008,-0.23,0.25,Beta,0.531,0.469,Positive,0.531,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Clade: 20A,Random Intercept,-0.131,-0.33,0.031,Beta,0.059125,0.940875,Negative,0.940875,Moderate,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Clade: 20B,Random Intercept,0.014,-0.14,0.16,Beta,0.5755,0.4245,Positive,0.5755,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Clade: 20E,Random Intercept,-0.038,-0.15,0.061,Beta,0.241375,0.758625,Negative,0.758625,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Clade: 20I,Random Intercept,-0.126,-0.23,-0.037,Beta,0.004,0.996,Negative,0.996,Very Strong,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Clade: 21A,Random Intercept,-0.046,-0.26,0.14,Beta,0.32175,0.67825,Negative,0.67825,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Clade: 21I,Random Intercept,-0.064,-0.23,0.09,Beta,0.21625,0.78375,Negative,0.78375,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Clade: 21J,Random Intercept,-0.08,-0.17,-0.00029,Beta,0.02475,0.97525,Negative,0.97525,Very Strong,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Clade: 21K,Random Intercept,-0.056,-0.14,0.026,Beta,0.077125,0.922875,Negative,0.922875,Moderate,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Clade: 21L,Random Intercept,0.08,-0.0038,0.17,Beta,0.969625,0.030375,Positive,0.969625,Strong,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Clade: 22A,Random Intercept,-0.03,-0.17,0.11,Beta,0.329875,0.670125,Negative,0.670125,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Clade: 22B,Random Intercept,0.11,0.015,0.22,Beta,0.99,0.01,Positive,0.99,Very Strong,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Clade: 22C,Random Intercept,-0.027,-0.18,0.12,Beta,0.360375,0.639625,Negative,0.639625,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Clade: 22D,Random Intercept,0.173,-0.012,0.4,Beta,0.962375,0.037625,Positive,0.962375,Strong,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Clade: 22E,Random Intercept,0.169,-0.034,0.43,Beta,0.94125,0.05875,Positive,0.94125,Moderate,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Clade: Rec.,Random Intercept,0.057,-0.088,0.22,Beta,0.771625,0.228375,Positive,0.771625,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Policy Period: F5,Random Intercept,0.0033,-0.031,0.045,Beta,0.560875,0.439125,Positive,0.560875,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Policy Period: FE,Random Intercept,-0.0142,-0.052,0.0075,Beta,0.150125,0.849875,Negative,0.849875,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Policy Period: L0,Random Intercept,-0.0001,-0.036,0.036,Beta,0.49325,0.50675,Negative,0.50675,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Policy Period: L2,Random Intercept,0.0051,-0.021,0.04,Beta,0.618125,0.381875,Positive,0.618125,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Policy Period: L21,Random Intercept,-0.0024,-0.031,0.024,Beta,0.423,0.577,Negative,0.577,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Policy Period: L3,Random Intercept,0.0016,-0.029,0.037,Beta,0.53525,0.46475,Positive,0.53525,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Policy Period: NN,Random Intercept,0.0033,-0.022,0.033,Beta,0.595375,0.404625,Positive,0.595375,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Policy Period: OM,Random Intercept,0.009,-0.014,0.039,Beta,0.769625,0.230375,Positive,0.769625,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Policy Period: P3,Random Intercept,0.0023,-0.033,0.045,Beta,0.544,0.456,Positive,0.544,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Policy Period: PR,Random Intercept,-0.0037,-0.044,0.024,Beta,0.434875,0.565125,Negative,0.565125,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Policy Period: SL,Random Intercept,-0.002,-0.038,0.031,Beta,0.451,0.549,Negative,0.549,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Observed,Expanded,Policy Period: T1,Random Intercept,-0.0027,-0.041,0.032,Beta,0.440125,0.559875,Negative,0.559875,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Age,Mixing Entropy,-0.00225,-0.0093,0.0047,Beta,0.266,0.734,Negative,0.734,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Health board,Mixing Entropy,0.01534,0.012,0.019,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,SIMD,Mixing Entropy,0.00914,0.0047,0.014,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Sex,Mixing Entropy,-0.00124,-0.0075,0.0049,Beta,0.351,0.649,Negative,0.649,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Urban/rural class,Mixing Entropy,-0.00414,-0.0097,0.0014,Beta,0.06875,0.93125,Negative,0.93125,Moderate,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Intercept,Intercept,0.593,0.54,0.65,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Clade: 19B,Random Intercept,0.006,-0.13,0.15,Beta,0.532,0.468,Positive,0.532,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Clade: 20A,Random Intercept,-0.055,-0.2,0.044,Beta,0.17025,0.82975,Negative,0.82975,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Clade: 20B,Random Intercept,0.026,-0.069,0.14,Beta,0.70375,0.29625,Positive,0.70375,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Clade: 20E,Random Intercept,0.011,-0.059,0.075,Beta,0.64625,0.35375,Positive,0.64625,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Clade: 20I,Random Intercept,-0.014,-0.086,0.041,Beta,0.346875,0.653125,Negative,0.653125,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Clade: 21A,Random Intercept,-0.001,-0.13,0.12,Beta,0.49975,0.50025,Negative,0.50025,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Clade: 21I,Random Intercept,-0.017,-0.13,0.082,Beta,0.3805,0.6195,Negative,0.6195,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Clade: 21J,Random Intercept,-0.013,-0.071,0.034,Beta,0.303875,0.696125,Negative,0.696125,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Clade: 21K,Random Intercept,-0.0601,-0.11,-0.011,Beta,0.01175,0.98825,Negative,0.98825,Very Strong,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Clade: 21L,Random Intercept,0.0407,-0.011,0.094,Beta,0.94775,0.05225,Positive,0.94775,Moderate,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Clade: 22A,Random Intercept,-0.045,-0.16,0.045,Beta,0.178,0.822,Negative,0.822,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Clade: 22B,Random Intercept,0.03,-0.034,0.1,Beta,0.81375,0.18625,Positive,0.81375,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Clade: 22C,Random Intercept,-0.037,-0.16,0.058,Beta,0.23375,0.76625,Negative,0.76625,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Clade: 22D,Random Intercept,0.06,-0.045,0.23,Beta,0.829625,0.170375,Positive,0.829625,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Clade: 22E,Random Intercept,0.052,-0.058,0.23,Beta,0.7815,0.2185,Positive,0.7815,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Clade: Rec.,Random Intercept,0.023,-0.073,0.14,Beta,0.665625,0.334375,Positive,0.665625,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Policy Period: F5,Random Intercept,0.0114,-0.025,0.074,Beta,0.673125,0.326875,Positive,0.673125,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Policy Period: FE,Random Intercept,-0.0143,-0.063,0.011,Beta,0.194125,0.805875,Negative,0.805875,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Policy Period: L0,Random Intercept,-0.0058,-0.055,0.03,Beta,0.39275,0.60725,Negative,0.60725,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Policy Period: L2,Random Intercept,0.0147,-0.013,0.066,Beta,0.775,0.225,Positive,0.775,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Policy Period: L21,Random Intercept,0.0061,-0.022,0.04,Beta,0.651625,0.348375,Positive,0.651625,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Policy Period: L3,Random Intercept,0.006,-0.028,0.055,Beta,0.591875,0.408125,Positive,0.591875,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Policy Period: NN,Random Intercept,-0.0029,-0.035,0.027,Beta,0.4155,0.5845,Negative,0.5845,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Policy Period: OM,Random Intercept,0.0076,-0.024,0.04,Beta,0.723625,0.276375,Positive,0.723625,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Policy Period: P3,Random Intercept,-0.0006,-0.044,0.041,Beta,0.491875,0.508125,Negative,0.508125,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Policy Period: PR,Random Intercept,-0.021,-0.082,0.0087,Beta,0.1605,0.8395,Negative,0.8395,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Policy Period: SL,Random Intercept,0.0045,-0.032,0.054,Beta,0.5635,0.4365,Positive,0.5635,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Primary,Policy Period: T1,Random Intercept,-0.0048,-0.055,0.035,Beta,0.41925,0.58075,Negative,0.58075,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Age,Mixing Entropy,-0.0016,-0.0084,0.0051,Beta,0.321375,0.678625,Negative,0.678625,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Health board,Mixing Entropy,0.0173,0.014,0.02,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,SIMD,Mixing Entropy,0.00955,0.0053,0.014,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Sex,Mixing Entropy,-0.00162,-0.0077,0.0045,Beta,0.300125,0.699875,Negative,0.699875,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Urban/rural class,Mixing Entropy,-0.00642,-0.012,-0.00076,Beta,0.012875,0.987125,Negative,0.987125,Very Strong,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Cumulative Sequencing Proportion,Continuous Adjuster,-0.0113,-0.026,0.0038,Beta,0.0715,0.9285,Negative,0.9285,Moderate,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Cumulative incidence,Continuous Adjuster,-0.0761,-0.1,-0.048,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Window Sequencing Proportion,Continuous Adjuster,0.0147,0.0033,0.027,Beta,0.994875,0.005125,Positive,0.994875,Very Strong,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Intercept,Intercept,0.598,0.51,0.69,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Clade: 19B,Random Intercept,-0.002,-0.25,0.25,Beta,0.491875,0.508125,Negative,0.508125,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Clade: 20A,Random Intercept,-0.148,-0.35,0.022,Beta,0.046375,0.953625,Negative,0.953625,Strong,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Clade: 20B,Random Intercept,0.014,-0.14,0.17,Beta,0.574375,0.425625,Positive,0.574375,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Clade: 20E,Random Intercept,-0.047,-0.16,0.055,Beta,0.202,0.798,Negative,0.798,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Clade: 20I,Random Intercept,-0.133,-0.24,-0.038,Beta,0.003,0.997,Negative,0.997,Very Strong,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Clade: 21A,Random Intercept,-0.057,-0.27,0.14,Beta,0.29125,0.70875,Negative,0.70875,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Clade: 21I,Random Intercept,-0.079,-0.25,0.082,Beta,0.174,0.826,Negative,0.826,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Clade: 21J,Random Intercept,-0.079,-0.17,0.0066,Beta,0.035125,0.964875,Negative,0.964875,Strong,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Clade: 21K,Random Intercept,-0.053,-0.14,0.034,Beta,0.1055,0.8945,Negative,0.8945,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Clade: 21L,Random Intercept,0.086,-0.0014,0.18,Beta,0.9725,0.0275,Positive,0.9725,Strong,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Clade: 22A,Random Intercept,-0.029,-0.17,0.11,Beta,0.341125,0.658875,Negative,0.658875,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Clade: 22B,Random Intercept,0.11,0.01,0.22,Beta,0.984125,0.015875,Positive,0.984125,Very Strong,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Clade: 22C,Random Intercept,-0.034,-0.19,0.12,Beta,0.332375,0.667625,Negative,0.667625,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Clade: 22D,Random Intercept,0.202,0.011,0.44,Beta,0.982125,0.017875,Positive,0.982125,Very Strong,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Clade: 22E,Random Intercept,0.182,-0.029,0.45,Beta,0.949875,0.050125,Positive,0.949875,Moderate,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Clade: Rec.,Random Intercept,0.071,-0.078,0.23,Beta,0.81925,0.18075,Positive,0.81925,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Policy Period: F5,Random Intercept,0.0073,-0.024,0.06,Beta,0.620625,0.379375,Positive,0.620625,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Policy Period: FE,Random Intercept,-0.0059,-0.037,0.017,Beta,0.31825,0.68175,Negative,0.68175,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Policy Period: L0,Random Intercept,-0.0048,-0.045,0.025,Beta,0.3965,0.6035,Negative,0.6035,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Policy Period: L2,Random Intercept,0.0086,-0.016,0.047,Beta,0.704,0.296,Positive,0.704,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Policy Period: L21,Random Intercept,-0.009,-0.043,0.013,Beta,0.260625,0.739375,Negative,0.739375,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Policy Period: L3,Random Intercept,-0.0005,-0.032,0.032,Beta,0.478625,0.521375,Negative,0.521375,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Policy Period: NN,Random Intercept,0.0041,-0.02,0.033,Beta,0.62925,0.37075,Positive,0.62925,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Policy Period: OM,Random Intercept,0.0075,-0.015,0.038,Beta,0.727375,0.272625,Positive,0.727375,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Policy Period: P3,Random Intercept,0.0002,-0.038,0.038,Beta,0.51125,0.48875,Positive,0.51125,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Policy Period: PR,Random Intercept,-0.003,-0.038,0.024,Beta,0.4385,0.5615,Negative,0.5615,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Policy Period: SL,Random Intercept,0.0,-0.033,0.035,Beta,0.496875,0.503125,Negative,0.503125,Weak Or Uncertain,OK
+Mixing,Linear,Expansion Score,Null Standardised,Expanded,Policy Period: T1,Random Intercept,-0.0044,-0.047,0.028,Beta,0.410125,0.589875,Negative,0.589875,Weak Or Uncertain,OK
 Composition,Logistic,Candidate,,Primary,Age Group: 00-04 vs 25-64,Categorical Contrast,0.8649357952063975,0.7710515858035663,0.9646402934831232,Odds Ratio,0.00375,0.99625,Lower Odds,0.99625,Very Strong,OK
 Composition,Logistic,Candidate,,Primary,Age Group: 05-14 vs 25-64,Categorical Contrast,0.894759779076827,0.8521437889662113,0.9398828867910888,Odds Ratio,0.0,1.0,Lower Odds,1.0,Very Strong,OK
 Composition,Logistic,Candidate,,Primary,Age Group: 15-24 vs 25-64,Categorical Contrast,1.106497919218784,1.0650268392313054,1.1502737988572274,Odds Ratio,1.0,0.0,Higher Odds,1.0,Very Strong,OK
@@ -464,11 +464,11 @@ Composition,Logistic,Candidate,,Primary,SIMD: SIMD Q3 vs SIMD Q1,Categorical Con
 Composition,Logistic,Candidate,,Primary,SIMD: SIMD Q4 vs SIMD Q1,Categorical Contrast,1.0526386375104548,1.0057162759095335,1.1029627851085078,Odds Ratio,0.986625,0.013375,Higher Odds,0.986625,Very Strong,OK
 Composition,Logistic,Candidate,,Primary,SIMD: SIMD Q5 vs SIMD Q1,Categorical Contrast,0.976676302155084,0.933326680078202,1.0222437844704382,Odds Ratio,0.156625,0.843375,Lower Odds,0.843375,Weak Or Uncertain,OK
 Composition,Logistic,Candidate,,Primary,Sex: Female vs Male,Categorical Contrast,0.958390465520947,0.931461892127592,0.9870841350202876,Odds Ratio,0.00225,0.99775,Lower Odds,0.99775,Very Strong,OK
-Composition,Logistic,Candidate,,Primary,Urban/Rural: Accessible Rural vs Large Urban,Categorical Contrast,0.942329761855924,0.8869204367171575,0.9994701404251904,Odds Ratio,0.024375,0.975625,Lower Odds,0.975625,Very Strong,OK
-Composition,Logistic,Candidate,,Primary,Urban/Rural: Accessible Town vs Large Urban,Categorical Contrast,0.8847943799576549,0.8269591339433623,0.9417645335842488,Odds Ratio,0.0,1.0,Lower Odds,1.0,Very Strong,OK
-Composition,Logistic,Candidate,,Primary,Urban/Rural: Other Urban vs Large Urban,Categorical Contrast,0.994415650771598,0.9531337870775048,1.0366558464909237,Odds Ratio,0.39925,0.60075,Lower Odds,0.60075,Weak Or Uncertain,OK
-Composition,Logistic,Candidate,,Primary,Urban/Rural: Remote Rural vs Large Urban,Categorical Contrast,0.8824969025845955,0.794533602503334,0.9743350896087494,Odds Ratio,0.005125,0.994875,Lower Odds,0.994875,Very Strong,OK
-Composition,Logistic,Candidate,,Primary,Urban/Rural: Remote Town vs Large Urban,Categorical Contrast,0.8195498933329256,0.7334469562242892,0.910282762240767,Odds Ratio,0.0,1.0,Lower Odds,1.0,Very Strong,OK
+Composition,Logistic,Candidate,,Primary,Urban/rural class: Accessible Rural vs Large Urban,Categorical Contrast,0.942329761855924,0.8869204367171575,0.9994701404251904,Odds Ratio,0.024375,0.975625,Lower Odds,0.975625,Very Strong,OK
+Composition,Logistic,Candidate,,Primary,Urban/rural class: Accessible Town vs Large Urban,Categorical Contrast,0.8847943799576549,0.8269591339433623,0.9417645335842488,Odds Ratio,0.0,1.0,Lower Odds,1.0,Very Strong,OK
+Composition,Logistic,Candidate,,Primary,Urban/rural class: Other Urban vs Large Urban,Categorical Contrast,0.994415650771598,0.9531337870775048,1.0366558464909237,Odds Ratio,0.39925,0.60075,Lower Odds,0.60075,Weak Or Uncertain,OK
+Composition,Logistic,Candidate,,Primary,Urban/rural class: Remote Rural vs Large Urban,Categorical Contrast,0.8824969025845955,0.794533602503334,0.9743350896087494,Odds Ratio,0.005125,0.994875,Lower Odds,0.994875,Very Strong,OK
+Composition,Logistic,Candidate,,Primary,Urban/rural class: Remote Town vs Large Urban,Categorical Contrast,0.8195498933329256,0.7334469562242892,0.910282762240767,Odds Ratio,0.0,1.0,Lower Odds,1.0,Very Strong,OK
 Composition,Logistic,Candidate,,Primary,Intercept,Intercept,0.0632917683596407,0.0183156388887341,0.1826835240527346,Odds,0.0,1.0,Lower Odds,1.0,Very Strong,OK
 Composition,Logistic,Candidate,,Primary,Clade: 19B,Random Intercept,0.2039256117342134,0.0060967465655156,2.611696473423118,Multiplicative Odds,0.1345,0.8655,Lower Odds,0.8655,Weak Or Uncertain,OK
 Composition,Logistic,Candidate,,Primary,Clade: 20A,Random Intercept,0.7633794943368531,0.2465969639416065,2.509290389936298,Multiplicative Odds,0.314125,0.685875,Lower Odds,0.685875,Weak Or Uncertain,OK
@@ -523,11 +523,11 @@ Composition,Logistic,Candidate,,Expanded,SIMD: SIMD Q3 vs SIMD Q1,Categorical Co
 Composition,Logistic,Candidate,,Expanded,SIMD: SIMD Q4 vs SIMD Q1,Categorical Contrast,1.0466556649473395,0.9984012793176064,1.0963648220808169,Odds Ratio,0.971875,0.028125,Higher Odds,0.971875,Strong,OK
 Composition,Logistic,Candidate,,Expanded,SIMD: SIMD Q5 vs SIMD Q1,Categorical Contrast,0.9562843241018388,0.9121051495450904,1.0037068534499816,Odds Ratio,0.033375,0.966625,Lower Odds,0.966625,Strong,OK
 Composition,Logistic,Candidate,,Expanded,Sex: Female vs Male,Categorical Contrast,0.9555196025719545,0.9286716938412872,0.9831436846349096,Odds Ratio,0.00025,0.99975,Lower Odds,0.99975,Very Strong,OK
-Composition,Logistic,Candidate,,Expanded,Urban/Rural: Accessible Rural vs Large Urban,Categorical Contrast,0.9442163072962276,0.8869204367171575,1.0027036482827156,Odds Ratio,0.030625,0.969375,Lower Odds,0.969375,Strong,OK
-Composition,Logistic,Candidate,,Expanded,Urban/Rural: Accessible Town vs Large Urban,Categorical Contrast,0.8829382613663882,0.8269591339433623,0.9398828867910888,Odds Ratio,0.0,1.0,Lower Odds,1.0,Very Strong,OK
-Composition,Logistic,Candidate,,Expanded,Urban/Rural: Other Urban vs Large Urban,Categorical Contrast,0.997104200938112,0.9569539574730468,1.0397704836501578,Odds Ratio,0.4455,0.5545,Lower Odds,0.5545,Weak Or Uncertain,OK
-Composition,Logistic,Candidate,,Expanded,Urban/Rural: Remote Rural vs Large Urban,Categorical Contrast,0.8336013404157353,0.7557837414557255,0.9203511472201248,Odds Ratio,0.000125,0.999875,Lower Odds,0.999875,Very Strong,OK
-Composition,Logistic,Candidate,,Expanded,Urban/Rural: Remote Town vs Large Urban,Categorical Contrast,0.7953285335050939,0.7117703227626097,0.8780954309205613,Odds Ratio,0.0,1.0,Lower Odds,1.0,Very Strong,OK
+Composition,Logistic,Candidate,,Expanded,Urban/rural class: Accessible Rural vs Large Urban,Categorical Contrast,0.9442163072962276,0.8869204367171575,1.0027036482827156,Odds Ratio,0.030625,0.969375,Lower Odds,0.969375,Strong,OK
+Composition,Logistic,Candidate,,Expanded,Urban/rural class: Accessible Town vs Large Urban,Categorical Contrast,0.8829382613663882,0.8269591339433623,0.9398828867910888,Odds Ratio,0.0,1.0,Lower Odds,1.0,Very Strong,OK
+Composition,Logistic,Candidate,,Expanded,Urban/rural class: Other Urban vs Large Urban,Categorical Contrast,0.997104200938112,0.9569539574730468,1.0397704836501578,Odds Ratio,0.4455,0.5545,Lower Odds,0.5545,Weak Or Uncertain,OK
+Composition,Logistic,Candidate,,Expanded,Urban/rural class: Remote Rural vs Large Urban,Categorical Contrast,0.8336013404157353,0.7557837414557255,0.9203511472201248,Odds Ratio,0.000125,0.999875,Lower Odds,0.999875,Very Strong,OK
+Composition,Logistic,Candidate,,Expanded,Urban/rural class: Remote Town vs Large Urban,Categorical Contrast,0.7953285335050939,0.7117703227626097,0.8780954309205613,Odds Ratio,0.0,1.0,Lower Odds,1.0,Very Strong,OK
 Composition,Logistic,Candidate,,Expanded,Cumulative Sequencing Proportion,Continuous Adjuster,0.974724901601794,0.9521811296985048,0.9972039163438928,Odds Ratio,0.0145,0.9855,Lower Odds,0.9855,Very Strong,OK
 Composition,Logistic,Candidate,,Expanded,Cumulative incidence,Continuous Adjuster,0.8427372955282402,0.8187307530779818,0.8693582353988059,Odds Ratio,0.0,1.0,Lower Odds,1.0,Very Strong,OK
 Composition,Logistic,Candidate,,Expanded,Window Sequencing Proportion,Continuous Adjuster,1.2110648331399927,1.1853048513203654,1.2460767305873808,Odds Ratio,1.0,0.0,Higher Odds,1.0,Very Strong,OK
@@ -562,241 +562,241 @@ Composition,Logistic,Candidate,,Expanded,Policy Period: P3,Random Intercept,3.12
 Composition,Logistic,Candidate,,Expanded,Policy Period: PR,Random Intercept,0.3230332564222529,0.149568619222635,0.6126263941844161,Multiplicative Odds,0.000875,0.999125,Lower Odds,0.999125,Very Strong,OK
 Composition,Logistic,Candidate,,Expanded,Policy Period: SL,Random Intercept,0.5488116360940264,0.2725317930340126,1.0376930208381572,Multiplicative Odds,0.031875,0.968125,Lower Odds,0.968125,Strong,OK
 Composition,Logistic,Candidate,,Expanded,Policy Period: T1,Random Intercept,9.487735836358526,4.4816890703380645,20.085536923187668,Multiplicative Odds,1.0,0.0,Higher Odds,1.0,Very Strong,OK
-Composition,Linear,Burst Score,,Primary,Age Group: 00-04 vs 25-64,Categorical Contrast,-0.02137,-0.029,-0.013,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Age Group: 05-14 vs 25-64,Categorical Contrast,-0.01004,-0.014,-0.0063,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Age Group: 15-24 vs 25-64,Categorical Contrast,0.01628,0.013,0.019,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Age Group: 65-74 vs 25-64,Categorical Contrast,-0.01344,-0.019,-0.0079,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Age Group: 75+ vs 25-64,Categorical Contrast,-0.0184,-0.024,-0.013,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Health Board: Ayrshire and Arran vs Greater Glasgow and Clyde,Categorical Contrast,0.0107,0.0052,0.016,Beta,0.999875,0.000125,Positive,0.999875,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Health Board: Borders vs Greater Glasgow and Clyde,Categorical Contrast,-0.0123,-0.023,-0.0023,Beta,0.007875,0.992125,Negative,0.992125,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Health Board: Dumfries and Galloway vs Greater Glasgow and Clyde,Categorical Contrast,0.007,-0.0023,0.016,Beta,0.9325,0.0675,Positive,0.9325,Moderate,Warning
-Composition,Linear,Burst Score,,Primary,Health Board: Fife vs Greater Glasgow and Clyde,Categorical Contrast,-0.0155,-0.021,-0.0098,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Health Board: Forth Valley vs Greater Glasgow and Clyde,Categorical Contrast,0.0033,-0.0024,0.009,Beta,0.86925,0.13075,Positive,0.86925,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Primary,Health Board: Grampian vs Greater Glasgow and Clyde,Categorical Contrast,-0.0188,-0.024,-0.014,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Health Board: Highland vs Greater Glasgow and Clyde,Categorical Contrast,0.0153,0.0086,0.022,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Health Board: Lanarkshire vs Greater Glasgow and Clyde,Categorical Contrast,0.00635,0.0018,0.011,Beta,0.997,0.003,Positive,0.997,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Health Board: Lothian vs Greater Glasgow and Clyde,Categorical Contrast,-0.00585,-0.0097,-0.0021,Beta,0.00125,0.99875,Negative,0.99875,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Health Board: Orkney vs Greater Glasgow and Clyde,Categorical Contrast,0.0668,0.043,0.09,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Health Board: Shetland vs Greater Glasgow and Clyde,Categorical Contrast,0.0335,0.012,0.055,Beta,0.99875,0.00125,Positive,0.99875,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Health Board: Tayside vs Greater Glasgow and Clyde,Categorical Contrast,-0.00015,-0.0052,0.0047,Beta,0.476125,0.523875,Negative,0.523875,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Primary,Health Board: Western Isles vs Greater Glasgow and Clyde,Categorical Contrast,0.0477,0.016,0.08,Beta,0.997875,0.002125,Positive,0.997875,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,SIMD: SIMD Q2 vs SIMD Q1,Categorical Contrast,-0.00038,-0.0038,0.0031,Beta,0.40775,0.59225,Negative,0.59225,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Primary,SIMD: SIMD Q3 vs SIMD Q1,Categorical Contrast,0.00581,0.0021,0.0096,Beta,0.998625,0.001375,Positive,0.998625,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,SIMD: SIMD Q4 vs SIMD Q1,Categorical Contrast,0.00439,0.00069,0.0082,Beta,0.989125,0.010875,Positive,0.989125,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,SIMD: SIMD Q5 vs SIMD Q1,Categorical Contrast,0.0053,0.0017,0.0089,Beta,0.998125,0.001875,Positive,0.998125,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Sex: Female vs Male,Categorical Contrast,-0.00528,-0.0075,-0.003,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Urban/Rural: Accessible Rural vs Large Urban,Categorical Contrast,-0.01039,-0.015,-0.0055,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Urban/Rural: Accessible Town vs Large Urban,Categorical Contrast,-0.01154,-0.016,-0.0068,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Urban/Rural: Other Urban vs Large Urban,Categorical Contrast,-0.00563,-0.0089,-0.0023,Beta,0.00025,0.99975,Negative,0.99975,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Urban/Rural: Remote Rural vs Large Urban,Categorical Contrast,-0.0181,-0.026,-0.01,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Urban/Rural: Remote Town vs Large Urban,Categorical Contrast,-0.0191,-0.027,-0.011,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Intercept,Intercept,0.72,0.58,0.87,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Clade: 19B,Random Intercept,-0.352,-0.51,-0.21,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Clade: 20A,Random Intercept,-0.256,-0.38,-0.14,Beta,0.000375,0.999625,Negative,0.999625,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Clade: 20B,Random Intercept,-0.24,-0.36,-0.13,Beta,0.000625,0.999375,Negative,0.999375,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Clade: 20E,Random Intercept,-0.27,-0.39,-0.16,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Clade: 20I,Random Intercept,-0.127,-0.24,-0.02,Beta,0.012125,0.987875,Negative,0.987875,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Clade: 21A,Random Intercept,-0.094,-0.21,0.018,Beta,0.051375,0.948625,Negative,0.948625,Moderate,Warning
-Composition,Linear,Burst Score,,Primary,Clade: 21D,Random Intercept,-0.074,-0.26,0.11,Beta,0.2045,0.7955,Negative,0.7955,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Primary,Clade: 21I,Random Intercept,-0.067,-0.18,0.045,Beta,0.121875,0.878125,Negative,0.878125,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Primary,Clade: 21J,Random Intercept,-0.051,-0.16,0.056,Beta,0.18025,0.81975,Negative,0.81975,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Primary,Clade: 21K,Random Intercept,0.107,-0.0067,0.21,Beta,0.969875,0.030125,Positive,0.969875,Strong,Warning
-Composition,Linear,Burst Score,,Primary,Clade: 21L,Random Intercept,0.178,0.065,0.29,Beta,0.99675,0.00325,Positive,0.99675,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Clade: 22A,Random Intercept,0.165,0.05,0.28,Beta,0.995,0.005,Positive,0.995,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Clade: 22B,Random Intercept,0.188,0.075,0.3,Beta,0.997875,0.002125,Positive,0.997875,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Clade: 22C,Random Intercept,0.04,-0.078,0.15,Beta,0.762,0.238,Positive,0.762,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Primary,Clade: 22D,Random Intercept,0.304,0.18,0.42,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Clade: 22E,Random Intercept,0.042,-0.087,0.17,Beta,0.7475,0.2525,Positive,0.7475,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Primary,Clade: 23A,Random Intercept,0.401,0.26,0.55,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Clade: Rec.,Random Intercept,0.116,0.00047,0.23,Beta,0.975375,0.024625,Positive,0.975375,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Policy Period: F5,Random Intercept,0.162,0.068,0.26,Beta,0.998625,0.001375,Positive,0.998625,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Policy Period: FE,Random Intercept,-0.214,-0.31,-0.12,Beta,0.000125,0.999875,Negative,0.999875,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Policy Period: L0,Random Intercept,-0.102,-0.2,-0.006,Beta,0.022,0.978,Negative,0.978,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Policy Period: L2,Random Intercept,0.054,-0.04,0.15,Beta,0.88025,0.11975,Positive,0.88025,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Primary,Policy Period: L21,Random Intercept,0.018,-0.076,0.11,Beta,0.655625,0.344375,Positive,0.655625,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Primary,Policy Period: L3,Random Intercept,0.073,-0.022,0.17,Beta,0.9375,0.0625,Positive,0.9375,Moderate,Warning
-Composition,Linear,Burst Score,,Primary,Policy Period: NN,Random Intercept,-0.05,-0.14,0.047,Beta,0.14,0.86,Negative,0.86,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Primary,Policy Period: OM,Random Intercept,-0.089,-0.18,0.0077,Beta,0.0315,0.9685,Negative,0.9685,Strong,Warning
-Composition,Linear,Burst Score,,Primary,Policy Period: P3,Random Intercept,0.185,0.089,0.29,Beta,0.9995,0.0005,Positive,0.9995,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Policy Period: PR,Random Intercept,-0.268,-0.36,-0.17,Beta,0.000125,0.999875,Negative,0.999875,Very Strong,Warning
-Composition,Linear,Burst Score,,Primary,Policy Period: SL,Random Intercept,0.032,-0.063,0.13,Beta,0.764375,0.235625,Positive,0.764375,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Primary,Policy Period: T1,Random Intercept,0.16,0.064,0.26,Beta,0.998875,0.001125,Positive,0.998875,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Age Group: 00-04 vs 25-64,Categorical Contrast,-0.023,-0.031,-0.015,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Age Group: 05-14 vs 25-64,Categorical Contrast,-0.01189,-0.016,-0.0082,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Age Group: 15-24 vs 25-64,Categorical Contrast,0.01596,0.013,0.019,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Age Group: 65-74 vs 25-64,Categorical Contrast,-0.01196,-0.017,-0.0067,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Age Group: 75+ vs 25-64,Categorical Contrast,-0.01477,-0.02,-0.0093,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Health Board: Ayrshire and Arran vs Greater Glasgow and Clyde,Categorical Contrast,0.0065,0.0011,0.012,Beta,0.99175,0.00825,Positive,0.99175,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Health Board: Borders vs Greater Glasgow and Clyde,Categorical Contrast,-0.0212,-0.031,-0.011,Beta,0.000125,0.999875,Negative,0.999875,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Health Board: Dumfries and Galloway vs Greater Glasgow and Clyde,Categorical Contrast,0.0011,-0.0081,0.01,Beta,0.58875,0.41125,Positive,0.58875,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Expanded,Health Board: Fife vs Greater Glasgow and Clyde,Categorical Contrast,-0.0189,-0.025,-0.013,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Health Board: Forth Valley vs Greater Glasgow and Clyde,Categorical Contrast,0.0007,-0.0048,0.0063,Beta,0.596375,0.403625,Positive,0.596375,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Expanded,Health Board: Grampian vs Greater Glasgow and Clyde,Categorical Contrast,-0.02739,-0.032,-0.023,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Health Board: Highland vs Greater Glasgow and Clyde,Categorical Contrast,0.0064,-0.00041,0.013,Beta,0.969,0.031,Positive,0.969,Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Health Board: Lanarkshire vs Greater Glasgow and Clyde,Categorical Contrast,0.00825,0.0038,0.013,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Health Board: Lothian vs Greater Glasgow and Clyde,Categorical Contrast,-0.00817,-0.012,-0.0044,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Health Board: Orkney vs Greater Glasgow and Clyde,Categorical Contrast,0.0507,0.028,0.074,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Health Board: Shetland vs Greater Glasgow and Clyde,Categorical Contrast,0.0216,-0.00016,0.043,Beta,0.97375,0.02625,Positive,0.97375,Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Health Board: Tayside vs Greater Glasgow and Clyde,Categorical Contrast,-0.00623,-0.011,-0.0014,Beta,0.007125,0.992875,Negative,0.992875,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Health Board: Western Isles vs Greater Glasgow and Clyde,Categorical Contrast,0.0317,0.00066,0.064,Beta,0.97725,0.02275,Positive,0.97725,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,SIMD: SIMD Q2 vs SIMD Q1,Categorical Contrast,-0.00156,-0.005,0.0018,Beta,0.190125,0.809875,Negative,0.809875,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Expanded,SIMD: SIMD Q3 vs SIMD Q1,Categorical Contrast,0.00337,-0.00036,0.007,Beta,0.962875,0.037125,Positive,0.962875,Strong,Warning
-Composition,Linear,Burst Score,,Expanded,SIMD: SIMD Q4 vs SIMD Q1,Categorical Contrast,0.00405,0.00041,0.0078,Beta,0.984875,0.015125,Positive,0.984875,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,SIMD: SIMD Q5 vs SIMD Q1,Categorical Contrast,0.00283,-0.00079,0.0065,Beta,0.93525,0.06475,Positive,0.93525,Moderate,Warning
-Composition,Linear,Burst Score,,Expanded,Sex: Female vs Male,Categorical Contrast,-0.00569,-0.008,-0.0034,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Urban/Rural: Accessible Rural vs Large Urban,Categorical Contrast,-0.00947,-0.014,-0.0048,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Urban/Rural: Accessible Town vs Large Urban,Categorical Contrast,-0.01128,-0.016,-0.0065,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Urban/Rural: Other Urban vs Large Urban,Categorical Contrast,-0.00501,-0.0084,-0.0017,Beta,0.002,0.998,Negative,0.998,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Urban/Rural: Remote Rural vs Large Urban,Categorical Contrast,-0.0263,-0.034,-0.018,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Urban/Rural: Remote Town vs Large Urban,Categorical Contrast,-0.0233,-0.031,-0.015,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Cumulative Sequencing Proportion,Continuous Adjuster,-0.00041,-0.002,0.0012,Beta,0.31375,0.68625,Negative,0.68625,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Expanded,Cumulative incidence,Continuous Adjuster,-0.02608,-0.029,-0.024,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Window Sequencing Proportion,Continuous Adjuster,0.03097,0.029,0.033,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Intercept,Intercept,0.704,0.55,0.85,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Clade: 19B,Random Intercept,-0.435,-0.59,-0.28,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Clade: 20A,Random Intercept,-0.275,-0.4,-0.15,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Clade: 20B,Random Intercept,-0.29,-0.42,-0.16,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Clade: 20E,Random Intercept,-0.291,-0.42,-0.16,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Clade: 20I,Random Intercept,-0.18,-0.3,-0.056,Beta,0.00475,0.99525,Negative,0.99525,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Clade: 21A,Random Intercept,-0.147,-0.28,-0.017,Beta,0.014375,0.985625,Negative,0.985625,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Clade: 21D,Random Intercept,-0.13,-0.32,0.059,Beta,0.092875,0.907125,Negative,0.907125,Moderate,Warning
-Composition,Linear,Burst Score,,Expanded,Clade: 21I,Random Intercept,-0.084,-0.21,0.044,Beta,0.09775,0.90225,Negative,0.90225,Moderate,Warning
-Composition,Linear,Burst Score,,Expanded,Clade: 21J,Random Intercept,-0.066,-0.19,0.059,Beta,0.145875,0.854125,Negative,0.854125,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Expanded,Clade: 21K,Random Intercept,0.117,-0.0074,0.24,Beta,0.968875,0.031125,Positive,0.968875,Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Clade: 21L,Random Intercept,0.2,0.076,0.33,Beta,0.99875,0.00125,Positive,0.99875,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Clade: 22A,Random Intercept,0.216,0.091,0.35,Beta,0.9995,0.0005,Positive,0.9995,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Clade: 22B,Random Intercept,0.239,0.11,0.37,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Clade: 22C,Random Intercept,0.082,-0.048,0.21,Beta,0.89725,0.10275,Positive,0.89725,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Expanded,Clade: 22D,Random Intercept,0.36,0.23,0.5,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Clade: 22E,Random Intercept,0.092,-0.047,0.23,Beta,0.904875,0.095125,Positive,0.904875,Moderate,Warning
-Composition,Linear,Burst Score,,Expanded,Clade: 23A,Random Intercept,0.461,0.31,0.62,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Clade: Rec.,Random Intercept,0.139,0.012,0.27,Beta,0.98325,0.01675,Positive,0.98325,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Policy Period: F5,Random Intercept,0.209,0.11,0.31,Beta,0.9995,0.0005,Positive,0.9995,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Policy Period: FE,Random Intercept,-0.191,-0.29,-0.098,Beta,0.00075,0.99925,Negative,0.99925,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Policy Period: L0,Random Intercept,-0.084,-0.18,0.0095,Beta,0.037125,0.962875,Negative,0.962875,Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Policy Period: L2,Random Intercept,0.025,-0.072,0.12,Beta,0.71525,0.28475,Positive,0.71525,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Expanded,Policy Period: L21,Random Intercept,-0.014,-0.11,0.079,Beta,0.38275,0.61725,Negative,0.61725,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Expanded,Policy Period: L3,Random Intercept,0.016,-0.08,0.11,Beta,0.652,0.348,Positive,0.652,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Expanded,Policy Period: NN,Random Intercept,-0.027,-0.12,0.066,Beta,0.276,0.724,Negative,0.724,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Expanded,Policy Period: OM,Random Intercept,-0.055,-0.15,0.038,Beta,0.1115,0.8885,Negative,0.8885,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Expanded,Policy Period: P3,Random Intercept,0.172,0.074,0.27,Beta,0.999125,0.000875,Positive,0.999125,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Policy Period: PR,Random Intercept,-0.246,-0.34,-0.15,Beta,0.000125,0.999875,Negative,0.999875,Very Strong,Warning
-Composition,Linear,Burst Score,,Expanded,Policy Period: SL,Random Intercept,-0.02,-0.12,0.073,Beta,0.324125,0.675875,Negative,0.675875,Weak Or Uncertain,Warning
-Composition,Linear,Burst Score,,Expanded,Policy Period: T1,Random Intercept,0.188,0.09,0.28,Beta,0.999375,0.000625,Positive,0.999375,Very Strong,Warning
-Composition,Linear,Burden Score,,Primary,Age Group: 00-04 vs 25-64,Categorical Contrast,-0.0145,-0.027,-0.002,Beta,0.012,0.988,Negative,0.988,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Age Group: 05-14 vs 25-64,Categorical Contrast,-0.01474,-0.02,-0.009,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Age Group: 15-24 vs 25-64,Categorical Contrast,0.00625,0.0015,0.011,Beta,0.9965,0.0035,Positive,0.9965,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Age Group: 65-74 vs 25-64,Categorical Contrast,-0.00978,-0.019,-0.0012,Beta,0.013375,0.986625,Negative,0.986625,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Age Group: 75+ vs 25-64,Categorical Contrast,-0.03351,-0.042,-0.025,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Health Board: Ayrshire and Arran vs Greater Glasgow and Clyde,Categorical Contrast,-0.0116,-0.02,-0.0033,Beta,0.003125,0.996875,Negative,0.996875,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Health Board: Borders vs Greater Glasgow and Clyde,Categorical Contrast,-0.0188,-0.035,-0.0026,Beta,0.01075,0.98925,Negative,0.98925,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Health Board: Dumfries and Galloway vs Greater Glasgow and Clyde,Categorical Contrast,-0.025,-0.039,-0.011,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Health Board: Fife vs Greater Glasgow and Clyde,Categorical Contrast,-0.0049,-0.014,0.0042,Beta,0.14775,0.85225,Negative,0.85225,Weak Or Uncertain,OK
-Composition,Linear,Burden Score,,Primary,Health Board: Forth Valley vs Greater Glasgow and Clyde,Categorical Contrast,-0.0153,-0.024,-0.0066,Beta,0.000125,0.999875,Negative,0.999875,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Health Board: Grampian vs Greater Glasgow and Clyde,Categorical Contrast,-0.0406,-0.048,-0.033,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Health Board: Highland vs Greater Glasgow and Clyde,Categorical Contrast,-0.0028,-0.013,0.0077,Beta,0.302,0.698,Negative,0.698,Weak Or Uncertain,OK
-Composition,Linear,Burden Score,,Primary,Health Board: Lanarkshire vs Greater Glasgow and Clyde,Categorical Contrast,0.0008,-0.0059,0.0075,Beta,0.603625,0.396375,Positive,0.603625,Weak Or Uncertain,OK
-Composition,Linear,Burden Score,,Primary,Health Board: Lothian vs Greater Glasgow and Clyde,Categorical Contrast,-0.02136,-0.027,-0.016,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Health Board: Orkney vs Greater Glasgow and Clyde,Categorical Contrast,-0.1959,-0.24,-0.16,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Health Board: Shetland vs Greater Glasgow and Clyde,Categorical Contrast,-0.0275,-0.063,0.0082,Beta,0.068,0.932,Negative,0.932,Moderate,OK
-Composition,Linear,Burden Score,,Primary,Health Board: Tayside vs Greater Glasgow and Clyde,Categorical Contrast,-0.0331,-0.041,-0.026,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Health Board: Western Isles vs Greater Glasgow and Clyde,Categorical Contrast,0.0047,-0.049,0.058,Beta,0.572375,0.427625,Positive,0.572375,Weak Or Uncertain,OK
-Composition,Linear,Burden Score,,Primary,SIMD: SIMD Q2 vs SIMD Q1,Categorical Contrast,-0.00555,-0.011,-0.00039,Beta,0.017,0.983,Negative,0.983,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,SIMD: SIMD Q3 vs SIMD Q1,Categorical Contrast,0.00306,-0.0026,0.0087,Beta,0.857375,0.142625,Positive,0.857375,Weak Or Uncertain,OK
-Composition,Linear,Burden Score,,Primary,SIMD: SIMD Q4 vs SIMD Q1,Categorical Contrast,0.00043,-0.0054,0.0061,Beta,0.558375,0.441625,Positive,0.558375,Weak Or Uncertain,OK
-Composition,Linear,Burden Score,,Primary,SIMD: SIMD Q5 vs SIMD Q1,Categorical Contrast,-0.00411,-0.0098,0.0014,Beta,0.073625,0.926375,Negative,0.926375,Moderate,OK
-Composition,Linear,Burden Score,,Primary,Sex: Female vs Male,Categorical Contrast,-0.00458,-0.0083,-0.00098,Beta,0.0065,0.9935,Negative,0.9935,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Urban/Rural: Accessible Rural vs Large Urban,Categorical Contrast,-0.0058,-0.013,0.0016,Beta,0.0625,0.9375,Negative,0.9375,Moderate,OK
-Composition,Linear,Burden Score,,Primary,Urban/Rural: Accessible Town vs Large Urban,Categorical Contrast,-0.005,-0.012,0.0025,Beta,0.093875,0.906125,Negative,0.906125,Moderate,OK
-Composition,Linear,Burden Score,,Primary,Urban/Rural: Other Urban vs Large Urban,Categorical Contrast,-0.00696,-0.012,-0.0018,Beta,0.003375,0.996625,Negative,0.996625,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Urban/Rural: Remote Rural vs Large Urban,Categorical Contrast,-0.0119,-0.024,-0.00038,Beta,0.022125,0.977875,Negative,0.977875,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Urban/Rural: Remote Town vs Large Urban,Categorical Contrast,-0.019,-0.031,-0.0063,Beta,0.001875,0.998125,Negative,0.998125,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Intercept,Intercept,0.644,0.44,0.84,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Clade: 19B,Random Intercept,-0.073,-0.31,0.17,Beta,0.26925,0.73075,Negative,0.73075,Weak Or Uncertain,OK
-Composition,Linear,Burden Score,,Primary,Clade: 20A,Random Intercept,-0.376,-0.55,-0.2,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Clade: 20B,Random Intercept,-0.213,-0.38,-0.044,Beta,0.006375,0.993625,Negative,0.993625,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Clade: 20E,Random Intercept,-0.257,-0.42,-0.091,Beta,0.001125,0.998875,Negative,0.998875,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Clade: 20I,Random Intercept,-0.312,-0.47,-0.15,Beta,0.00025,0.99975,Negative,0.99975,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Clade: 21A,Random Intercept,-0.376,-0.55,-0.2,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Clade: 21I,Random Intercept,-0.116,-0.28,0.046,Beta,0.079875,0.920125,Negative,0.920125,Moderate,OK
-Composition,Linear,Burden Score,,Primary,Clade: 21J,Random Intercept,-0.119,-0.28,0.039,Beta,0.06975,0.93025,Negative,0.93025,Moderate,OK
-Composition,Linear,Burden Score,,Primary,Clade: 21K,Random Intercept,0.005,-0.15,0.16,Beta,0.522125,0.477875,Positive,0.522125,Weak Or Uncertain,OK
-Composition,Linear,Burden Score,,Primary,Clade: 21L,Random Intercept,0.179,0.024,0.34,Beta,0.9865,0.0135,Positive,0.9865,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Clade: 22A,Random Intercept,0.098,-0.064,0.26,Beta,0.886,0.114,Positive,0.886,Weak Or Uncertain,OK
-Composition,Linear,Burden Score,,Primary,Clade: 22B,Random Intercept,0.325,0.17,0.49,Beta,0.999625,0.000375,Positive,0.999625,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Clade: 22C,Random Intercept,0.095,-0.07,0.26,Beta,0.874125,0.125875,Positive,0.874125,Weak Or Uncertain,OK
-Composition,Linear,Burden Score,,Primary,Clade: 22D,Random Intercept,0.433,0.27,0.61,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Clade: 22E,Random Intercept,0.65,0.46,0.85,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Clade: Rec.,Random Intercept,0.124,-0.037,0.29,Beta,0.934625,0.065375,Positive,0.934625,Moderate,OK
-Composition,Linear,Burden Score,,Primary,Policy Period: F5,Random Intercept,0.177,0.043,0.31,Beta,0.993,0.007,Positive,0.993,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Policy Period: FE,Random Intercept,-0.269,-0.4,-0.14,Beta,0.00075,0.99925,Negative,0.99925,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Policy Period: L0,Random Intercept,-0.041,-0.17,0.092,Beta,0.245125,0.754875,Negative,0.754875,Weak Or Uncertain,OK
-Composition,Linear,Burden Score,,Primary,Policy Period: L2,Random Intercept,0.151,0.021,0.28,Beta,0.987125,0.012875,Positive,0.987125,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Policy Period: L21,Random Intercept,-0.055,-0.18,0.077,Beta,0.180875,0.819125,Negative,0.819125,Weak Or Uncertain,OK
-Composition,Linear,Burden Score,,Primary,Policy Period: L3,Random Intercept,0.17,0.04,0.3,Beta,0.993,0.007,Positive,0.993,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Policy Period: NN,Random Intercept,-0.054,-0.18,0.077,Beta,0.18725,0.81275,Negative,0.81275,Weak Or Uncertain,OK
-Composition,Linear,Burden Score,,Primary,Policy Period: OM,Random Intercept,-0.126,-0.26,0.0043,Beta,0.02925,0.97075,Negative,0.97075,Strong,OK
-Composition,Linear,Burden Score,,Primary,Policy Period: P3,Random Intercept,0.102,-0.036,0.24,Beta,0.938125,0.061875,Positive,0.938125,Moderate,OK
-Composition,Linear,Burden Score,,Primary,Policy Period: PR,Random Intercept,-0.386,-0.52,-0.25,Beta,0.000375,0.999625,Negative,0.999625,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Policy Period: SL,Random Intercept,0.198,0.07,0.33,Beta,0.99725,0.00275,Positive,0.99725,Very Strong,OK
-Composition,Linear,Burden Score,,Primary,Policy Period: T1,Random Intercept,0.133,-0.0029,0.27,Beta,0.973375,0.026625,Positive,0.973375,Strong,OK
-Composition,Linear,Burden Score,,Expanded,Age Group: 00-04 vs 25-64,Categorical Contrast,-0.0164,-0.029,-0.0036,Beta,0.0065,0.9935,Negative,0.9935,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Age Group: 05-14 vs 25-64,Categorical Contrast,-0.01651,-0.022,-0.011,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Age Group: 15-24 vs 25-64,Categorical Contrast,0.00561,0.00092,0.01,Beta,0.98925,0.01075,Positive,0.98925,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Age Group: 65-74 vs 25-64,Categorical Contrast,-0.0079,-0.017,0.00076,Beta,0.037,0.963,Negative,0.963,Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Age Group: 75+ vs 25-64,Categorical Contrast,-0.02854,-0.037,-0.02,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Health Board: Ayrshire and Arran vs Greater Glasgow and Clyde,Categorical Contrast,-0.0188,-0.027,-0.011,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Health Board: Borders vs Greater Glasgow and Clyde,Categorical Contrast,-0.0329,-0.049,-0.017,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Health Board: Dumfries and Galloway vs Greater Glasgow and Clyde,Categorical Contrast,-0.036,-0.05,-0.022,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Health Board: Fife vs Greater Glasgow and Clyde,Categorical Contrast,-0.011,-0.02,-0.0019,Beta,0.00675,0.99325,Negative,0.99325,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Health Board: Forth Valley vs Greater Glasgow and Clyde,Categorical Contrast,-0.0187,-0.027,-0.0096,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Health Board: Grampian vs Greater Glasgow and Clyde,Categorical Contrast,-0.0553,-0.063,-0.047,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Health Board: Highland vs Greater Glasgow and Clyde,Categorical Contrast,-0.0181,-0.029,-0.0074,Beta,0.000125,0.999875,Negative,0.999875,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Health Board: Lanarkshire vs Greater Glasgow and Clyde,Categorical Contrast,0.0041,-0.0027,0.011,Beta,0.883875,0.116125,Positive,0.883875,Weak Or Uncertain,Warning
-Composition,Linear,Burden Score,,Expanded,Health Board: Lothian vs Greater Glasgow and Clyde,Categorical Contrast,-0.0243,-0.03,-0.018,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Health Board: Orkney vs Greater Glasgow and Clyde,Categorical Contrast,-0.2189,-0.26,-0.18,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Health Board: Shetland vs Greater Glasgow and Clyde,Categorical Contrast,-0.0426,-0.078,-0.0059,Beta,0.01025,0.98975,Negative,0.98975,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Health Board: Tayside vs Greater Glasgow and Clyde,Categorical Contrast,-0.0451,-0.053,-0.037,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Health Board: Western Isles vs Greater Glasgow and Clyde,Categorical Contrast,-0.0326,-0.085,0.02,Beta,0.109125,0.890875,Negative,0.890875,Weak Or Uncertain,Warning
-Composition,Linear,Burden Score,,Expanded,SIMD: SIMD Q2 vs SIMD Q1,Categorical Contrast,-0.0075,-0.013,-0.0023,Beta,0.0025,0.9975,Negative,0.9975,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,SIMD: SIMD Q3 vs SIMD Q1,Categorical Contrast,-0.00134,-0.0069,0.0044,Beta,0.31725,0.68275,Negative,0.68275,Weak Or Uncertain,Warning
-Composition,Linear,Burden Score,,Expanded,SIMD: SIMD Q4 vs SIMD Q1,Categorical Contrast,-0.00023,-0.0059,0.0055,Beta,0.467,0.533,Negative,0.533,Weak Or Uncertain,Warning
-Composition,Linear,Burden Score,,Expanded,SIMD: SIMD Q5 vs SIMD Q1,Categorical Contrast,-0.00853,-0.014,-0.0031,Beta,0.000625,0.999375,Negative,0.999375,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Sex: Female vs Male,Categorical Contrast,-0.00564,-0.0091,-0.0022,Beta,0.000375,0.999625,Negative,0.999625,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Urban/Rural: Accessible Rural vs Large Urban,Categorical Contrast,-0.0047,-0.012,0.0025,Beta,0.107,0.893,Negative,0.893,Weak Or Uncertain,Warning
-Composition,Linear,Burden Score,,Expanded,Urban/Rural: Accessible Town vs Large Urban,Categorical Contrast,-0.0057,-0.013,0.0018,Beta,0.06775,0.93225,Negative,0.93225,Moderate,Warning
-Composition,Linear,Burden Score,,Expanded,Urban/Rural: Other Urban vs Large Urban,Categorical Contrast,-0.0064,-0.012,-0.0012,Beta,0.00725,0.99275,Negative,0.99275,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Urban/Rural: Remote Rural vs Large Urban,Categorical Contrast,-0.0269,-0.039,-0.015,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Urban/Rural: Remote Town vs Large Urban,Categorical Contrast,-0.0261,-0.039,-0.013,Beta,0.000125,0.999875,Negative,0.999875,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Cumulative Sequencing Proportion,Continuous Adjuster,-0.00555,-0.008,-0.0031,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Cumulative incidence,Continuous Adjuster,-0.04458,-0.048,-0.041,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Window Sequencing Proportion,Continuous Adjuster,0.03821,0.035,0.041,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Intercept,Intercept,0.63,0.42,0.86,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Clade: 19B,Random Intercept,-0.17,-0.44,0.085,Beta,0.087875,0.912125,Negative,0.912125,Moderate,Warning
-Composition,Linear,Burden Score,,Expanded,Clade: 20A,Random Intercept,-0.43,-0.63,-0.23,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Clade: 20B,Random Intercept,-0.31,-0.51,-0.11,Beta,0.002,0.998,Negative,0.998,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Clade: 20E,Random Intercept,-0.31,-0.52,-0.12,Beta,0.00175,0.99825,Negative,0.99825,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Clade: 20I,Random Intercept,-0.39,-0.59,-0.2,Beta,0.000125,0.999875,Negative,0.999875,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Clade: 21A,Random Intercept,-0.45,-0.66,-0.25,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Clade: 21I,Random Intercept,-0.15,-0.36,0.046,Beta,0.057125,0.942875,Negative,0.942875,Moderate,Warning
-Composition,Linear,Burden Score,,Expanded,Clade: 21J,Random Intercept,-0.15,-0.35,0.04,Beta,0.05675,0.94325,Negative,0.94325,Moderate,Warning
-Composition,Linear,Burden Score,,Expanded,Clade: 21K,Random Intercept,0.01,-0.19,0.2,Beta,0.56025,0.43975,Positive,0.56025,Weak Or Uncertain,Warning
-Composition,Linear,Burden Score,,Expanded,Clade: 21L,Random Intercept,0.2,0.0015,0.39,Beta,0.975375,0.024625,Positive,0.975375,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Clade: 22A,Random Intercept,0.15,-0.049,0.35,Beta,0.9395,0.0605,Positive,0.9395,Moderate,Warning
-Composition,Linear,Burden Score,,Expanded,Clade: 22B,Random Intercept,0.38,0.18,0.57,Beta,0.9995,0.0005,Positive,0.9995,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Clade: 22C,Random Intercept,0.14,-0.067,0.34,Beta,0.917,0.083,Positive,0.917,Moderate,Warning
-Composition,Linear,Burden Score,,Expanded,Clade: 22D,Random Intercept,0.5,0.29,0.7,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Clade: 22E,Random Intercept,0.71,0.48,0.93,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Clade: Rec.,Random Intercept,0.15,-0.058,0.34,Beta,0.92675,0.07325,Positive,0.92675,Moderate,Warning
-Composition,Linear,Burden Score,,Expanded,Policy Period: F5,Random Intercept,0.239,0.12,0.36,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Policy Period: FE,Random Intercept,-0.236,-0.36,-0.12,Beta,0.00025,0.99975,Negative,0.99975,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Policy Period: L0,Random Intercept,-0.022,-0.14,0.095,Beta,0.344875,0.655125,Negative,0.655125,Weak Or Uncertain,Warning
-Composition,Linear,Burden Score,,Expanded,Policy Period: L2,Random Intercept,0.104,-0.013,0.22,Beta,0.9615,0.0385,Positive,0.9615,Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Policy Period: L21,Random Intercept,-0.109,-0.23,0.009,Beta,0.03375,0.96625,Negative,0.96625,Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Policy Period: L3,Random Intercept,0.089,-0.028,0.21,Beta,0.93925,0.06075,Positive,0.93925,Moderate,Warning
-Composition,Linear,Burden Score,,Expanded,Policy Period: NN,Random Intercept,-0.026,-0.14,0.092,Beta,0.319375,0.680625,Negative,0.680625,Weak Or Uncertain,Warning
-Composition,Linear,Burden Score,,Expanded,Policy Period: OM,Random Intercept,-0.087,-0.21,0.029,Beta,0.0635,0.9365,Negative,0.9365,Moderate,Warning
-Composition,Linear,Burden Score,,Expanded,Policy Period: P3,Random Intercept,0.12,-0.00093,0.25,Beta,0.974125,0.025875,Positive,0.974125,Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Policy Period: PR,Random Intercept,-0.343,-0.46,-0.23,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Policy Period: SL,Random Intercept,0.124,0.0057,0.24,Beta,0.979125,0.020875,Positive,0.979125,Very Strong,Warning
-Composition,Linear,Burden Score,,Expanded,Policy Period: T1,Random Intercept,0.185,0.064,0.31,Beta,0.99825,0.00175,Positive,0.99825,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Age Group: 00-04 vs 25-64,Categorical Contrast,-0.02137,-0.029,-0.013,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Age Group: 05-14 vs 25-64,Categorical Contrast,-0.01004,-0.014,-0.0063,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Age Group: 15-24 vs 25-64,Categorical Contrast,0.01628,0.013,0.019,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Age Group: 65-74 vs 25-64,Categorical Contrast,-0.01344,-0.019,-0.0079,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Age Group: 75+ vs 25-64,Categorical Contrast,-0.0184,-0.024,-0.013,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Health Board: Ayrshire and Arran vs Greater Glasgow and Clyde,Categorical Contrast,0.0107,0.0052,0.016,Beta,0.999875,0.000125,Positive,0.999875,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Health Board: Borders vs Greater Glasgow and Clyde,Categorical Contrast,-0.0123,-0.023,-0.0023,Beta,0.007875,0.992125,Negative,0.992125,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Health Board: Dumfries and Galloway vs Greater Glasgow and Clyde,Categorical Contrast,0.007,-0.0023,0.016,Beta,0.9325,0.0675,Positive,0.9325,Moderate,Warning
+Composition,Linear,Accumulation Score,,Primary,Health Board: Fife vs Greater Glasgow and Clyde,Categorical Contrast,-0.0155,-0.021,-0.0098,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Health Board: Forth Valley vs Greater Glasgow and Clyde,Categorical Contrast,0.0033,-0.0024,0.009,Beta,0.86925,0.13075,Positive,0.86925,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Primary,Health Board: Grampian vs Greater Glasgow and Clyde,Categorical Contrast,-0.0188,-0.024,-0.014,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Health Board: Highland vs Greater Glasgow and Clyde,Categorical Contrast,0.0153,0.0086,0.022,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Health Board: Lanarkshire vs Greater Glasgow and Clyde,Categorical Contrast,0.00635,0.0018,0.011,Beta,0.997,0.003,Positive,0.997,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Health Board: Lothian vs Greater Glasgow and Clyde,Categorical Contrast,-0.00585,-0.0097,-0.0021,Beta,0.00125,0.99875,Negative,0.99875,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Health Board: Orkney vs Greater Glasgow and Clyde,Categorical Contrast,0.0668,0.043,0.09,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Health Board: Shetland vs Greater Glasgow and Clyde,Categorical Contrast,0.0335,0.012,0.055,Beta,0.99875,0.00125,Positive,0.99875,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Health Board: Tayside vs Greater Glasgow and Clyde,Categorical Contrast,-0.00015,-0.0052,0.0047,Beta,0.476125,0.523875,Negative,0.523875,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Primary,Health Board: Western Isles vs Greater Glasgow and Clyde,Categorical Contrast,0.0477,0.016,0.08,Beta,0.997875,0.002125,Positive,0.997875,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,SIMD: SIMD Q2 vs SIMD Q1,Categorical Contrast,-0.00038,-0.0038,0.0031,Beta,0.40775,0.59225,Negative,0.59225,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Primary,SIMD: SIMD Q3 vs SIMD Q1,Categorical Contrast,0.00581,0.0021,0.0096,Beta,0.998625,0.001375,Positive,0.998625,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,SIMD: SIMD Q4 vs SIMD Q1,Categorical Contrast,0.00439,0.00069,0.0082,Beta,0.989125,0.010875,Positive,0.989125,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,SIMD: SIMD Q5 vs SIMD Q1,Categorical Contrast,0.0053,0.0017,0.0089,Beta,0.998125,0.001875,Positive,0.998125,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Sex: Female vs Male,Categorical Contrast,-0.00528,-0.0075,-0.003,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Urban/rural class: Accessible Rural vs Large Urban,Categorical Contrast,-0.01039,-0.015,-0.0055,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Urban/rural class: Accessible Town vs Large Urban,Categorical Contrast,-0.01154,-0.016,-0.0068,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Urban/rural class: Other Urban vs Large Urban,Categorical Contrast,-0.00563,-0.0089,-0.0023,Beta,0.00025,0.99975,Negative,0.99975,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Urban/rural class: Remote Rural vs Large Urban,Categorical Contrast,-0.0181,-0.026,-0.01,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Urban/rural class: Remote Town vs Large Urban,Categorical Contrast,-0.0191,-0.027,-0.011,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Intercept,Intercept,0.72,0.58,0.87,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Clade: 19B,Random Intercept,-0.352,-0.51,-0.21,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Clade: 20A,Random Intercept,-0.256,-0.38,-0.14,Beta,0.000375,0.999625,Negative,0.999625,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Clade: 20B,Random Intercept,-0.24,-0.36,-0.13,Beta,0.000625,0.999375,Negative,0.999375,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Clade: 20E,Random Intercept,-0.27,-0.39,-0.16,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Clade: 20I,Random Intercept,-0.127,-0.24,-0.02,Beta,0.012125,0.987875,Negative,0.987875,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Clade: 21A,Random Intercept,-0.094,-0.21,0.018,Beta,0.051375,0.948625,Negative,0.948625,Moderate,Warning
+Composition,Linear,Accumulation Score,,Primary,Clade: 21D,Random Intercept,-0.074,-0.26,0.11,Beta,0.2045,0.7955,Negative,0.7955,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Primary,Clade: 21I,Random Intercept,-0.067,-0.18,0.045,Beta,0.121875,0.878125,Negative,0.878125,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Primary,Clade: 21J,Random Intercept,-0.051,-0.16,0.056,Beta,0.18025,0.81975,Negative,0.81975,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Primary,Clade: 21K,Random Intercept,0.107,-0.0067,0.21,Beta,0.969875,0.030125,Positive,0.969875,Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Clade: 21L,Random Intercept,0.178,0.065,0.29,Beta,0.99675,0.00325,Positive,0.99675,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Clade: 22A,Random Intercept,0.165,0.05,0.28,Beta,0.995,0.005,Positive,0.995,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Clade: 22B,Random Intercept,0.188,0.075,0.3,Beta,0.997875,0.002125,Positive,0.997875,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Clade: 22C,Random Intercept,0.04,-0.078,0.15,Beta,0.762,0.238,Positive,0.762,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Primary,Clade: 22D,Random Intercept,0.304,0.18,0.42,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Clade: 22E,Random Intercept,0.042,-0.087,0.17,Beta,0.7475,0.2525,Positive,0.7475,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Primary,Clade: 23A,Random Intercept,0.401,0.26,0.55,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Clade: Rec.,Random Intercept,0.116,0.00047,0.23,Beta,0.975375,0.024625,Positive,0.975375,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Policy Period: F5,Random Intercept,0.162,0.068,0.26,Beta,0.998625,0.001375,Positive,0.998625,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Policy Period: FE,Random Intercept,-0.214,-0.31,-0.12,Beta,0.000125,0.999875,Negative,0.999875,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Policy Period: L0,Random Intercept,-0.102,-0.2,-0.006,Beta,0.022,0.978,Negative,0.978,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Policy Period: L2,Random Intercept,0.054,-0.04,0.15,Beta,0.88025,0.11975,Positive,0.88025,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Primary,Policy Period: L21,Random Intercept,0.018,-0.076,0.11,Beta,0.655625,0.344375,Positive,0.655625,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Primary,Policy Period: L3,Random Intercept,0.073,-0.022,0.17,Beta,0.9375,0.0625,Positive,0.9375,Moderate,Warning
+Composition,Linear,Accumulation Score,,Primary,Policy Period: NN,Random Intercept,-0.05,-0.14,0.047,Beta,0.14,0.86,Negative,0.86,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Primary,Policy Period: OM,Random Intercept,-0.089,-0.18,0.0077,Beta,0.0315,0.9685,Negative,0.9685,Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Policy Period: P3,Random Intercept,0.185,0.089,0.29,Beta,0.9995,0.0005,Positive,0.9995,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Policy Period: PR,Random Intercept,-0.268,-0.36,-0.17,Beta,0.000125,0.999875,Negative,0.999875,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Primary,Policy Period: SL,Random Intercept,0.032,-0.063,0.13,Beta,0.764375,0.235625,Positive,0.764375,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Primary,Policy Period: T1,Random Intercept,0.16,0.064,0.26,Beta,0.998875,0.001125,Positive,0.998875,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Age Group: 00-04 vs 25-64,Categorical Contrast,-0.023,-0.031,-0.015,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Age Group: 05-14 vs 25-64,Categorical Contrast,-0.01189,-0.016,-0.0082,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Age Group: 15-24 vs 25-64,Categorical Contrast,0.01596,0.013,0.019,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Age Group: 65-74 vs 25-64,Categorical Contrast,-0.01196,-0.017,-0.0067,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Age Group: 75+ vs 25-64,Categorical Contrast,-0.01477,-0.02,-0.0093,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Health Board: Ayrshire and Arran vs Greater Glasgow and Clyde,Categorical Contrast,0.0065,0.0011,0.012,Beta,0.99175,0.00825,Positive,0.99175,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Health Board: Borders vs Greater Glasgow and Clyde,Categorical Contrast,-0.0212,-0.031,-0.011,Beta,0.000125,0.999875,Negative,0.999875,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Health Board: Dumfries and Galloway vs Greater Glasgow and Clyde,Categorical Contrast,0.0011,-0.0081,0.01,Beta,0.58875,0.41125,Positive,0.58875,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Expanded,Health Board: Fife vs Greater Glasgow and Clyde,Categorical Contrast,-0.0189,-0.025,-0.013,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Health Board: Forth Valley vs Greater Glasgow and Clyde,Categorical Contrast,0.0007,-0.0048,0.0063,Beta,0.596375,0.403625,Positive,0.596375,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Expanded,Health Board: Grampian vs Greater Glasgow and Clyde,Categorical Contrast,-0.02739,-0.032,-0.023,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Health Board: Highland vs Greater Glasgow and Clyde,Categorical Contrast,0.0064,-0.00041,0.013,Beta,0.969,0.031,Positive,0.969,Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Health Board: Lanarkshire vs Greater Glasgow and Clyde,Categorical Contrast,0.00825,0.0038,0.013,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Health Board: Lothian vs Greater Glasgow and Clyde,Categorical Contrast,-0.00817,-0.012,-0.0044,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Health Board: Orkney vs Greater Glasgow and Clyde,Categorical Contrast,0.0507,0.028,0.074,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Health Board: Shetland vs Greater Glasgow and Clyde,Categorical Contrast,0.0216,-0.00016,0.043,Beta,0.97375,0.02625,Positive,0.97375,Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Health Board: Tayside vs Greater Glasgow and Clyde,Categorical Contrast,-0.00623,-0.011,-0.0014,Beta,0.007125,0.992875,Negative,0.992875,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Health Board: Western Isles vs Greater Glasgow and Clyde,Categorical Contrast,0.0317,0.00066,0.064,Beta,0.97725,0.02275,Positive,0.97725,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,SIMD: SIMD Q2 vs SIMD Q1,Categorical Contrast,-0.00156,-0.005,0.0018,Beta,0.190125,0.809875,Negative,0.809875,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Expanded,SIMD: SIMD Q3 vs SIMD Q1,Categorical Contrast,0.00337,-0.00036,0.007,Beta,0.962875,0.037125,Positive,0.962875,Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,SIMD: SIMD Q4 vs SIMD Q1,Categorical Contrast,0.00405,0.00041,0.0078,Beta,0.984875,0.015125,Positive,0.984875,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,SIMD: SIMD Q5 vs SIMD Q1,Categorical Contrast,0.00283,-0.00079,0.0065,Beta,0.93525,0.06475,Positive,0.93525,Moderate,Warning
+Composition,Linear,Accumulation Score,,Expanded,Sex: Female vs Male,Categorical Contrast,-0.00569,-0.008,-0.0034,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Urban/rural class: Accessible Rural vs Large Urban,Categorical Contrast,-0.00947,-0.014,-0.0048,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Urban/rural class: Accessible Town vs Large Urban,Categorical Contrast,-0.01128,-0.016,-0.0065,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Urban/rural class: Other Urban vs Large Urban,Categorical Contrast,-0.00501,-0.0084,-0.0017,Beta,0.002,0.998,Negative,0.998,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Urban/rural class: Remote Rural vs Large Urban,Categorical Contrast,-0.0263,-0.034,-0.018,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Urban/rural class: Remote Town vs Large Urban,Categorical Contrast,-0.0233,-0.031,-0.015,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Cumulative Sequencing Proportion,Continuous Adjuster,-0.00041,-0.002,0.0012,Beta,0.31375,0.68625,Negative,0.68625,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Expanded,Cumulative incidence,Continuous Adjuster,-0.02608,-0.029,-0.024,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Window Sequencing Proportion,Continuous Adjuster,0.03097,0.029,0.033,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Intercept,Intercept,0.704,0.55,0.85,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Clade: 19B,Random Intercept,-0.435,-0.59,-0.28,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Clade: 20A,Random Intercept,-0.275,-0.4,-0.15,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Clade: 20B,Random Intercept,-0.29,-0.42,-0.16,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Clade: 20E,Random Intercept,-0.291,-0.42,-0.16,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Clade: 20I,Random Intercept,-0.18,-0.3,-0.056,Beta,0.00475,0.99525,Negative,0.99525,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Clade: 21A,Random Intercept,-0.147,-0.28,-0.017,Beta,0.014375,0.985625,Negative,0.985625,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Clade: 21D,Random Intercept,-0.13,-0.32,0.059,Beta,0.092875,0.907125,Negative,0.907125,Moderate,Warning
+Composition,Linear,Accumulation Score,,Expanded,Clade: 21I,Random Intercept,-0.084,-0.21,0.044,Beta,0.09775,0.90225,Negative,0.90225,Moderate,Warning
+Composition,Linear,Accumulation Score,,Expanded,Clade: 21J,Random Intercept,-0.066,-0.19,0.059,Beta,0.145875,0.854125,Negative,0.854125,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Expanded,Clade: 21K,Random Intercept,0.117,-0.0074,0.24,Beta,0.968875,0.031125,Positive,0.968875,Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Clade: 21L,Random Intercept,0.2,0.076,0.33,Beta,0.99875,0.00125,Positive,0.99875,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Clade: 22A,Random Intercept,0.216,0.091,0.35,Beta,0.9995,0.0005,Positive,0.9995,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Clade: 22B,Random Intercept,0.239,0.11,0.37,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Clade: 22C,Random Intercept,0.082,-0.048,0.21,Beta,0.89725,0.10275,Positive,0.89725,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Expanded,Clade: 22D,Random Intercept,0.36,0.23,0.5,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Clade: 22E,Random Intercept,0.092,-0.047,0.23,Beta,0.904875,0.095125,Positive,0.904875,Moderate,Warning
+Composition,Linear,Accumulation Score,,Expanded,Clade: 23A,Random Intercept,0.461,0.31,0.62,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Clade: Rec.,Random Intercept,0.139,0.012,0.27,Beta,0.98325,0.01675,Positive,0.98325,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Policy Period: F5,Random Intercept,0.209,0.11,0.31,Beta,0.9995,0.0005,Positive,0.9995,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Policy Period: FE,Random Intercept,-0.191,-0.29,-0.098,Beta,0.00075,0.99925,Negative,0.99925,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Policy Period: L0,Random Intercept,-0.084,-0.18,0.0095,Beta,0.037125,0.962875,Negative,0.962875,Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Policy Period: L2,Random Intercept,0.025,-0.072,0.12,Beta,0.71525,0.28475,Positive,0.71525,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Expanded,Policy Period: L21,Random Intercept,-0.014,-0.11,0.079,Beta,0.38275,0.61725,Negative,0.61725,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Expanded,Policy Period: L3,Random Intercept,0.016,-0.08,0.11,Beta,0.652,0.348,Positive,0.652,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Expanded,Policy Period: NN,Random Intercept,-0.027,-0.12,0.066,Beta,0.276,0.724,Negative,0.724,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Expanded,Policy Period: OM,Random Intercept,-0.055,-0.15,0.038,Beta,0.1115,0.8885,Negative,0.8885,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Expanded,Policy Period: P3,Random Intercept,0.172,0.074,0.27,Beta,0.999125,0.000875,Positive,0.999125,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Policy Period: PR,Random Intercept,-0.246,-0.34,-0.15,Beta,0.000125,0.999875,Negative,0.999875,Very Strong,Warning
+Composition,Linear,Accumulation Score,,Expanded,Policy Period: SL,Random Intercept,-0.02,-0.12,0.073,Beta,0.324125,0.675875,Negative,0.675875,Weak Or Uncertain,Warning
+Composition,Linear,Accumulation Score,,Expanded,Policy Period: T1,Random Intercept,0.188,0.09,0.28,Beta,0.999375,0.000625,Positive,0.999375,Very Strong,Warning
+Composition,Linear,Expansion Score,,Primary,Age Group: 00-04 vs 25-64,Categorical Contrast,-0.0145,-0.027,-0.002,Beta,0.012,0.988,Negative,0.988,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Age Group: 05-14 vs 25-64,Categorical Contrast,-0.01474,-0.02,-0.009,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Age Group: 15-24 vs 25-64,Categorical Contrast,0.00625,0.0015,0.011,Beta,0.9965,0.0035,Positive,0.9965,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Age Group: 65-74 vs 25-64,Categorical Contrast,-0.00978,-0.019,-0.0012,Beta,0.013375,0.986625,Negative,0.986625,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Age Group: 75+ vs 25-64,Categorical Contrast,-0.03351,-0.042,-0.025,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Health Board: Ayrshire and Arran vs Greater Glasgow and Clyde,Categorical Contrast,-0.0116,-0.02,-0.0033,Beta,0.003125,0.996875,Negative,0.996875,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Health Board: Borders vs Greater Glasgow and Clyde,Categorical Contrast,-0.0188,-0.035,-0.0026,Beta,0.01075,0.98925,Negative,0.98925,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Health Board: Dumfries and Galloway vs Greater Glasgow and Clyde,Categorical Contrast,-0.025,-0.039,-0.011,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Health Board: Fife vs Greater Glasgow and Clyde,Categorical Contrast,-0.0049,-0.014,0.0042,Beta,0.14775,0.85225,Negative,0.85225,Weak Or Uncertain,OK
+Composition,Linear,Expansion Score,,Primary,Health Board: Forth Valley vs Greater Glasgow and Clyde,Categorical Contrast,-0.0153,-0.024,-0.0066,Beta,0.000125,0.999875,Negative,0.999875,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Health Board: Grampian vs Greater Glasgow and Clyde,Categorical Contrast,-0.0406,-0.048,-0.033,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Health Board: Highland vs Greater Glasgow and Clyde,Categorical Contrast,-0.0028,-0.013,0.0077,Beta,0.302,0.698,Negative,0.698,Weak Or Uncertain,OK
+Composition,Linear,Expansion Score,,Primary,Health Board: Lanarkshire vs Greater Glasgow and Clyde,Categorical Contrast,0.0008,-0.0059,0.0075,Beta,0.603625,0.396375,Positive,0.603625,Weak Or Uncertain,OK
+Composition,Linear,Expansion Score,,Primary,Health Board: Lothian vs Greater Glasgow and Clyde,Categorical Contrast,-0.02136,-0.027,-0.016,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Health Board: Orkney vs Greater Glasgow and Clyde,Categorical Contrast,-0.1959,-0.24,-0.16,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Health Board: Shetland vs Greater Glasgow and Clyde,Categorical Contrast,-0.0275,-0.063,0.0082,Beta,0.068,0.932,Negative,0.932,Moderate,OK
+Composition,Linear,Expansion Score,,Primary,Health Board: Tayside vs Greater Glasgow and Clyde,Categorical Contrast,-0.0331,-0.041,-0.026,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Health Board: Western Isles vs Greater Glasgow and Clyde,Categorical Contrast,0.0047,-0.049,0.058,Beta,0.572375,0.427625,Positive,0.572375,Weak Or Uncertain,OK
+Composition,Linear,Expansion Score,,Primary,SIMD: SIMD Q2 vs SIMD Q1,Categorical Contrast,-0.00555,-0.011,-0.00039,Beta,0.017,0.983,Negative,0.983,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,SIMD: SIMD Q3 vs SIMD Q1,Categorical Contrast,0.00306,-0.0026,0.0087,Beta,0.857375,0.142625,Positive,0.857375,Weak Or Uncertain,OK
+Composition,Linear,Expansion Score,,Primary,SIMD: SIMD Q4 vs SIMD Q1,Categorical Contrast,0.00043,-0.0054,0.0061,Beta,0.558375,0.441625,Positive,0.558375,Weak Or Uncertain,OK
+Composition,Linear,Expansion Score,,Primary,SIMD: SIMD Q5 vs SIMD Q1,Categorical Contrast,-0.00411,-0.0098,0.0014,Beta,0.073625,0.926375,Negative,0.926375,Moderate,OK
+Composition,Linear,Expansion Score,,Primary,Sex: Female vs Male,Categorical Contrast,-0.00458,-0.0083,-0.00098,Beta,0.0065,0.9935,Negative,0.9935,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Urban/rural class: Accessible Rural vs Large Urban,Categorical Contrast,-0.0058,-0.013,0.0016,Beta,0.0625,0.9375,Negative,0.9375,Moderate,OK
+Composition,Linear,Expansion Score,,Primary,Urban/rural class: Accessible Town vs Large Urban,Categorical Contrast,-0.005,-0.012,0.0025,Beta,0.093875,0.906125,Negative,0.906125,Moderate,OK
+Composition,Linear,Expansion Score,,Primary,Urban/rural class: Other Urban vs Large Urban,Categorical Contrast,-0.00696,-0.012,-0.0018,Beta,0.003375,0.996625,Negative,0.996625,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Urban/rural class: Remote Rural vs Large Urban,Categorical Contrast,-0.0119,-0.024,-0.00038,Beta,0.022125,0.977875,Negative,0.977875,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Urban/rural class: Remote Town vs Large Urban,Categorical Contrast,-0.019,-0.031,-0.0063,Beta,0.001875,0.998125,Negative,0.998125,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Intercept,Intercept,0.644,0.44,0.84,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Clade: 19B,Random Intercept,-0.073,-0.31,0.17,Beta,0.26925,0.73075,Negative,0.73075,Weak Or Uncertain,OK
+Composition,Linear,Expansion Score,,Primary,Clade: 20A,Random Intercept,-0.376,-0.55,-0.2,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Clade: 20B,Random Intercept,-0.213,-0.38,-0.044,Beta,0.006375,0.993625,Negative,0.993625,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Clade: 20E,Random Intercept,-0.257,-0.42,-0.091,Beta,0.001125,0.998875,Negative,0.998875,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Clade: 20I,Random Intercept,-0.312,-0.47,-0.15,Beta,0.00025,0.99975,Negative,0.99975,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Clade: 21A,Random Intercept,-0.376,-0.55,-0.2,Beta,0.0,1.0,Negative,1.0,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Clade: 21I,Random Intercept,-0.116,-0.28,0.046,Beta,0.079875,0.920125,Negative,0.920125,Moderate,OK
+Composition,Linear,Expansion Score,,Primary,Clade: 21J,Random Intercept,-0.119,-0.28,0.039,Beta,0.06975,0.93025,Negative,0.93025,Moderate,OK
+Composition,Linear,Expansion Score,,Primary,Clade: 21K,Random Intercept,0.005,-0.15,0.16,Beta,0.522125,0.477875,Positive,0.522125,Weak Or Uncertain,OK
+Composition,Linear,Expansion Score,,Primary,Clade: 21L,Random Intercept,0.179,0.024,0.34,Beta,0.9865,0.0135,Positive,0.9865,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Clade: 22A,Random Intercept,0.098,-0.064,0.26,Beta,0.886,0.114,Positive,0.886,Weak Or Uncertain,OK
+Composition,Linear,Expansion Score,,Primary,Clade: 22B,Random Intercept,0.325,0.17,0.49,Beta,0.999625,0.000375,Positive,0.999625,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Clade: 22C,Random Intercept,0.095,-0.07,0.26,Beta,0.874125,0.125875,Positive,0.874125,Weak Or Uncertain,OK
+Composition,Linear,Expansion Score,,Primary,Clade: 22D,Random Intercept,0.433,0.27,0.61,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Clade: 22E,Random Intercept,0.65,0.46,0.85,Beta,1.0,0.0,Positive,1.0,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Clade: Rec.,Random Intercept,0.124,-0.037,0.29,Beta,0.934625,0.065375,Positive,0.934625,Moderate,OK
+Composition,Linear,Expansion Score,,Primary,Policy Period: F5,Random Intercept,0.177,0.043,0.31,Beta,0.993,0.007,Positive,0.993,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Policy Period: FE,Random Intercept,-0.269,-0.4,-0.14,Beta,0.00075,0.99925,Negative,0.99925,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Policy Period: L0,Random Intercept,-0.041,-0.17,0.092,Beta,0.245125,0.754875,Negative,0.754875,Weak Or Uncertain,OK
+Composition,Linear,Expansion Score,,Primary,Policy Period: L2,Random Intercept,0.151,0.021,0.28,Beta,0.987125,0.012875,Positive,0.987125,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Policy Period: L21,Random Intercept,-0.055,-0.18,0.077,Beta,0.180875,0.819125,Negative,0.819125,Weak Or Uncertain,OK
+Composition,Linear,Expansion Score,,Primary,Policy Period: L3,Random Intercept,0.17,0.04,0.3,Beta,0.993,0.007,Positive,0.993,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Policy Period: NN,Random Intercept,-0.054,-0.18,0.077,Beta,0.18725,0.81275,Negative,0.81275,Weak Or Uncertain,OK
+Composition,Linear,Expansion Score,,Primary,Policy Period: OM,Random Intercept,-0.126,-0.26,0.0043,Beta,0.02925,0.97075,Negative,0.97075,Strong,OK
+Composition,Linear,Expansion Score,,Primary,Policy Period: P3,Random Intercept,0.102,-0.036,0.24,Beta,0.938125,0.061875,Positive,0.938125,Moderate,OK
+Composition,Linear,Expansion Score,,Primary,Policy Period: PR,Random Intercept,-0.386,-0.52,-0.25,Beta,0.000375,0.999625,Negative,0.999625,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Policy Period: SL,Random Intercept,0.198,0.07,0.33,Beta,0.99725,0.00275,Positive,0.99725,Very Strong,OK
+Composition,Linear,Expansion Score,,Primary,Policy Period: T1,Random Intercept,0.133,-0.0029,0.27,Beta,0.973375,0.026625,Positive,0.973375,Strong,OK
+Composition,Linear,Expansion Score,,Expanded,Age Group: 00-04 vs 25-64,Categorical Contrast,-0.0164,-0.029,-0.0036,Beta,0.0065,0.9935,Negative,0.9935,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Age Group: 05-14 vs 25-64,Categorical Contrast,-0.01651,-0.022,-0.011,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Age Group: 15-24 vs 25-64,Categorical Contrast,0.00561,0.00092,0.01,Beta,0.98925,0.01075,Positive,0.98925,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Age Group: 65-74 vs 25-64,Categorical Contrast,-0.0079,-0.017,0.00076,Beta,0.037,0.963,Negative,0.963,Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Age Group: 75+ vs 25-64,Categorical Contrast,-0.02854,-0.037,-0.02,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Health Board: Ayrshire and Arran vs Greater Glasgow and Clyde,Categorical Contrast,-0.0188,-0.027,-0.011,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Health Board: Borders vs Greater Glasgow and Clyde,Categorical Contrast,-0.0329,-0.049,-0.017,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Health Board: Dumfries and Galloway vs Greater Glasgow and Clyde,Categorical Contrast,-0.036,-0.05,-0.022,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Health Board: Fife vs Greater Glasgow and Clyde,Categorical Contrast,-0.011,-0.02,-0.0019,Beta,0.00675,0.99325,Negative,0.99325,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Health Board: Forth Valley vs Greater Glasgow and Clyde,Categorical Contrast,-0.0187,-0.027,-0.0096,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Health Board: Grampian vs Greater Glasgow and Clyde,Categorical Contrast,-0.0553,-0.063,-0.047,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Health Board: Highland vs Greater Glasgow and Clyde,Categorical Contrast,-0.0181,-0.029,-0.0074,Beta,0.000125,0.999875,Negative,0.999875,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Health Board: Lanarkshire vs Greater Glasgow and Clyde,Categorical Contrast,0.0041,-0.0027,0.011,Beta,0.883875,0.116125,Positive,0.883875,Weak Or Uncertain,Warning
+Composition,Linear,Expansion Score,,Expanded,Health Board: Lothian vs Greater Glasgow and Clyde,Categorical Contrast,-0.0243,-0.03,-0.018,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Health Board: Orkney vs Greater Glasgow and Clyde,Categorical Contrast,-0.2189,-0.26,-0.18,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Health Board: Shetland vs Greater Glasgow and Clyde,Categorical Contrast,-0.0426,-0.078,-0.0059,Beta,0.01025,0.98975,Negative,0.98975,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Health Board: Tayside vs Greater Glasgow and Clyde,Categorical Contrast,-0.0451,-0.053,-0.037,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Health Board: Western Isles vs Greater Glasgow and Clyde,Categorical Contrast,-0.0326,-0.085,0.02,Beta,0.109125,0.890875,Negative,0.890875,Weak Or Uncertain,Warning
+Composition,Linear,Expansion Score,,Expanded,SIMD: SIMD Q2 vs SIMD Q1,Categorical Contrast,-0.0075,-0.013,-0.0023,Beta,0.0025,0.9975,Negative,0.9975,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,SIMD: SIMD Q3 vs SIMD Q1,Categorical Contrast,-0.00134,-0.0069,0.0044,Beta,0.31725,0.68275,Negative,0.68275,Weak Or Uncertain,Warning
+Composition,Linear,Expansion Score,,Expanded,SIMD: SIMD Q4 vs SIMD Q1,Categorical Contrast,-0.00023,-0.0059,0.0055,Beta,0.467,0.533,Negative,0.533,Weak Or Uncertain,Warning
+Composition,Linear,Expansion Score,,Expanded,SIMD: SIMD Q5 vs SIMD Q1,Categorical Contrast,-0.00853,-0.014,-0.0031,Beta,0.000625,0.999375,Negative,0.999375,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Sex: Female vs Male,Categorical Contrast,-0.00564,-0.0091,-0.0022,Beta,0.000375,0.999625,Negative,0.999625,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Urban/rural class: Accessible Rural vs Large Urban,Categorical Contrast,-0.0047,-0.012,0.0025,Beta,0.107,0.893,Negative,0.893,Weak Or Uncertain,Warning
+Composition,Linear,Expansion Score,,Expanded,Urban/rural class: Accessible Town vs Large Urban,Categorical Contrast,-0.0057,-0.013,0.0018,Beta,0.06775,0.93225,Negative,0.93225,Moderate,Warning
+Composition,Linear,Expansion Score,,Expanded,Urban/rural class: Other Urban vs Large Urban,Categorical Contrast,-0.0064,-0.012,-0.0012,Beta,0.00725,0.99275,Negative,0.99275,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Urban/rural class: Remote Rural vs Large Urban,Categorical Contrast,-0.0269,-0.039,-0.015,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Urban/rural class: Remote Town vs Large Urban,Categorical Contrast,-0.0261,-0.039,-0.013,Beta,0.000125,0.999875,Negative,0.999875,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Cumulative Sequencing Proportion,Continuous Adjuster,-0.00555,-0.008,-0.0031,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Cumulative incidence,Continuous Adjuster,-0.04458,-0.048,-0.041,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Window Sequencing Proportion,Continuous Adjuster,0.03821,0.035,0.041,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Intercept,Intercept,0.63,0.42,0.86,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Clade: 19B,Random Intercept,-0.17,-0.44,0.085,Beta,0.087875,0.912125,Negative,0.912125,Moderate,Warning
+Composition,Linear,Expansion Score,,Expanded,Clade: 20A,Random Intercept,-0.43,-0.63,-0.23,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Clade: 20B,Random Intercept,-0.31,-0.51,-0.11,Beta,0.002,0.998,Negative,0.998,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Clade: 20E,Random Intercept,-0.31,-0.52,-0.12,Beta,0.00175,0.99825,Negative,0.99825,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Clade: 20I,Random Intercept,-0.39,-0.59,-0.2,Beta,0.000125,0.999875,Negative,0.999875,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Clade: 21A,Random Intercept,-0.45,-0.66,-0.25,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Clade: 21I,Random Intercept,-0.15,-0.36,0.046,Beta,0.057125,0.942875,Negative,0.942875,Moderate,Warning
+Composition,Linear,Expansion Score,,Expanded,Clade: 21J,Random Intercept,-0.15,-0.35,0.04,Beta,0.05675,0.94325,Negative,0.94325,Moderate,Warning
+Composition,Linear,Expansion Score,,Expanded,Clade: 21K,Random Intercept,0.01,-0.19,0.2,Beta,0.56025,0.43975,Positive,0.56025,Weak Or Uncertain,Warning
+Composition,Linear,Expansion Score,,Expanded,Clade: 21L,Random Intercept,0.2,0.0015,0.39,Beta,0.975375,0.024625,Positive,0.975375,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Clade: 22A,Random Intercept,0.15,-0.049,0.35,Beta,0.9395,0.0605,Positive,0.9395,Moderate,Warning
+Composition,Linear,Expansion Score,,Expanded,Clade: 22B,Random Intercept,0.38,0.18,0.57,Beta,0.9995,0.0005,Positive,0.9995,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Clade: 22C,Random Intercept,0.14,-0.067,0.34,Beta,0.917,0.083,Positive,0.917,Moderate,Warning
+Composition,Linear,Expansion Score,,Expanded,Clade: 22D,Random Intercept,0.5,0.29,0.7,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Clade: 22E,Random Intercept,0.71,0.48,0.93,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Clade: Rec.,Random Intercept,0.15,-0.058,0.34,Beta,0.92675,0.07325,Positive,0.92675,Moderate,Warning
+Composition,Linear,Expansion Score,,Expanded,Policy Period: F5,Random Intercept,0.239,0.12,0.36,Beta,1.0,0.0,Positive,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Policy Period: FE,Random Intercept,-0.236,-0.36,-0.12,Beta,0.00025,0.99975,Negative,0.99975,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Policy Period: L0,Random Intercept,-0.022,-0.14,0.095,Beta,0.344875,0.655125,Negative,0.655125,Weak Or Uncertain,Warning
+Composition,Linear,Expansion Score,,Expanded,Policy Period: L2,Random Intercept,0.104,-0.013,0.22,Beta,0.9615,0.0385,Positive,0.9615,Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Policy Period: L21,Random Intercept,-0.109,-0.23,0.009,Beta,0.03375,0.96625,Negative,0.96625,Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Policy Period: L3,Random Intercept,0.089,-0.028,0.21,Beta,0.93925,0.06075,Positive,0.93925,Moderate,Warning
+Composition,Linear,Expansion Score,,Expanded,Policy Period: NN,Random Intercept,-0.026,-0.14,0.092,Beta,0.319375,0.680625,Negative,0.680625,Weak Or Uncertain,Warning
+Composition,Linear,Expansion Score,,Expanded,Policy Period: OM,Random Intercept,-0.087,-0.21,0.029,Beta,0.0635,0.9365,Negative,0.9365,Moderate,Warning
+Composition,Linear,Expansion Score,,Expanded,Policy Period: P3,Random Intercept,0.12,-0.00093,0.25,Beta,0.974125,0.025875,Positive,0.974125,Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Policy Period: PR,Random Intercept,-0.343,-0.46,-0.23,Beta,0.0,1.0,Negative,1.0,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Policy Period: SL,Random Intercept,0.124,0.0057,0.24,Beta,0.979125,0.020875,Positive,0.979125,Very Strong,Warning
+Composition,Linear,Expansion Score,,Expanded,Policy Period: T1,Random Intercept,0.185,0.064,0.31,Beta,0.99825,0.00175,Positive,0.99825,Very Strong,Warning
