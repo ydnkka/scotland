@@ -20,6 +20,10 @@ from .common import (
 
 FILE_NAME = "stratified_calibration"
 FIGURE_NAME = "fig11_stratified_calibration"
+AXIS_LABELS = {
+    "burst": "Accumulation",
+    "burden": "Expansion",
+}
 
 
 def build_stratified_calibration(nodes: pd.DataFrame) -> pd.DataFrame:
@@ -95,7 +99,7 @@ def build(paths: Paths) -> dict[str, object]:
                     group["empirical_cdf"],
                     label=f"{stratum} (n={int(group['n'].iloc[0]):,})",
                 )
-            ax.set_title(f"{axis_name.title()} | {stratifier.lower()}")
+            ax.set_title(f"{AXIS_LABELS[axis_name]} | {stratifier.lower()}")
             ax.legend(
                 loc="upper left",
                 frameon=True,
