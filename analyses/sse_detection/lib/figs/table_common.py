@@ -24,8 +24,8 @@ FAMILY_ORDER = {"Logistic": 0, "Linear": 1}
 OUTCOME_ORDER = {
     "Candidate": 0,
     "Candidate Status": 0,
-    "Burst Score": 1,
-    "Burden Score": 2,
+    "Accumulation Score": 1,
+    "Expansion Score": 2,
 }
 
 SCALE_ORDER = {"": -1, "Observed": 0, "Null Standardised": 1}

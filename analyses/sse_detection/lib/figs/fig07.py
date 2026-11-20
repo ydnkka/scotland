@@ -37,14 +37,14 @@ def build_exemplars(
     selections: list[tuple[str, pd.Series]] = []
     specs = [
         (
-            "Local burst",
+            "Accumulation",
             tested["candidate_tier"].isin(
                 {"high_priority_burst", "high_priority_both_axes"}
             ),
             "burst_score_null_z",
         ),
         (
-            "Onward burden",
+            "Expansion",
             tested["candidate_tier"].isin(
                 {"high_priority_burden", "high_priority_both_axes"}
             ),
@@ -159,7 +159,7 @@ def build(paths: Paths) -> dict[str, object]:
     nodes, edges = build_exemplars(all_nodes, all_edges)
     write_table(nodes, paths.result_table_dir, f"tab_{FILE_NAME}_nodes")
     write_table(edges, paths.result_table_dir, f"tab_{FILE_NAME}_edges")
-    order = ["Local burst", "Onward burden", "Possible review", "Matched background"]
+    order = ["Accumulation", "Expansion", "Possible review", "Matched background"]
     fig, axes = new_figure(
         width="double", height_in=6.2, nrows=2, ncols=2, constrained_layout=True
     )

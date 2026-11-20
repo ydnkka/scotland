@@ -77,7 +77,7 @@ def build(paths: Paths) -> dict[str, object]:
         height_in=3.8,
     )
     colors = {"burst": "#D55E00", "burden": "#0072B2"}
-    labels = {"burst": "Local burst", "burden": "Onward burden"}
+    labels = {"burst": "Accumulation", "burden": "Expansion"}
     context = summary.drop_duplicates(["wn_mid_date", "policy_era", "policy_period"])
     add_policy_bands(ax, context)
     for axis, group in summary.groupby("axis"):

@@ -27,8 +27,8 @@ CANDIDATE_COLOR = "#C44E52"
 BACKGROUND_COLOR = "#B0B0B0"
 DIMENSIONS = ("burst", "burden")
 DIMENSION_LABELS = {
-    "burst": "Local burst",
-    "burden": "Onward burden",
+    "burst": "Accumulation",
+    "burden": "Expansion",
 }
 DIMENSION_CANDIDATE_TIERS = {
     "burst": ("high_priority_burst", "high_priority_both_axes"),

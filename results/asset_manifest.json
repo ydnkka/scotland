@@ -56,6 +56,19 @@
     {
       "domain": "genomic_networks",
       "kind": "figure",
+      "module": "analyses.genomic_networks.lib.figs.fig02",
+      "script": "fig02",
+      "stem": "fig02_sequence_composition_by_policy_app",
+      "legacy_stem": "fig_sequence_composition_by_policy_app",
+      "directory": "figures",
+      "formats": [
+        "pdf",
+        "png"
+      ]
+    },
+    {
+      "domain": "genomic_networks",
+      "kind": "figure",
       "module": "analyses.genomic_networks.lib.figs.fig03",
       "script": "fig03",
       "stem": "fig03_vaccination_context",

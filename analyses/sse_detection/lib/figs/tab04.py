@@ -97,7 +97,7 @@ def build_fixed_effects_intercepts_table(
     intercepts = table.loc[table["Term Type"].eq("Intercept")].copy()
     lookup = _intercept_lookup(intercepts)
     rows = []
-    for outcome in ("Candidate", "Burst Score", "Burden Score"):
+    for outcome in ("Candidate", "Accumulation Score", "Expansion Score"):
         for scale_idx, scale in enumerate(("Observed", "Null Standardised")):
             show_composition = scale_idx == 0
             rows.append(

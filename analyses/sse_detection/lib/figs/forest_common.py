@@ -9,8 +9,8 @@ from .common import Paths
 OUTLIER_LABELS = ["Orkney", "Western Isles"]
 MODEL_OUTCOMES = (
     ("candidate", "Candidate status"),
-    ("burst_score", "Burst score"),
-    ("burden_score", "Burden score"),
+    ("burst_score", "Accumulation score"),
+    ("burden_score", "Expansion score"),
 )
 
 
