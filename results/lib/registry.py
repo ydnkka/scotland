@@ -104,6 +104,7 @@ class ArtifactBuilder:
     kind: BuilderKind
     build: BuildFunction
     module: str = ""
+    appendix_stems: tuple[str, ...] = ()
 
     @property
     def key(self) -> str:
@@ -246,7 +247,17 @@ def figure_builders() -> tuple[ArtifactBuilder, ...]:
             surveillance_fig02.FIGURE_NAME, surveillance_fig02.build
         ),
         _genomic_figure_builder(genomic_fig01.FIGURE_NAME, genomic_fig01.build),
-        _genomic_figure_builder(genomic_fig02.FIGURE_NAME, genomic_fig02.build),
+        _genomic_figure_builder(
+            genomic_fig02.FIGURE_NAME,
+            genomic_fig02.build,
+        ).__class__(
+            domain="genomic_networks",
+            name=genomic_fig02.FIGURE_NAME,
+            kind="figure",
+            build=genomic_fig02.build,
+            module=genomic_fig02.__name__,
+            appendix_stems=(f"{genomic_fig02.FIGURE_NAME}_app",),
+        ),
         _genomic_figure_builder(genomic_fig03.FIGURE_NAME, genomic_fig03.build),
         _genomic_figure_builder(genomic_fig04.FIGURE_NAME, genomic_fig04.build),
         _genomic_figure_builder(genomic_fig05.FIGURE_NAME, genomic_fig05.build),
@@ -332,7 +343,7 @@ def publication_assets() -> list[dict[str, Any]]:
     """Describe the numbered PDF/PNG and LaTeX exports for migration and thesis sync."""
     assets = []
     for builder in (*figure_builders(), *table_builders()):
-        # Surveillance table scripts produce analysis-local CSV/parquet data.
+        # Surveillance tables produce analysis-local CSV/parquet data.
         if builder.kind == "table" and builder.domain == "surveillance":
             continue
         assets.append(
@@ -347,6 +358,21 @@ def publication_assets() -> list[dict[str, Any]]:
                 "formats": ["pdf", "png"] if builder.kind == "figure" else ["tex"],
             }
         )
+        # Add appendix stems for figures that generate them
+        if builder.kind == "figure" and builder.appendix_stems:
+            for appendix_stem in builder.appendix_stems:
+                assets.append(
+                    {
+                        "domain": builder.domain,
+                        "kind": builder.kind,
+                        "module": builder.module,
+                        "script": builder.script,
+                        "stem": appendix_stem,
+                        "legacy_stem": f"{appendix_stem.removeprefix(builder.script + '_')}",
+                        "directory": "figures",
+                        "formats": ["pdf", "png"],
+                    }
+                )
     if len({row["stem"] for row in assets}) != len(assets):
         raise ValueError(
             "Publication export stems must be unique across analysis domains"

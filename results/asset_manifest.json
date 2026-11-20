@@ -59,7 +59,7 @@
       "module": "analyses.genomic_networks.lib.figs.fig02",
       "script": "fig02",
       "stem": "fig02_sequence_composition_by_policy_app",
-      "legacy_stem": "fig_sequence_composition_by_policy_app",
+      "legacy_stem": "sequence_composition_by_policy_app",
       "directory": "figures",
       "formats": [
         "pdf",
