@@ -856,6 +856,8 @@ def _pretty_value(value: object) -> str:
         "observed": "Observed",
         "ok": "OK",
         "warning": "Warning",
+        "burst_score": "Accumulation Score",
+        "burden_score": "Expansion Score",
     }
     if text.lower() in special:
         return special[text.lower()]

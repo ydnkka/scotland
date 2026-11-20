@@ -47,8 +47,11 @@ def _model_display_fields(table: pd.DataFrame) -> pd.DataFrame:
     work = table.copy()
     work["Domain"] = work["domain"].str.replace("_", " ").str.title()
     work["Family"] = work["family"].str.replace("_", " ").str.title()
-    work["Outcome"] = work["outcome"].str.replace("_", " ").str.title()
-    work["Outcome"] = work["Outcome"].replace({"Candidate": "Candidate"})
+    work["Outcome"] = work["outcome"].map({
+        "candidate": "Candidate",
+        "burst_score": "Accumulation Score",
+        "burden_score": "Expansion Score",
+    })
     work["Scale"] = np.where(
         work["domain"].eq("mixing"),
         np.where(
