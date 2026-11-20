@@ -19,7 +19,7 @@ def build(paths: Paths, *, tables=None):
     output_path = paths.publication_table_dir / f"{TABLE_NAME}.tex"
     rows = []
     for band in ("All", *SIZE_BANDS):
-        for group in ("CSC", "Background"):
+        for group in ("Candidate", "Background"):
             r = size.loc[
                 size.scenario.eq("primary")
                 & size.size_band.eq(band)

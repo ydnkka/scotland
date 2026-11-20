@@ -67,7 +67,7 @@ class IndividualArtifactTests(unittest.TestCase):
         sizes = pd.DataFrame(
             {
                 "scenario": ["route", "route"],
-                "group": ["Background", "Burst only"],
+                "group": ["Background", "Accumulation only"],
                 "n_clusters": [2, 1],
                 "n_records": [18, 6],
                 "size_median": [9, 6],
@@ -90,7 +90,7 @@ class IndividualArtifactTests(unittest.TestCase):
             )
             text = (output / "tab09_route_sizes.tex").read_text()
             self.assertIn("Background & 2 & 18", text)
-            self.assertIn("Burst only & 1 & 6", text)
+            self.assertIn("Accumulation only & 1 & 6", text)
             self.assertFalse((output.parent / "tables").exists())
 
     def test_surveillance_table_selection_does_not_build_other_tables(self):

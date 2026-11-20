@@ -28,8 +28,8 @@ ENTROPY_ATTRIBUTES = (
 )
 SCENARIOS = ("primary", "p_0.010", "p_0.025", "p_0.100", "size_10", "size_20", "route")
 ROUTE_LABELS = {
-    "high_priority_burst": "Burst only",
-    "high_priority_burden": "Burden only",
+    "high_priority_burst": "Accumulation only",
+    "high_priority_burden": "Expansion only",
     "high_priority_both_axes": "Both axes",
 }
 
@@ -55,7 +55,7 @@ def select_groups(nodes: pd.DataFrame, scenario: str) -> dict[str, pd.DataFrame]
     if scenario == "route":
         return {
             "Background": eligible.loc[~primary],
-            "Burden-eligible background": eligible.loc[
+            "Expansion-eligible background": eligible.loc[
                 ~primary & eligible.burden_eligible.fillna(False)
             ],
             **{
@@ -72,7 +72,7 @@ def select_groups(nodes: pd.DataFrame, scenario: str) -> dict[str, pd.DataFrame]
         selected = primary
     else:
         raise ValueError(f"Unknown scenario: {scenario}")
-    return {"Background": eligible.loc[~selected], "CSC": eligible.loc[selected]}
+    return {"Background": eligible.loc[~selected], "Candidate": eligible.loc[selected]}
 
 
 def category_label(value: object) -> str:
@@ -217,12 +217,12 @@ def build_summaries(
     contrasts = []
     for scenario in SCENARIOS:
         pairs = (
-            [("CSC", "Background")]
+            [("Candidate", "Background")]
             if scenario != "route"
             else [
-                ("Burst only", "Background"),
-                ("Burden only", "Burden-eligible background"),
-                ("Both axes", "Burden-eligible background"),
+                ("Accumulation only", "Background"),
+                ("Expansion only", "Expansion-eligible background"),
+                ("Both axes", "Expansion-eligible background"),
             ]
         )
         df = tables["composition"].loc[lambda t: t.scenario.eq(scenario)]
@@ -305,4 +305,4 @@ def validate_summaries(
         assert total.n_clusters.sum() == 8962
         assert total.n_records.sum() == 152177
         assert total.n_burden_eligible.sum() == 4216
-        assert total.set_index("group").loc["CSC", "n_clusters"] == 631
+        assert total.set_index("group").loc["Candidate", "n_clusters"] == 631

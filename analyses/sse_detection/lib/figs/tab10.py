@@ -29,7 +29,7 @@ def build(paths: Paths, *, tables=None):
         + " & ".join(r"\multicolumn{3}{c}{" + band + "}" for band in band_labels)
         + r" \\",
         "".join(r"\cmidrule(lr){" + f"{2 + 3*i}-{4 + 3*i}" + "}" for i in range(5)),
-        " & " + " & ".join([r"CSC & BG & $\Delta$"] * 5) + r" \\",
+        " & " + " & ".join([r"Candidate & Background & $\Delta$"] * 5) + r" \\",
         r"\midrule",
     ]
     lines = [

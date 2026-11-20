@@ -350,11 +350,11 @@ def draw_overview(
             ax.set_xlabel("")
         if row == len(specs) - 1:
             axes[row, 0].set_xlabel("Within-cluster proportion")
-            axes[row, 1].set_xlabel("CSC minus background (pp)")
+            axes[row, 1].set_xlabel("Candidate minus background (pp)")
     add_panel_labels(axes, label=panel_labels)
     handles = _status_handles()
     legend_labels = [
-        f"{('CSC' if status == 'candidate' else 'Background')} (n = {counts[status]:,})"
+        f"{('Candidate' if status == 'candidate' else 'Background')} (n = {counts[status]:,})"
         for status in STATUS_ORDER
     ]
     fig.legend(

@@ -20,7 +20,7 @@ def build(paths: Paths, *, tables=None):
     for r in size.loc[size.scenario.eq("route")].itertuples():
         rows.append(
             [
-                r.group.replace("Burden-eligible background", "Burden background"),
+                r.group.replace("Expansion-eligible background", "Expansion background"),
                 f"{r.n_clusters:,}",
                 f"{r.n_records:,}",
                 f"{r.size_median:g} ({r.size_q25:g}--{r.size_q75:g})",

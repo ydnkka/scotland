@@ -23,7 +23,7 @@ def build(paths: Paths, *, tables=None):
     output_path = paths.publication_table_dir / f"{TABLE_NAME}.tex"
     rows = []
     for scenario, label in zip(SCENARIO_ORDER, SCENARIO_LABELS):
-        for group in ("CSC", "Background"):
+        for group in ("Candidate", "Background"):
             r = size.loc[
                 size.scenario.eq(scenario)
                 & size.size_band.eq("All")

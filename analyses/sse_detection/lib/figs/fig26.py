@@ -18,8 +18,8 @@ def build(paths: Paths, *, tables=None):
     fig = draw_composition(
         data,
         xcol="candidate_group",
-        order=["Burst only", "Burden only", "Both axes"],
-        labels=["Burst\nonly", "Burden\nonly", "Both\naxes"],
+        order=["Accumulation only", "Expansion only", "Both axes"],
+        labels=["Accumulation\nonly", "Expansion\nonly", "Both\naxes"],
     )
     return _finish(fig, paths, FIGURE_NAME)
 

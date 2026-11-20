@@ -20,7 +20,7 @@ from ..sse.config import TRANSITION_WINDOW_STRIDE
 from ..sse.io import write_table
 from .common import Paths, add_panel_labels, new_figure, read_table, styled_save_figure
 
-COLORS = {"CSC": "#0072B2", "Background": "#D55E00"}
+COLORS = {"Candidate": "#0072B2", "Background": "#D55E00"}
 SCENARIO_ORDER = ("p_0.010", "p_0.025", "primary", "p_0.100", "size_10", "size_20")
 SCENARIO_LABELS = ("p≤0.01", "p≤0.025", "Primary", "p≤0.10", "Size≥10", "Size≥20")
 CATEGORY_ORDERS = {
@@ -165,7 +165,7 @@ def draw_entropy(data, *, xcol, order, labels, sensitivity=False):
     for row, (key, _, label) in enumerate(ENTROPY_ATTRIBUTES):
         for col, scale in enumerate(("obs", "z")):
             ax = axes[row, col]
-            for offset, group in [(-0.12, "Background"), (0.12, "CSC")]:
+            for offset, group in [(-0.12, "Background"), (0.12, "Candidate")]:
                 block = (
                     data.loc[
                         data.attribute.eq(key)

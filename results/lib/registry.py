@@ -170,8 +170,12 @@ def _surveillance_table_builder(
 def _genomic_figure_builder(
     name: str,
     build_func: Callable[[GenomicPaths], Any],
+    *,
+    module: str = "",
+    appendix_stems: tuple[str, ...] = (),
 ) -> ArtifactBuilder:
-    module = _validate_numbered_name(name, build_func)
+    if not module:
+        module = _validate_numbered_name(name, build_func)
 
     def build(context: BuildContext) -> Any:
         paths = GenomicPaths(
@@ -180,7 +184,7 @@ def _genomic_figure_builder(
         )
         return build_func(paths)
 
-    return ArtifactBuilder("genomic_networks", name, "figure", build, module)
+    return ArtifactBuilder("genomic_networks", name, "figure", build, module, appendix_stems)
 
 
 def _genomic_table_builder(
@@ -250,11 +254,6 @@ def figure_builders() -> tuple[ArtifactBuilder, ...]:
         _genomic_figure_builder(
             genomic_fig02.FIGURE_NAME,
             genomic_fig02.build,
-        ).__class__(
-            domain="genomic_networks",
-            name=genomic_fig02.FIGURE_NAME,
-            kind="figure",
-            build=genomic_fig02.build,
             module=genomic_fig02.__name__,
             appendix_stems=(f"{genomic_fig02.FIGURE_NAME}_app",),
         ),
@@ -361,6 +360,10 @@ def publication_assets() -> list[dict[str, Any]]:
         # Add appendix stems for figures that generate them
         if builder.kind == "figure" and builder.appendix_stems:
             for appendix_stem in builder.appendix_stems:
+                legacy_prefix = "fig_"
+                legacy_name = (
+                    legacy_prefix + appendix_stem.removeprefix(builder.script + "_")
+                )
                 assets.append(
                     {
                         "domain": builder.domain,
@@ -368,7 +371,7 @@ def publication_assets() -> list[dict[str, Any]]:
                         "module": builder.module,
                         "script": builder.script,
                         "stem": appendix_stem,
-                        "legacy_stem": f"{appendix_stem.removeprefix(builder.script + '_')}",
+                        "legacy_stem": legacy_name,
                         "directory": "figures",
                         "formats": ["pdf", "png"],
                     }

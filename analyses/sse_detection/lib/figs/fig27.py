@@ -23,9 +23,9 @@ def build(paths: Paths, *, tables=None):
     data = tables["entropy"].loc[lambda t: t.scenario.eq("route")]
     groups = [
         "Background",
-        "Burden-eligible background",
-        "Burst only",
-        "Burden only",
+        "Expansion-eligible background",
+        "Accumulation only",
+        "Expansion only",
         "Both axes",
     ]
     counts = (
@@ -35,7 +35,7 @@ def build(paths: Paths, *, tables=None):
         .n_clusters
     )
     short = [
-        f"{g.replace('Burden-eligible background', 'Burden background')} ({counts[g]:,})"
+        f"{g.replace('Expansion-eligible background', 'Expansion background')} ({counts[g]:,})"
         for g in groups
     ]
     colors = ["#888888", "#444444", "#D55E00", "#0072B2", "#009E73"]
