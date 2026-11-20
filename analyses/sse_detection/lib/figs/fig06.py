@@ -31,16 +31,16 @@ CANDIDATE_COLORS = {
 
 TIER_DISPLAY_NAMES = {
     "possible_review": "Possible Review",
-    "high_priority_burst": "High-priority local burst",
-    "high_priority_burden": "High-priority onward burden",
-    "high_priority_both_axes": "High-priority on both axes",
+    "high_priority_burst": "Unusual accumulation",
+    "high_priority_burden": "Unusual expansion",
+    "high_priority_both_axes": "Unusual on both axes",
 }
 
 
 def build_selection_funnel(nodes: pd.DataFrame) -> pd.DataFrame:
     tier = nodes["candidate_tier"]
     rows = [
-        ("All transition-network clusters", len(nodes)),
+        ("All transition-graph clusters", len(nodes)),
         (
             f"Eligible clusters (size >= {MIN_CLUSTER_SIZE})",
             int(nodes["sse_tested"].fillna(False).sum()),
@@ -50,9 +50,9 @@ def build_selection_funnel(nodes: pd.DataFrame) -> pd.DataFrame:
             int(tier.eq("background_or_low_information").sum()),
         ),
         ("Possible review", int(tier.eq("possible_review").sum())),
-        ("High-priority local burst", int(tier.eq("high_priority_burst").sum())),
-        ("High-priority onward burden", int(tier.eq("high_priority_burden").sum())),
-        ("High-priority on both axes", int(tier.eq("high_priority_both_axes").sum())),
+        ("Unusual accumulation", int(tier.eq("high_priority_burst").sum())),
+        ("Unusual expansion", int(tier.eq("high_priority_burden").sum())),
+        ("Unusual on both axes", int(tier.eq("high_priority_both_axes").sum())),
     ]
     out = pd.DataFrame(rows, columns=["stage", "n"])
     out["order"] = np.arange(len(out))
@@ -137,11 +137,11 @@ def draw_score_landscape(ax, table: pd.DataFrame) -> None:
     # Draw separating line and text
     ax.axhline(line_y, color="#777777", lw=0.7, ls=":")
     ax.text(
-        ax.get_xlim()[0], strip_y, "Burden N/A", va="center", ha="left", color="#555555"
+        ax.get_xlim()[0], strip_y, "Expansion N/A", va="center", ha="left", color="#555555"
     )
 
-    ax.set_xlabel("Calibrated local burst score")
-    ax.set_ylabel("Calibrated onward burden score")
+    ax.set_xlabel("Calibrated accumulation score")
+    ax.set_ylabel("Calibrated expansion score")
     ax.legend(loc="center left")
 
 
