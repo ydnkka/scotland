@@ -249,8 +249,10 @@ def build(paths: Paths) -> dict[str, object]:
             for role in role_pivot.columns
         ],
         loc="outside lower center",
+        bbox_to_anchor=(0.5, -0.13),
         ncols=3,
         frameon=False,
+        title="Local link configurations around a focal cluster",
     )
 
     add_panel_labels(axes.ravel())
