@@ -35,7 +35,7 @@ def build(paths: Paths, *, tables=None):
     lines = [
         r"\begingroup",
         r"\renewcommand{\thesistablesetup}{\small\setstretch{1}\setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{1.0}}",
-        r"\begin{longtable}{@{}p{0.22\linewidth}*{15}{r}@{}}",
+        r"\begin{longtable}{@{}P{0.22\linewidth}*{15}{r}@{}}",
         render_latex_caption(**table_caption("tab:size_composition")) + r"\\",
         r"\toprule",
         *header,
@@ -55,9 +55,7 @@ def build(paths: Paths, *, tables=None):
             & comp.size_band.ne("All")
         ]
         categories = CATEGORY_ORDERS.get(key, sorted(b.category.unique()))
-        if key == "health_board":
-            lines.append(r"\newpage")
-        elif attr_index:
+        if attr_index:
             lines.append(r"\addlinespace[0.4em]")
         lines.append(r"\multicolumn{16}{l}{\textbf{" + label + r"}}\\*")
         for cat in categories:
