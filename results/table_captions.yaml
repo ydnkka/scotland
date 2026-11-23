@@ -94,7 +94,7 @@ tab:simd_population_weighting:
 tab:bayesian_model_specifications:
   source: analyses/sse_detection/lib/figs/tab01.py
   short_caption: Data and specifications for Bayesian models
-  caption: 'Data used to fit the Bayesian models. Mixing models use one observation per cluster; composition models use one observation per sequence record in each window. Candidate denotes a candidate cluster. For candidate status, values give the number and percentage of observations assigned to a candidate; scores are reported as mean (standard deviation). Expanded models add three surveillance measures. All models allow baseline outcomes to vary by policy period and clade.'
+  caption: 'Data used to fit the Bayesian models. Mixing models use one observation per cluster; composition models use one observation per sequence record in each window. For candidate status, values give the number and percentage of observations assigned to a candidate; scores are reported as mean (standard deviation). Expanded models add three surveillance measures. All models allow baseline outcomes to vary by policy period and clade.'
   columns:
     Domain: Diversity within clusters (mixing) or attributes of sequence records (composition).
     Family: Logistic model for candidate status or linear model for screening scores.
@@ -197,7 +197,7 @@ tab:bayesian_random_effect_sds:
 tab:size_overview:
   source: analyses/sse_detection/lib/figs/tab07.py
   short_caption: Cluster sizes and sequence records
-  caption: 'Cluster sizes and sequence records in the primary comparison. Candidate denotes a candidate cluster; background includes all other eligible clusters. Records count appearances of sequences across retained windows. Cluster sizes are reported as median (interquartile range).'
+  caption: 'Cluster sizes and sequence records in the primary comparison. Records count appearances of sequences across surveillance windows. Cluster sizes are reported as median (interquartile range).'
   columns:
     Size band: Category of cluster size; All combines all eligible sizes.
     Group: Candidate cluster or background cluster.
@@ -209,23 +209,23 @@ tab:sensitivity_sizes:
   source: analyses/sse_detection/lib/figs/tab08.py
   short_caption: Cluster sizes under alternative screening rules
   caption_is_latex: true
-  caption: 'Cluster counts and sizes under alternative screening rules. Candidate denotes a candidate cluster. The primary comparison uses $p\leq0.05$ and at least six sequences per cluster. Other cutoffs retain this minimum size and classify all remaining eligible clusters as background. Size restrictions retain primary labels and apply to both groups. Records count appearances of sequences across retained windows.'
+  caption: 'Cluster counts and sizes under alternative screening rules. The primary comparison uses $p\leq0.05$ and at least six sequences per cluster. Other cutoffs retain this minimum size and classify all remaining eligible clusters as background. Size restrictions retain primary labels and apply to both groups. Records count appearances of sequences across surveillance windows. Sizes are reported as median (interquartile range).'
   columns:
     Comparison: Primary analysis, alternative p cutoff or restriction on cluster size.
     Group: Candidate cluster or other eligible cluster (background).
     Clusters: Number of clusters under the comparison rule.
     Records: Number of sequence appearances across windows.
-    Median size: Median number of sequences per cluster.
+    Median (IQR): Median cluster size with the 25th and 75th percentiles..
   notes:
     - p measures how unusual the score is under the random reference model.
     - Size restrictions use the saved primary labels without recalibrating the screen.
 
 tab:route_sizes:
   source: analyses/sse_detection/lib/figs/tab09.py
-  short_caption: Cluster sizes by screening route
-  caption: 'Cluster sizes for candidates selected for accumulation only, expansion only or both scores. Background includes all other eligible clusters; expansion background is the subset with positive observed downstream expansion. Records count appearances of sequences across retained windows. Sizes are reported as median (interquartile range).'
+  short_caption: Cluster sizes by screening dimension
+  caption: 'Cluster sizes for candidates selected for accumulation only, expansion only or both scores. Background includes all other eligible clusters; expansion background is the subset with positive direct or cumulative additional membership. Records count appearances of sequences across surveillance windows. Sizes are reported as median (interquartile range).'
   columns:
-    Group: Screening route or background comparison group.
+    Group: Screening dimension or background comparison group.
     Clusters: Number of clusters in the group.
     Records: Number of sequence appearances across windows.
     Median (IQR): Median cluster size with the 25th and 75th percentiles.
@@ -239,7 +239,7 @@ tab:size_composition:
   source: analyses/sse_detection/lib/figs/tab10.py
   short_caption: Population composition by cluster size
   caption_is_latex: true
-  caption: 'Population composition by cluster size for candidate clusters and background clusters. Values give category percentages among pooled sequence records in each group and size band; $\Delta$ is candidate minus background in percentage points. Record counts are in Table~\ref{tab:size_overview}. SIMD is the Scottish Index of Multiple Deprivation; quintiles run from most deprived (Q1) to least deprived (Q5).'
+  caption: 'Population composition by cluster size for candidate clusters (C) and background clusters (B). Values give category percentages among pooled sequence records in each group and size band; $\Delta$ is candidate minus background in percentage points. Record counts are in Table~\ref{tab:size_overview}. SIMD is the Scottish Index of Multiple Deprivation; quintiles run from most deprived (Q1) to least deprived (Q5).'
   columns:
     Category: Category within each demographic, socioeconomic or geographic attribute.
     Candidate: Percentage of candidate sequence records in the category, within the size band.

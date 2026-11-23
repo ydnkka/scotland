@@ -29,11 +29,11 @@ def build(paths: Paths, *, tables=None):
         + " & ".join(r"\multicolumn{3}{c}{" + band + "}" for band in band_labels)
         + r" \\",
         "".join(r"\cmidrule(lr){" + f"{2 + 3*i}-{4 + 3*i}" + "}" for i in range(5)),
-        " & " + " & ".join([r"Candidate & Background & $\Delta$"] * 5) + r" \\",
+        " & " + " & ".join([r"C & B & $\Delta$"] * 5) + r" \\",
         r"\midrule",
     ]
     lines = [
-        r"\begin{landscape}\begingroup",
+        r"\begingroup",
         r"\renewcommand{\thesistablesetup}{\small\setstretch{1}\setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{1.0}}",
         r"\begin{longtable}{@{}p{0.22\linewidth}*{15}{r}@{}}",
         render_latex_caption(**table_caption("tab:size_composition")) + r"\\",
@@ -73,7 +73,7 @@ def build(paths: Paths, *, tables=None):
                     ]
                 )
             lines.append(" & ".join(values) + r" \\")
-    lines.extend([r"\end{longtable}\endgroup\end{landscape}"])
+    lines.extend([r"\end{longtable}\endgroup"])
     path.write_text("\n".join(lines) + "\n")
     return {"tex": path}
 

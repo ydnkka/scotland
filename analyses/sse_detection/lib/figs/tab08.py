@@ -35,13 +35,13 @@ def build(paths: Paths, *, tables=None):
                     group,
                     f"{r.n_clusters:,}",
                     f"{r.n_records:,}",
-                    f"{r.size_median:g}",
+                    f"{r.size_median:g} ({r.size_q25:g}--{r.size_q75:g})",
                 ]
             )
     write_size_table(
         output_path,
         "tab:sensitivity_sizes",
-        ["Comparison", "Group", "Clusters", "Records", "Median size"],
+        ["Comparison", "Group", "Clusters", "Records", "Median (IQR)"],
         rows,
     )
     return {"tex": output_path}
