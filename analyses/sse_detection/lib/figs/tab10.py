@@ -40,7 +40,7 @@ def build(paths: Paths, *, tables=None):
         r"\toprule",
         *header,
         r"\endfirsthead",
-        r"\multicolumn{16}{l}{\tablename\ \thetable\ continued}\\",
+        r"\multicolumn{16}{@{}l@{}}{\tablename\ \thetable\ continued}\\",
         r"\toprule",
         *header,
         r"\endhead",
@@ -56,8 +56,8 @@ def build(paths: Paths, *, tables=None):
         ]
         categories = CATEGORY_ORDERS.get(key, sorted(b.category.unique()))
         if attr_index:
-            lines.append(r"\addlinespace[0.4em]")
-        lines.append(r"\multicolumn{16}{l}{\textbf{" + label + r"}}\\*")
+            lines.append(r"\addlinespace[0.6em]")
+        lines.append(r"\multicolumn{16}{@{}l@{}}{\textbf{" + label + r"}}\\*")
         for cat in categories:
             display = "Q" + cat if key == "simd" else SHORT_LABELS.get(cat, cat)
             values = [display]
